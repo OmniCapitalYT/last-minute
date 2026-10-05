@@ -175,3 +175,52 @@ finding numerically before it was fixed.
   0.468, and that is what the page shows.
 - The gap penalty has a slope kink exactly at a 0% gap (no penalty below model
   value, by design). No optimum sits on it.
+
+## Second logic audit (economic and statistical soundness)
+
+This pass asked whether the formulas make sense, not just whether they match the
+spec. Each finding was reproduced before it was fixed.
+
+**Fixed**
+
+- **The score let size back in through revenue.**
+  - The reference population was built at the industry's typical margin. The
+    fitted value prices revenue, so a business with a different margin was
+    scored against peers of a different size.
+  - At fixed revenue, raising earnings from $0.6M to $3M tripled value but
+    took the business score from 99 to 6.
+  - The reference now shares the subject's earnings and revenue. With
+    transferability at its size-adjusted medians, the score is flat across
+    earnings.
+- **A median business scored 53–54, not 50, on the business score.** The
+  subject was priced at its proceeds optimum against peers priced at the market
+  ratio. The business score now has its own reference, priced at the optimum.
+  It is exactly 50 for a median business in all 80 industry and size
+  combinations. Because the two scores now use different peers, an ask near the
+  optimum can put the Omni score slightly above the business score; the caption
+  says so.
+- **Cliffs at the published size-band edges.** $1 of earnings across $5M of
+  value added 76 days to close and $73k of expected proceeds; cash at close
+  jumped at $2M. Band medians are now values at each band's geometric centre,
+  interpolated in ln(price). Months to close, LOI to close, share of the ask
+  and cash at close are all continuous.
+- **The strategic premium had no bound.** The synergy pool scales with revenue
+  but was capitalised at the earnings multiple, which reached +160% of value at
+  thin margins. A buyer now pays away at most 40% of value in synergy.
+- **The capped mean could exceed the ceiling** for asks under about a
+  millionth of value, because a $1 floor was applied after scaling. It is now
+  computed in ratio space.
+- **Labels:**
+  - The time-to-close curve now says it is conditional on closing.
+  - The buyer table's close column reads "Closes if engaged".
+  - The value gap counts only changes that add value.
+  - The score self-check now tests size-invariance instead of a hard-coded
+    pass.
+
+**Judgment, unchanged**
+
+- **The quality composite assumes the nine dimensions are independent**
+  (sum / √9), as the spec states. Correlated dimensions would make a good
+  business look less extreme, but no dataset measures that correlation.
+- **The utility's retained-business branch uses θ × model value.** That is a
+  value to the owner, not a sale-price distribution.

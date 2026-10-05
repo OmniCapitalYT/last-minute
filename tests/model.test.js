@@ -130,5 +130,30 @@ for(const ind of Object.keys(A.IND)){
   for(const [inp,exp] of cases){ const v=parseAmount(inp);
     ok(Number.isNaN(exp)?Number.isNaN(v):near(v,exp,1e-6),`parseAmount(${JSON.stringify(inp)}) = ${v}, expected ${exp}`); } }
 
+/* 15. the business score: a median business priced at its proceeds optimum scores 50,
+       and the score does not move with earnings once transferability sits at the
+       size-adjusted peer medians (size lives in the model value, not the score) */
+{ const biz=s=>{ const V=A.model({...s,ask:1}).V; return A.omniScore(A.model({...s,ask:V*A.bestRatio(s,0,900)}),"opt"); };
+  for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]){
+    ok(biz(median(ind,ern))===50,`median ${ind} ${ern}: business score 50`); }
+  const sc=[.6e6,1e6,1.45e6,2e6,3e6].map(e=>{ const R=A.sizeRefs(e); return biz({...EX,ern:e,own:R.own,mgt:R.mgt,fin:R.fin}); });
+  ok(Math.max(...sc)-Math.min(...sc)<=2,`business score flat in earnings at fixed revenue: ${sc}`); }
+
+/* 16. no cliffs at the published size-band edges */
+for(const edge of [5e5,1e6,2e6,5e6]){
+  const s={...EX,ask:edge}; let lo=1e3,hi=1e8;
+  for(let i=0;i<90;i++){ const m=Math.sqrt(lo*hi); A.model({...s,ern:m,rev:Math.max(m*3,1e5)}).V<edge?lo=m:hi=m; }
+  const a=A.model({...s,ern:lo,rev:Math.max(lo*3,1e5)}), b=A.model({...s,ern:hi,rev:Math.max(hi*3,1e5)});
+  ok(Math.abs(b.tMed-a.tMed)<.5,`time to close continuous at ${edge}: ${a.tMed} vs ${b.tMed}`);
+  ok(Math.abs(b.EVp/a.EVp-1)<1e-3,`expected proceeds continuous at ${edge}`);
+  ok(Math.abs(b.cashShare-a.cashShare)<1e-4,`cash share continuous at ${edge}`); }
+
+/* 17. strategic premium bounded; capped mean never above the ceiling */
+for(const [ind,rev,ern] of [["vet",1e8,2e6],["wash",5e9,1e8],["medical",6e6,1.45e6]]){
+  const r=A.model({...EX,ind,rev,ern,ask:ern*3});
+  ok(r.stratPrem/r.V<=.40+.25,`${ind} rev ${rev}: strategic premium ${(r.stratPrem/r.V*100).toFixed(0)}% of value`); }
+{ const r=A.model({...EX,ind:"wash",rev:5e9,ern:4.6e9,ask:1e3});
+  ok(r.Vmean<=r.ceil*(1+1e-9),`capped mean ${r.Vmean} within ceiling ${r.ceil}`); }
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

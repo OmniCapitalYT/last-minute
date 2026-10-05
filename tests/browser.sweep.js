@@ -50,7 +50,6 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
                                        +document.getElementById("o_score").textContent]);
     if(shown[0]!==25000) issues.push(`[${width}] typed revenue not applied: ${shown[0]}`);
     if(shown[1]!==3.5e6) issues.push(`[${width}] typed ask not applied: ${shown[1]}`);
-    if(!(shown[2]>=shown[3])) issues.push(`[${width}] business score ${shown[2]} below Omni score ${shown[3]}`);
     await p.click("#reset"); await p.waitForTimeout(900);
     await p.click(".tab[data-v=data]"); await p.waitForTimeout(300);
     const dt=await p.evaluate(()=>document.getElementById("view-data").innerText);
