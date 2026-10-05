@@ -224,3 +224,50 @@ spec. Each finding was reproduced before it was fixed.
   business look less extreme, but no dataset measures that correlation.
 - **The utility's retained-business branch uses θ × model value.** That is a
   value to the owner, not a sale-price distribution.
+
+## Third logic audit (regressions, captions, data tab)
+
+**Fixed**
+
+- **The value gap counted a change that loses value once bundled.** Hiring a
+  GM adds value alone but costs $318k inside the full bundle: the quality
+  percentile saturates while the salary deduction keeps growing. The gap now
+  drops any change whose removal raises the bundle's value: +$527k became
+  +$845k at the defaults.
+- **Reset left the state and franchise inputs set.**
+- **The realised price could reach 107.8% of the ask** for e-commerce. The
+  ceiling now uses IBBA's band level (at most 102%) rather than the BizBuySell
+  industry factor, which describes typical realisation, not a cap. A test
+  covers all 16 industries.
+- **A wrong sensitivity note.** At a gap of 100% or more, the closing
+  probability is pinned at its floor, and the note had claimed the ask sat
+  under model value. That case now has its own message.
+- **The realisation row labelled an interpolated figure with a band name.** It
+  now names the IBBA size curve.
+- **Calibration self-checks tested other things than they printed:**
+  - the $20M anchor check passed below 7.2× under a "6.0–6.5×" label;
+  - the advisor-engaged close rate was checked on the broker channel;
+  - the upper close-rate bound was looser than its label;
+  - the score check could never fail.
+
+  Each now tests exactly what it prints, so two rows honestly read "off":
+  judgment-stack anchors of 2.35× and 6.77×, which the reported value does not
+  use.
+- **The Data tab showed stale figures:**
+  - pooled close rates instead of the recent ones the model uses;
+  - σ 0.485 "lognormal" and an 80% interval of 0.52–1.82×;
+  - a "stepped" penalty;
+  - an old quality band;
+  - a 73.9% loss-given-default figure;
+  - "Omni score weights".
+
+  All are now read from the live model.
+- **Nits:**
+  - `capLo` and `capHi` are renamed `ceilAt` and `floorAt` to match what they
+    do.
+  - The list note no longer implies that delay cost moves the ask.
+  - Money boxes reject percentages and negative amounts instead of silently
+    clamping them.
+
+**Unchanged:** the GM's cost scales with revenue (at least $85k, the spec's
+figure) in line with "cost scales with company size".

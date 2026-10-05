@@ -2685,7 +2685,9 @@ function model(s){
      lower-middle-market deals essentially never close above the asking price; the
      one IBBA band that averages above it (102% at $5M+) sets the headroom there.
      Smooth minimum in logs, so the optimiser never sits on a kink. */
-  out.askCeil=Math.max(1,FT.pctAsk);
+  /* headroom above the ask only where IBBA's own size band closes above it (102% at $5M+);
+     the BizBuySell industry factor describes typical realisation, not a ceiling */
+  out.askCeil=Math.max(1,FT.pctAskSize);
   /* past RHO_MAX the extra headroom is no more earned than the extra anchoring:
      the ceiling stops rising with the ask there, so a higher ask only costs P_C */
   out.ceil=softMin(s.ask,out.V*RHO_MAX)*out.askCeil;
@@ -2884,7 +2886,7 @@ const INTERV=[
  {k:"reprice", n:"Reprice into the model-supported range", days:14,
   cost:s=>0, eff:{}},                                    // handled last, needs final V
  {k:"qoe", n:"Commission a sell-side quality of earnings", days:60,
-  cost:s=>Math.max(22000,.0045*s.rev), eff:{capHi:{fin:.93}}},
+  cost:s=>Math.max(22000,.0045*s.rev), eff:{floorAt:{fin:.93}}},
  {k:"sops", n:"Document systems and operating procedures", days:120,
   cost:s=>Math.max(15000,.006*s.rev), eff:{mul:{own:.86},add:{fin:.05}}},
  /* A general manager is a salary, not a project. SDE adds back the OWNER's pay, not
@@ -2893,7 +2895,7 @@ const INTERV=[
     the single best intervention while ignoring the largest thing it does to value. */
  {k:"gm", n:"Hire or promote a general manager", days:210,
   cost:s=>gmSalary(s),
-  eff:s=>({capLo:{own:.30},capHi:{mgt:.72},add:{ern:-gmSalary(s)}})},
+  eff:s=>({ceilAt:{own:.30},floorAt:{mgt:.72},add:{ern:-gmSalary(s)}})},
  {k:"contracts", n:"Convert customers to contracts and retainers", days:240,
   cost:s=>Math.max(28000,.010*s.rev), eff:{add:{rec:.13,ret:.03}}},
  {k:"divers", n:"Run a customer diversification push", days:300,
@@ -2943,23 +2945,23 @@ function bestRatio(s0,theta,lamT){
   return U(m)>=best.u ? m : best.m;
 }
 function applyAll(s0,r0,keys,rho){
-  const mul={},add={},capLo={},capHi={};
+  const mul={},add={},ceilAt={},floorAt={};
   for(const k of keys){
     const e0=INTERV.find(x=>x.k===k).eff, e=(typeof e0==="function"?e0(s0):e0)||{};
     for(const f in e.mul||{})   mul[f]=(mul[f]===undefined?1:mul[f])*e.mul[f];
     for(const f in e.add||{})   add[f]=(add[f]||0)+e.add[f];
-    for(const f in e.capLo||{}) capLo[f]=Math.min(capLo[f]===undefined?Infinity:capLo[f],e.capLo[f]);
-    for(const f in e.capHi||{}) capHi[f]=Math.max(capHi[f]===undefined?-Infinity:capHi[f],e.capHi[f]);
+    for(const f in e.ceilAt||{}) ceilAt[f]=Math.min(ceilAt[f]===undefined?Infinity:ceilAt[f],e.ceilAt[f]);
+    for(const f in e.floorAt||{}) floorAt[f]=Math.max(floorAt[f]===undefined?-Infinity:floorAt[f],e.floorAt[f]);
   }
   const s={...s0};
   const fields=new Set([...Object.keys(mul),...Object.keys(add),
-                        ...Object.keys(capLo),...Object.keys(capHi)]);
+                        ...Object.keys(ceilAt),...Object.keys(floorAt)]);
   for(const f of fields){
     let v=s0[f];
     if(mul[f]!==undefined) v*=mul[f];        // proportional effects compose by product
     if(add[f]!==undefined) v+=add[f];        // then absolute shifts
-    if(capLo[f]!==undefined) v=Math.min(v,capLo[f]);   // then ceilings imposed by a hire
-    if(capHi[f]!==undefined) v=Math.max(v,capHi[f]);
+    if(ceilAt[f]!==undefined) v=Math.min(v,ceilAt[f]);   // then ceilings imposed by a hire
+    if(floorAt[f]!==undefined) v=Math.max(v,floorAt[f]);
     const rg=FIELD_RANGE[f]; if(rg) v=clamp(v,rg[0],rg[1]);
     s[f]=(f==="buyers")?Math.round(v):v;
   }
@@ -3232,7 +3234,7 @@ function drawCurve(r){
        +'<div class="rzv">'+v+'</div><div class="rzn">'+n+'</div></div>';
     el.innerHTML='<div class="rz"><div class="rzh">What the seller actually realises</div>'
       +row('Typical sale price as a share of the ask', pc(r.ft.pctAsk,1),
-           'IBBA '+r.ft.band+' band at '+pc(r.ft.pctAskSize,1)+', &times;'+r.ft.indFactor.toFixed(3)
+           'IBBA size curve at '+money(r.V)+': '+pc(r.ft.pctAskSize,1)+', &times;'+r.ft.indFactor.toFixed(3)
            +' for '+tt2(ind)+(r.ft.indN?' ('+r.ft.indN.toLocaleString()+' closed sales)':''))
       +row('This listing, at the model&rsquo;s median price', pc(r.Vreal/STATE.s.ask,1),
            money(r.Vreal)+' on an ask of '+money(STATE.s.ask)
@@ -3473,6 +3475,7 @@ function syncMoneySliders(s,V){
       if(!isFinite(v)){ if(final) box.classList.add("bad"); return; }
       box.classList.remove("bad");
       if(BOX[k].kind==="money"){
+        if(/%|ofvalue/.test(box.value.toLowerCase().replace(/\s/g,""))||v<0){ if(final) box.classList.add("bad"); return; }
         const H=MONEY[k].hard; IN[k]=clamp(v,H[0],H[1]);
       } else {
         const sl=$(BOX[k].slider), x=clamp(v,+sl.min,+sl.max); sl.value=x; EXACT[sl.id]=x;
@@ -3750,9 +3753,12 @@ function render(){
         +'left) but not what this listing will collect (right, largest quality response '
         +money(qMax,2)+'). Repricing is the lever: each 5% off the ask changes expected proceeds by '
         +money(askRow.dE,2)+'.';
-    } else if(sn.every(o=>Math.abs(o.dP)<1e-9)){
+    } else if(sn.every(o=>Math.abs(o.dP)<1e-9)&&over<=0){
       el.innerHTML='<b>Closing probability is flat here.</b> The ask sits at or under model value, '
         +'where the gap penalty is zero, so these responses come entirely through the price achieved.';
+    } else if(sn.every(o=>Math.abs(o.dP)<1e-9)){
+      el.innerHTML='<b>Closing probability is pinned at its floor.</b> At '+over.toFixed(0)+'% over model value '
+        +'the price-gap penalty is already at its maximum, so no lever moves it until the ask comes down.';
     } else el.innerHTML='';
   })();
   eq("eq_d",`\\frac{\\partial y}{\\partial x_i}\\approx\\frac{y(x_i+h)-y(x_i-h)}{2h},
@@ -3778,7 +3784,15 @@ function render(){
   const it=interventionTable(s,r);
   /* only the changes that add value: a value-destroying one (a GM's salary can outweigh
      the transferability it buys) has no place in "what this business could be worth" */
-  const allKeys=it.filter(o=>o.k==="reprice"||o.dV>0).map(o=>o.k);
+  let allKeys=it.filter(o=>o.k==="reprice"||o.dV>0).map(o=>o.k);
+  /* a change can add value alone and destroy it inside the bundle (a GM's salary keeps
+     growing while the quality percentile saturates), so drop any change whose removal
+     raises the bundle's value, and repeat until nothing more comes out */
+  for(let pass=0,changed=true;changed&&pass<12;pass++){ changed=false;
+    const vAll=model(applyAll(s,r,allKeys)).V;
+    for(const k of allKeys){ if(k==="reprice") continue;
+      const w=allKeys.filter(x=>x!==k);
+      if(model(applyAll(s,r,w)).V>vAll+1){ allKeys=w; changed=true; break; } } }
   const rAll=model(applyAll(s,r,allKeys)), cAll=costOf(s,allKeys);
   /* The value gap is in what the business SUPPORTS. It was measured on the
      anchored realised price, which the ask caps - so on an underpriced listing the
@@ -3821,8 +3835,8 @@ function render(){
   $("o_listp2").textContent=`${s.optRho.toFixed(2)}× value · ${pc(rKeep.PC)} to close · `
     +`${money(rKeep.EVp)} expected proceeds`;
   $("o_listnote").textContent=Math.abs(s.optRho-rhoSell)<.03
-    ? `At a delay cost of $${s.lamT.toLocaleString()}/day and ${pc(s.theta)} retained value, both `
-      +`objectives agree on the same price.`
+    ? `With ${pc(s.theta)} of value retained if the sale fails, both objectives agree on the same price. `
+      +`Delay cost does not move either: time to close depends on deal size, not on the ask.`
     : `The gap between these is the real decision. The higher price trades `
       +`${pp(rSell.PC-rKeep.PC).replace("+","")} of closing probability for a bigger cheque, and only `
       +`pays off if the owner genuinely can walk away — it assumes a failed process still leaves them `
@@ -4008,9 +4022,9 @@ function renderData(){
       <span class="n" style="color:#5ee0a8">${V.cv_r2_log}</span><span class="n muted"></span><span class="st pub">fitted</span></div>
     <div class="chk"><div>Median absolute error<div class="muted" style="font-size:11.8px">dollar space, out of sample</div></div>
       <span class="n" style="color:var(--amber)">${(V.median_abs_pct_error*100).toFixed(1)}%</span><span class="n muted">${(V.within_25pct*100).toFixed(0)}% within &plusmn;25%</span><span class="st free">wide</span></div>
-    <div class="chk"><div>Residual sigma driving the scenario bands<div class="muted" style="font-size:11.8px">replaced a judgement value of 0.18&ndash;0.34</div></div>
-      <span class="n" style="color:#5ee0a8">0.485</span><span class="n muted">lognormal</span><span class="st pub">fitted</span></div>
-    <p class="note">The 80% interval spans 0.52&times;&ndash;1.82&times; the point estimate. That is the honest
+    <div class="chk"><div>Residual spread driving the scenario bands<div class="muted" style="font-size:11.8px">15 measured out-of-fold quantiles; replaced a judgement value of 0.18&ndash;0.34</div></div>
+      <span class="n" style="color:#5ee0a8">${SIGMA_DISPLAY.toFixed(3)}</span><span class="n muted">p10/p90 sigma</span><span class="st pub">fitted</span></div>
+    <p class="note">The 80% interval spans ${V.fan_quantiles.p10.toFixed(2)}&times;&ndash;${V.fan_quantiles.p90.toFixed(2)}&times; the point estimate. That is the honest
     width of small-business valuation; a single number implies precision this data cannot support.</p>
     </div>
 
@@ -4065,9 +4079,9 @@ function renderData(){
 
     <p class="grp-title">Model I — probability of closing</p>
     <div class="chk"><div>Broker listings that close<div class="muted" style="font-size:11.8px">resolved basis: closed &divide; (closed + terminated)</div></div>
-      <span class="n" style="color:var(--bright)">${(C.close_probability.broker_listing_base*100).toFixed(1)}%</span><span class="n muted">base rate</span><span class="st pub">published</span></div>
-    <div class="chk"><div>Intermediated engagements that close<div class="muted" style="font-size:11.8px">5-year mean, 2022&ndash;2026</div></div>
-      <span class="n" style="color:var(--bright)">${(C.close_probability.intermediated_base*100).toFixed(1)}%</span><span class="n muted">base rate</span><span class="st pub">published</span></div>
+      <span class="n" style="color:var(--bright)">${(C.close_probability.broker_listing_base_recent*100).toFixed(1)}%</span><span class="n muted">recent base (pooled ${(C.close_probability.broker_listing_base*100).toFixed(1)}%)</span><span class="st pub">published</span></div>
+    <div class="chk"><div>Intermediated engagements that close<div class="muted" style="font-size:11.8px">mean of the three most recent years</div></div>
+      <span class="n" style="color:var(--bright)">${(C.close_probability.intermediated_base_recent*100).toFixed(1)}%</span><span class="n muted">recent base (pooled ${(C.close_probability.intermediated_base*100).toFixed(1)}%)</span><span class="st pub">published</span></div>
     <div class="chk"><div>Termination trend<div class="muted" style="font-size:11.8px">troughed at 24% in 2020&ndash;21, has risen every year since</div></div>
       <span class="n" style="color:var(--amber)">32%</span><span class="n muted">2026</span><span class="st pub">published</span></div>
 
@@ -4090,7 +4104,7 @@ function renderData(){
     <p class="note"><b>${(C.close_probability.kill_zone.share_of_price_failures*100).toFixed(0)}% of price-killed
     deals die on a gap of only 11&ndash;30%</b>, stable across every year measured. A modest
     disagreement is not a minor problem &mdash; it is the most common way a sale process ends.
-    The penalty curve on the console is stepped to match this distribution.</p>
+    The penalty on the console is this distribution's cumulative, interpolated with a monotone cubic.</p>
 
     <p class="grp-title" style="margin-top:18px">Model III — time to close</p>
     <div class="tw"><table>
@@ -4133,7 +4147,7 @@ function renderData(){
     Sliders that do not move a number are worse than no sliders.</p>
     <p class="note" style="margin-bottom:12px">What the regression <i>does</i> measure is how widely
     real sales scatter around its own prediction. Half of 18,941 closed sales landed between
-    <b>0.7265&times;</b> and <b>1.3192&times;</b> the point estimate. That band is data.
+    <b>${V.quality_band.lo.toFixed(4)}&times;</b> and <b>${V.quality_band.hi.toFixed(4)}&times;</b> the point estimate. That band is data.
     The nine quality dimensions now decide where inside it a business sits &mdash; equally weighted,
     standardized, then through the normal CDF &mdash; which swings the reported value
     <b>-27.3%</b> to <b>+31.9%</b>.</p>
@@ -4192,7 +4206,7 @@ function renderData(){
     to its sector, which is what the fallback chain is for.</p>
     <p class="note"><b>When these loans fail, they fail hard.</b> Median loss is 77.4% of the
     original advance across 774 charged-off acquisition loans, and that barely moves with loan size
-    (80.6% under $250K, 73.9% above $2M). A 6% chance of default on a $2M note is not a 6% problem.</p>
+    (${(R.lgd.by_size_curve.lgd[0]*100).toFixed(1)}% under $250K, ${(R.lgd.by_size_curve.lgd[R.lgd.by_size_curve.lgd.length-1]*100).toFixed(1)}% from $500K up, after pooling). A 6% chance of default on a $2M note is not a 6% problem.</p>
 
     <p class="grp-title" style="margin-top:18px">Refused, and why</p>
     <div class="tw"><table>
@@ -4255,8 +4269,8 @@ function renderData(){
             <td style="color:#ff8e7a;padding-left:6px">Pursue-first, strategic premium, competitive tension.</td></tr>
         <tr><td><code>INTERV</code> interventions</td><td class="n" style="padding-right:18px">${INTERV.length*3}</td>
             <td style="color:#ff8e7a;padding-left:6px">Intervention table, ROI ranking, the optimizer.</td></tr>
-        <tr><td>Omni score weights</td><td class="n" style="padding-right:18px">9</td>
-            <td style="color:#ff8e7a;padding-left:6px">The headline score and all nine category sub-scores.</td></tr>
+        <tr><td>Category sub-score weights</td><td class="n" style="padding-right:18px">9</td>
+            <td style="color:#ff8e7a;padding-left:6px">The nine category sub-scores (the Omni score itself has no weights: it is a percentile).</td></tr>
         <tr><td>Bounds &amp; constants<div class="muted" style="font-size:11.5px">ALPHA, AMAX, PMIN, PMAX, LAM0, KW, PHI, clamps</div></td>
             <td class="n" style="padding-right:18px">11</td>
             <td style="color:#ff8e7a;padding-left:6px">Price anchoring, competitive premium, curve shape.</td></tr>
@@ -4319,10 +4333,13 @@ function renderData(){
 /* Live self-audit: run the model and compare it against the published
    benchmarks it claims to rest on. Recomputed on every load, so a change to
    any coefficient shows up here immediately. */
+/* a business one standard deviation above its peers on every quality dimension, at
+   two sizes 200x apart: the score should read the same at both (size lives in value).
+   Uses a profile that is NOT a draw of its own reference, so the check can fail. */
 function scoreSpread(){
-  const q=e=>{const I=IND.medical,R=sizeRefs(e);
-    const t={ind:"medical",rev:e/(I.em*R.emk),ern:e,ask:1,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,
-      plt:.40,own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)};
+  const q=e=>{const I=IND.medical,R=sizeRefs(e),Z=1/3;
+    const t={ind:"medical",rev:e/(I.em*R.emk),ern:e,ask:1,grw:I.grw+Z*.13,gm:I.gm+Z*.13,rec:I.rec+Z*.28,cc:.16-Z*.13,
+      ret:I.ret+Z*.13,plt:.40-Z*.22,own:R.own-Z*.25,mgt:R.mgt+Z*.28,fin:R.fin+Z*.28,yrs:6,buyers:(I.buyers||50)+10};
     const V=model(t).V; return omniScore(model({...t,ask:V*1.05}));};
   return q(1e5)+" → "+q(2e7);
 }
@@ -4331,7 +4348,7 @@ function renderCalib(){
     return{ind:k,rev:rev||ern/(I.em*R.emk),ern,ask:0,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,
     ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)};};
   const at=(k,e,r,ask)=>{const s=prof(k,e,r);const V=model({...s,ask:1}).V;return model({...s,ask:ask||V});};
-  const ms=at("prof",158950,703000), lmm=at("mfg",1.5e6), ulmm=at("mfg",3.5e6);
+  const ms=at("prof",158950,703000), lmm=model({...prof("mfg",1.5e6),chan:"intermediary",ask:model({...prof("mfg",1.5e6),ask:1}).V}), ulmm=at("mfg",3.5e6);
   const msMkt=at("prof",158950,703000,350000/0.94);
   let lo=1,hi=1.6,mid=0;
   for(let i=0;i<60;i++){mid=(lo+hi)/2;
@@ -4349,17 +4366,18 @@ function renderCalib(){
    ["Close rate, lower middle market mandate ($1.5M EBITDA)",pc(lmm.PC),"≈69%",
     "Pepperdine, advisor-engaged",Math.abs(lmm.PC-.69)<.05],
    ["Close rate above $3M EBITDA",pc(ulmm.PC),"60–70%",
-    "industry aggregation of IBBA / EPI",ulmm.PC>=.60&&ulmm.PC<=.72],
+    "industry aggregation of IBBA / EPI",ulmm.PC>=.60&&ulmm.PC<=.70],
    ["Listing premium implied by α and the 94% sale-to-ask ratio",mid.toFixed(2)+"× value","1.05–1.30×",
     "sellers list above supportable value",mid>1.05&&mid<1.30],
    ["Anchor multiple at $20M of EBITDA",sizeAnchor(2e7).toFixed(2)+"×","6.0×–6.5×",
-    "IBBA >$5M band / Q4 2024 average",sizeAnchor(2e7)<7.2],
+    "IBBA >$5M band / Q4 2024 average",sizeAnchor(2e7)>=6.0&&sizeAnchor(2e7)<=6.5],
    ["Main-street anchor at $1.4M of SDE",sizeAnchor(1.4e6).toFixed(2)+"×","2.0×–3.5×",
     "published main-street SDE range",sizeAnchor(1.4e6)>=2.0&&sizeAnchor(1.4e6)<=3.5],
    ["Lower-middle-market anchor at $3.5M of EBITDA",sizeAnchor(3.5e6).toFixed(2)+"×","3.5×–9.0×",
     "published LMM EBITDA range",sizeAnchor(3.5e6)>=3.5&&sizeAnchor(3.5e6)<=9.0],
-   ["Score of a median business from $100k to $20M of earnings",scoreSpread(),"50 → 50",
-    "size-invariant by design: size is already in the model value",scoreSpread()==="50 → 50"]];
+   ["Score of a +1σ business at $100k and $20M of earnings",scoreSpread(),"equal",
+    "size-invariant by design: size is already in the model value",
+    (function(){const v=scoreSpread().split(" → ").map(Number);return Math.abs(v[0]-v[1])<=2;})()]];
   $("calib").innerHTML=`<p class="grp-title" style="margin-top:4px">Calibration check against published benchmarks</p>`
    +rows.map(r=>`<div class="chk"><div>${r[0]}<div class="muted" style="font-size:11.8px">${r[3]}</div></div>
       <span class="n" style="color:var(--bright)">${r[1]}</span>
@@ -4393,8 +4411,8 @@ buying an existing business is measurably safer than starting one. Median time t
 
 <li><span class="pv a"><i></i>aggregate</span> <b>Probability of closing</b> &mdash;
 Pepperdine PCM intermediary surveys 2011&ndash;2026. Base close rate
-<b>${(MODELS.close_and_timing.close_probability.broker_listing_base*100).toFixed(1)}%</b> for broker listings,
-${(MODELS.close_and_timing.close_probability.intermediated_base*100).toFixed(1)}% intermediated, times a price-gap penalty.
+<b>${(MODELS.close_and_timing.close_probability.broker_listing_base_recent*100).toFixed(1)}%</b> for broker listings,
+${(MODELS.close_and_timing.close_probability.intermediated_base_recent*100).toFixed(1)}% intermediated (recent years), times a price-gap penalty.
 <b>This does not condition on business quality.</b> Two businesses with identical financials and
 wildly different owner dependence receive the same number, because Pepperdine publishes rates, not deal rows.</li>
 
@@ -4446,7 +4464,8 @@ $("i_ind").innerHTML=Object.entries(IND).map(([k,v])=>
 const DEFAULTS_IN={rev:Math.pow(10,6.778),ern:Math.pow(10,6.161),ask:Math.pow(10,6.508),bud:1e5};
 const DEFAULTS={i_grw:14,i_gm:64,i_rec:72,i_cc:18,i_ret:91,
   i_plt:38,i_yrs:6,i_buy:65,i_lam:900,i_th:75,i_ind:"medical",i_own:"0.72",i_mgt:"0.36",i_fin:"0.74"};
-function reset(){ Object.assign(IN,DEFAULTS_IN); for(const k in EXACT) delete EXACT[k]; for(const k in DEFAULTS) $(k).value=DEFAULTS[k]; render(); }
+function reset(){ Object.assign(IN,DEFAULTS_IN); for(const k in EXACT) delete EXACT[k]; for(const k in DEFAULTS) $(k).value=DEFAULTS[k];
+  $("i_st").value=""; $("i_fr").checked=false; render(); }
 $("reset").addEventListener("click",reset);
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));

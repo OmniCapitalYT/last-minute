@@ -155,5 +155,11 @@ for(const [ind,rev,ern] of [["vet",1e8,2e6],["wash",5e9,1e8],["medical",6e6,1.45
 { const r=A.model({...EX,ind:"wash",rev:5e9,ern:4.6e9,ask:1e3});
   ok(r.Vmean<=r.ceil*(1+1e-9),`capped mean ${r.Vmean} within ceiling ${r.ceil}`); }
 
+/* 18. headroom above the ask is IBBA's band level only, never the industry factor */
+for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
+  const s={...EX,ind,ern,rev:ern*7.5,buyers:150}, V=A.model({...s,ask:1}).V, r=A.model({...s,ask:V*.95});
+  ok(r.q(.99)<=r.inputs.ask*Math.max(1,r.ft.pctAskSize)*(1+1e-9)&&r.q(.99)<=r.inputs.ask*1.0201,
+     `${ind} ${ern}: realised price ${(r.q(.99)/r.inputs.ask*100).toFixed(1)}% of ask`); }
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
