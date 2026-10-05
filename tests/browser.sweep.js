@@ -34,13 +34,13 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
     const selects=await p.$$eval("#view-console select",els=>els.map(e=>({id:e.id,v:[...e.options].map(o=>o.value)})));
     for(const sel of selects){ const step=sel.id==="i_st"?7:1;
       for(let i=0;i<sel.v.length;i+=step){ await p.selectOption("#"+sel.id,sel.v[i]); await check(`${sel.id}=${sel.v[i]}`); n++; }
-      await p.click("#reset"); }
+      await p.click("#reset"); await p.waitForTimeout(900); }
     const ranges=await p.$$eval("#view-console input[type=range]",els=>els.map(e=>({id:e.id,min:+e.min,max:+e.max})));
     for(const r of ranges){
       for(const f of [0,.25,.5,.75,1]){
         await p.$eval("#"+r.id,(e,v)=>{e.value=v;e.dispatchEvent(new Event("input",{bubbles:true}));},r.min+(r.max-r.min)*f);
         await check(`${r.id}@${f}`); n++; }
-      await p.click("#reset"); }
+      await p.click("#reset"); await p.waitForTimeout(900); }
     await p.click("#i_fr"); await check("franchise on"); await p.click("#i_fr"); n+=2;
     /* typed values, including ones far outside the slider ranges and junk */
     for(const [id,v] of [["v_rev","100M"],["v_ern","40m"],["v_ask","$250,000,000"],["v_ern","1,200"],
@@ -51,7 +51,7 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
     if(shown[0]!==25000) issues.push(`[${width}] typed revenue not applied: ${shown[0]}`);
     if(shown[1]!==3.5e6) issues.push(`[${width}] typed ask not applied: ${shown[1]}`);
     if(!(shown[2]>=shown[3])) issues.push(`[${width}] business score ${shown[2]} below Omni score ${shown[3]}`);
-    await p.click("#reset");
+    await p.click("#reset"); await p.waitForTimeout(900);
     await p.click(".tab[data-v=data]"); await p.waitForTimeout(300);
     const dt=await p.evaluate(()=>document.getElementById("view-data").innerText);
     if(/NaN|Infinity|undefined/.test(dt)) issues.push(`[${width}] data tab shows NaN/undefined`);
