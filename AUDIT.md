@@ -120,3 +120,58 @@ Applied from `revisions.pdf`. The v3 layer (`<style id="v3">` and
    - bracket corners, pulse dots, version tags and gradient text;
    - glowing pills, film grain, scroll-reveal fades, the split-word heading
      animation and the fixed gas giant.
+
+## Final audit (independent pass)
+
+An independent review checked every routine against the spec and reproduced each
+finding numerically before it was fixed.
+
+**Fixed**
+
+- **The proceeds optimiser repriced to the wrong ratio.**
+  - Every reprice used the utility-optimal ratio, which depends on θ (1.57× at
+    θ = 75%).
+  - As a result, "maximize expected proceeds" told a patient seller to do
+    nothing (net $1.73M), when repricing to the proceeds optimum (1.10×) with
+    three interventions nets $2.34M.
+  - The intervention table and the value-gap note inherited the same error.
+  - Each objective now reprices to its own optimum. A test checks that the
+    proceeds optimum is independent of θ.
+- **Typed amounts were truncated.** The parser read only the leading number:
+  "1e6" read as 1 and "12.3.4m" as 12.3. The whole string must now be one
+  number with an optional unit; anything else is rejected and marked.
+- **Stepped sliders snapped typed values.** Typing 63 buyers gave 65. Typed
+  values are now kept exactly until the slider is dragged.
+- **The earnings clamp was not stored.** Earnings above 92% of revenue were
+  clamped for display but kept in the input store, so raising revenue later
+  restored the impossible figure. The clamped value is now stored.
+- **Labels that disagreed with their numbers:**
+  - The hero legend put the unanchored model value between two realised-price
+    quantiles. It now shows the median sale.
+  - The ceiling row showed `ask × c` instead of the ceiling actually used,
+    which is held at 1.5× model value.
+  - The mean row cited ×1.0907 beside a capped mean of 0.88× the median.
+- **Nits:** deals of $5M and up were labelled with the SBA's $2–5M band (7(a)
+  loans stop at $5M); the buyer-pool sensitivity row never flagged one-sided
+  differences; there was an unfloored `log10` in the judgment build.
+
+**Verified correct**
+
+- Value equation coefficients, the hinge, and its slope beyond the cap.
+- The calibration lookup and the industry fallback chain.
+- The risk logistic, including the state effect and LGD.
+- `ncdf` (max error 2e-7) and `nqnt` (Acklam).
+- The Fritsch–Carlson spline: monotone and C1.
+- The fan quantiles: exact at all 15 knots.
+- `softMin` and the capped mean.
+- Golden-section search: within 2.5e-9 of brute force over 160 cases.
+- The optimiser bitmask, cost and day aggregation, and order-independence.
+- Unit handling (thousands, 30.44 days per month, log bases).
+- Business score ≥ Omni score in 800 of 800 cases.
+
+**Noted, unchanged**
+
+- The spec says the p10/p90 band implies σ = 0.472. The shipped quantiles give
+  0.468, and that is what the page shows.
+- The gap penalty has a slope kink exactly at a 0% gap (no penalty below model
+  value, by design). No optimum sits on it.

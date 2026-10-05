@@ -2125,7 +2125,8 @@ function fitRisk(price,naicsKey,rate,jobs,franchise,st){
   /* the empirical default rate for this deal size, straight from the SBA population -
      a check on the fitted model that the console stored and never showed */
   const SB=R.size_band_rates||{};
-  const sbk=price<250e3?"<250K":price<500e3?"250-500K":price<1e6?"500K-1M":price<2e6?"1-2M":"2-5M";
+  /* 7(a) loans cap at $5M, so there is no observed band above it */
+  const sbk=price<250e3?"<250K":price<500e3?"250-500K":price<1e6?"500K-1M":price<2e6?"1-2M":price<5e6?"2-5M":null;
   const emp=SB[sbk]?SB[sbk].rate:null;
   return {p:p,base:base,rel:rel,indEff:ie,empBand:emp,empBandKey:sbk,
     empBandN:SB[sbk]?SB[sbk].n:0,
@@ -2391,7 +2392,7 @@ function model(s){
 
   /* ---- §8 multiple build ----------------------------------- */
   const anchor=sizeAnchor(s.ern);
-  const w=.75-.30*clamp((Math.log10(s.ern)-5.4)/1.5,0,1);
+  const w=.75-.30*clamp((Math.log10(Math.max(s.ern,1e3))-5.4)/1.5,0,1);
   const fInd=1+(I.anchor/2.65-1)*w;
   const base=anchor*fInd;
 
@@ -2855,7 +2856,7 @@ function bestRatio(s0,theta,lamT){
   const m=(a+b)/2;
   return U(m)>=best.u ? m : best.m;
 }
-function applyAll(s0,r0,keys){
+function applyAll(s0,r0,keys,rho){
   const mul={},add={},capLo={},capHi={};
   for(const k of keys){
     const e0=INTERV.find(x=>x.k===k).eff, e=(typeof e0==="function"?e0(s0):e0)||{};
@@ -2877,7 +2878,10 @@ function applyAll(s0,r0,keys){
     s[f]=(f==="buyers")?Math.round(v):v;
   }
   // repricing must see the company AFTER every other change
-  if(keys.includes("reprice")) s.ask=model(s).V*(s0.optRho||1.05);
+  /* the ratio is the CALLER's objective: the proceeds optimum for the proceeds search,
+     the utility optimum (which depends on theta) for the utility search. Using the
+     theta-dependent one everywhere told a patient seller's proceeds card to do nothing. */
+  if(keys.includes("reprice")) s.ask=model(s).V*(rho||s0.rhoSell||1.05);
   return s;
 }
 const costOf=(s0,keys)=>keys.reduce((a,k)=>a+INTERV.find(x=>x.k===k).cost(s0),0);
@@ -2926,12 +2930,17 @@ function optimize(s0,r0,budget,lamT,theta){
     const c=costOf(s0,keys);
     if(c>budget) continue;
     const days=daysOf(s0,keys);
-    const r=model(applyAll(s0,r0,keys));
-    const proceeds=r.EVp;
-    const U=proceeds + (1-r.PC)*theta*r.V - lamT*(r.tMed+days) - c;
-    const rec={keys,c,days,V:r.Vreal,proceeds,net:proceeds-c,PC:r.PC,t:r.tMed,U,r};
-    if(!best.V||rec.net>best.V.net) best.V=rec;
-    if(!best.U||rec.U>best.U.U)     best.U=rec;
+    const hasR=keys.includes("reprice");
+    /* proceeds objective: reprice to the proceeds-optimal ratio */
+    const r=model(applyAll(s0,r0,keys,s0.rhoSell));
+    const recV={keys,c,days,V:r.Vreal,proceeds:r.EVp,net:r.EVp-c,PC:r.PC,t:r.tMed,r};
+    recV.U=r.EVp+(1-r.PC)*theta*r.V-lamT*(r.tMed+days)-c;
+    if(!best.V||recV.net>best.V.net) best.V=recV;
+    /* utility objective: reprice to the utility-optimal ratio (same state if no reprice) */
+    const ru=hasR?model(applyAll(s0,r0,keys,s0.optRho)):r;
+    const recU=ru===r?recV:{keys,c,days,V:ru.Vreal,proceeds:ru.EVp,net:ru.EVp-c,PC:ru.PC,t:ru.tMed,r:ru,
+      U:ru.EVp+(1-ru.PC)*theta*ru.V-lamT*(ru.tMed+days)-c};
+    if(!best.U||recU.U>best.U.U)     best.U=recU;
   }
   return best;
 }
@@ -2979,7 +2988,7 @@ function sensitivity(s0){
        central difference quietly becomes a one-sided one. The arithmetic is still
        right - span is the interval actually used - but the panel says "central
        difference" underneath, so mark the rows where that is no longer true. */
-    const nominal=(v.k==="ask"||v.k==="buyers")?span:2*v.h;
+    const nominal=v.k==="ask"?span:v.k==="buyers"?2*.25*s0.buyers:2*v.h;
     const oneSided=Math.abs(span-nominal)>1e-9;
     return {...v,dV,dE,dP,oneSided};
   });
@@ -3077,8 +3086,10 @@ function drawOrbit(r){
   window.FOCAL_TARGET={pc:clamp(r.PC,0,1)};
   if(window.FOCAL_KICK) window.FOCAL_KICK();
   const row=(k,v,cls)=>`<div class="fl ${cls}"><i></i><span class="fk">${k}</span><span class="fv">${v}</span></div>`;
+  /* all three on the same basis: quantiles of the realised price, so the middle row
+     is the median sale, not the unanchored model value (which could exceed the bull) */
   $("focal_legend").innerHTML=row("Bear case",money(r.scen.bear[0]),"bear")
-    +row("Model value",money(r.V),"base")+row("Bull case",money(r.scen.bull[1]),"bull");
+    +row("Median sale",money(r.q(.5)),"base")+row("Bull case",money(r.scen.bull[1]),"bull");
 }
 
 /* ============ time-to-close curve ============ */
@@ -3276,8 +3287,9 @@ function divBars(el,rows,fmt,col){
    MAIN RENDER
    ============================================================ */
 const STATE={};
+const EXACT={};   // typed values for stepped sliders, kept exactly until the slider is dragged
 function readState(){
-  const g=id=>parseFloat($(id).value);
+  const g=id=>EXACT[id]!==undefined?EXACT[id]:parseFloat($(id).value);
   const s={
     ind:$("i_ind").value,
     rev:IN.rev, ern:IN.ern, ask:IN.ask,
@@ -3289,7 +3301,9 @@ function readState(){
     budget: IN.bud,
     lamT:g("i_lam"), theta:g("i_th")/100
   };
-  if(s.ern>s.rev*.92) s.ern=s.rev*.92;
+  /* earnings cannot exceed 92% of revenue; store the clamp so raising revenue later
+     does not silently restore an impossible figure */
+  if(s.ern>s.rev*.92){ s.ern=s.rev*.92; IN.ern=s.ern; }
   /* inputs the fitted risk model needs; derived when not exposed in the rail */
   s.chan   = "broker";
   s.rate   = 10.5;                               // typical SBA 7(a) acquisition rate
@@ -3325,10 +3339,14 @@ function moneyToPos(k,v,s,V){
 }
 /* "$1.45M", "1,450,000", "1.45m", "450k", "14%", "$900/day", "6 years", "none" */
 function parseAmount(t){
-  t=String(t).trim().toLowerCase().replace(/[$,\s]/g,"").replace(/−/g,"-");
-  if(t===""||t==="none"||t==="notweighted") return 0;
-  const m=t.match(/^(-?\d*\.?\d+)([kmb])?/); if(!m) return NaN;
-  return parseFloat(m[1])*({k:1e3,m:1e6,b:1e9}[m[2]]||1);
+  /* the whole string must be one number with an optional unit; anything else is
+     rejected rather than silently truncated ("12.3.4m" used to read as 12.3) */
+  t=String(t).trim().toLowerCase().replace(/[$,\s]/g,"").replace(/\u2212/g,"-");
+  if(t==="none") return 0;
+  t=t.replace(/(\/day|years?|ofvalue)$/,"");
+  const m=t.match(/^(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([kmb%])?$/); if(!m) return NaN;
+  const v=Number(m[1])*({k:1e3,m:1e6,b:1e9}[m[2]]||1);
+  return isFinite(v)?v:NaN;
 }
 const BOX={
   rev:{kind:"money"}, ern:{kind:"money"}, ask:{kind:"money"}, bud:{kind:"money"},
@@ -3370,11 +3388,12 @@ function syncMoneySliders(s,V){
       if(BOX[k].kind==="money"){
         const H=MONEY[k].hard; IN[k]=clamp(v,H[0],H[1]);
       } else {
-        const sl=$(BOX[k].slider); sl.value=clamp(v,+sl.min,+sl.max);
+        const sl=$(BOX[k].slider), x=clamp(v,+sl.min,+sl.max); sl.value=x; EXACT[sl.id]=x;
       }
       scheduleRender();
     };
-    box.addEventListener("input",()=>commit(false));
+    if(BOX[k].slider) $(BOX[k].slider).addEventListener("input",()=>{ delete EXACT[BOX[k].slider]; });
+    box.addEventListener("input",()=>{ if(box.value.trim()!=="") commit(false); });
     box.addEventListener("change",()=>commit(true));
     box.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key==="Escape") box.blur(); });
     box.addEventListener("focus",()=>box.select());
@@ -3387,7 +3406,8 @@ function render(){
   const s=readState(); labels(s);
   let r=model(s);
   r.score=omniScore(r);
-  s.optRho=bestRatio(s,s.theta,s.lamT);
+  s.optRho=bestRatio(s,s.theta,s.lamT);   // utility optimum: depends on theta
+  s.rhoSell=bestRatio(s,0,s.lamT);        // expected-proceeds optimum: does not
   Object.assign(STATE,{s,r});
   syncMoneySliders(s,r.V);
   $("vx_ask").textContent=r.priceRatio.toFixed(2)+"× model value of "+money(r.V);
@@ -3403,7 +3423,7 @@ function render(){
      gap between them is what the pricing decision costs - which is why the business
      score can never be the lower of the two. */
   (function(){
-    const rho=bestRatio(s,0,s.lamT), askOpt=r.V*rho;
+    const rho=s.rhoSell, askOpt=r.V*rho;
     const rq=model({...s,ask:askOpt});
     r.scoreQ=Math.max(omniScore(rq),r.score); r.askOpt=askOpt;
     $("o_score_biz").textContent=r.scoreQ;
@@ -3530,11 +3550,11 @@ function render(){
         <td class="n ${r.anchorF>=1?"pos":"neg"}">×${r.anchorF.toFixed(3)}</td><td class="n muted">flat past ${RHO_MAX.toFixed(2)}×</td></tr>
       <tr><td>Competition: ${r.nEng.toFixed(0)} engaged buyers against a typical ${r.nEngRef.toFixed(0)} &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.compPrem>=0?"pos":"neg"}">×${(1+r.compPrem).toFixed(3)}</td><td class="n muted">—</td></tr>
-      <tr><td>Ceiling at the ask${r.askCeil>1?" (IBBA band closes at "+pc(r.askCeil,1)+" of ask)":""}</td>
-        <td class="n ${r.askBinds?"neg":"muted"}">${r.askBinds?"binds":"slack"}</td><td class="n muted">${money(s.ask*r.askCeil)}</td></tr>
+      <tr><td>Ceiling: the ask, held at ${RHO_MAX.toFixed(1)}× model value${r.askCeil>1?", × "+pc(r.askCeil,1)+" IBBA headroom":""}</td>
+        <td class="n ${r.askBinds?"neg":"muted"}">${r.askBinds?"binds":"slack"}</td><td class="n muted">${money(r.ceil)}</td></tr>
       <tr><td><b>Median realised price</b></td><td class="n muted">if it closes</td>
         <td class="n"><b>${money(r.Vreal)}</b></td></tr>
-      <tr><td>Mean realised price</td><td class="n muted">×${(MODELS.value.mean_over_median||1).toFixed(4)} measured</td>
+      <tr><td>Mean realised price</td><td class="n muted">×${(r.Vmean/Math.max(r.Vreal,1)).toFixed(3)} of the median${r.askBinds?", the cap trims the upper tail":""} (×${(MODELS.value.mean_over_median||1).toFixed(4)} uncapped)</td>
         <td class="n">${money(r.Vmean)}</td></tr>`;
   /* This panel used to typeset the judgment stack, m_size*f_ind*(1+sum delta), above
      a boxed figure that came from the fitted equation - the formula on screen was
@@ -3549,7 +3569,7 @@ function render(){
 
   eq("eq_a",`A(\\rho)=1+(A_{\\max}-1)\\tanh\\!\\Big(\\frac{\\alpha\\ln\\min(\\rho,${RHO_MAX.toFixed(1)})}{A_{\\max}-1}\\Big),
     \\quad \\rho=\\frac{\\text{ask}}{E[V\\mid X]},\\quad
-    P_{\\text{real}}=\\operatorname{softmin}\\!\\Big(E[V\\mid X]\\cdot A(\\rho)\\cdot(1+\\text{comp}),\\;\\text{ask}\\cdot c_{\\text{ask}}\\Big)`);
+    P_{\\text{real}}=\\operatorname{softmin}\\!\\Big(E[V\\mid X]\\cdot A(\\rho)\\cdot(1+\\text{comp}),\\;\\min(\\text{ask},\\,${RHO_MAX.toFixed(1)}E[V\\mid X])\\cdot c_{\\text{ask}}\\Big)`);
   eq("eq_as",`\\begin{aligned}&\\rho=${r.priceRatio.toFixed(2)},\\;\\alpha=${r.ALPHA}\\Rightarrow A=${r.anchorF.toFixed(3)},\\;c_{\\text{ask}}=${r.askCeil.toFixed(3)}
     \\;\\Rightarrow\\;P_{\\text{real}}=\\boxed{${tm(r.Vreal)}}\\;${r.askBinds?"\\text{(the ask binds)}":""}\\\\[3pt]
     &\\text{expected proceeds}=P_C\\!\\cdot\\!E[P_{\\text{real}}]=${tp(r.PC,1)}\\cdot${tm(r.Vmean)}=${tm(r.EVp)}\\end{aligned}`);
@@ -3695,7 +3715,7 @@ function render(){
     =${(bi.roi*100).toFixed(0)}\\%`);
 
   /* ---------- §18–19 optimizer ---------- */
-  const rhoSell=bestRatio(s,0,s.lamT);            // failed sale treated as a loss
+  const rhoSell=s.rhoSell;                        // failed sale treated as a loss
   const rSell=model({...s,ask:r.V*rhoSell});
   const rKeep=model({...s,ask:r.V*s.optRho});
   $("o_list").textContent=money(r.V*rhoSell);
@@ -4333,7 +4353,7 @@ $("i_ind").innerHTML=Object.entries(IND).map(([k,v])=>
 const DEFAULTS_IN={rev:Math.pow(10,6.778),ern:Math.pow(10,6.161),ask:Math.pow(10,6.508),bud:1e5};
 const DEFAULTS={i_grw:14,i_gm:64,i_rec:72,i_cc:18,i_ret:91,
   i_plt:38,i_yrs:6,i_buy:65,i_lam:900,i_th:75,i_ind:"medical",i_own:"0.72",i_mgt:"0.36",i_fin:"0.74"};
-function reset(){ Object.assign(IN,DEFAULTS_IN); for(const k in DEFAULTS) $(k).value=DEFAULTS[k]; render(); }
+function reset(){ Object.assign(IN,DEFAULTS_IN); for(const k in EXACT) delete EXACT[k]; for(const k in DEFAULTS) $(k).value=DEFAULTS[k]; render(); }
 $("reset").addEventListener("click",reset);
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));

@@ -111,5 +111,24 @@ for(const ind of Object.keys(A.IND)){
   ok(finiteDeep({V:r.V,Vreal:r.Vreal,EVp:r.EVp,PC:r.PC,tMed:r.tMed,score:r.score,risk:r.risk,fv:r.fv}),
      "framework example is finite everywhere"); }
 
+/* 13. the expected-proceeds optimum must not depend on how much the owner values
+       keeping the business (theta); only the utility optimum may */
+{ const r0=A.model(EX), base={...EX,rhoSell:A.bestRatio(EX,0,900)};
+  const a=A.optimize({...base,optRho:A.bestRatio(EX,.75,900)},r0,1e5,900,.75);
+  const b=A.optimize({...base,optRho:A.bestRatio(EX,0,900)},r0,1e5,900,0);
+  ok(near(a.V.net,b.V.net,1e-6),`proceeds optimum independent of theta: ${a.V.net} vs ${b.V.net}`);
+  ok(a.U.U>=a.V.U-1e-6,"the utility optimum is at least as good on utility as the proceeds optimum"); }
+
+/* 14. typed amounts: the whole string is one number with an optional unit */
+{ const fs=require("fs"),path=require("path");
+  const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const src=html.slice(html.indexOf("function parseAmount(t){")); const body=src.slice(0,src.indexOf("\n}\n")+2);
+  const parseAmount=new Function(body+";return parseAmount;")();
+  const cases=[["$1.45M",1.45e6],["1,450,000",1450000],["450k",450000],["1e6",1e6],["2.5b",2.5e9],["14%",14],
+    ["$900/day",900],["6 years",6],["none",0],[".5m",5e5],["-5",-5],
+    ["12.3.4m",NaN],["1k5",NaN],["",NaN],["$",NaN],["abc",NaN],["1e999",NaN]];
+  for(const [inp,exp] of cases){ const v=parseAmount(inp);
+    ok(Number.isNaN(exp)?Number.isNaN(v):near(v,exp,1e-6),`parseAmount(${JSON.stringify(inp)}) = ${v}, expected ${exp}`); } }
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
