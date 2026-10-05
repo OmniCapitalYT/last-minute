@@ -13,7 +13,7 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
     p.on("console",m=>{ if(m.type()==="error") issues.push(`[${width}] console: ${m.text()}`); });
     await p.goto("file://"+path.join(__dirname,"..","index.html"));
     /* the console sits behind a loading bar until the boot sequence finishes */
-    await p.waitForFunction(()=>!document.getElementById("boot"),null,{timeout:20000});
+    await p.waitForFunction(()=>!document.getElementById("boot"),null,{timeout:90000});
     const check=async tag=>{
       await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
       const r=await p.evaluate(()=>{

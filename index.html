@@ -5409,12 +5409,15 @@ function boot(){
       setTimeout(function(){ if(window.OMNI_WARP) window.OMNI_WARP(box,reveal); else reveal(); },180); return; }
     lab.textContent=steps[i][0];
     bar.style.transform="scaleX("+((i+.5)/steps.length).toFixed(3)+")";
-    /* yield a frame so the bar paints before each step */
-    requestAnimationFrame(function(){ setTimeout(function(){
+    /* yield so the bar paints before each step - but never wait on a slow frame
+       rate for longer than 60ms */
+    var went=false, go=function(f){ return function(){ if(!went){ went=true; f(); } }; };
+    var step=go(function(){ setTimeout(function(){
       var res, a=performance.now(); try{ res=steps[i][1](); }catch(e){ console.error(e); }
       var name=steps[i][0]; i++;
       Promise.resolve(res).then(function(){ (window.BOOT_TIMES=window.BOOT_TIMES||[]).push([name,Math.round(performance.now()-a)]); next(); },next);
     },0); });
+    requestAnimationFrame(step); setTimeout(step,60);
   }
   next();
 }
