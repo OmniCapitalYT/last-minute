@@ -47,18 +47,20 @@ for(const ask of [1e5,1e6,3e6,1e7,1e8])
 /* 4. the realised price never exceeds the ask (beyond the IBBA band headroom) */
 for(const ind of Object.keys(A.IND)) for(const rho of [.3,.6,.8,.95,1,1.05,1.2,2,4]){
   const V=A.model({...EX,ind,ask:1}).V, r=A.model({...EX,ind,ask:V*rho});
-  ok(r.Vreal<=r.inputs.ask*r.askCeil*(1+1e-9),`${ind} rho=${rho}: realised ${r.Vreal} above ask ceiling`);
+  ok(r.Vreal<=r.inputs.ask*r.askCeil*(1+1e-9)&&r.q(.99)<=r.inputs.ask*r.askCeil*(1+1e-9),`${ind} rho=${rho}: realised ${r.Vreal} above ask ceiling`);
 }
 
-/* 5. expected proceeds rise to one peak and then never rise again */
+/* 5. past the largest gap the data resolves, a higher ask never pays: expected
+      proceeds peak below RHO_MAX and never rise again beyond it */
 for(const ind of Object.keys(A.IND)) for(const ern of [1.5e5,6e5,1.5e6,5e6]){
   const b={...EX,ind,ern,rev:ern*4}, V=A.model({...b,ask:1}).V;
-  let peaked=false, prev=-Infinity, bad=null;
+  let best=-Infinity,arg=0,prev=Infinity,bad=null;
   for(let rho=.5;rho<=4;rho+=.01){
     const e=A.model({...b,ask:V*rho}).EVp;
-    if(e<prev-1e-6) peaked=true; else if(peaked&&e>prev+V*1e-6) bad=rho;
-    prev=e;
+    if(e>best){best=e;arg=rho;}
+    if(rho>=A.RHO_MAX*1.12){ if(e>prev+V*1e-6) bad=rho; prev=e; }
   }
+  ok(arg<A.RHO_MAX,`${ind} ern=${ern}: proceeds peak at rho=${arg.toFixed(2)}, past the data`);
   ok(bad===null,`${ind} ern=${ern}: expected proceeds rise again at rho=${bad&&bad.toFixed(2)}`);
 }
 
@@ -76,9 +78,13 @@ for(const ind of Object.keys(A.IND)){
   ok(A.model({...t,ask:1e6,buyers:5}).compPrem<0,`${ind}: thin pool costs a discount`);
 }
 
-/* 8. expected proceeds are P_C times the MEAN price */
+/* 8. expected proceeds are P_C times the MEAN price, and the cap reaches the tails */
 { const r=A.model(EX);
-  ok(near(r.EVp,r.PC*r.Vreal*A.MODELS.value.mean_over_median,1e-6),"EVp = P_C x mean price"); }
+  ok(near(r.EVp,r.PC*r.Vmean,1e-6),"EVp = P_C x mean price");
+  for(const p of [.5,.8,.94,.99]) ok(r.q(p)<=r.inputs.ask*r.askCeil*(1+1e-9),`quantile ${p} within the ask ceiling`);
+  ok(near(r.q(.5),r.Vreal,1e-6),"q(.5) is the median realised price");
+  ok(near(A.fanMeanKept(1e6),1,1e-6),"an uncapped fan keeps the measured mean-to-median ratio");
+  ok(A.fanMeanKept(1)<A.fanMeanKept(1.5),"a tighter cap keeps less of the mean"); }
 
 /* 9. interventions compose independently of order */
 { const r0=A.model(EX), ks=["sops","gm","qoe","margin","divers"];

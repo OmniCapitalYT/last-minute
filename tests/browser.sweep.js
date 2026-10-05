@@ -19,11 +19,15 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
         const t=document.getElementById("view-console").innerText;
         return {bad:(t.match(/NaN|Infinity|undefined/g)||[]).length,
                 katex:document.querySelectorAll(".katex-error").length,
-                hscroll:document.documentElement.scrollWidth>innerWidth+1};
+                hscroll:document.documentElement.scrollWidth>innerWidth+1,
+                /* body clips overflow, so also look for content cut off at the edge */
+                offscreen:[...document.querySelectorAll("#view-console table,#view-console .panel,#view-console .eq")]
+                  .filter(e=>e.offsetParent&&e.getBoundingClientRect().right>innerWidth+1).length};
       });
       if(r.bad) issues.push(`[${width}] ${tag}: ${r.bad} NaN/Infinity/undefined in text`);
       if(r.katex) issues.push(`[${width}] ${tag}: ${r.katex} KaTeX errors`);
       if(r.hscroll) issues.push(`[${width}] ${tag}: horizontal scroll`);
+      if(r.offscreen) issues.push(`[${width}] ${tag}: ${r.offscreen} blocks cut off at the right edge`);
     };
     let n=0;
     const selects=await p.$$eval("#view-console select",els=>els.map(e=>({id:e.id,v:[...e.options].map(o=>o.value)})));

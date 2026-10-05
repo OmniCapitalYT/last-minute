@@ -9,5 +9,5 @@ const ctx={console,Math,Map,JSON,Object,Array,Number,String,isFinite,Set,Infinit
 vm.createContext(ctx);
 vm.runInContext(src.slice(0,cut)+`;this.API={model,omniScore,fitValue,fitRisk,fitClose,
   fitTiming,bestRatio,optimize,applyAll,interventionTable,sensitivity,MODELS,IND,REF_RATIO,
-  RHO_MAX,sizeRefs,INTERV,costOf,daysOf,IND2NAICS,gmSalary};`,ctx);
+  RHO_MAX,fanMeanKept,sizeRefs,INTERV,costOf,daysOf,IND2NAICS,gmSalary};`,ctx);
 module.exports=ctx.API;
