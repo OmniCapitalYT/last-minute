@@ -76,3 +76,47 @@ top of the existing sheet and never touches a figure. It adds:
 
 Spacing is roughly doubled throughout. All motion stops under
 `prefers-reduced-motion`, and the heavy layers drop out below 820px.
+
+## Revisions (v3)
+
+Applied from `revisions.pdf`. The v3 layer (`<style id="v3">` and
+`<script id="v3-js">`) overrides parts of the cosmos layer described above.
+
+1. **Two scores.** The *business score* prices the same profile at the ask that
+   maximises its expected proceeds, so it measures the business alone. The
+   *Omni score* uses the ask as entered. The caption says how many points the
+   ask costs. Because the business score is taken at the optimum, it can never
+   be the lower of the two (the sweep checks this).
+2. **Exact inputs.** Every slider has an editable value beside it. It accepts
+   `$1.45M`, `1,450,000`, `450k`, `14%`, `none` and similar.
+3. **Adaptive ranges.** Earnings run from 2% to 85% of revenue, the ask from
+   0.4× to 2.5× of model value, and the budget up to 15% of revenue. A typed
+   value outside the range is kept exactly; the slider just rests at the end of
+   its travel.
+4. **Typefaces.** The monospace face is removed, including its embedded font
+   files (54 KB). Bricolage Grotesque, the masthead face, is used for display
+   and figures. Schibsted Grotesk is used for text, with a Helvetica fallback.
+   Wide letter-spacing and all-caps labels are gone. Equations still use
+   KaTeX's math fonts.
+5. **3D solar system.** A canvas with true perspective projection. Orbit arcs
+   pass behind and in front of the sun, bodies are depth-sorted and lit from
+   the sun's direction, the ringed planet's ring crosses its disc, and the
+   camera drifts with the pointer.
+6. **Preloading.** The console sits behind a loading bar until fonts, planet
+   sprites, the first model run, every equation and the data tab are done.
+   - Equations whose source has not changed are no longer re-typeset.
+   - Off-screen equations are typeset when they scroll near, or in idle time.
+   - Renders are coalesced to one per animation frame.
+   - Glass blur is removed from the panels.
+   - The sky shader runs at 30 fps.
+   - A render went from about 60 ms to about 25 ms.
+7. **Focal planet.** The hero is now a lit, banded planet with bear, base and
+   bull orbits in 3D. The closing-probability trail brightens toward a flared
+   probe and sheds sparks, and it eases to each new value.
+8. **Plexus.** The stars drift and link to their neighbours, and they reach for
+   the cursor.
+9. **No AI-design tropes.** Removed:
+   - stage numbers and "begin descent / end of transmission";
+   - bracket corners, pulse dots, version tags and gradient text;
+   - glowing pills, film grain, scroll-reveal fades, the split-word heading
+     animation and the fixed gas giant.

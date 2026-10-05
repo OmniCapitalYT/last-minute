@@ -12,7 +12,8 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
     p.on("pageerror",e=>issues.push(`[${width}] page error: ${e.message}`));
     p.on("console",m=>{ if(m.type()==="error") issues.push(`[${width}] console: ${m.text()}`); });
     await p.goto("file://"+path.join(__dirname,"..","index.html"));
-    await p.waitForTimeout(600);
+    /* the console sits behind a loading bar until the boot sequence finishes */
+    await p.waitForFunction(()=>!document.getElementById("boot"),null,{timeout:20000});
     const check=async tag=>{
       await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
       const r=await p.evaluate(()=>{
@@ -41,6 +42,16 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
         await check(`${r.id}@${f}`); n++; }
       await p.click("#reset"); }
     await p.click("#i_fr"); await check("franchise on"); await p.click("#i_fr"); n+=2;
+    /* typed values, including ones far outside the slider ranges and junk */
+    for(const [id,v] of [["v_rev","100M"],["v_ern","40m"],["v_ask","$250,000,000"],["v_ern","1,200"],
+                         ["v_rev","25000"],["v_bud","none"],["v_bud","2.5M"],["v_gm","91%"],["v_buy","abc"],["v_ask","3.5m"]]){
+      await p.fill("#"+id,v); await p.press("#"+id,"Enter"); await check(`${id}=${v}`); n++; }
+    const shown=await p.evaluate(()=>[STATE.s.rev,STATE.s.ask,+document.getElementById("o_score_biz").textContent,
+                                       +document.getElementById("o_score").textContent]);
+    if(shown[0]!==25000) issues.push(`[${width}] typed revenue not applied: ${shown[0]}`);
+    if(shown[1]!==3.5e6) issues.push(`[${width}] typed ask not applied: ${shown[1]}`);
+    if(!(shown[2]>=shown[3])) issues.push(`[${width}] business score ${shown[2]} below Omni score ${shown[3]}`);
+    await p.click("#reset");
     await p.click(".tab[data-v=data]"); await p.waitForTimeout(300);
     const dt=await p.evaluate(()=>document.getElementById("view-data").innerText);
     if(/NaN|Infinity|undefined/.test(dt)) issues.push(`[${width}] data tab shows NaN/undefined`);
