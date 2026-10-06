@@ -250,8 +250,9 @@ spec. Each finding was reproduced before it was fixed.
   - the upper close-rate bound was looser than its label;
   - the score check could never fail.
 
-  Each now tests exactly what it prints, so two rows honestly read "off":
-  judgment-stack anchors of 2.35× and 6.77×, which the reported value does not
+  Each now tests exactly what it prints, so two rows honestly read "off": the
+  fitted multiple of 2.35× at the BizBuySell median profile (against 2.0×), and a
+  judgment-stack anchor of 6.77×, which the reported value does not
   use.
 - **The Data tab showed stale figures:**
   - pooled close rates instead of the recent ones the model uses;
@@ -289,9 +290,17 @@ so a whole class of bug fails at once instead of one case at a time.
   bull case sat exactly at the ask and the expected price if the deal closed was
   0.83 of the ask (IBBA measures 0.85 to 1.02). Each slice of the measured spread
   is now a scenario for what the market will pay. The ask anchors the price
-  against that scenario and caps it. Each scenario is weighted by its chance of
-  closing at that gap. A fairly priced listing now closes at about 0.92 of its ask
-  in expectation, inside the IBBA range.
+  against that scenario and caps it. A fairly priced listing now closes at about
+  0.89 of its ask in expectation, inside the IBBA range, and the bear case no
+  longer moves with the ask.
+
+  A first version also weighted each scenario by its own chance of closing. That
+  only multiplies correctly with a closing probability built from the same weights,
+  and building one smoothed the calibrated gap curve across the whole value spread.
+  The proceeds-optimal ask jumped from 1.10× to 1.36× of value. The verifier caught
+  the inconsistency, so the calibrated closing probability is kept and price is
+  treated as independent of whether the deal closes. That makes
+  P_C × E[price] consistent by construction.
 - **Better quality could lower expected proceeds.** The typical buyer pool was
   scaled by the subject's own engagement, so on a thin pool a better business got
   a bigger competition discount. It is now measured at a median business's
@@ -359,3 +368,35 @@ so a whole class of bug fails at once instead of one case at a time.
 - Grammar and sign nits are fixed: "1 engaged buyer", percentile ordinals held to
   1st to 99th, a real minus sign on negative ROI, "no sector match" in place of
   ×1.000, and star-map legend sizes that match the marks.
+
+**Found by the inputs audit and the independent verifier, fixed in the same batch**
+- Money boxes applied every keystroke. Typing "8M" for revenue committed $8 first,
+  which clamped and stored earnings at $9,200, and rejected entries like "14%"
+  left their prefix applied. Money now commits on Enter or leaving the box.
+  A rejected or abandoned entry restores the value from before the edit and stays
+  outlined, and Escape reverts.
+- Earnings above 92% of revenue are clamped and stored where they are typed. A
+  revenue drag no longer destroys them.
+- "1,5m" is rejected rather than read as $15M. Typed decimals are shown as typed,
+  and the delay box uses a fixed locale.
+- `money()` printed "$1000k" and had no billions unit.
+- Clicking Data then Console quickly landed on Data, so the newest click now wins.
+  Reset ran 380 ms late and overwrote changes made in between; it now runs at once.
+- With reduced motion, the focal planet kept a stale closing probability after
+  scrolling back into view. The survival-risk tooltip also kept a stale size band.
+- State labels printed the raw population deviation, about 8× the model's effect.
+  They now show the change in this deal's default risk.
+- The hero "likely" range collapsed to one point (with the mean outside it) when
+  most closings land at the ask. It now shows the 80% range and the share at the
+  ask. Scenario cards say "the ask ceiling" instead of printing "$X–$X".
+- Data tab:
+  - the judgment count now matches its table (13 deltas, plus the 9 category
+    weights);
+  - the fitted count includes the 274 NAICS-6 and 48 state effects, and the risk
+    table shows the state coefficient;
+  - "9.55%" is replaced by the dataset's own all-loan rate;
+  - the quality swing is read from the band.
+- Calibration rows print the tolerances they test, and say which multiple they
+  test.
+- The reset defaults are the framework's worked example ($6M, $1.45M, $3.24M ask).
+- `tests/browser.inputs.js` drives all of the above with real keystrokes.

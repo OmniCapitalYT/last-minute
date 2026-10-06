@@ -1737,7 +1737,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           </div>
           <p class="score-cap" id="o_cap"></p>
           <div class="big-row">
-            <div class="big"><div class="k">Expected price if it closes <span class="pv j" title="The fitted value's measured spread, moved by anchoring and competition (both judgment), capped at the ask and weighted by each outcome's chance of closing"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
+            <div class="big"><div class="k">Expected price if it closes <span class="pv j" title="The fitted value's measured spread, moved by anchoring and competition (both judgment), and capped at the ask"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
             <div class="big"><div class="k">Probability of closing <span class="pv a"><i></i>aggregate</span></div><div class="n" id="o_pc">—</div></div>
           </div>
           <div class="big-row">
@@ -2682,7 +2682,6 @@ function model(s){
      premium, thinner than usual costs a discount, typical costs nothing. */
   /* the typical pool is measured at a MEDIAN business's engagement: scaling it by this
      business's own engagement made better quality deepen a thin pool's discount */
-  const nrm0={ownN:.5,mgtN:.5,recN:.5,grwN:.5,retN:.5,gmN:.5};
   const peRef=out.buyers.reduce((a,b)=>a+(b.sizeFit>0?clamp(sig(1.35*(b.fit0-.72))*b.sizeFit*0.775,0,.95):0),0)/out.buyers.length;
   out.nEngRef=(I.buyers||50)*peRef*0.34;
   out.compK=.030;
@@ -2747,10 +2746,13 @@ function model(s){
      the ask anchors the price against W (not against the model's point value), the
      competition premium applies, and the ask caps it:
          P(W) = softMin( W * A(ask/W) * (1+comp), ceiling )
-     A deal only produces a price if it closes, and Pepperdine's gap curve says a
-     listing priced far above what the market pays closes far less often. So each
-     scenario is weighted by 1 - penalty(gap at W): the distribution reported is the
-     price GIVEN that the deal closed, which is what P_C x E[P] needs.
+     Every scenario carries equal weight. Weighting each by its own chance of closing
+     (1 - penalty at its gap) looks like a natural "price given close", but it only
+     multiplies correctly with a P_C built from the same weights, and that P_C smooths
+     the calibrated gap curve across the whole value spread - it moved the proceeds-
+     optimal ask from 1.10x to 1.36x of value. P_C stays the calibrated point figure,
+     and the price is taken as independent of whether the deal closes, so
+     P_C x E[P] is consistent and the distribution is monotone in the ask.
      This replaced a fan drawn around the already-anchored price and then capped,
      which put every bull case at the ask and the mean realised price at 0.83 of the
      ask, against IBBA's measured 0.85-1.02. */
@@ -2761,7 +2763,7 @@ function model(s){
     const W=out.V*RN[i];
     Pf[i]=W*anchorAt(rhoOf(s.ask/W))*comp;     /* increasing in W: A's elasticity is < 1 */
     Pc[i]=softMin(Pf[i],out.ceil);
-    const wt=Math.max(1e-9,1-gapPenalty((s.ask-W)/W*100));
+    const wt=1;
     Fw[i]=sw+wt/2; sw+=wt; sp+=wt*Pc[i]; if(Pf[i]>=out.ceil) scap+=wt;
   }
   for(let i=0;i<NN;i++) Fw[i]/=sw;
@@ -3135,10 +3137,12 @@ const $=id=>document.getElementById(id);
 function money(v,dp){
   if(!isFinite(v)) return "—";
   const a=Math.abs(v);
-  if(a>=1e6) return (v<0?"−$":"$")+(a/1e6).toFixed(dp===undefined?2:dp)+"M";
-  if(a>=1e3) return (v<0?"−$":"$")+Math.round(a/1e3)+"k";
+  if(a>=999.5e6) return (v<0?"−$":"$")+(a/1e9).toFixed(dp===undefined?2:dp)+"B";
+  if(a>=999.5e3) return (v<0?"−$":"$")+(a/1e6).toFixed(dp===undefined?2:dp)+"M";
+  if(a>=999.5) return (v<0?"−$":"$")+Math.round(a/1e3)+"k";
   return (v<0?"−$":"$")+Math.round(a);
 }
+const ordn=n=>{ const a=n%10,b=n%100; return n+((a===1&&b!==11)?"st":(a===2&&b!==12)?"nd":(a===3&&b!==13)?"rd":"th"); };
 const pc=(v,d)=>isFinite(v)?(v*100).toFixed(d===undefined?0:d)+"%":"—";
 const pp=v=>isFinite(v)?(v>=0?"+":"−")+Math.abs(v*100).toFixed(1)+" pts":"—";
 const xx=v=>v.toFixed(2)+"×";
@@ -3202,9 +3206,9 @@ function eqArm(){
 let eqIdleQ=0;
 function eqIdle(){
   if(eqIdleQ) return;
-  const ric=window.requestIdleCallback||(f=>setTimeout(()=>f({timeRemaining:()=>8}),120));
+  const ric=window.requestIdleCallback?(f=>requestIdleCallback(f,{timeout:1500})):(f=>setTimeout(()=>f({timeRemaining:()=>8}),120));
   eqIdleQ=ric(d=>{ eqIdleQ=0;
-    for(const id of [...EQ.pending.keys()]){ if(d.timeRemaining()<4) break; eqSet(id); }
+    let n=0; for(const id of [...EQ.pending.keys()]){ if(d.timeRemaining()<4&&(!d.didTimeout||n>=2)) break; eqSet(id); n++; }
     if(EQ.pending.size) eqIdle();
   });
 }
@@ -3438,9 +3442,10 @@ function readState(){
     budget: IN.bud,
     lamT:g("i_lam"), theta:g("i_th")/100
   };
-  /* earnings cannot exceed 92% of revenue; store the clamp so raising revenue later
-     does not silently restore an impossible figure */
-  if(s.ern>s.rev*.92){ s.ern=s.rev*.92; IN.ern=s.ern; }
+  /* earnings cannot exceed 92% of revenue. Applied here without storing it: dragging
+     revenue to its minimum and back must not leave earnings at the minimum's clamp.
+     A typed impossible figure is clamped and stored where it is typed. */
+  if(s.ern>s.rev*.92) s.ern=s.rev*.92;
   /* inputs the fitted risk model needs; derived when not exposed in the rail */
   /* channel follows deal size inside fitClose (broker to intermediated, $1M-$5M) */
   s.rate   = 10.5;                               // typical SBA 7(a) acquisition rate
@@ -3478,7 +3483,10 @@ function moneyToPos(k,v,s,V){
 function parseAmount(t){
   /* the whole string must be one number with an optional unit; anything else is
      rejected rather than silently truncated ("12.3.4m" used to read as 12.3) */
-  t=String(t).trim().toLowerCase().replace(/[$,\s]/g,"").replace(/\u2212/g,"-");
+  t=String(t).trim().toLowerCase();
+  /* "1,5m" is a decimal comma, not a thousands separator: reject rather than read $15M */
+  if(/,\d{1,2}(?!\d)/.test(t)||/,\d{4}/.test(t)) return NaN;
+  t=t.replace(/[$,\s]/g,"").replace(/\u2212/g,"-");
   if(t==="none") return 0;
   t=t.replace(/(\/day|years?|ofvalue)$/,"");
   const m=t.match(/^(-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)([kmb%])?$/); if(!m) return NaN;
@@ -3494,13 +3502,14 @@ const BOX={
 function setBox(id,txt){ const e=$(id); if(e&&document.activeElement!==e) e.value=txt; }
 function labels(s){
   setBox("v_rev",money(s.rev)); setBox("v_ern",money(s.ern)); setBox("v_ask",money(s.ask));
-  setBox("v_grw",(s.grw*100).toFixed(0)+"%"); setBox("v_gm",(s.gm*100).toFixed(0)+"%");
-  setBox("v_rec",(s.rec*100).toFixed(0)+"%"); setBox("v_cc",(s.cc*100).toFixed(0)+"%");
-  setBox("v_ret",(s.ret*100).toFixed(0)+"%"); setBox("v_plt",(s.plt*100).toFixed(0)+"%");
+  const p1=v=>{ const x=Math.round(v*1000)/10; return (Number.isInteger(x)?x.toFixed(0):x.toFixed(1))+"%"; };
+  setBox("v_grw",p1(s.grw)); setBox("v_gm",p1(s.gm));
+  setBox("v_rec",p1(s.rec)); setBox("v_cc",p1(s.cc));
+  setBox("v_ret",p1(s.ret)); setBox("v_plt",p1(s.plt));
   setBox("v_yrs",s.yrs+(s.yrs===1?" year":" years"));
   setBox("v_buy",String(s.buyers)); setBox("v_bud",s.budget?money(s.budget,1):"none");
-  setBox("v_lam",s.lamT?"$"+s.lamT.toLocaleString()+"/day":"none");
-  setBox("v_th",(s.theta*100).toFixed(0)+"%");
+  setBox("v_lam",s.lamT?"$"+s.lamT.toLocaleString("en-US")+"/day":"none");
+  setBox("v_th",p1(s.theta));
 }
 /* after a render: put every money slider where its value now sits in its range */
 function syncMoneySliders(s,V){
@@ -3518,25 +3527,41 @@ function syncMoneySliders(s,V){
   }
   for(const k in BOX){
     const box=$("v_"+k); if(!box) continue;
+    const money_=BOX[k].kind==="money";
+    /* what the box held when it was focused, so a rejected or abandoned entry restores
+       it rather than keeping whatever prefix an earlier keystroke produced */
+    let snap=null;
+    const take=()=>money_?{v:IN[k]}:{v:$(BOX[k].slider).value,x:EXACT[BOX[k].slider]};
+    const restore=()=>{ if(!snap) return; if(money_) IN[k]=snap.v;
+      else { const sl=$(BOX[k].slider); sl.value=snap.v; if(snap.x===undefined) delete EXACT[sl.id]; else EXACT[sl.id]=snap.x; } };
     const commit=(final)=>{
       let v=parseAmount(box.value);
-      if(!isFinite(v)){ if(final) box.classList.add("bad"); return; }
-      box.classList.remove("bad");
-      if(BOX[k].kind==="money"){
-        if(/%|ofvalue/.test(box.value.toLowerCase().replace(/\s/g,""))||v<0){ if(final) box.classList.add("bad"); return; }
+      if(!isFinite(v)||(money_&&(/%|ofvalue/.test(box.value.toLowerCase().replace(/\s/g,""))||v<0))){
+        if(final){ restore(); box.classList.add("bad"); scheduleRender(); } return; }
+      if(money_){
         const H=MONEY[k].hard; IN[k]=clamp(v,H[0],H[1]);
+        /* typed earnings above 92% of revenue are impossible: store the clamp here, where
+           the user typed it, not in readState, where a revenue drag would destroy it */
+        if(k==="ern"&&IN.ern>IN.rev*.92) IN.ern=IN.rev*.92;
+        if(final&&IN[k]!==v) box.classList.add("bad");
       } else {
         const sl=$(BOX[k].slider), x=clamp(v,+sl.min,+sl.max); sl.value=x; EXACT[sl.id]=x;
+        if(final&&x!==v) box.classList.add("bad");   /* held to the slider's range: say so */
       }
       scheduleRender();
     };
     if(BOX[k].slider) $(BOX[k].slider).addEventListener("input",()=>{ delete EXACT[BOX[k].slider]; });
-    box.addEventListener("input",()=>{ if(box.value.trim()!=="") commit(false); });
-    box.addEventListener("change",()=>commit(true));
-    box.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key==="Escape") box.blur(); });
-    box.addEventListener("focus",()=>box.select());
+    /* plain numbers apply as you type; money waits for Enter or leaving the box, because
+       "8M" typed key by key would otherwise commit $8 first and clamp earnings to it */
+    box.addEventListener("input",()=>{ box.classList.remove("bad"); if(!money_&&box.value.trim()!=="") commit(false); });
+    let esc=false;   /* leaving by Escape fires change; it must not commit what Escape discarded */
+    box.addEventListener("change",()=>{ if(!esc) commit(true); });
+    box.addEventListener("keydown",e=>{
+      if(e.key==="Escape"){ restore(); snap=null; esc=true; box.blur(); esc=false; scheduleRender(); }
+      else if(e.key==="Enter") box.blur(); });
+    box.addEventListener("focus",()=>{ snap=take(); box.select(); });
     /* the next render rewrites the box in the canonical format */
-    box.addEventListener("blur",()=>{ box.classList.remove("bad"); scheduleRender(); });
+    box.addEventListener("blur",()=>{ scheduleRender(); });
   }
 })();
 
@@ -3547,6 +3572,7 @@ function render(){
   s.optRho=bestRatio(s,s.theta,s.lamT);   // utility optimum: depends on theta
   s.rhoSell=bestRatio(s,0,s.lamT);        // expected-proceeds optimum: does not
   Object.assign(STATE,{s,r});
+  if(window.OMNI_STLAB) window.OMNI_STLAB(r,s);
   syncMoneySliders(s,r.V);
   $("vx_ask").textContent=r.priceRatio.toFixed(2)+"× model value of "+money(r.V);
   const B=n=>`\\beta_{\\text{${n}}}`;
@@ -3584,8 +3610,13 @@ function render(){
         + (drag>=1?` and ${drag} point${drag===1?"":"s"}`:"")
         + `: ${money(s.ask)} is ${off.toFixed(0)}% ${dir} the optimal ask of ${money(askOpt)}.`;
   })();
-  $("o_val").innerHTML=money(r.Vmean)
-    +'<span class="sub2">likely '+money(r.range[0])+' – '+money(r.range[1])+' &middot; median '+money(r.Vreal)+'</span>';
+  /* the 80% range, not 30-70: when most closings land at the ceiling the middle of the
+     distribution is one point, and the mean (pulled down by the lower tail) sat outside it */
+  { const lo=r.q(.10), hi=r.q(.90);
+    $("o_val").innerHTML=money(r.Vmean)+'<span class="sub2">'
+      +(hi-lo<.005*hi?'nearly every closing at the ask ceiling'
+        :'80% between '+money(lo)+' and '+money(hi)+(r.capShare>=.3?' &middot; '+pc(r.capShare)+' at the ask':''))
+      +'</span>'; }
   $("o_pc").textContent=pc(r.PC);
   $("o_ev").innerHTML=money(r.EVp)
     +(r.cashShare<1?'<span class="sub2">'+money(r.EVcash)+' cash at close</span>':"");
@@ -3643,6 +3674,7 @@ function render(){
      whether the model was anywhere near the population it came from. */
   (function(){const e=$("o_risk");
     let h=pc(r.risk.p,1)+'  <span class="muted">('+r.risk.rel.toFixed(2)+'×)</span>';
+    if(r.risk.empBand==null) e.removeAttribute("title");
     if(r.risk.empBand!=null){
       e.title="SBA population rate for the "+r.risk.empBandKey+" band: "
         +(r.risk.empBand*100).toFixed(2)+"% across "+r.risk.empBandN.toLocaleString()+" loans";
@@ -3696,7 +3728,7 @@ function render(){
       <tr><td><b>Fitted multiple</b> &nbsp;<span class="st pub">BIZCOMPS</span></td>
         <td class="n muted">regression, not the stack above</td>
         <td class="n"><b>${xx(r.fv.mult)}</b></td></tr>
-      <tr><td>Quality position: ${Math.min(99,Math.max(1,Math.round(r.qPct*100)))}th percentile of the measured spread &nbsp;<span class="st free">judgment</span></td>
+      <tr><td>Quality position: ${ordn(Math.min(99,Math.max(1,Math.round(r.qPct*100))))} percentile of the measured spread &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.qFactor>=1?"pos":"neg"}">×${r.qFactor.toFixed(3)}</td><td class="n">${xx(r.M)}</td></tr>
       <tr><td><b>Model-supported value</b> &nbsp;E[V|X]</td>
         <td class="n muted">${money(s.ern)} × ${xx(r.M)}</td><td class="n"><b>${money(r.V)}</b></td></tr>
@@ -3708,7 +3740,7 @@ function render(){
         <td class="n ${r.capShare>=.5?"neg":"muted"}">${pc(r.capShare)} of closings</td><td class="n muted">${money(r.ceil)}</td></tr>
       <tr><td><b>Median price if it closes</b></td><td class="n muted">across the measured spread of value</td>
         <td class="n"><b>${money(r.Vreal)}</b></td></tr>
-      <tr><td><b>Expected price if it closes</b></td><td class="n muted">mean, each outcome weighted by its chance of closing</td>
+      <tr><td><b>Expected price if it closes</b></td><td class="n muted">mean across the measured spread of value</td>
         <td class="n"><b>${money(r.Vmean)}</b></td></tr>`;
   /* This panel used to typeset the judgment stack, m_size*f_ind*(1+sum delta), above
      a boxed figure that came from the fitted equation - the formula on screen was
@@ -3725,7 +3757,7 @@ function render(){
     \\tilde\\rho=\\operatorname{softmin}\\big(\\max(\\rho,0.35),\\,${RHO_MAX.toFixed(1)}\\big)\\\\[3pt]
     P(W)&=\\operatorname{softmin}\\!\\Big(W\\cdot A(\\tfrac{\\text{ask}}{W})\\cdot(1+\\text{comp}),\\;\\operatorname{softmin}(\\text{ask},\\,${RHO_MAX.toFixed(1)}E[V\\mid X])\\cdot c_{\\text{ask}}\\Big),
     \\quad W=E[V\\mid X]\\cdot R(p)\\\\[3pt]
-    E[P\\mid\\text{close}]&=\\frac{\\sum_p w_p\\,P(W_p)}{\\sum_p w_p},\\qquad w_p=1-\\text{pen}\\Big(\\frac{\\text{ask}-W_p}{W_p}\\Big)\\end{aligned}`);
+    E[P\\mid\\text{close}]&=\\tfrac{1}{48}\\textstyle\\sum_p P(W_p)\\quad\\text{(48 equal-probability slices of the spread)}\\end{aligned}`);
   eq("eq_as",`\\begin{aligned}&\\rho=${r.priceRatio.toFixed(2)},\\;\\alpha=${r.ALPHA}\\Rightarrow A=${r.anchorF.toFixed(3)}\\text{ at the point estimate},\\;c_{\\text{ask}}=${r.askCeil.toFixed(3)}\\\\[3pt]
     &\\Rightarrow\\;\\text{median }${tm(r.Vreal)},\\;E[P\\mid\\text{close}]=\\boxed{${tm(r.Vmean)}},\\;${tp(r.capShare)}\\text{ of closings at the ceiling}\\\\[3pt]
     &\\text{expected proceeds}=P_C\\!\\cdot\\!E[P\\mid\\text{close}]=${tp(r.PC,1)}\\cdot${tm(r.Vmean)}=${tm(r.EVp)}\\end{aligned}`);
@@ -3826,7 +3858,7 @@ function render(){
   eq("eq_d",`\\frac{\\partial y}{\\partial x_i}\\approx\\frac{y(x_i+h)-y(x_i-h)}{2h},
     \\;\\; y\\in\\{V,\\,P_C\\,E[P_{\\text{real}}]\\},
     \\qquad \\text{reported}=\\frac{\\partial y}{\\partial x_i}\\cdot\\sigma_i
-    \\;\\text{\\small(the change over one peer standard deviation, }h=\\sigma_i/2\\text{)}`);
+    \\;\\text{\\small(one peer sd for the quality levers; 5\\% for the ask, 25\\% for the buyer pool)}`);
   (function(){
     const os=sn.filter(o=>o.oneSided).map(o=>o.n);
     const el=$("sensnote"); if(!el) return;
@@ -3962,18 +3994,18 @@ function render(){
       <div class="cat-n"><b>${r.catMean.toFixed(0)}</b></div></div>`;
 
   /* ---------- §23–24 scenarios and confidence ---------- */
-  const sc=r.scen;
+  const sc=r.scen, rg=(a,b)=>Math.abs(b-a)<.005*Math.abs(b)?money(b)+(r.capShare>.3&&Math.abs(b-r.ceil)<.005*r.ceil?" (the ask ceiling)":""):money(a)+"–"+money(b);
   $("scen").innerHTML=
-   `<div><div class="lab">Bear</div><div class="rng" style="color:var(--rose)">${money(sc.bear[0])}–${money(sc.bear[1])}</div>
+   `<div><div class="lab">Bear</div><div class="rng" style="color:var(--rose)">${rg(sc.bear[0],sc.bear[1])}</div>
      <div class="pct">8th–22nd percentile</div>
      <div class="why">Risks the model already sees are the ones that bind: concentration, owner dependence, price expectation.</div></div>
-    <div><div class="lab">Base</div><div class="rng" style="color:var(--bright)">${money(sc.base[0])}–${money(sc.base[1])}</div>
+    <div><div class="lab">Base</div><div class="rng" style="color:var(--bright)">${rg(sc.base[0],sc.base[1])}</div>
      <div class="pct">38th–62nd percentile</div>
      <div class="why">A competently run process with the business broadly as it stands today.</div></div>
-    <div><div class="lab">Bull</div><div class="rng" style="color:var(--mint)">${money(sc.bull[0])}–${money(sc.bull[1])}</div>
+    <div><div class="lab">Bull</div><div class="rng" style="color:var(--mint)">${rg(sc.bull[0],sc.bull[1])}</div>
      <div class="pct">80th–94th percentile${r.capShare>=.06?" · "+pc(r.capShare)+" of closings at the ask ceiling":""}</div>
      <div class="why">The right strategic buyer engages in a competitive process and the diligence holds.</div></div>`;
-  eq("eq_s",`P_{p}=\\text{quantile}_p\\big\\{P(W)\\;\\big|\\;\\text{close}\\big\\},\\quad W=E[V\\mid X]\\cdot R\\quad\\text{(}R=\\text{measured out-of-fold price spread, 48 equal-probability slices)}`);
+  eq("eq_s",`P_{p}=\\text{quantile}_p\\big\\{P(W)\\big\\},\\quad W=E[V\\mid X]\\cdot R\\quad\\text{(}R=\\text{measured out-of-fold price spread, 48 equal-probability slices)}`);
   eq("eq_ss",`R(0.10)=${MODELS.value.fan_quantiles.p10.toFixed(2)},\\;R(0.50)=1.00,\\;R(0.90)=${MODELS.value.fan_quantiles.p90.toFixed(2)}
     \\;\\Rightarrow\\; P_{0.08}=${tm(sc.bear[0])},\\;P_{0.50}=${tm(r.q(.5))},\\;P_{0.94}=${tm(sc.bull[1])}`);
   eq("eq_c",`c=0.34\\,\\text{comps}+0.30\\min\\!\\big(1,\\tfrac{\\text{yrs}}{8}\\big)+0.22\\,\\text{reporting}
@@ -3997,9 +4029,11 @@ function renderData(){
   const V=MODELS.value, R=MODELS.risk, C=MODELS.close_and_timing;
   const nJudg = Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length
     + Object.keys(B).length + Object.keys(NL).length + Object.keys(G).length
-    + BUYERS.length*4 + INTERV.length*3 + 17 + 11;
+    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11;
   const nFit = 1 + Object.keys(V.coefficients).length + Object.keys(V.industry_effects).length
-             + 1 + Object.keys(R.coefficients).length + Object.keys(R.industry_effects).length;
+             + Object.keys(V.industry_effects_naics6||{}).length
+             + 1 + Object.keys(R.coefficients).length + Object.keys(R.industry_effects).length
+             + Object.keys(R.state_effects||{}).length;
   let h="";
 
   /* ── headline tally ─────────────────────────────────────────── */
@@ -4119,13 +4153,14 @@ function renderData(){
         <tr><td>franchise</td><td class="n" style="color:#5ee0a8">${R.coefficients.franchise.toFixed(4)}</td><td>franchises default less</td></tr>
         <tr><td>employees</td><td class="n">${R.coefficients.jobs.toFixed(4)}</td><td>weak, positive</td></tr>
         <tr><td>rate &minus; 7%</td><td class="n" style="color:var(--amber)">${R.coefficients.rate_c.toFixed(4)}</td><td>lenders price risk into the rate</td></tr>
+        <tr><td>state effect</td><td class="n">${(R.coefficients.st_eff||0).toFixed(4)}</td><td>shrunk state deviation, ${Object.keys(R.state_effects||{}).length} states</td></tr>
         <tr><td>vintage</td><td class="n muted">pinned to 0</td><td style="color:#ff8e7a;padding-left:6px">censoring artifact &mdash; see below</td></tr>
       </tbody>
     </table></div>
     <div class="chk" style="margin-top:10px"><div>Cross-validated AUC</div>
       <span class="n" style="color:#5ee0a8">${R.cv_auc}</span><span class="n muted">Brier ${R.cv_brier}</span><span class="st pub">fitted</span></div>
     <div class="chk"><div>Acquisition baseline vs all 7(a) lending<div class="muted" style="font-size:11.8px">buying an existing business is measurably safer than starting one</div></div>
-      <span class="n" style="color:#5ee0a8">${(R.base_rate*100).toFixed(2)}%</span><span class="n muted">vs 9.55%</span><span class="st pub">published</span></div>
+      <span class="n" style="color:#5ee0a8">${(R.base_rate*100).toFixed(2)}%</span><span class="n muted">vs ${(R.full_dataset_base_rate*100).toFixed(2)}% all 7(a) loans</span><span class="st pub">measured</span></div>
     <div class="chk"><div>Median time from close to charge-off<div class="muted" style="font-size:11.8px">only ${(R.timing.pct_within_2yr*100).toFixed(0)}% fail inside two years</div></div>
       <span class="n" style="color:var(--bright)">${R.timing.median_years_to_failure} yr</span><span class="n muted">p25 ${R.timing.p25} &middot; p75 ${R.timing.p75}</span><span class="st pub">measured</span></div>
     </div>
@@ -4227,7 +4262,7 @@ function renderData(){
     <b>${V.quality_band.lo.toFixed(4)}&times;</b> and <b>${V.quality_band.hi.toFixed(4)}&times;</b> the point estimate. That band is data.
     The nine quality dimensions now decide where inside it a business sits &mdash; equally weighted,
     standardized, then through the normal CDF &mdash; which swings the reported value
-    <b>-27.3%</b> to <b>+31.9%</b>.</p>
+    by up to <b>&minus;${((1-V.quality_band.lo)*100).toFixed(0)}%</b> or <b>+${((V.quality_band.hi-1)*100).toFixed(0)}%</b> at the extremes.</p>
     <div class="tw"><table>
       <thead><tr><th>Component</th><th>Status</th></tr></thead><tbody>
       <tr><td>The width of the band</td><td><span class="pv f"><i></i>fitted</span> &mdash; p25 and p75
@@ -4334,9 +4369,9 @@ function renderData(){
       <colgroup><col style="width:30%"><col style="width:9%"><col></colgroup><thead><tr><th>Block</th><th class="n" style="padding-right:18px">Count</th><th style="padding-left:6px">Reaches which reported number?</th></tr></thead><tbody>
         <tr><td><code>IND</code> peer table<div class="muted" style="font-size:11.5px">${Object.keys(IND).length} industries &times; ${Object.keys(IND[Object.keys(IND)[0]]).length} fields</div></td>
             <td class="n" style="padding-right:18px">${Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length}</td>
-            <td style="padding-left:6px">z-scores, category scores, buyer mix. <b>Not the value</b> &mdash; that uses the fitted NAICS table.</td></tr>
+            <td style="padding-left:6px">z-scores, category scores, buyer mix, and through the z-scores the quality position of the value. The industry level of the value comes from the fitted NAICS table.</td></tr>
         <tr><td><code>d{}</code> multiple deltas<div class="muted" style="font-size:11.5px">rec, own, mgt, cc, grw, gm, ret, fin, plt, buy, tail, em, yrs</div></td>
-            <td class="n" style="padding-right:18px">17</td>
+            <td class="n" style="padding-right:18px">13</td>
             <td style="color:#5ee0a8;padding-left:6px">Nothing. Superseded by the fitted equation &mdash; retained only for the explainability panel.</td></tr>
         <tr><td><code>B</code> + <code>NL</code> close betas</td><td class="n" style="padding-right:18px">${Object.keys(B).length+Object.keys(NL).length}</td>
             <td style="color:#5ee0a8;padding-left:6px">Nothing. Superseded by the aggregate base rate.</td></tr>
@@ -4369,7 +4404,7 @@ function renderData(){
     expected proceeds and the loan size behind the survival risk. They do <b>not</b> move the size band:
     the base close rate, the time to close and the cash share are read at the fitted value before
     quality positioning, so improving the business never pushes it into a slower band. Years of clean
-    history feeds only the confidence figure and the category bars.</p>
+    history feeds only the confidence figure, the category bars and the judgment panels that are not used.</p>
     <p class="note" style="margin-bottom:0">The placement inside the spread is <b>judgment</b>: the nine
     dimensions are weighted equally because no dataset we hold prices them against each other. Under the
     old judgement build the same sliders swung the multiple from 2.38&times; to 3.02&times; on coefficients
@@ -4437,15 +4472,15 @@ function renderCalib(){
     const A=1+(AMAX-1)*Math.tanh(.55*Math.log(mid)/(AMAX-1));
     if(A/mid>0.94) lo=mid; else hi=mid;}
   const rows=[
-   ["Net adjustment for a business at its peer medians",ms.dsum.toFixed(3),"0.000",
+   ["Judgment-stack net adjustment for a business at its peer medians",ms.dsum.toFixed(3),"0.000 ± 0.03",
     "the band anchor already describes the median",Math.abs(ms.dsum)<.03],
-   ["Multiple at the BizBuySell median profile ($159k SDE)",xx(ms.M),"2.0×",
+   ["Reported (fitted) multiple at the BizBuySell median profile ($159k SDE)",xx(ms.M),"2.0× ± 0.25",
     "IBBA under-$500K band median",Math.abs(ms.M-2.0)<.25],
-   ["Realized price at the observed market ask",money(msMkt.Vreal,2),"$350k",
+   ["Realized price at the observed market ask",money(msMkt.Vreal,2),"$350k ± $30k",
     "BizBuySell 2025 median sale price",Math.abs(msMkt.Vreal-350000)<30000],
-   ["Days on market, main street, fairly priced",Math.round(ms.tMed)+" days","170 days",
+   ["Days on market, main street, fairly priced",Math.round(ms.tMed)+" days","170 ± 40 days",
     "BizBuySell 2025 median",Math.abs(ms.tMed-170)<40],
-   ["Close rate, lower middle market mandate ($1.5M EBITDA)",pc(lmm.PC),"≈69%",
+   ["Close rate, lower middle market mandate ($1.5M EBITDA)",pc(lmm.PC),"69% ± 5 pts",
     "Pepperdine, advisor-engaged",Math.abs(lmm.PC-.69)<.05],
    ["Close rate above $3M EBITDA",pc(ulmm.PC),"60–70%",
     "industry aggregation of IBBA / EPI",ulmm.PC>=.60&&ulmm.PC<=.70],
@@ -4457,7 +4492,7 @@ function renderCalib(){
     "published main-street SDE range",sizeAnchor(1.4e6)>=2.0&&sizeAnchor(1.4e6)<=3.5],
    ["Lower-middle-market anchor at $3.5M of EBITDA",sizeAnchor(3.5e6).toFixed(2)+"×","3.5×–9.0×",
     "published LMM EBITDA range",sizeAnchor(3.5e6)>=3.5&&sizeAnchor(3.5e6)<=9.0],
-   ["Score of a +1σ business at $100k and $20M of earnings",scoreSpread(),"equal",
+   ["Score of a +1σ business at $100k and $20M of earnings",scoreSpread(),"equal ± 2",
     "size-invariant by design: size is already in the model value",
     (function(){const v=scoreSpread().split(" → ").map(Number);return Math.abs(v[0]-v[1])<=2;})()]];
   $("calib").innerHTML=`<p class="grp-title" style="margin-top:4px">Calibration check against published benchmarks</p>`
@@ -4487,7 +4522,7 @@ The p10&ndash;p90 span runs ${MODELS.value.prediction_intervals.p10.toFixed(2)}&
 <li><span class="pv f"><i></i>fitted</span> <b>Post-acquisition survival risk</b> &mdash;
 logistic on <b>${MODELS.risk.n_fit.toLocaleString()}</b> resolved SBA 7(a) acquisition loans, industry
 table from <b>1,152,544</b> mature loans. CV AUC <b>${MODELS.risk.cv_auc}</b>, Brier ${MODELS.risk.cv_brier}.
-Acquisition baseline <b>${(MODELS.risk.base_rate*100).toFixed(2)}%</b> versus 9.55% for general 7(a) lending &mdash;
+Acquisition baseline <b>${(MODELS.risk.base_rate*100).toFixed(2)}%</b> versus ${(MODELS.risk.full_dataset_base_rate*100).toFixed(2)}% across every 7(a) loan in the same SBA data &mdash;
 buying an existing business is measurably safer than starting one. Median time to failure
 <b>${MODELS.risk.timing.median_years_to_failure} years</b>; only ${(MODELS.risk.timing.pct_within_2yr*100).toFixed(0)}% fail inside two.</li>
 
@@ -4517,7 +4552,8 @@ strategic premium, intervention ROI and the optimizer</b> &mdash; none of these 
 <b>No dataset available to us quantifies owner dependence, management depth, recurring revenue or
 customer concentration as multiple adjustments.</b> The panels below are retained because their
 direction is defensible and they structure the conversation &mdash; but their magnitudes are reasoned,
-not estimated, and they no longer move the reported value.</li>
+not estimated. The quality inputs reach the reported value only by placing it inside the measured
+spread of closed prices.</li>
 
 <li><b>Two traps handled.</b> SBA overwrites <code>TermInMonths</code> with elapsed months to charge-off:
 86.9% of paid-in-full loans carry standard contractual terms against 13.0% of charged-off ones.
@@ -4543,7 +4579,7 @@ Nothing here is investment, legal or tax advice.`;
 $("i_ind").innerHTML=Object.entries(IND).map(([k,v])=>
   `<option value="${k}"${k==="medical"?" selected":""}>${v.n}</option>`).join("");
 
-const DEFAULTS_IN={rev:Math.pow(10,6.778),ern:Math.pow(10,6.161),ask:Math.pow(10,6.508),bud:1e5};
+const DEFAULTS_IN={rev:6e6,ern:1.45e6,ask:3.24e6,bud:1e5};   /* the framework's worked example */
 const DEFAULTS={i_grw:14,i_gm:64,i_rec:72,i_cc:18,i_ret:91,
   i_plt:38,i_yrs:6,i_buy:65,i_lam:900,i_th:75,i_ind:"medical",i_own:"0.72",i_mgt:"0.36",i_fin:"0.74"};
 function reset(){ Object.assign(IN,DEFAULTS_IN); for(const k in EXACT) delete EXACT[k]; for(const k in DEFAULTS) $(k).value=DEFAULTS[k];
@@ -5166,10 +5202,19 @@ const STNAMES={"AL":"Alabama","AR":"Arkansas","AZ":"Arizona","CA":"California","
   var o=document.createElement("option"); o.value=""; o.textContent="National average"; sel.appendChild(o);
   Object.keys(STNAMES).sort(function(a,b){return STNAMES[a]<STNAMES[b]?-1:1;}).forEach(function(k){
     var e=MODELS.risk.state_effects[k];
-    var pp=(e*100>=0?"+":"")+(e*100).toFixed(1)+"pp";
     var x=document.createElement("option"); x.value=k;
-    x.textContent=STNAMES[k]+"  ("+pp+")"; sel.appendChild(x);
+    x.textContent=STNAMES[k]; sel.appendChild(x);
   });
+  /* label each state with what it does to THIS deal's default probability. The raw
+     figure is a population deviation that the model applies in log-odds through a fitted
+     coefficient, so printing it overstated the effect about eightfold. */
+  window.OMNI_STLAB=function(r,s){
+    var p0=fitRisk(r.V,s.ind,s.rate||10.5,s.jobs,!!s.franchise,null).p;
+    for(var i=0;i<sel.options.length;i++){ var o=sel.options[i], k=o.value; if(!k) continue;
+      var d=(fitRisk(r.V,s.ind,s.rate||10.5,s.jobs,!!s.franchise,k).p-p0)*100;
+      var txt=STNAMES[k]+"  ("+(d>=0?"+":"\u2212")+Math.abs(d).toFixed(2)+" pts default risk)";
+      if(o.textContent!==txt) o.textContent=txt; }
+  };
   /* change handlers come from the generic input/select loop above; wiring them here
      as well rendered every state or franchise change twice */
 })();
@@ -5286,7 +5331,7 @@ document.addEventListener("pointerleave",function(){mouse.active=false;mouse.x=m
 var loops=[];
 function addLoop(fn,el){ var L={fn:fn,el:el,vis:true}; loops.push(L);
   if(el&&"IntersectionObserver" in window)
-    new IntersectionObserver(function(es){L.vis=es[0].isIntersecting;},{rootMargin:"200px"}).observe(el);
+    new IntersectionObserver(function(es){ var v=es[0].isIntersecting; if(v&&!L.vis) start(); L.vis=v; },{rootMargin:"200px"}).observe(el);
   return L; }
 var t0=performance.now(), running=false;
 function tick(now){
@@ -5924,20 +5969,27 @@ function warpHop(reverse,mid){
 window.OMNI_HOP=warpHop;
 function hookNav(){
   /* tab switch: warp first, swap views at the flash */
+  var pendingTab=null;
   document.querySelectorAll(".tab").forEach(function(t){
     t.addEventListener("click",function(e){
-      if(t.__hop||t.classList.contains("on")) return;
+      if(t.__hop) return;
+      /* the newest click wins: a quick Data-then-Console must not land on Data when the
+         first hop reaches its midpoint */
+      if(pendingTab){ pendingTab.cancel=true; pendingTab=null; }
+      if(t.classList.contains("on")) return;
       e.stopImmediatePropagation(); e.preventDefault();
-      warpHop(t.dataset.v!=="data",function(){ t.__hop=true; t.click(); t.__hop=false; });
+      var tok={cancel:false}; pendingTab=tok;
+      warpHop(t.dataset.v!=="data",function(){ if(tok.cancel) return; pendingTab=null; t.__hop=true; t.click(); t.__hop=false; });
     },true);
   });
   /* a new industry is a new star system: jump to it */
   var ind=document.getElementById("i_ind");
   if(ind) ind.addEventListener("change",function(){ warpHop(false); });
   var rs=document.getElementById("reset");
-  if(rs) rs.addEventListener("click",function(e){
-    if(rs.__hop) return; e.stopImmediatePropagation();
-    warpHop(true,function(){ rs.__hop=true; rs.click(); rs.__hop=false; window.scrollTo({top:0,behavior:"instant"}); });
+  /* reset happens at once (an input changed straight after must survive it); the warp
+     is decoration, and the scroll to the top waits for its flash */
+  if(rs) rs.addEventListener("click",function(){
+    warpHop(true,function(){ window.scrollTo({top:0,behavior:"instant"}); });
   },true);
 }
 
