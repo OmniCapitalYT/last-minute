@@ -271,3 +271,91 @@ spec. Each finding was reproduced before it was fixed.
 
 **Unchanged:** the GM's cost scales with revenue (at least $85k, the spec's
 figure) in line with "cost scales with company size".
+
+## Fourth logic audit (everything at once)
+
+Earlier rounds each found new problems because each was one reviewer reading the
+whole console and fixing what they noticed. This round split the console into five
+areas (price distribution, close/timing/risk, scores and buyers, decisions, inputs
+and presentation), audited each independently, wrote every finding into one ledger,
+and fixed the ledger in a single pass. A property-based fuzz test
+(`tests/fuzz.test.js`: 1,500 random businesses across the whole reachable input
+space, about 79,000 checks) now guards invariants that must hold for any input,
+so a whole class of bug fails at once instead of one case at a time.
+
+**Structural**
+- **The realised-price distribution was built backwards.** It drew the measured
+  spread around the already-anchored price and then cut it at the ask, so every
+  bull case sat exactly at the ask and the expected price if the deal closed was
+  0.83 of the ask (IBBA measures 0.85 to 1.02). Each slice of the measured spread
+  is now a scenario for what the market will pay. The ask anchors the price
+  against that scenario and caps it. Each scenario is weighted by its chance of
+  closing at that gap. A fairly priced listing now closes at about 0.92 of its ask
+  in expectation, inside the IBBA range.
+- **Better quality could lower expected proceeds.** The typical buyer pool was
+  scaled by the subject's own engagement, so on a thin pool a better business got
+  a bigger competition discount. It is now measured at a median business's
+  engagement (this was caught by the fuzz test).
+- **Better quality could add days to close.** It could also move the cash share
+  and the base close rate. All three were keyed on the quality-adjusted value, so
+  an improvement pushed the deal into a slower size band. They now read the fitted
+  value before quality positioning.
+
+**Close, timing and risk**
+- The gap penalty froze above a 100% gap, so asks from 2× to $100B had the same
+  closing probability and score. It now has a smooth tail that matches the slope
+  at 100%.
+- The base close rate was described as "conditioned on deal size" but was
+  hard-wired to the broker channel. It now runs from broker ($1M) to
+  intermediated ($5M) in log size.
+- The risk multiple divided a probability at a 10.5% rate by a base computed at a
+  different rate mix. Both are now at the same rate.
+- `softMin(x, x)` returned 0.983x, so a ceiling equal to the price shaved 1.7%.
+  The smoothing width is tightened.
+
+**Scores and buyers**
+- The "pays most" buyer could be one that does not look at deals of this size. It
+  is now chosen only among buyers that do. Out-of-size rows are greyed, and the
+  "pursue first" tag compares the buyer itself rather than its EV.
+- The three "typical buyer pool" references (z-score, judgment delta,
+  competition) now share one centre.
+- The reference-population draws use midpoints, which removed a bias of up to
+  1.2 points.
+- The hero caption decides "close to optimal" from the share of expected proceeds
+  the ask gives up, since both scores sit at 99 for a strong business. It now
+  compares against the optimal ask rather than the model value.
+- The score bands are rephrased: the top band is the actual top decile, and the
+  low bands describe price rather than "risk of a failed process", because the
+  closing probability does not depend on quality.
+
+**Decisions**
+- The walk-away ask ran past the last gap the closing data resolve, into a corner
+  solution. Both recommended asks are now searched only up to 1.5× value. An ask
+  at that edge is labelled "test the market", and the note says when the two
+  strategies are close.
+- The value gap started only from changes that add value alone, which missed
+  changes that only pay inside a bundle, and it kept zero-value changes that padded
+  cost and time. It now starts from every change and prunes strictly.
+- The two optimiser cards said they "select the same programme" when they
+  repriced to different ratios. The reprice row now shows the ratio it uses.
+- The sensitivity steps were fixed amounts (3 to 10 points), so the ranking
+  reflected the step size. Every lever now moves by one peer standard deviation.
+- The ΔP_C column in the intervention table was identically zero by construction
+  (every row is repriced), so it is removed and the table says why.
+- Applying interventions could push earnings above revenue. They are now clamped.
+
+**Presentation**
+- The hero shows the expected price if the deal closes, with the likely range and
+  the median.
+- The multiple table separates the fitted multiple from the quality position. It
+  also shows where the judgment stack's bounds bind and what share of closings land
+  at the ceiling.
+- Equations now match the code: anchoring and the posterior, the buyer value with
+  size fit and the synergy cap, competition in dollars (or "no effect: the ask
+  binds"), z-score clamping, and one-sd sensitivity.
+- The Data tab paragraph claiming the quality sliders "do not move at all" was
+  stale and is rewritten. The years-of-history slider is described as feeding only
+  confidence and the category bars.
+- Grammar and sign nits are fixed: "1 engaged buyer", percentile ordinals held to
+  1st to 99th, a real minus sign on negative ROI, "no sector match" in place of
+  ×1.000, and star-map legend sizes that match the marks.

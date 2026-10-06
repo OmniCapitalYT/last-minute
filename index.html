@@ -1737,13 +1737,13 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           </div>
           <p class="score-cap" id="o_cap"></p>
           <div class="big-row">
-            <div class="big"><div class="k">Expected realized price <span class="pv j" title="Fitted value, moved by anchoring and competition (both judgment) and capped at the ask"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
+            <div class="big"><div class="k">Expected price if it closes <span class="pv j" title="The fitted value's measured spread, moved by anchoring and competition (both judgment), capped at the ask and weighted by each outcome's chance of closing"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
             <div class="big"><div class="k">Probability of closing <span class="pv a"><i></i>aggregate</span></div><div class="n" id="o_pc">—</div></div>
           </div>
           <div class="big-row">
-            <div class="big"><div class="k">Model value <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
+            <div class="big"><div class="k">Model value <span class="pv f" title="BIZCOMPS fitted value, positioned inside its measured spread by the quality inputs (that placement is judgment)"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
             <div class="big"><div class="k">Survival risk <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_risk">—</div></div>
-            <div class="big"><div class="k">Expected multiple <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
+            <div class="big"><div class="k">Expected multiple <span class="pv f" title="Fitted multiple times the quality position (judgment)"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
             <div class="big"><div class="k">Median time to close <span class="pv a"><i></i>aggregate</span></div><div class="n sm" id="o_t">—</div></div>
             <div class="big"><div class="k">Expected proceeds <span class="pv j" title="Aggregate closing probability times a realised price that anchoring (judgment) moves"><i></i>judgment</span></div><div class="n sm" id="o_ev">—</div></div>
             <div class="big wide"><div class="k">Pursue first <span class="pv j"><i></i>judgment</span></div><div class="n sm" id="o_bb">—</div></div>
@@ -2161,7 +2161,11 @@ function fitRisk(price,naicsKey,rate,jobs,franchise,st){
   const z=R.intercept+co.ln_amt*Math.log(Math.max(price,1e4))+co.ind_eff*ie
          +co.franchise*(franchise?1:0)+co.jobs*clamp(jobs||5,0,100)
          +co.rate_c*((rate||10.5)-7)+(co.st_eff||0)*se;
-  const p=1/(1+Math.exp(-z)),base=R.base_rate,rel=p/base;
+  /* the population base is at its historical rate mix (centred on 7%); compare this
+     deal against the base shifted to the SAME rate, or the multiple mostly reports
+     the 10.5% assumption (median deal read 1.9x its own band) */
+  const lb=Math.log(R.base_rate/(1-R.base_rate))+co.rate_c*((rate||10.5)-7);
+  const p=1/(1+Math.exp(-z)),base=1/(1+Math.exp(-lb)),rel=p/base;
   /* probability alone understates the stakes: when these loans go bad the median loss is
      77% of the original advance, so expected loss is the number worth reporting. */
   /* Severity is not flat in deal size: the SBA's own charge-offs run 80.6% of the
@@ -2239,23 +2243,34 @@ function mcubic(xs,ys){
   };
 }
 const GAP_F=mcubic(GAP_CDF.g,GAP_CDF.f);
+/* Past the last bucket (">50", pinned at 100) the survey says nothing, and the penalty
+   used to freeze: every ask from 2x to 100x value produced the same probability,
+   proceeds and score. Carry it on: the surviving share decays from its value at 100%
+   at the rate the curve was falling there, so the join is smooth and no new
+   parameter is chosen. */
+const GAP_TAIL_K=(function(){ const h=.5; return PEN_MAX*(GAP_F(100)-GAP_F(100-h))/h/(1-PEN_MAX); })();
 function gapPenalty(gap){
   /* pricing at or below model value carries no price penalty */
   if(!(gap>0))return 0;
   const G=GAP_CDF.g,n=G.length;
-  if(gap>=G[n-1])return PEN_MAX;
+  if(gap>=G[n-1]) return 1-(1-PEN_MAX)*Math.exp(-Math.max(GAP_TAIL_K,1e-4)*(gap-G[n-1]));
   return PEN_MAX*clamp(GAP_F(gap),0,1);
 }
-function fitClose(ask,val,channel){
+/* Pepperdine's two bases are two channels, and channel follows size: business brokers
+   sell main-street deals, M&A intermediaries the lower middle market. Interpolate in
+   ln(size) from $1M (broker) to $5M (intermediated), so the base genuinely conditions
+   on deal size as the captions say. A channel string still forces one end. */
+function fitClose(ask,val,channel,size){
   const C=MODELS.close_and_timing.close_probability;
   /* The pooled bases span 2011-2024 and describe no particular year: intermediated
      termination troughed at 24% in 2020-21 and has risen every year since to 32%. The
      console held both series and read neither. Use the mean of the three most recent
      observations, and keep the pooled figure beside it so the drift is visible. */
-  const base=channel==="intermediary"
-    ? (C.intermediated_base_recent||C.intermediated_base)
-    : (C.broker_listing_base_recent||C.broker_listing_base);
-  const basePooled=channel==="intermediary"?C.intermediated_base:C.broker_listing_base;
+  const bB=C.broker_listing_base_recent||C.broker_listing_base, bI=C.intermediated_base_recent||C.intermediated_base;
+  const u=channel==="intermediary"?1:channel==="broker"?0
+        :clamp((Math.log(Math.max(size||val,1))-Math.log(1e6))/(Math.log(5e6)-Math.log(1e6)),0,1);
+  const base=bB+(bI-bB)*u;
+  const basePooled=C.broker_listing_base+(C.intermediated_base-C.broker_listing_base)*u;
   let gap=null,pen=0,kill=false;
   if(ask>0&&val>0){
     gap=(ask-val)/val*100;
@@ -2263,7 +2278,7 @@ function fitClose(ask,val,channel){
     const KZ=(C.kill_zone&&C.kill_zone.range_pct)||[11,30];
     kill=gap>=KZ[0]&&gap<=KZ[1];
   }
-  return {p:clamp(base*(1-pen),.05,.95),base:base,basePooled:basePooled,gap:gap,pen:pen,kill:kill,
+  return {p:clamp(base*(1-pen),.02,.95),base:base,basePooled:basePooled,gap:gap,pen:pen,kill:kill,chanShare:u,
           reasons:C.failure_reasons,gapDist:C.valuation_gap_distribution};
 }
 
@@ -2345,19 +2360,26 @@ const SIGMA_DISPLAY=(function(){
 /* smooth minimum in logs: within K of the kink it rounds the corner, elsewhere it is
    min() to a few hundredths of a percent, so no optimiser ever sits on a kink */
 function softMin(x,y){
-  const a=Math.log(Math.max(x,1)), b=Math.log(Math.max(y,1)), K=.025;
+  const a=Math.log(Math.max(x,1)), b=Math.log(Math.max(y,1)), K=.012;
   return Math.exp(Math.min(a,b)-K*Math.log1p(Math.exp(-Math.abs(a-b)/K)));
 }
-function softMinR(x,y){ const a=Math.log(Math.max(x,1e-300)), b=Math.log(Math.max(y,1e-300)), K=.025;
+function softMinR(x,y){ const a=Math.log(Math.max(x,1e-300)), b=Math.log(Math.max(y,1e-300)), K=.012;
   return Math.exp(Math.min(a,b)-K*Math.log1p(Math.exp(-Math.abs(a-b)/K))); }
-/* E[min(R,c)]/E[R] over the fan, for a cap c in units of the median */
-let FAN_GRID=null;
-function fanMeanKept(c){
-  if(!FAN_GRID){ FAN_GRID=[]; for(let i=0;i<400;i++) FAN_GRID.push(fanRatio((i+.5)/400)); }
-  let kept=0,all=0;
-  for(const R of FAN_GRID){ all+=R; kept+=softMinR(R,c); }
-  return kept/all;
+/* The price distribution is carried on 48 equal-probability slices of the measured
+   fan. Each node is the MEAN of its slice (from a 4,000-point grid), not its midpoint,
+   so the nodes reproduce the fan's mean to 0.15% (1.092 vs the measured 1.0907)
+   where midpoints lose the right tail and fall to 1.085. */
+let FAN_NODES=null;
+function fanNodes(){
+  if(FAN_NODES) return FAN_NODES;
+  const N=48,M=4000,out=[];
+  for(let i=0;i<N;i++){ let s=0; const k=M/N;
+    for(let j=0;j<k;j++) s+=fanRatio((i*k+j+.5)/M); out.push(s/k); }
+  return FAN_NODES=out;
 }
+/* anchoring factor at a smoothed ask-to-value ratio: 1 at the value, AMAX at most */
+const ALPHA_ANCHOR=.55;
+function anchorAt(rho){ return 1+(AMAX-1)*Math.tanh(ALPHA_ANCHOR*Math.log(rho)/(AMAX-1)); }
 function fanRatio(p){
   const Z=FAN.z,Y=FAN.y,n=Z.length;
   if(n<2) return 1;
@@ -2417,12 +2439,12 @@ const PMIN=.05, PMAX=.93;  // irreducible deal risk at both ends   // Weibull sc
 const BUYERS=[
  {k:"ind", n:"Individual owner-operator",  syn:0,   mf:.90, lo:0,     hi:1.1e6, fit:s=>1.0-.5*s.ownN},
  {k:"eta", n:"Search fund / ETA buyer",    syn:.04, mf:.98, lo:.6e6,  hi:3.2e6, fit:s=>.55+.5*s.recN+.5*(1-s.ownN)},
- {k:"pep", n:"Private equity platform",    syn:.10, mf:1.06,lo:1.5e6, hi:1e9,   fit:s=>.30+.6*s.mgtN+.5*s.grwN},
- {k:"add", n:"PE portfolio add-on",        syn:.62, mf:1.12,lo:.5e6,  hi:1e9,   fit:s=>.55+.4*s.recN+.3*s.grwN},
- {k:"str", n:"Direct strategic competitor",syn:1.00,mf:1.18,lo:.35e6, hi:1e9,   fit:s=>.60+.3*s.retN+.3*s.gmN},
- {k:"adj", n:"Adjacent strategic buyer",   syn:.70, mf:1.14,lo:.35e6, hi:1e9,   fit:s=>.45+.45*s.recN+.3*s.retN},
- {k:"fo",  n:"Family office",              syn:.09, mf:1.02,lo:.8e6,  hi:1e9,   fit:s=>.35+.5*s.retN+.4*s.recN},
- {k:"mbo", n:"Management buyout",          syn:0,   mf:.86, lo:.3e6,  hi:1e9,   fit:s=>-.20+1.5*s.mgtN}
+ {k:"pep", n:"Private equity platform",    syn:.10, mf:1.06,lo:1.5e6, hi:Infinity,   fit:s=>.30+.6*s.mgtN+.5*s.grwN},
+ {k:"add", n:"PE portfolio add-on",        syn:.62, mf:1.12,lo:.5e6,  hi:Infinity,   fit:s=>.55+.4*s.recN+.3*s.grwN},
+ {k:"str", n:"Direct strategic competitor",syn:1.00,mf:1.18,lo:.35e6, hi:Infinity,   fit:s=>.60+.3*s.retN+.3*s.gmN},
+ {k:"adj", n:"Adjacent strategic buyer",   syn:.70, mf:1.14,lo:.35e6, hi:Infinity,   fit:s=>.45+.45*s.recN+.3*s.retN},
+ {k:"fo",  n:"Family office",              syn:.09, mf:1.02,lo:.8e6,  hi:Infinity,   fit:s=>.35+.5*s.retN+.4*s.recN},
+ {k:"mbo", n:"Management buyout",          syn:0,   mf:.86, lo:.3e6,  hi:Infinity,   fit:s=>-.20+1.5*s.mgtN}
 ];
 
 /* ============================================================
@@ -2449,7 +2471,7 @@ function model(s){
     ret :(s.ret-I.ret)/.13,
     fin :(s.fin-RF.fin)/.28,
     plt :(s.plt-.40)/.22,
-    buy :(Math.log(Math.max(s.buyers,1))-Math.log(50))/.9,
+    buy :(Math.log(Math.max(s.buyers,1))-Math.log(I.buyers||50))/.9,
     // EBITDA/SDE margin. Without it a business earning $1.4M on $3M of revenue
     // was valued identically to one earning $1.4M on $199M — a 0.7% margin.
     em  :Math.log(Math.max(s.ern/Math.max(s.rev,1),1e-4)/(I.em*RF.emk))/.45
@@ -2482,16 +2504,17 @@ function model(s){
     ret :  .13*clamp((s.ret-I.ret)/.16,-1.3,1.1),
     fin :  .17*clamp((s.fin-RF.fin)/.42,-1.2,1.0),
     plt : -.16*clamp((s.plt-.40)/.42,0,1.15),
-    buy :  .09*clamp((Math.log(s.buyers)-Math.log(45))/Math.log(5),-1.1,1.0),
+    buy :  .09*clamp((Math.log(s.buyers)-Math.log(I.buyers||50))/Math.log(5),-1.1,1.0),
     tail:  .07*(I.tail-.30),  // fInd already carries the industry level
     em  :  .28*Math.tanh(emRaw/2.2),
     yrs : -.10*clamp((3-s.yrs)/2,0,1)
   };
   let sum=0; for(const k in d) sum+=d[k];
+  const sumRaw=sum;
   sum=clamp(sum,-.55,.85);
   const M=clamp(base*(1+sum), Math.max(.90,base*.42), base*1.85);
   const V=s.ern*M;
-  out.anchor=anchor; out.fInd=fInd; out.base=base; out.d=d; out.dsum=sum;
+  out.anchor=anchor; out.fInd=fInd; out.base=base; out.d=d; out.dsum=sum; out.dsumRaw=sumRaw; out.Mraw=base*(1+sum);
   /* ---- FITTED OVERRIDE (Model II) --------------------------------
      The delta stack above is retained for the explainability panels, but the
      value the console reports is the BIZCOMPS-fitted equation. The judgment
@@ -2512,7 +2535,7 @@ function model(s){
   let qs=0,qn=0;
   for(const k of QB.dimensions){
     if(typeof out.z[k]==="number"&&isFinite(out.z[k])){
-      /* own and cc are worse when higher, so their sign flips */
+      /* owner dependence, concentration and channel concentration are worse when higher, so their signs flip */
       qs+=(k==="own"||k==="cc"||k==="plt")?-out.z[k]:out.z[k]; qn++;
     }
   }
@@ -2592,7 +2615,7 @@ function model(s){
      logistic above cannot be fitted. It is kept for the contribution panel,
      but the reported probability is base rate x price-gap penalty, which
      conditions on deal size and gap ONLY - never on business quality.     */
-  const FC=fitClose(s.ask,out.V,s.chan||"broker");
+  const FC=fitClose(s.ask,out.V,s.chan,out.Vbase);
   out.fc=FC; out.PCjudg=PC; out.PC=FC.p;
   out.eta=eta; out.contrib=contrib; out.fRec=fRec; out.fCc=fCc; out.fUnder=fUnder; out.Pq=Pq; out.gate=gate;
 
@@ -2609,7 +2632,9 @@ function model(s){
   /* Size these off the FITTED VALUE, never the ask. The SBA feature is the
      acquisition amount and the Pepperdine bands are transaction size; keying
      them to the ask made an overpriced listing look both safer and slower. */
-  const FT=fitTiming(out.V,s.ind);
+  /* keyed on the fitted value before quality positioning: otherwise a better
+     business moved into a slower size band and every quality fix added days */
+  const FT=fitTiming(out.Vbase,s.ind);
   out.ft=FT;
   const lamFit=FT.days/Math.pow(Math.log(2),1/KW);
   const Ffit=t=>1-Math.exp(-Math.pow(t/lamFit,KW));
@@ -2628,8 +2653,8 @@ function model(s){
   out.buyers=BUYERS.map(b=>{
     const sizeFit = (s.ern<b.lo) ? Math.max(0,1-(b.lo-s.ern)/(b.lo*.85))
                   : (s.ern>b.hi) ? Math.max(0,1-(s.ern-b.hi)/(b.hi*1.6)) : 1;
-    const raw=b.fit(nrm);
-    const PE=clamp(sig(1.35*(raw-.72))*sizeFit*(0.55+0.45*sig(z.fin)),.01,.95);
+    const raw=b.fit(nrm), fit0=b.fit({ownN:.5,mgtN:.5,recN:.5,grwN:.5,retN:.5,gmN:.5});
+    const PE=sizeFit>0?clamp(sig(1.35*(raw-.72))*sizeFit*(0.55+0.45*sig(z.fin)),.01,.95):0;
     // a buyer that will not look at a deal this size captures none of the synergy
     // and pays none of the premium its category would otherwise support
     /* the synergy pool scales with revenue but is capitalised at the earnings multiple,
@@ -2638,11 +2663,13 @@ function model(s){
     const S=Math.min(b.syn*synE*out.M*sizeFit, .40*s.ern*out.M/PHI);
     const Vj=s.ern*out.M*(1+(b.mf-1)*sizeFit) + PHI*S;
     const PCj=clamp(out.PC*(0.80+0.42*PE),.02,.95);
-    return {...b,sizeFit,PE,S,Vj,PCj,EV:PE*PCj*Vj,fit:clamp(raw*sizeFit,0,1.15)};
+    return {...b,sizeFit,PE,S,Vj,PCj,EV:PE*PCj*Vj,fit:clamp(raw*sizeFit,0,1.15),fit0};
   }).sort((a,b)=>b.EV-a.EV);
   out.best=out.buyers[0];                                   // who to pursue first
-  out.top=out.buyers.slice().sort((a,b)=>b.Vj-a.Vj)[0];     // who could justify paying most
-  out.stratPrem=out.top.Vj-out.V;
+  /* only a buyer that will look at a deal this size can be the one who pays most */
+  const looking=out.buyers.filter(b=>b.sizeFit>0);
+  out.top=(looking.length?looking:out.buyers).slice().sort((a,b)=>b.Vj-a.Vj)[0];
+  out.stratPrem=Math.max(0,out.top.Vj-out.V);
 
   /* ---- §20 competition -------------------------------------- */
   const avgPE=out.buyers.reduce((a,b)=>a+b.PE,0)/out.buyers.length;
@@ -2653,7 +2680,11 @@ function model(s){
      and a business marketed exactly like its peers was priced above its own
      comparables. Centre it on the industry's usual pool: deeper than usual earns a
      premium, thinner than usual costs a discount, typical costs nothing. */
-  out.nEngRef=(I.buyers||50)*avgPE*0.34;
+  /* the typical pool is measured at a MEDIAN business's engagement: scaling it by this
+     business's own engagement made better quality deepen a thin pool's discount */
+  const nrm0={ownN:.5,mgtN:.5,recN:.5,grwN:.5,retN:.5,gmN:.5};
+  const peRef=out.buyers.reduce((a,b)=>a+(b.sizeFit>0?clamp(sig(1.35*(b.fit0-.72))*b.sizeFit*0.775,0,.95):0),0)/out.buyers.length;
+  out.nEngRef=(I.buyers||50)*peRef*0.34;
   out.compK=.030;
   out.compPrem=clamp(out.compK*Math.log((3+out.nEng)/(3+out.nEngRef)),-.08,.14);
   out.avgPE=avgPE;
@@ -2665,34 +2696,19 @@ function model(s){
      probability, so expected proceeds fall monotonically and the implied
      optimal asking price is zero. ALPHA=0 means the ask is irrelevant,
      ALPHA=1 means the seller simply receives the ask.                        */
-  const ALPHA=.55;
-  out.ALPHA=ALPHA;
+  out.ALPHA=ALPHA_ANCHOR;
   /* Anchoring stops at RHO_MAX. Past a 50% gap Pepperdine's distribution of the gaps
-     deals die on runs out (">50" is its last bucket), so the gap penalty is flat at
-     its maximum there - while anchoring, unbounded at 2.4x, kept rising. Expected
-     proceeds therefore climbed again past ~1.8x: asking 2.5x value "earned" more
-     than asking 1.8x. Anchoring may not earn more than it earns at the largest gap
-     the data resolves, so beyond it a higher ask only costs closing probability. */
-  /* smooth at the top: a hard clamp at 1.5x sits inside the optimiser's search range,
-     and an argmax on a kink is exactly the artefact the gap-penalty spline removed */
-  out.rho=softMin(Math.max(priceRatio,.35)*1e6,RHO_MAX*1e6)/1e6;
-  out.anchorF=1+(AMAX-1)*Math.tanh(ALPHA*Math.log(out.rho)/(AMAX-1));
-  /* was: V (the judgment build). Must anchor off the FITTED value. */
-  out.VrealFree=out.V*out.anchorF*(1+out.compPrem);
-  /* The ask is a ceiling. Anchoring below value pulled the price down only part of
-     the way, so a listing at 0.79x model value "realised" 1.16x its own ask - on the
-     same screen as IBBA saying deals close at 85-102% of the ask. Main-street and
-     lower-middle-market deals essentially never close above the asking price; the
-     one IBBA band that averages above it (102% at $5M+) sets the headroom there.
-     Smooth minimum in logs, so the optimiser never sits on a kink. */
-  /* headroom above the ask only where IBBA's own size band closes above it (102% at $5M+);
-     the BizBuySell industry factor describes typical realisation, not a ceiling */
+     deals die on runs out (">50" is its last bucket), so anchoring may not earn more
+     than it earns at the largest gap the data resolves; beyond it a higher ask only
+     costs closing probability. Smooth at the top, so no optimiser sits on a kink. */
+  const rhoOf=x=>softMin(Math.max(x,.35)*1e6,RHO_MAX*1e6)/1e6;
+  out.rho=rhoOf(priceRatio);
+  out.anchorF=anchorAt(out.rho);
+  /* The ask is a ceiling: lower- and main-street deals essentially never close above
+     it. Headroom above the ask only where IBBA's own size band closes above it (102% at
+     $5M+), and past RHO_MAX the ceiling stops rising with the ask. */
   out.askCeil=Math.max(1,FT.pctAskSize);
-  /* past RHO_MAX the extra headroom is no more earned than the extra anchoring:
-     the ceiling stops rising with the ask there, so a higher ask only costs P_C */
   out.ceil=softMin(s.ask,out.V*RHO_MAX)*out.askCeil;
-  out.Vreal=softMin(out.VrealFree,out.ceil);
-  out.askBinds=out.ceil<out.VrealFree;
 
   /* ---- §21 categories --------------------------------------- */
   const sc=c=>Math.round(100*sig(1.1*c));
@@ -2723,29 +2739,49 @@ function model(s){
      measured out-of-fold quantiles, so it reproduces the real asymmetry instead of
      smoothing it away. sigma is kept for the equation panel only. */
   out.sigma=SIGMA_DISPLAY;
-  out.sigmaJudg=.34-.16*conf;
 
-  /* ---- §23 scenario quantiles -------------------------------- */
-  /* centred so that E[price] equals Vreal exactly; a plain V*exp(sigma z)
-     makes V the median, whose mean is V*exp(sigma^2/2) — a biased "expected". */
-  /* Vreal is now unambiguously the MEDIAN realised price: q(.5) returns it exactly.
-     The mean is a different number, and expected proceeds needs the mean, so it is
-     measured rather than assumed - mean/median of the actual price distribution,
-     winsorised because the top ratio in the data is 409x and that is a typo, not a
-     deal. Previously one number served as both. */
-  /* The ceiling applies to the whole distribution, not just its middle: a price
-     cannot land above the ask in the bull case either. Quantiles commute with a
-     monotone cap, so q(p) = min(free quantile, ceiling) - and q(.5) is still Vreal
-     exactly. The fan used to run uncapped, showing a $6.3M bull case on a $3.2M ask. */
-  const q=p=>softMin(out.VrealFree*fanRatio(p),out.ceil);
+  /* ---- §23 realised price: a distribution, conditioned on the deal closing ----
+     The model value is the centre of what this business sells for; the measured
+     out-of-fold fan says how widely real sales scatter around that centre. Each slice
+     of the fan is one scenario for what the market will pay, W. In that scenario
+     the ask anchors the price against W (not against the model's point value), the
+     competition premium applies, and the ask caps it:
+         P(W) = softMin( W * A(ask/W) * (1+comp), ceiling )
+     A deal only produces a price if it closes, and Pepperdine's gap curve says a
+     listing priced far above what the market pays closes far less often. So each
+     scenario is weighted by 1 - penalty(gap at W): the distribution reported is the
+     price GIVEN that the deal closed, which is what P_C x E[P] needs.
+     This replaced a fan drawn around the already-anchored price and then capped,
+     which put every bull case at the ask and the mean realised price at 0.83 of the
+     ask, against IBBA's measured 0.85-1.02. */
+  const RN=fanNodes(), NN=RN.length, comp=1+out.compPrem;
+  const Pf=new Array(NN), Pc=new Array(NN), Fw=new Array(NN);
+  let sw=0, sp=0, scap=0;
+  for(let i=0;i<NN;i++){
+    const W=out.V*RN[i];
+    Pf[i]=W*anchorAt(rhoOf(s.ask/W))*comp;     /* increasing in W: A's elasticity is < 1 */
+    Pc[i]=softMin(Pf[i],out.ceil);
+    const wt=Math.max(1e-9,1-gapPenalty((s.ask-W)/W*100));
+    Fw[i]=sw+wt/2; sw+=wt; sp+=wt*Pc[i]; if(Pf[i]>=out.ceil) scap+=wt;
+  }
+  for(let i=0;i<NN;i++) Fw[i]/=sw;
+  /* weighted quantile: log-linear between slice centres, flat past the outer ones */
+  const wq=(arr,p)=>{
+    if(p<=Fw[0]) return arr[0]; if(p>=Fw[NN-1]) return arr[NN-1];
+    let lo=0,hi=NN-1; while(hi-lo>1){ const m=(lo+hi)>>1; if(Fw[m]<=p) lo=m; else hi=m; }
+    const u=(p-Fw[lo])/(Fw[hi]-Fw[lo]);
+    return Math.exp(Math.log(arr[lo])+(Math.log(arr[hi])-Math.log(arr[lo]))*u);
+  };
+  const q=p=>wq(Pc,p);
   out.q=q;
-  /* Mean of the capped distribution: the measured mean-to-median ratio, scaled by
-     the share of the free distribution's mean that survives the cap. Uncapped this
-     is exactly the measured 1.0907; capped it falls, because the right tail that
-     drags the mean above the median is the part the ask cuts off. */
-  out.Vmean=out.VrealFree*(MODELS.value.mean_over_median||1)*fanMeanKept(out.ceil/Math.max(out.VrealFree,1));
+  out.VrealFree=wq(Pf,.5);                    /* the median before the ceiling */
+  out.Vreal=q(.5);                            /* the median realised price */
+  out.Vmean=sp/sw;                            /* E[price | close] */
+  out.capShare=scap/sw;                       /* share of closed outcomes at the ceiling */
+  out.askBinds=out.VrealFree>out.ceil;        /* the ceiling binds at the median */
   out.range=[q(.30),q(.70)];
   out.scen={bear:[q(.08),q(.22)],base:[q(.38),q(.62)],bull:[q(.80),q(.94)]};
+
   /* expected proceeds = P(close) x E[price | close]. out.PC is the aggregate
      override, not the judgment PC. */
   out.EVp=out.PC*out.Vmean;
@@ -2754,7 +2790,7 @@ function model(s){
      number and never read it, so "expected proceeds" was quietly describing total
      consideration while sounding like money in the bank. Both are now reported. */
   const CAC=MODELS.close_and_timing.ibba_cash_at_close;
-  out.cashShare=(CAC&&CAC.by_band)?bandInterp(out.V,CAC.by_band):1;
+  out.cashShare=(CAC&&CAC.by_band)?bandInterp(out.Vbase,CAC.by_band):1;
   out.EVcash=out.EVp*out.cashShare;
   out.deferred=out.EVp-out.EVcash;
 
@@ -2823,7 +2859,7 @@ function refDistAt(s,mode){
      The optimum depends on the gap curve and the ceiling, not on quality, so one ratio
      solved on the median profile serves the whole population. */
   const mkT=Z=>({ind:s.ind||"prof", ern:ern, rev:rev, yrs:6,
-      buyers:I.buyers||50, chan:"broker", rate:10.5, franchise:false, st:null,
+      buyers:I.buyers||50, rate:10.5, franchise:false, st:null,
       jobs:Math.max(2,Math.round(rev/150000)),
       rec:clamp(I.rec+Z*.28,0,1),      cc :clamp(.16-Z*.13,.005,.95),
       own:clamp(RF.own-Z*.25,.02,.99), mgt:clamp(RF.mgt+Z*.28,.02,.99),
@@ -2835,8 +2871,9 @@ function refDistAt(s,mode){
   for(let i=1;i<=128;i++){
     /* van der Corput: deterministic and evenly spread, so the score does not
        flicker between renders the way a pseudo-random draw would */
-    let u=0,d=0.5,k=i;
-    while(k>0){u+=(k%2)*d;k=Math.floor(k/2);d/=2;}
+    /* midpoints (i-.5)/128: the van der Corput sequence over i=1..128 put an extra
+       draw at 1/256 and none at 1 - 1/256, lifting scores by up to 1.2 points */
+    const u=(i-.5)/128;
     const Z=nqnt(clamp(u,.004,.996))/3;
     /* Built from scratch rather than spread from the subject's own state. Spreading
        it inherited the subject's revenue, years of history and buyer pool while the
@@ -2926,7 +2963,11 @@ function bestRatio(s0,theta,lamT){
               return r.EVp+(1-r.PC)*theta*r.V-lamT*r.tMed;};
   let best={u:-Infinity,m:1.05};
   const STEP=0.02;
-  for(let m=0.80;m<=1.90+1e-9;m+=STEP){
+  /* searched up to RHO_MAX, not past it: beyond the last gap Pepperdine resolves the
+     model has no data on what a higher ask does, and a patient seller's utility kept
+     climbing into that unmeasured region (a corner solution, not a recommendation) */
+  const TOP=RHO_MAX;
+  for(let m=0.80;m<=TOP+1e-9;m+=STEP){
     const u=U(m); if(u>best.u) best={u,m};
   }
   /* The coarse scan quantised the recommendation to 2-point steps, so a true optimum at
@@ -2934,7 +2975,7 @@ function bestRatio(s0,theta,lamT){
      differentiable, so refine inside the winning bracket by golden section - about 22
      more model() calls, against 2048 in the subset optimiser, and the recommended ask
      stops depending on where the grid happens to fall. */
-  let a=Math.max(0.80,best.m-STEP), b=Math.min(1.90,best.m+STEP);
+  let a=Math.max(0.80,best.m-STEP), b=Math.min(TOP,best.m+STEP);
   const PHI_R=0.6180339887498949;
   let c=b-PHI_R*(b-a), d=a+PHI_R*(b-a), fc=U(c), fd=U(d);
   for(let i=0;i<22&&(b-a)>1e-4;i++){
@@ -2965,6 +3006,7 @@ function applyAll(s0,r0,keys,rho){
     const rg=FIELD_RANGE[f]; if(rg) v=clamp(v,rg[0],rg[1]);
     s[f]=(f==="buyers")?Math.round(v):v;
   }
+  if(s.ern>s.rev*.92) s.ern=s.rev*.92;
   // repricing must see the company AFTER every other change
   /* the ratio is the CALLER's objective: the proceeds optimum for the proceeds search,
      the utility optimum (which depends on theta) for the utility search. Using the
@@ -3036,18 +3078,22 @@ function optimize(s0,r0,budget,lamT,theta){
 /* ============================================================
    §13  SENSITIVITY — central differences on the live inputs
    ============================================================ */
+/* Every quality lever moves by ONE PEER STANDARD DEVIATION (the same sd the z-scores use),
+   half a step either side. Fixed steps of 3 to 10 points ranked the levers by the step
+   chosen for them as much as by their effect: 10 points of owner independence is 0.4 sd,
+   3 points of retention is 0.23 sd. */
 const SENS=[
- {k:"own", n:"Owner independence", h:.10, inv:true, lo:0, hi:.999, unit:"per 10 pts of independence"},
- {k:"mgt", n:"Management depth",   h:.10, lo:0, hi:.999, unit:"per 10 pts of depth"},
- {k:"rec", n:"Recurring revenue",  h:.05, lo:0, hi:1,    unit:"per +5 pts"},
- {k:"cc",  n:"Customer concentration", h:.05, inv:true, lo:.005, hi:.95, unit:"per −5 pts on top customer"},
- {k:"fin", n:"Financial reporting", h:.10, lo:0, hi:1,   unit:"per 10 pts of quality"},
- {k:"grw", n:"Revenue growth",     h:.05, lo:-.60, hi:1.5, unit:"per +5 pts"},
- {k:"gm",  n:"Gross margin",       h:.03, lo:.02, hi:.97, unit:"per +3 pts"},
- {k:"ret", n:"Customer retention", h:.03, lo:.05, hi:.999,unit:"per +3 pts"},
- {k:"plt", n:"Channel concentration", h:.08, inv:true, lo:.02, hi:.999, unit:"per −8 pts"},
- {k:"ask", n:"Asking price",       h:null, inv:true, unit:"per −5% on price"},
- {k:"buyers", n:"Qualified buyer pool", h:null, unit:"per +25% more buyers contacted"}
+ {k:"own", n:"Owner independence", h:.125, inv:true, lo:0, hi:.999, unit:"per sd (25 pts) less owner dependence"},
+ {k:"mgt", n:"Management depth",   h:.14, lo:0, hi:.999, unit:"per sd (28 pts) of depth"},
+ {k:"rec", n:"Recurring revenue",  h:.14, lo:0, hi:1,    unit:"per sd (28 pts)"},
+ {k:"cc",  n:"Customer concentration", h:.065, inv:true, lo:.005, hi:.95, unit:"per sd (13 pts) less on the top customer"},
+ {k:"fin", n:"Financial reporting", h:.14, lo:0, hi:1,   unit:"per sd (28 pts) of quality"},
+ {k:"grw", n:"Revenue growth",     h:.065, lo:-.60, hi:1.5, unit:"per sd (13 pts)"},
+ {k:"gm",  n:"Gross margin",       h:.065, lo:.02, hi:.97, unit:"per sd (13 pts)"},
+ {k:"ret", n:"Customer retention", h:.065, lo:.05, hi:.999,unit:"per sd (13 pts)"},
+ {k:"plt", n:"Channel concentration", h:.11, inv:true, lo:.02, hi:.999, unit:"per sd (22 pts) less concentrated"},
+ {k:"ask", n:"Asking price",       h:null, inv:true, unit:"per 5% off the ask"},
+ {k:"buyers", n:"Qualified buyer pool", h:null, unit:"per 25% more buyers contacted"}
 ];
 function sensitivity(s0){
   return SENS.map(v=>{
@@ -3061,7 +3107,7 @@ function sensitivity(s0){
        slope of zero, which would read as "this lever does nothing" */
     if(!isFinite(span)||Math.abs(span)<1e-9) return {...v,dV:0,dE:0,dP:0,pinned:true,oneSided:true};
     const rp=model(sp), rm=model(sm);
-    const step=(v.k==="ask"?s0.ask*.05:v.k==="buyers"?s0.buyers*.25:v.h);
+    const step=(v.k==="ask"?s0.ask*.05:v.k==="buyers"?s0.buyers*.25:2*v.h);
     /* Two different questions, so two different quantities. dV is what the business
        SUPPORTS (model value) - the ask and the buyer pool cannot move it, and the
        rows say so. dE is what the seller should EXPECT TO RECEIVE (P_C times the
@@ -3234,11 +3280,12 @@ function drawCurve(r){
        +'<div class="rzv">'+v+'</div><div class="rzn">'+n+'</div></div>';
     el.innerHTML='<div class="rz"><div class="rzh">What the seller actually realises</div>'
       +row('Typical sale price as a share of the ask', pc(r.ft.pctAsk,1),
-           'IBBA size curve at '+money(r.V)+': '+pc(r.ft.pctAskSize,1)+', &times;'+r.ft.indFactor.toFixed(3)
-           +' for '+tt2(ind)+(r.ft.indN?' ('+r.ft.indN.toLocaleString()+' closed sales)':''))
-      +row('This listing, at the model&rsquo;s median price', pc(r.Vreal/STATE.s.ask,1),
-           money(r.Vreal)+' on an ask of '+money(STATE.s.ask)
-           +(r.askBinds?' &mdash; the ask is the ceiling here':''))
+           'IBBA size curve at '+money(r.Vbase)+': '+pc(r.ft.pctAskSize,1)
+           +(r.ft.indN?', &times;'+r.ft.indFactor.toFixed(3)+' for '+tt2(ind)+' ('+r.ft.indN.toLocaleString()+' closed sales)'
+                      :' (no BizBuySell sector match for '+tt2(ind)+', so no industry adjustment)'))
+      +row('This listing, expected price if it closes', pc(r.Vmean/STATE.s.ask,1),
+           money(r.Vmean)+' on an ask of '+money(STATE.s.ask)+' (median '+money(r.Vreal)+')'
+           +(r.capShare>=.5?' &mdash; most closings land at the ceiling':''))
       +row('Cash at close', pc(r.cashShare,1),
            money(r.EVcash)+' of '+money(r.EVp)+' expected proceeds')
       +row('Deferred into notes and earnouts', pc(1-r.cashShare,1),
@@ -3251,8 +3298,9 @@ function drawCurve(r){
       +'transactions by sector ('+(PR.n_total||0).toLocaleString()+' sales across '
       +'137 subsectors). The cash share is IBBA&rsquo;s; the structure row is BVR&rsquo;s '
       +'DealStats consideration series. The typical ratio averages over every listing, overpriced '
-      +'ones included, so a fairly priced ask should land above it; the realised price is never '
-      +'allowed above the ask itself.</p></div>';
+      +'ones included, so a fairly priced ask should land above it. The price is never allowed above '
+      +'the ask, except by the headroom of the one IBBA size band that closes above it on average '
+      +'(102% at $5M and up).</p></div>';
   })();
 }
 
@@ -3349,10 +3397,10 @@ expected value ${money(b.EV)}</title>
   g+=`<text x="${L+6}" y="${lgY}" fill="#7d8aa3" font-size="9.6"
        font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Mark size: engagement. Fill: close rate</text>`;
   [0.2,0.5,0.8].forEach((pe,i)=>{
-    const cxx=L+14+i*40, rr=5+12*pe;
-    g+=`<circle cx="${cxx}" cy="${lgY+22}" r="${(rr*1.9*.6).toFixed(1)}" fill="url(#shalo)" opacity=".7"/>
-        <circle cx="${cxx}" cy="${lgY+22}" r="${(rr*.42).toFixed(1)}" fill="#f4f8ff" fill-opacity=".85"/>`;
-    g+=`<text x="${cxx}" y="${lgY+42}" text-anchor="middle" fill="#7d8aa3" font-size="9"
+    const cxx=L+22+i*54, rr=5+12*pe;
+    g+=`<circle cx="${cxx}" cy="${lgY+26}" r="${(rr*1.9).toFixed(1)}" fill="url(#shalo)" opacity=".7"/>
+        <circle cx="${cxx}" cy="${lgY+26}" r="${(rr*.42).toFixed(1)}" fill="#f4f8ff" fill-opacity=".85"/>`;
+    g+=`<text x="${cxx}" y="${lgY+56}" text-anchor="middle" fill="#7d8aa3" font-size="9"
          font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">${Math.round(pe*100)}%</text>`;
   });
 
@@ -3394,7 +3442,7 @@ function readState(){
      does not silently restore an impossible figure */
   if(s.ern>s.rev*.92){ s.ern=s.rev*.92; IN.ern=s.ern; }
   /* inputs the fitted risk model needs; derived when not exposed in the rail */
-  s.chan   = "broker";
+  /* channel follows deal size inside fitClose (broker to intermediated, $1M-$5M) */
   s.rate   = 10.5;                               // typical SBA 7(a) acquisition rate
   s.jobs   = Math.max(2,Math.round(s.rev/150000));
   return s;
@@ -3520,18 +3568,24 @@ function render(){
     $("o_score_biz_n").textContent="at the optimal ask of "+money(askOpt);
     $("o_score_n").textContent="at your ask of "+money(s.ask);
     const drag=r.scoreQ-r.score;
-    const band=v=>v>=78?"a top-decile exit profile":v>=62?"a saleable business with identified gaps"
-              :v>=45?"marketable, but the gaps will be priced in":"at material risk of a failed process";
-    /* the two scores use different peers (optimally priced vs market priced), so an ask
-       near the optimum can put the Omni score slightly above the business score */
-    $("o_cap").textContent = drag>=3
-      ? `The business is ${band(r.scoreQ)}. The ask costs it ${drag} points: `
-        + `${money(s.ask)} is ${Math.abs((s.ask/r.V-1)*100).toFixed(0)}% ${s.ask>=r.V?"above":"below"} the model value of ${money(r.V)}.`
-      : drag<=-3
-      ? `The business is ${band(r.scoreQ)}, and the ask is better placed than most peers' asks: it adds ${-drag} points.`
-      : `The business is ${band(r.scoreQ)}, and the ask is close to optimal.`;
+    /* bands read off the business score, which measures quality at a well-chosen ask
+       against peers of the same size; the closing probability does not depend on
+       quality, so the low bands talk about price, not about a failed process */
+    const band=v=>v>=90?"a top-decile exit profile for its size":v>=62?"above most peers of its size"
+              :v>=38?"in the middle of its peer group":v>=10?"below most peers of its size, and the gaps will be priced in"
+              :"in the bottom decile for its size: buyers will price the gaps hard";
+    /* "close to optimal" is decided on what the ask costs in expected proceeds, not on
+       score points: both scores pin at 99 for a strong business however it is priced */
+    const loss=1-r.EVp/Math.max(rq.EVp,1), dir=s.ask>=askOpt?"above":"below";
+    const off=Math.abs((s.ask/askOpt-1)*100);
+    $("o_cap").textContent = loss<.02
+      ? `The business is ${band(r.scoreQ)}, and the ask is close to optimal: within ${Math.max(0,loss*100).toFixed(1)}% of the best expected proceeds.`
+      : `The business is ${band(r.scoreQ)}. The ask costs ${(loss*100).toFixed(0)}% of expected proceeds`
+        + (drag>=1?` and ${drag} point${drag===1?"":"s"}`:"")
+        + `: ${money(s.ask)} is ${off.toFixed(0)}% ${dir} the optimal ask of ${money(askOpt)}.`;
   })();
-  $("o_val").textContent=money(r.range[0])+" – "+money(r.range[1]);
+  $("o_val").innerHTML=money(r.Vmean)
+    +'<span class="sub2">likely '+money(r.range[0])+' – '+money(r.range[1])+' &middot; median '+money(r.Vreal)+'</span>';
   $("o_pc").textContent=pc(r.PC);
   $("o_ev").innerHTML=money(r.EVp)
     +(r.cashShare<1?'<span class="sub2">'+money(r.EVcash)+' cash at close</span>':"");
@@ -3544,7 +3598,7 @@ function render(){
     var lab = p<.15?"bottom of the range":p<.38?"below the middle":p<.62?"mid-range":
               p<.85?"upper part of the range":"top of the range";
     /* 1st, 2nd, 3rd, 4th - "62th percentile" undermines everything else on the panel */
-    var pn=Math.round(p*100), t1=pn%10, t2=pn%100;
+    var pn=Math.min(99,Math.max(1,Math.round(p*100))), t1=pn%10, t2=pn%100;
     var ord=(t1===1&&t2!==11)?"st":(t1===2&&t2!==12)?"nd":(t1===3&&t2!==13)?"rd":"th";
     el.innerHTML='<div class="qband">'
       +'<div class="qhd"><b>Quality position</b><span>'+pn+ord+' percentile &middot; '
@@ -3613,7 +3667,8 @@ function render(){
     "linear-gradient(90deg,rgba(77,163,255,.5),#9ecbff)");
   eq("eq_z",`z_i=\\frac{x_i-\\bar{x}_{\\text{peer}}}{\\sigma_{\\text{peer}}}
     \\qquad \\text{percentile}=\\Phi(z_i)`);
-  eq("eq_zs",`z_{\\text{recurring}}=\\frac{${num(s.rec)}-${num(r.ind.rec)}}{0.280}=${r.z.rec.toFixed(2)}
+  const zRecRaw=(s.rec-r.ind.rec)/.28;
+  eq("eq_zs",`z_{\\text{recurring}}=\\frac{${num(s.rec)}-${num(r.ind.rec)}}{0.280}=${Math.abs(zRecRaw-r.z.rec)>1e-9?zRecRaw.toFixed(2)+"\\to"+r.z.rec.toFixed(2)+"\\;(\\text{held at }\\pm3.2)":r.z.rec.toFixed(2)}
     \\;\\Rightarrow\\; \\Phi(z)=${tp(r.pctile.rec)}\\text{ of peers}`);
 
   /* ---------- §8 multiple ---------- */
@@ -3632,24 +3687,29 @@ function render(){
     +rows.map(o=>`<tr><td>${o.n}</td>
         <td class="n ${o.d>=0?"pos":"neg"}">${o.d>=0?"+":"−"}${Math.abs(o.d*100).toFixed(1)}%</td>
         <td class="n ${o.d>=0?"pos":"neg"}">${o.turns>=0?"+":"−"}${Math.abs(o.turns).toFixed(2)}×</td></tr>`).join("")
+    +(Math.abs(r.dsumRaw-r.dsum)>1e-9||Math.abs(r.Mraw-r.Mjudg)>1e-9?`<tr><td>Bounds on the stack</td>
+        <td class="n muted">net held to −55%…+85%, multiple to 0.42–1.85× base</td>
+        <td class="n muted">${r.dsumRaw>=0?"+":"−"}${Math.abs(r.dsumRaw*100).toFixed(1)}% → ${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}%</td></tr>`:"")
     +`<tr><td>Judgement multiple &nbsp;<span class="st free">not used</span></td>
         <td class="n">${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}% net</td>
         <td class="n muted">${xx(r.Mjudg)}</td></tr>
       <tr><td><b>Fitted multiple</b> &nbsp;<span class="st pub">BIZCOMPS</span></td>
         <td class="n muted">regression, not the stack above</td>
-        <td class="n"><b>${xx(r.M)}</b></td></tr>
+        <td class="n"><b>${xx(r.fv.mult)}</b></td></tr>
+      <tr><td>Quality position: ${Math.min(99,Math.max(1,Math.round(r.qPct*100)))}th percentile of the measured spread &nbsp;<span class="st free">judgment</span></td>
+        <td class="n ${r.qFactor>=1?"pos":"neg"}">×${r.qFactor.toFixed(3)}</td><td class="n">${xx(r.M)}</td></tr>
       <tr><td><b>Model-supported value</b> &nbsp;E[V|X]</td>
         <td class="n muted">${money(s.ern)} × ${xx(r.M)}</td><td class="n"><b>${money(r.V)}</b></td></tr>
-      <tr><td>Anchoring on an ask of ${r.priceRatio.toFixed(2)}× model value &nbsp;<span class="st free">judgment</span></td>
+      <tr><td>Anchoring on an ask of ${r.priceRatio.toFixed(2)}× model value, at the point estimate &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.anchorF>=1?"pos":"neg"}">×${r.anchorF.toFixed(3)}</td><td class="n muted">flat past ${RHO_MAX.toFixed(2)}×</td></tr>
-      <tr><td>Competition: ${r.nEng.toFixed(0)} engaged buyers against a typical ${r.nEngRef.toFixed(0)} &nbsp;<span class="st free">judgment</span></td>
+      <tr><td>Competition: ${r.nEng.toFixed(1)} engaged buyer${Math.abs(r.nEng-1)<.05?"":"s"} against a typical ${r.nEngRef.toFixed(1)} &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.compPrem>=0?"pos":"neg"}">×${(1+r.compPrem).toFixed(3)}</td><td class="n muted">—</td></tr>
       <tr><td>Ceiling: the ask, held at ${RHO_MAX.toFixed(1)}× model value${r.askCeil>1?", × "+pc(r.askCeil,1)+" IBBA headroom":""}</td>
-        <td class="n ${r.askBinds?"neg":"muted"}">${r.askBinds?"binds":"slack"}</td><td class="n muted">${money(r.ceil)}</td></tr>
-      <tr><td><b>Median realised price</b></td><td class="n muted">if it closes</td>
+        <td class="n ${r.capShare>=.5?"neg":"muted"}">${pc(r.capShare)} of closings</td><td class="n muted">${money(r.ceil)}</td></tr>
+      <tr><td><b>Median price if it closes</b></td><td class="n muted">across the measured spread of value</td>
         <td class="n"><b>${money(r.Vreal)}</b></td></tr>
-      <tr><td>Mean realised price</td><td class="n muted">×${(r.Vmean/Math.max(r.Vreal,1)).toFixed(3)} of the median${r.askBinds?", the cap trims the upper tail":""} (×${(MODELS.value.mean_over_median||1).toFixed(4)} uncapped)</td>
-        <td class="n">${money(r.Vmean)}</td></tr>`;
+      <tr><td><b>Expected price if it closes</b></td><td class="n muted">mean, each outcome weighted by its chance of closing</td>
+        <td class="n"><b>${money(r.Vmean)}</b></td></tr>`;
   /* This panel used to typeset the judgment stack, m_size*f_ind*(1+sum delta), above
      a boxed figure that came from the fitted equation - the formula on screen was
      not the one producing the number under it. */
@@ -3661,12 +3721,14 @@ function render(){
     \\times\\underbrace{${r.qFactor.toFixed(3)}}_{\\text{quality position}}=\\boxed{${tm(r.V)}}
     =${tm(s.ern)}\\times${r.M.toFixed(2)}`);
 
-  eq("eq_a",`A(\\rho)=1+(A_{\\max}-1)\\tanh\\!\\Big(\\frac{\\alpha\\ln\\min(\\rho,${RHO_MAX.toFixed(1)})}{A_{\\max}-1}\\Big),
-    \\quad \\rho=\\frac{\\text{ask}}{E[V\\mid X]},\\quad
-    P_{\\text{real}}=\\operatorname{softmin}\\!\\Big(E[V\\mid X]\\cdot A(\\rho)\\cdot(1+\\text{comp}),\\;\\min(\\text{ask},\\,${RHO_MAX.toFixed(1)}E[V\\mid X])\\cdot c_{\\text{ask}}\\Big)`);
-  eq("eq_as",`\\begin{aligned}&\\rho=${r.priceRatio.toFixed(2)},\\;\\alpha=${r.ALPHA}\\Rightarrow A=${r.anchorF.toFixed(3)},\\;c_{\\text{ask}}=${r.askCeil.toFixed(3)}
-    \\;\\Rightarrow\\;P_{\\text{real}}=\\boxed{${tm(r.Vreal)}}\\;${r.askBinds?"\\text{(the ask binds)}":""}\\\\[3pt]
-    &\\text{expected proceeds}=P_C\\!\\cdot\\!E[P_{\\text{real}}]=${tp(r.PC,1)}\\cdot${tm(r.Vmean)}=${tm(r.EVp)}\\end{aligned}`);
+  eq("eq_a",`\\begin{aligned}A(\\rho)&=1+(A_{\\max}-1)\\tanh\\!\\Big(\\frac{\\alpha\\ln\\tilde\\rho}{A_{\\max}-1}\\Big),\\quad
+    \\tilde\\rho=\\operatorname{softmin}\\big(\\max(\\rho,0.35),\\,${RHO_MAX.toFixed(1)}\\big)\\\\[3pt]
+    P(W)&=\\operatorname{softmin}\\!\\Big(W\\cdot A(\\tfrac{\\text{ask}}{W})\\cdot(1+\\text{comp}),\\;\\operatorname{softmin}(\\text{ask},\\,${RHO_MAX.toFixed(1)}E[V\\mid X])\\cdot c_{\\text{ask}}\\Big),
+    \\quad W=E[V\\mid X]\\cdot R(p)\\\\[3pt]
+    E[P\\mid\\text{close}]&=\\frac{\\sum_p w_p\\,P(W_p)}{\\sum_p w_p},\\qquad w_p=1-\\text{pen}\\Big(\\frac{\\text{ask}-W_p}{W_p}\\Big)\\end{aligned}`);
+  eq("eq_as",`\\begin{aligned}&\\rho=${r.priceRatio.toFixed(2)},\\;\\alpha=${r.ALPHA}\\Rightarrow A=${r.anchorF.toFixed(3)}\\text{ at the point estimate},\\;c_{\\text{ask}}=${r.askCeil.toFixed(3)}\\\\[3pt]
+    &\\Rightarrow\\;\\text{median }${tm(r.Vreal)},\\;E[P\\mid\\text{close}]=\\boxed{${tm(r.Vmean)}},\\;${tp(r.capShare)}\\text{ of closings at the ceiling}\\\\[3pt]
+    &\\text{expected proceeds}=P_C\\!\\cdot\\!E[P\\mid\\text{close}]=${tp(r.PC,1)}\\cdot${tm(r.Vmean)}=${tm(r.EVp)}\\end{aligned}`);
 
   /* ---------- §5–7 closing ---------- */
   divBars($("pcbars"),Object.keys(r.contrib).map(k=>({n:k,v:r.contrib[k]}))
@@ -3708,16 +3770,16 @@ function render(){
   drawStars(r);
   $("buytbl").innerHTML=
     `<tr><th>Buyer type</th><th class="n">Engages</th><th class="n">Closes if engaged</th>
-      <th class="n">Synergy pool</th><th class="n">Value to buyer</th><th class="n">Expected value</th></tr>`
-    +r.buyers.map(b=>`<tr><td>${b.n}${b.EV===r.best.EV?' <span class="tag pick">best fit</span>':''}</td>
+      <th class="n">Synergy captured</th><th class="n">Value to buyer</th><th class="n">Expected value</th></tr>`
+    +r.buyers.map(b=>`<tr${b.sizeFit>0?"":' class="muted" title="Outside the deal sizes this buyer type looks at"'}><td>${b.n}${b===r.best?' <span class="tag pick">pursue first</span>':''}${b.sizeFit>0?"":' <span class="muted">· not at this size</span>'}</td>
       <td class="n">${pc(b.PE)}</td><td class="n">${pc(b.PCj)}</td>
       <td class="n ${b.S>0?"pos":"muted"}">${b.S>0?money(b.S):"—"}</td>
       <td class="n">${money(b.Vj)}${b===r.top?' <span class="tag">pays most</span>':''}</td>
       <td class="n">${money(b.EV)}</td></tr>`).join("");
   eq("eq_b",`\\begin{aligned}
-    V_j&=E\\cdot M\\big(1+(m_j-1)\\,\\text{fit}_j\\big)+\\varphi S_j,\\qquad
-    EV_j=P_{E,j}\\,P_{C,j}\\,V_j\\\\[2pt]
-    S_j&=\\underbrace{V_{\\text{combined}}-V_{\\text{buyer}}-V_{\\text{target}}}_{\\text{synergy}}
+    V_j&=E\\cdot M\\big(1+(m_j-1)\\,s_j\\big)+\\varphi S_j,\\qquad
+    EV_j=P_{E,j}\\,P_{C,j}\\,V_j,\\qquad s_j=\\text{size fit}\\in[0,1]\\\\[2pt]
+    S_j&=\\min\\!\\Big(\\sigma_j\\,S_{\\text{pool}}\\,M\\,s_j,\\;\\frac{0.40\\,E\\,M}{\\varphi}\\Big)\\quad\\text{(a buyer pays away at most 40\\% of value)}
     \\end{aligned}`);
   eq("eq_bs",`\\begin{aligned}
     &\\text{pursue first: ${tt(r.best.n)}}\\;\\big(EV=${tm(r.best.EV)}\\big)\\\\[2pt]
@@ -3726,7 +3788,7 @@ function render(){
     \\end{aligned}`);
   eq("eq_comp",`\\text{comp}=\\kappa\\ln\\frac{3+n_{\\text{engaged}}}{3+n_{\\text{typical}}}\\in[-0.08,\\,0.14],\\qquad P_{\\text{real}}\\propto(1+\\text{comp})`);
   eq("eq_comps",`n_{\\text{engaged}}\\approx${r.nEng.toFixed(1)}\\text{ of }${s.buyers}\\text{ contacted, against }${r.nEngRef.toFixed(1)}\\text{ typical}
-    \\;\\Rightarrow\\;${r.compPrem>=0?"+":"-"}${tp(Math.abs(r.compPrem),1)}=${r.compPrem>=0?"":"-"}${tm(Math.abs(r.V*r.compPrem))}\\text{ from competitive tension}`);
+    \\;\\Rightarrow\\;${r.compPrem>=0?"+":"-"}${tp(Math.abs(r.compPrem),1)}${r.askBinds?"\\;\\text{(no effect at the median: the ask binds)}":"="+(r.compPrem>=0?"":"-")+tm(Math.abs(r.V*r.anchorF*r.compPrem))+"\\text{ at the point estimate}"}`);
 
   /* ---------- §13 sensitivity ---------- */
   const sn=sensitivity(s);
@@ -3763,8 +3825,8 @@ function render(){
   })();
   eq("eq_d",`\\frac{\\partial y}{\\partial x_i}\\approx\\frac{y(x_i+h)-y(x_i-h)}{2h},
     \\;\\; y\\in\\{V,\\,P_C\\,E[P_{\\text{real}}]\\},
-    \\qquad \\text{reported}=\\frac{\\partial y}{\\partial x_i}\\cdot h
-    \\;\\text{\\small(the change over one step, not the raw slope)}`);
+    \\qquad \\text{reported}=\\frac{\\partial y}{\\partial x_i}\\cdot\\sigma_i
+    \\;\\text{\\small(the change over one peer standard deviation, }h=\\sigma_i/2\\text{)}`);
   (function(){
     const os=sn.filter(o=>o.oneSided).map(o=>o.n);
     const el=$("sensnote"); if(!el) return;
@@ -3784,15 +3846,18 @@ function render(){
   const it=interventionTable(s,r);
   /* only the changes that add value: a value-destroying one (a GM's salary can outweigh
      the transferability it buys) has no place in "what this business could be worth" */
-  let allKeys=it.filter(o=>o.k==="reprice"||o.dV>0).map(o=>o.k);
-  /* a change can add value alone and destroy it inside the bundle (a GM's salary keeps
-     growing while the quality percentile saturates), so drop any change whose removal
-     raises the bundle's value, and repeat until nothing more comes out */
-  for(let pass=0,changed=true;changed&&pass<12;pass++){ changed=false;
-    const vAll=model(applyAll(s,r,allKeys)).V;
+  /* Start from EVERY change and prune: a change can lower value alone yet raise it in
+     a bundle, or add value alone and destroy it inside the bundle (a GM's salary keeps
+     growing while the quality percentile saturates). Drop whichever change's removal
+     helps most - including one that contributes nothing, which would otherwise pad the
+     cost and the timeline - and repeat until every remaining change earns its place. */
+  let allKeys=INTERV.map(o=>o.k);
+  for(let pass=0;pass<INTERV.length;pass++){
+    const vAll=model(applyAll(s,r,allKeys)).V; let drop=null, bestV=vAll-Math.max(1,vAll*1e-6);
     for(const k of allKeys){ if(k==="reprice") continue;
-      const w=allKeys.filter(x=>x!==k);
-      if(model(applyAll(s,r,w)).V>vAll+1){ allKeys=w; changed=true; break; } } }
+      const v=model(applyAll(s,r,allKeys.filter(x=>x!==k))).V;
+      if(v>=bestV){ bestV=v; drop=k; } }
+    if(!drop) break; allKeys=allKeys.filter(x=>x!==drop); }
   const rAll=model(applyAll(s,r,allKeys)), cAll=costOf(s,allKeys);
   /* The value gap is in what the business SUPPORTS. It was measured on the
      anchored realised price, which the ask caps - so on an underpriced listing the
@@ -3808,18 +3873,18 @@ function render(){
   eq("eq_gs",`=${tm(rAll.V)}-${tm(r.V)}=\\boxed{${tm(gap)}}`);
   $("intbl").innerHTML=
     `<tr><th>Intervention</th><th class="n">Cost</th><th class="n">ΔValue</th><th class="n">ΔE[proceeds]</th>
-      <th class="n">ΔP<sub>C</sub></th><th class="n">Net days</th><th class="n">ROI</th></tr>`
+      <th class="n">Net days</th><th class="n">ROI</th></tr>`
     +it.map(o=>`<tr><td>${o.n}</td><td class="n">${o.c?money(o.c,0):'<span class="muted">no capital</span>'}</td>
-      <td class="n ${Math.abs(o.dV)<500?"muted":o.dV>=0?"pos":"neg"}">${Math.abs(o.dV)<500?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2)}</td>
+      <td class="n ${Math.abs(o.dV)<r.V*1e-4?"muted":o.dV>=0?"pos":"neg"}">${Math.abs(o.dV)<r.V*1e-4?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2)}</td>
       <td class="n ${o.dE>=0?"pos":"neg"}">${o.dE>=0?"+":"−"}${money(Math.abs(o.dE),2)}</td>
-      <td class="n ${o.dP>=0?"pos":"neg"}">${pp(o.dP)}</td>
       <td class="n ${o.dTnet<=0?"pos":"warn"}">${o.dTnet>=0?"+":"−"}${Math.abs(o.dTnet).toFixed(0)}</td>
-      <td class="n ${o.roi===null?"muted":o.roi>0?"pos":"neg"}">${o.roi===null?"—":(o.roi*100).toFixed(0)+"%"}</td></tr>`).join("");
+      <td class="n ${o.roi===null?"muted":o.roi>0?"pos":"neg"}">${o.roi===null?"—":(o.roi<0?"−":"")+Math.abs(o.roi*100).toFixed(0)+"%"}</td></tr>`).join("")
+    +`<tr><td colspan="6" class="muted" style="font-size:11.8px">Each change is measured on top of a reprice to ${s.rhoSell.toFixed(2)}× its new value, so the price gap, and with it the closing probability, is the same in every row; repricing itself is measured against today.</td></tr>`;
   eq("eq_r",`MV_i=\\frac{\\partial V}{\\partial a_i},\\qquad
-    ROI(a)=\\frac{E[\\text{proceeds}\\mid X+\\Delta X(a)]-E[\\text{proceeds}\\mid X]-C(a)}{C(a)}`);
+    ROI(a)=\\frac{E[\\text{proceeds}\\mid X+\\Delta X(a),\\text{repriced}]-E[\\text{proceeds}\\mid X,\\text{repriced}]-C(a)}{C(a)}`);
   const bi=it.find(o=>o.c>0);
   eq("eq_rs",`\\text{${tt(bi.n)}}:\\;\\frac{${tm(bi.dE,2)}-${tm(bi.c,2)}}{${tm(bi.c,2)}}
-    =${(bi.roi*100).toFixed(0)}\\%`);
+    =${bi.roi<0?"-":""}${Math.abs(bi.roi*100).toFixed(0)}\\%`);
 
   /* ---------- §18–19 optimizer ---------- */
   const rhoSell=s.rhoSell;                        // failed sale treated as a loss
@@ -3834,16 +3899,25 @@ function render(){
   $("o_list2").textContent=money(r.V*s.optRho);
   $("o_listp2").textContent=`${s.optRho.toFixed(2)}× value · ${pc(rKeep.PC)} to close · `
     +`${money(rKeep.EVp)} expected proceeds`;
-  $("o_listnote").textContent=Math.abs(s.optRho-rhoSell)<.03
+  /* "agree" only when the two figures on screen are the same figure */
+  const sameAsk=money(r.V*s.optRho)===money(r.V*rhoSell);
+  const Uat=x=>x.EVp+(1-x.PC)*s.theta*x.V;
+  const uGain=Uat(rKeep)-Uat(rSell), atEdge=s.optRho>RHO_MAX-.02;
+  $("o_listnote").textContent=sameAsk
     ? `With ${pc(s.theta)} of value retained if the sale fails, both objectives agree on the same price. `
       +`Delay cost does not move either: time to close depends on deal size, not on the ask.`
-    : `The gap between these is the real decision. The higher price trades `
-      +`${pp(rSell.PC-rKeep.PC).replace("+","")} of closing probability for a bigger cheque, and only `
-      +`pays off if the owner genuinely can walk away — it assumes a failed process still leaves them `
-      +`${pc(s.theta)} of the value. A seller who must exit should use the left-hand number.`;
+    : `The gap between these is the real decision. The higher price gives up `
+      +`${pp(rSell.PC-rKeep.PC).replace("+","")} of closing probability and `
+      +`${money(rSell.EVp-rKeep.EVp)} of expected proceeds for a bigger cheque if it does close, and only `
+      +`pays off if the owner genuinely can walk away: it assumes a failed process still leaves them `
+      +`${pc(s.theta)} of the value. `
+      +(uGain<Math.abs(Uat(rSell))*.01?`Even then it is worth only ${money(uGain)} more to this owner, so the two are close to a coin toss. `:"")
+      +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as "test the market", not as a measured optimum. `:"")
+      +`A seller who must exit should use the left-hand number.`;
   const best=optimize(s,r,s.budget,s.lamT,s.theta);
-  const card=(t,sel,sub,accent)=>{
-    const names=sel.keys.length?sel.keys.map(k=>INTERV.find(i=>i.k===k).n):["Do nothing — no combination clears its cost"];
+  const card=(t,sel,sub,accent,rho)=>{
+    const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:INTERV.find(i=>i.k===k).n)
+      :["Do nothing — no combination clears its cost"];
     return `<div><p class="grp-title" style="color:${accent}">${t}</p>
       <table><tr><th>Selected</th><th class="n">Cost</th></tr>
       ${names.map((n,i)=>`<tr><td>${n}</td><td class="n">${sel.keys[i]?money(INTERV.find(x=>x.k===sel.keys[i]).cost(s),0):"—"}</td></tr>`).join("")}
@@ -3856,13 +3930,16 @@ function render(){
         <div class="big"><div class="k">Total days</div><div class="n sm">${Math.round(sel.t+sel.days)}</div></div>
       </div><p class="note" style="margin-top:2px">${sub}</p></div>`;
   };
-  const sameSet=JSON.stringify(best.V.keys.slice().sort())===JSON.stringify(best.U.keys.slice().sort());
+  const uRho=best.U.keys.includes("reprice")?s.optRho:rhoSell;
+  const sameSet=JSON.stringify(best.V.keys.slice().sort())===JSON.stringify(best.U.keys.slice().sort())
+    &&(!best.U.keys.includes("reprice")||uRho.toFixed(2)===rhoSell.toFixed(2));
+  const dProc=best.U.proceeds-best.V.proceeds;
   $("optout").innerHTML=
     card("Maximizing expected proceeds",best.V,
-      `Lifts expected proceeds ${money(best.V.proceeds-r.EVp)} over today's ${money(r.EVp)}, before the ${money(best.V.c,0)} spent.`,"var(--signal)")
+      `Lifts expected proceeds ${money(best.V.proceeds-r.EVp)} over today's ${money(r.EVp)}, before the ${money(best.V.c,0)} spent.`,"var(--signal)",rhoSell)
    +card("Maximizing the seller's overall outcome",best.U,
       sameSet?`Both objectives select the same programme at this budget, delay cost and retained value.`
-      :`A different programme: it trades ${money(Math.abs(best.V.proceeds-best.U.proceeds))} of expected proceeds against elapsed time and the ${pc(s.theta)} of value retained if the process fails.`,"var(--mint)");
+      :`A different programme: it ${dProc<0?"gives up "+money(-dProc)+" of expected proceeds":"adds "+money(dProc)+" of expected proceeds at a higher cost"} in exchange for ${dProc<0?"less elapsed time and spend, or ":""}the ${pc(s.theta)} of value retained if the process fails.`,"var(--mint)",uRho);
   eq("eq_o",`\\max_{a}\\;\\Big(P_C(a)\\,E[P_{\\text{real}}(a)]-C(a)\\Big)\\quad\\text{s.t.}\\quad C(a)\\le B,
     \\qquad \\mathcal{L}=P_C(a)\\,E[P_{\\text{real}}(a)]-C(a)-\\lambda\\big(C(a)-B\\big)`);
   eq("eq_os",`B=${tm(s.budget,0)}:\\;\\text{searched }2^{${INTERV.length}}=${tn(1<<INTERV.length)}
@@ -3894,16 +3971,16 @@ function render(){
      <div class="pct">38th–62nd percentile</div>
      <div class="why">A competently run process with the business broadly as it stands today.</div></div>
     <div><div class="lab">Bull</div><div class="rng" style="color:var(--mint)">${money(sc.bull[0])}–${money(sc.bull[1])}</div>
-     <div class="pct">80th–94th percentile</div>
+     <div class="pct">80th–94th percentile${r.capShare>=.06?" · "+pc(r.capShare)+" of closings at the ask ceiling":""}</div>
      <div class="why">The right strategic buyer engages in a competitive process and the diligence holds.</div></div>`;
-  eq("eq_s",`V_{p}=\\operatorname{softmin}\\big(\\tilde V_{\\text{real}}\\cdot R(p),\\;\\text{ceiling}\\big)\\quad\\text{(}R=\\text{measured out-of-fold price quantiles, interpolated in }\\Phi^{-1}\\text{)}`);
+  eq("eq_s",`P_{p}=\\text{quantile}_p\\big\\{P(W)\\;\\big|\\;\\text{close}\\big\\},\\quad W=E[V\\mid X]\\cdot R\\quad\\text{(}R=\\text{measured out-of-fold price spread, 48 equal-probability slices)}`);
   eq("eq_ss",`R(0.10)=${MODELS.value.fan_quantiles.p10.toFixed(2)},\\;R(0.50)=1.00,\\;R(0.90)=${MODELS.value.fan_quantiles.p90.toFixed(2)}
-    \\;\\Rightarrow\\; V_{0.08}=${tm(sc.bear[0])},\\;V_{0.50}=${tm(r.q(.5))},\\;V_{0.94}=${tm(sc.bull[1])}`);
+    \\;\\Rightarrow\\; P_{0.08}=${tm(sc.bear[0])},\\;P_{0.50}=${tm(r.q(.5))},\\;P_{0.94}=${tm(sc.bull[1])}`);
   eq("eq_c",`c=0.34\\,\\text{comps}+0.30\\min\\!\\big(1,\\tfrac{\\text{yrs}}{8}\\big)+0.22\\,\\text{reporting}
     +0.14\\max\\!\\big(0,1-\\tfrac{\\overline{|z|}}{2.2}\\big)`);
   /* c no longer drives the interval - sigma is the fitted BIZCOMPS residual
      band. Show them side by side rather than implying one causes the other. */
-  eq("eq_cs",`c=${r.conf.toFixed(3)}\\;(\\text{${tt(r.confLabel)}})\\qquad \\sigma_{\\text{implied}}=${r.sigma.toFixed(3)}\\;\\Rightarrow\\;\\text{80\\% interval }[\\,${tm(r.q(.10))},\\;${tm(r.q(.90))}\\,]`);
+  eq("eq_cs",`c=${r.conf.toFixed(3)}\\;(\\text{${tt(r.confLabel)}})\\qquad \\text{price if it closes, 80\\% interval }[\\,${tm(r.q(.10))},\\;${tm(r.q(.90))}\\,]`);
 
   /* ---------- methodology ---------- */
   eq("eq_la",`t_{\\text{information}}\\le t_{\\text{prediction}}`);
@@ -4023,7 +4100,7 @@ function renderData(){
     <div class="chk"><div>Median absolute error<div class="muted" style="font-size:11.8px">dollar space, out of sample</div></div>
       <span class="n" style="color:var(--amber)">${(V.median_abs_pct_error*100).toFixed(1)}%</span><span class="n muted">${(V.within_25pct*100).toFixed(0)}% within &plusmn;25%</span><span class="st free">wide</span></div>
     <div class="chk"><div>Residual spread driving the scenario bands<div class="muted" style="font-size:11.8px">15 measured out-of-fold quantiles; replaced a judgement value of 0.18&ndash;0.34</div></div>
-      <span class="n" style="color:#5ee0a8">${SIGMA_DISPLAY.toFixed(3)}</span><span class="n muted">p10/p90 sigma</span><span class="st pub">fitted</span></div>
+      <span class="n" style="color:#5ee0a8">${SIGMA_DISPLAY.toFixed(3)}</span><span class="n muted">lognormal sigma implied by p10/p90 (display only)</span><span class="st pub">fitted</span></div>
     <p class="note">The 80% interval spans ${V.fan_quantiles.p10.toFixed(2)}&times;&ndash;${V.fan_quantiles.p90.toFixed(2)}&times; the point estimate. That is the honest
     width of small-business valuation; a single number implies precision this data cannot support.</p>
     </div>
@@ -4284,15 +4361,20 @@ function renderData(){
     </div>
 
     <div class="panel" style="margin-top:14px;border-color:rgba(255,142,122,.34)">
-    <p class="grp-title" style="color:#ff8e7a">The quality sliders move less than they appear to</p>
-    <p class="note">Owner dependence, management depth, recurring revenue, customer concentration,
-    reporting quality and years of history feed the <b>score, the category bars, the buyer mix and the
-    interventions</b>. Drag every one of them from worst to best and the model value, the implied
-    multiple, the survival risk, the closing probability and the time to close <b>do not move at all</b>.</p>
-    <p class="note" style="margin-bottom:0">That is deliberate and it is the honest position. Under the
-    old judgement build those sliders swung the multiple from 2.38&times; to 3.02&times; &mdash; a 27%
-    change in the headline valuation &mdash; on coefficients nobody had estimated. They will start
-    moving the value again the moment there is a dataset that prices them, and that dataset is
+    <p class="grp-title" style="color:#ff8e7a">What the quality sliders move, and what they do not</p>
+    <p class="note">The nine quality inputs place the business inside the <b>measured</b> spread of
+    closed prices around the fitted estimate (half of sales land between
+    ${V.quality_band.lo.toFixed(2)}&times; and ${V.quality_band.hi.toFixed(2)}&times; of it). So they move the model value
+    and the multiple, and through the value they move the price gap, the closing probability, the
+    expected proceeds and the loan size behind the survival risk. They do <b>not</b> move the size band:
+    the base close rate, the time to close and the cash share are read at the fitted value before
+    quality positioning, so improving the business never pushes it into a slower band. Years of clean
+    history feeds only the confidence figure and the category bars.</p>
+    <p class="note" style="margin-bottom:0">The placement inside the spread is <b>judgment</b>: the nine
+    dimensions are weighted equally because no dataset we hold prices them against each other. Under the
+    old judgement build the same sliders swung the multiple from 2.38&times; to 3.02&times; on coefficients
+    nobody had estimated; here they can only move the value within a spread that was measured. They will
+    be priced properly the moment there is a dataset that records them, and that dataset is
     Vince&rsquo;s own closed and failed deals.</p>
     </div></section>`;
 

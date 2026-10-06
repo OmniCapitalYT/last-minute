@@ -17,7 +17,7 @@ function sample(){
     grw:-.25+rnd()*.95, gm:.12+rnd()*.8, rec:rnd(), cc:.01+rnd()*.69, ret:.45+rnd()*.54, plt:.05+rnd()*.9,
     own:pick([.95,.72,.42,.14]), mgt:pick([.08,.36,.66,.92]), fin:pick([.14,.45,.74,.96]),
     yrs:1+Math.floor(rnd()*12), buyers:5+Math.floor(rnd()*596), budget:rnd()<.15?0:rev*.15*rnd(),
-    lamT:Math.floor(rnd()*81)*50, theta:rnd(), chan:"broker", rate:10.5};
+    lamT:Math.floor(rnd()*81)*50, theta:rnd(), rate:10.5};
   s.jobs=Math.max(2,Math.round(s.rev/150000));
   return s;
 }
@@ -42,7 +42,8 @@ for(let i=0;i<N;i++){
   ok(qs.every((v,j)=>j===0||v>=qs[j-1]*(1-1e-9)),"quantiles monotone",ctx(s));
   ok(Math.abs(r.q(.5)/r.Vreal-1)<1e-9,"q(.5) = median",ctx(s));
   ok(Math.abs(r.EVp/(r.PC*r.Vmean)-1)<1e-9,"EVp = P_C x mean",ctx(s));
-  ok(r.Vmean<=r.Vreal*A.MODELS.value.mean_over_median*(1+1e-6),"mean within uncapped ratio",ctx(s));
+  ok(r.Vmean>=r.q(.02)*(1-1e-9)&&r.Vmean<=r.ceil*(1+1e-9),"mean inside the price distribution",ctx(s));
+  ok(r.capShare>=0&&r.capShare<=1,"ceiling share in [0,1]",ctx(s));
   /* 5. scores in range */
   const sc=A.omniScore(r); ok(sc>=1&&sc<=99&&Number.isInteger(sc),"score in 1..99",ctx(s,{sc}));
 
@@ -66,7 +67,9 @@ for(let i=0;i<N;i++){
   /* 8. the proceeds optimum beats the entered ask, and does not depend on theta */
   if(i%5===0){ const rs=A.bestRatio(s,0,s.lamT), ro=A.model({...s,ask:V0*rs});
     ok(ro.EVp>=r.EVp*(1-1e-6),"proceeds optimum at least as good as the entered ask",ctx(s,{rs}));
-    ok(Math.abs(A.bestRatio({...s,theta:.9},0,s.lamT)-rs)<1e-9,"proceeds optimum independent of theta",ctx(s)); }
+    ok(Math.abs(A.bestRatio({...s,theta:.9},0,s.lamT)-rs)<1e-9,"proceeds optimum independent of theta",ctx(s));
+    const ru=A.bestRatio(s,s.theta,s.lamT);
+    ok(ru<=A.RHO_MAX+1e-9&&rs<=A.RHO_MAX+1e-9,"recommended asks stay where the closing data reach",ctx(s,{rs,ru})); }
 }
 
 const names=Object.keys(fails);

@@ -6,7 +6,7 @@ const near=(a,b,tol)=>Math.abs(a-b)<=tol;
 
 const EX={ind:"medical",rev:10**6.778,ern:10**6.161,ask:10**6.508,grw:.14,gm:.64,rec:.72,cc:.18,
   ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,
-  budget:10**(4+2.778*.36),lamT:900,theta:.75,chan:"broker",rate:10.5};
+  budget:10**(4+2.778*.36),lamT:900,theta:.75,rate:10.5};
 EX.jobs=Math.max(2,Math.round(EX.rev/150000));
 const finiteDeep=(o,seen=new Set())=>{
   if(typeof o==="number") return isFinite(o);
@@ -15,7 +15,7 @@ const finiteDeep=(o,seen=new Set())=>{
 };
 const median=(ind,ern)=>{
   const I=A.IND[ind],RF=A.sizeRefs(ern),rev=ern/(I.em*RF.emk);
-  return {ind,ern,rev,yrs:6,buyers:I.buyers,chan:"broker",rate:10.5,franchise:false,st:null,
+  return {ind,ern,rev,yrs:6,buyers:I.buyers,rate:10.5,franchise:false,st:null,
     jobs:Math.max(2,Math.round(rev/150000)),rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,
     gm:I.gm,ret:I.ret,fin:RF.fin,plt:.40};
 };
@@ -83,8 +83,13 @@ for(const ind of Object.keys(A.IND)){
   ok(near(r.EVp,r.PC*r.Vmean,1e-6),"EVp = P_C x mean price");
   for(const p of [.5,.8,.94,.99]) ok(r.q(p)<=r.inputs.ask*r.askCeil*(1+1e-9),`quantile ${p} within the ask ceiling`);
   ok(near(r.q(.5),r.Vreal,1e-6),"q(.5) is the median realised price");
-  ok(near(A.fanMeanKept(1e6),1,1e-6),"an uncapped fan keeps the measured mean-to-median ratio");
-  ok(A.fanMeanKept(1)<A.fanMeanKept(1.5),"a tighter cap keeps less of the mean"); }
+  ok(r.Vmean<=r.ceil*(1+1e-9)&&r.Vmean>=r.q(.02),"mean price inside the distribution"); }
+/* 8b. priced at value, the closed price lands where IBBA measures it (85-102% of ask),
+   and a bull case is a real outcome, not the ceiling repeated */
+for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6]){
+  const t=median(ind,ern), V=A.model({...t,ask:1}).V, r=A.model({...t,ask:V});
+  ok(r.Vmean/V>.80&&r.Vmean/V<=1.03,`${ind} ${ern}: E[price|close]/ask ${(r.Vmean/V).toFixed(3)} at the value`);
+  ok(r.q(.80)<r.q(.94)*(1-1e-3)||r.capShare>.2,`${ind} ${ern}: bull case spread`); }
 
 /* 9. interventions compose independently of order */
 { const r0=A.model(EX), ks=["sops","gm","qoe","margin","divers"];
