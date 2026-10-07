@@ -1,0 +1,155 @@
+report_file,period,band,first_time,serial,strategic,pe,other,individual,note
+ibba-market-pulse__MARKETPULSE-Q2.txt,2012Q2,<500K,58,33,,,,91,"text: 91% individuals; 58% first-time and 33% previous owners (58+33=91 so read as shares of all buyers). Text also gives $1MM-$5MM combined: ~50% individual, ~40% company, 10% PE (non-standard band, not tabulated)"
+ibba-market-pulse__Q2-Market-Pulse-Report.txt,2012Q2,2M-5M,,,,,,50,from Q2 2013 report: individuals (incl. past owners) were 50% of $2-5MM deals in Q2 2012
+ibba-market-pulse__MARKETPULSE-Q2.txt,2012Q2,5M-50M,0,0,31,62,,0,"'$5MM-plus'; text: no individual buyers, 31% other companies, 62% PE"
+ibba-market-pulse__MARKETPULSE-Q3.txt,2012Q3,MainStreet,,,,,,75,text: Main Street buyers 75% individuals; 60% OF INDIVIDUALS were first-time (~45% of all) - first_time left blank
+ibba-market-pulse__MARKETPULSE-Q3.txt,2012Q3,5M-50M,,,,68,,,'$5million and above'; PE nearly all add-ons (one platform)
+ibba-market-pulse__IBBA-MARKETPULSE-Q4.txt,2012Q4,<500K,55,31,,,,86,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q4.txt,2012Q4,500K-1M,40,43,,,,83,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q4.txt,2012Q4,1M-2M,,34,41,,,,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q4.txt,2012Q4,2M-5M,,24,48,,,,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q4.txt,2012Q4,5M-50M,,16,56,20,,,'$5MM+'; top-2 table + text says prior owners 3rd at 16%
+ibba-market-pulse__IBBA-MARKETPULSE-Q1-13.txt,2013Q1,<500K,47,43,,,,90,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q1-13.txt,2013Q1,500K-1M,38,31,,,,69,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q1-13.txt,2013Q1,1M-2M,36,,21,,,,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-MARKETPULSE-Q1-13.txt,2013Q1,2M-5M,40,,,40,,,top-2 list; unlisted types censored; pe = PE add-on only (platform not reported)
+ibba-market-pulse__IBBA-MARKETPULSE-Q1-13.txt,2013Q1,5M-50M,,,40,50,,,"text: existing 40, PE platform 30, PE add-on 20 (pe=50)"
+ibba-market-pulse__Q2-Market-Pulse-Report.txt,2013Q2,<500K,55,33,,,,88,"top-2 list; unlisted types censored; #1 labelled 'Individual' vs #2 'Past Bus. Owner' - first_time is an interpretation [chart-mapped (excluded from summary): first_time,individual]"
+ibba-market-pulse__Q2-Market-Pulse-Report.txt,2013Q2,500K-1M,,29,36,,,,top-2 list; unlisted types censored
+ibba-market-pulse__Q2-Market-Pulse-Report.txt,2013Q2,1M-2M,,31,42,,,,top-2 list; unlisted types censored
+ibba-market-pulse__Q2-Market-Pulse-Report.txt,2013Q2,2M-5M,,,60,,,26,"existing 60%, #2 a '3 way tie'; text: individuals (incl. past owners) 26%"
+ibba-market-pulse__Q2-Market-Pulse-Report.txt,2013Q2,5M-50M,,,50,21,,,top-2 list; unlisted types censored; pe = PE platform only
+ibba-market-pulse__2013-Q4-MARKETPULSE.txt,2013Q4,<500K,,,15,,,85,top-2 list; unlisted types censored; individual not split first/serial
+ibba-market-pulse__2013-Q4-MARKETPULSE.txt,2013Q4,500K-1M,,,30,,,70,top-2 list; unlisted types censored; individual not split first/serial
+ibba-market-pulse__2013-Q4-MARKETPULSE.txt,2013Q4,1M-2M,,,18,,,73,top-2 list; unlisted types censored; individual not split first/serial
+ibba-market-pulse__2013-Q4-MARKETPULSE.txt,2013Q4,2M-5M,,,41,,,47,top-2 list; unlisted types censored; individual not split first/serial
+ibba-market-pulse__2013-Q4-MARKETPULSE.txt,2013Q4,5M-50M,,,35,60,,,top-2 list; unlisted types censored
+ibba-market-pulse__2014Q2MARKETPULSE.txt,2014Q2,5M-50M,,,,50,,,text only (Figure 8 not extracted): PE 'dominated 50% of purchases' in $5-50MM
+ibba-market-pulse__2014marketpulse-Q3.txt,2014Q3,<500K,47.5,39,13.5,,,86.5,"Figure 8 text table with blank cells dropped; 3 values (sum 100) mapped left-to-right [chart-mapped (excluded from summary): first_time,individual,serial,strategic]"
+ibba-market-pulse__2014marketpulse-Q3.txt,2014Q3,500K-1M,32.3,41.9,22.6,,,74.2,"Figure 8 text table with blank cells dropped (sum 96.8, one ~3.2% cell lost); mapped left-to-right [chart-mapped (excluded from summary): first_time,individual,serial,strategic]"
+ibba-market-pulse__2014marketpulse-Q3.txt,2014Q3,1M-2M,12.9,51.6,19.4,16.2,,64.5,all 5 columns present: PE platform 6.5 + add-on 9.7
+ibba-market-pulse__2014marketpulse-Q3.txt,2014Q3,2M-5M,,,,,,,"UNMAPPED: 4 of 5 columns present (22.2, 11.1, 44.4, 22.2); column alignment lost"
+ibba-market-pulse__2014marketpulse-Q3.txt,2014Q3,5M-50M,,,,,,,"UNMAPPED: 4 of 5 columns present (10, 40, 30, 20); column alignment lost"
+ibba-market-pulse__IBBAQ12015MarketPulseExecutiveSummary.txt,2015Q1,<500K,46,31,24,,,77,"full Main Street table (3 types listed, sum 101)"
+ibba-market-pulse__IBBAQ12015MarketPulseExecutiveSummary.txt,2015Q1,500K-1M,50,23,27,,,73,"full Main Street table (3 types listed, sum 100)"
+ibba-market-pulse__IBBAQ12015MarketPulseExecutiveSummary.txt,2015Q1,1M-2M,40,36,20,,,76,"full Main Street table (3 types listed, sum 96)"
+ibba-market-pulse__IBBAQ12015MarketPulseExecutiveSummary.txt,2015Q1,2M-5M,12.5,37.5,25,12.5,,50,"top list: serial 37.5, existing 25, PE platform 12.5 & 1st-time 12.5 tie (sum 87.5); pe = platform only"
+ibba-market-pulse__IBBAQ12015MarketPulseExecutiveSummary.txt,2015Q1,5M-50M,0,0,25,50,25,0,"PE add-on 50, existing 25, other 25 (sum 100 -> individuals implied 0)"
+ibba-market-pulse__IBBA-MarketPulse-Q2-2015-ExecutiveSummary.txt,2015Q2,<500K,57,23,19,,,80,full Main Street table (sum 99)
+ibba-market-pulse__IBBA-MarketPulse-Q2-2015-ExecutiveSummary.txt,2015Q2,500K-1M,49,23,28,,,72,full Main Street table (sum 100)
+ibba-market-pulse__IBBA-MarketPulse-Q2-2015-ExecutiveSummary.txt,2015Q2,1M-2M,44,34,19,,,78,full Main Street table (sum 97)
+ibba-market-pulse__IBBA-MarketPulse-Q2-2015-ExecutiveSummary.txt,2015Q2,2M-5M,20,24,36,,,44,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA-MarketPulse-Q2-2015-ExecutiveSummary.txt,2015Q2,5M-50M,,,38,50,,,"top-3 list; unlisted types censored: existing 38, PE platform 38, PE add-on 12 (pe=50)"
+ibba-market-pulse__Market-Pulse-Q4-2015-Executive-Summary.txt,2015Q4,<500K,53,28,17,0,2,81,"text: first-time largest, PE not active (0). Pie numbers 53/28/17/2 garbled; serial/strategic/other mapped by label order [chart-mapped (excluded from summary): individual,other,serial,strategic]"
+ibba-market-pulse__Market-Pulse-Q4-2015-Executive-Summary.txt,2015Q4,5M-50M,7,7,33,48,4,14,"text: individuals 14% (7 first,7 repeat), PE largest (48). Pie numbers 33/4 mapped to existing/other by label order [chart-mapped (excluded from summary): other,strategic]"
+ibba-market-pulse__Market-Pulse-Executive-Summary-Q1-2016.txt,2016Q1,<500K,43,40,14,,,83,"text: first-time largest. Pie 43/40/14/3 garbled; serial/strategic by label order; 3% is PE or other (unassigned) [chart-mapped (excluded from summary): individual,serial,strategic]"
+ibba-market-pulse__Market-Pulse-Executive-Summary-Q1-2016.txt,2016Q1,5M-50M,10,5,33,43,10,15,"text: individuals 15% (10 first, 5 repeat), PE largest (43). Pie 33/10 mapped to existing/other by label order [chart-mapped (excluded from summary): other,strategic]"
+ibba-market-pulse__Q2-2016-Market-Pulse-Executive-Summary.txt,2016Q2,<500K,42,40,12,,,82,"text: first-time largest. Pie 42/40/12/4/2 garbled; serial/strategic by label order; 4/2 = PE/other (unassigned) [chart-mapped (excluded from summary): individual,serial,strategic]"
+ibba-market-pulse__Q2-2016-Market-Pulse-Executive-Summary.txt,2016Q2,5M-50M,13,4,30,39,13,17,"text: individuals 17% (13 first, 4 repeat); PE 22 platform + 17 add-on labelled on pie; 30/13 mapped to existing/other [chart-mapped (excluded from summary): other,strategic]"
+ibba-market-pulse__Q3-2016-Market-Pulse-Executive-Summary.txt,2016Q3,<500K,42,40,12,,,82,"first-time largest (42). Pie 40/12/2/4 garbled; serial/strategic by label order; 2/4 = PE/other (unassigned) [chart-mapped (excluded from summary): individual,serial,strategic]"
+ibba-market-pulse__Q3-2016-Market-Pulse-Executive-Summary.txt,2016Q3,5M-50M,0,12.5,25,50,12.5,12.5,"text: individuals 12.5% all repeat owners, no first-time; PE 'double' existing -> 50/25 pair on pie; other = remainder 12.5"
+ibba-market-pulse__IBBA_Q4_2016-Executive-Summary.txt,2016ANN,MainStreet,41,35,20,2,3,76,"full-year 2016. text: 20% existing, individuals = 41 first + 35 serial; pie 76/20/2/3, PE/other by label order [chart-mapped (excluded from summary): other,pe]"
+ibba-market-pulse__IBBA_Q4_2016-Executive-Summary.txt,2016ANN,LMM,18,15,35,23,9,33,"full-year 2016. text: individuals 18 first + 15 serial; PE 13 platform + 10 add-on; 35/9 mapped existing/other by magnitude [chart-mapped (excluded from summary): other,strategic]"
+ibba-market-pulse__IBBA-Q1-2017-Executive-Summary.txt,2017Q1,<500K,50,34,,,,84,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA-Q1-2017-Executive-Summary.txt,2017Q1,500K-1M,46,22,26,,,68,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA-Q1-2017-Executive-Summary.txt,2017Q1,1M-2M,38,32,26,,,70,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA-Q1-2017-Executive-Summary.txt,2017Q1,2M-5M,24,,29,24,,,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA-Q1-2017-Executive-Summary.txt,2017Q1,5M-50M,,,38,38,,,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA_Q2_2017-v2.txt,2017Q2,<500K,59,26,15,1,,85,"text: first-time 59%. Pie 26/15/1 mapped to experienced/existing/PE-platform by label order [chart-mapped (excluded from summary): individual,pe,serial,strategic]"
+ibba-market-pulse__IBBA_Q2_2017-v2.txt,2017Q2,5M-50M,13,13,27,40,,26,"text: PE 40% largest, individuals 26% half repeat. Pie 20/20/13/13/27 -> PE platform 20 + add-on 20, existing 27 (sum 93)"
+ibba-market-pulse__IBBA_Q3_2017_1127-FINAL.txt,2017Q3,MainStreet,48,33,18,1,,81,"text: first-time 48%. Pie 33/18/1 mapped by label order [chart-mapped (excluded from summary): individual,pe,serial,strategic]"
+ibba-market-pulse__IBBA_Q3_2017_1127-FINAL.txt,2017Q3,LMM,,24,51,,,,"text: existing 51, experienced owners 24. Remaining pie values 17/5/2 = first-time / PE platform / PE add-on (unassigned)"
+ibba-market-pulse__IBBA_Q4_2017_0222-2.txt,2017ANN,MainStreet,,,28,,1,71,full-year 2017; pie labels Individual/Existing/Other 71/28/1; 'minimal PE'
+ibba-market-pulse__IBBA_Q4_2017_0222-2.txt,2017ANN,LMM,,,38,18,3,40,"full-year 2017; text PE 18%; pie 38/40 mapped existing/individual by label order, other 3 remainder [chart-mapped (excluded from summary): individual,other,strategic]"
+ibba-market-pulse__IBBA_Q1_2018_final01.txt,2018Q1,<500K,50,31,17,,,81,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2018_final01.txt,2018Q1,500K-1M,32,37,24,,,69,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2018_final01.txt,2018Q1,1M-2M,24,27,42,,,51,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2018_final01.txt,2018Q1,2M-5M,25,20,40,,,45,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2018_final01.txt,2018Q1,5M-50M,,,37,58,,,"top-3 list; unlisted types censored: existing 37, PE platform 32, PE add-on 26 (pe=58)"
+ibba-market-pulse__2018-q2-ibba.txt,2018Q2,<500K,49,32,17,,,81,top-3 list; unlisted types censored
+ibba-market-pulse__2018-q2-ibba.txt,2018Q2,500K-1M,51,29,15,,,80,top-3 list; unlisted types censored
+ibba-market-pulse__2018-q2-ibba.txt,2018Q2,1M-2M,32,29,32,,,61,top-3 list; unlisted types censored
+ibba-market-pulse__2018-q2-ibba.txt,2018Q2,2M-5M,30,17,33,,,47,top-3 list; unlisted types censored
+ibba-market-pulse__2018-q2-ibba.txt,2018Q2,5M-50M,13,,50,26,,,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q3_2018-Executive-Report.txt,2018Q3,<500K,50,36,13,,,86,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q3_2018-Executive-Report.txt,2018Q3,500K-1M,33,42,23,,,75,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q3_2018-Executive-Report.txt,2018Q3,1M-2M,32,29,32,,,61,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q3_2018-Executive-Report.txt,2018Q3,2M-5M,26,37,30,,,63,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q3_2018-Executive-Report.txt,2018Q3,5M-50M,,,20,53,,,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA_Q4_2018_Final_Executive-Summary.txt,2018ANN,MainStreet,,,20,1,1,78,full-year 2018; pie 78/20/1/1 (text says existing 22%)
+ibba-market-pulse__IBBA_Q4_2018_Final_Executive-Summary.txt,2018ANN,LMM,,,34,25,6,34,full-year 2018; pie 34/34/25/6; text PE 25%
+ibba-market-pulse__2019-ibba-q1.txt,2019Q1,<500K,49,30,19,,,79,top-3 list; unlisted types censored
+ibba-market-pulse__2019-ibba-q1.txt,2019Q1,500K-1M,42,19,33,,,61,top-3 list; unlisted types censored
+ibba-market-pulse__2019-ibba-q1.txt,2019Q1,1M-2M,21,34,34,,,55,top-3 list; unlisted types censored
+ibba-market-pulse__2019-ibba-q1.txt,2019Q1,2M-5M,25,15,45,,,40,top-3 list; unlisted types censored
+ibba-market-pulse__2019-ibba-q1.txt,2019Q1,5M-50M,,,36,48,,,"top-3 list; unlisted types censored: existing 36, PE platform 19, PE add-on 29 (pe=48)"
+ibba-market-pulse__Market-Pulse_Q2_2019_ExecutiveSummary.txt,2019Q2,<500K,48,32,18,,,80,top-3 list; unlisted types censored
+ibba-market-pulse__Market-Pulse_Q2_2019_ExecutiveSummary.txt,2019Q2,500K-1M,27,49,20,,,76,top-3 list; unlisted types censored
+ibba-market-pulse__Market-Pulse_Q2_2019_ExecutiveSummary.txt,2019Q2,1M-2M,31,31,29,,,62,top-3 list; unlisted types censored
+ibba-market-pulse__Market-Pulse_Q2_2019_ExecutiveSummary.txt,2019Q2,2M-5M,31,38,31,,,69,top-3 list; unlisted types censored
+ibba-market-pulse__Market-Pulse_Q2_2019_ExecutiveSummary.txt,2019Q2,5M-50M,,8,54,31,,,top-3 list; unlisted types censored
+ibba-market-pulse__MarketPulse_Q3_2019_ExecutiveSummary.txt,2019Q3,<500K,46,34,20,,,80,top-3 list; unlisted types censored
+ibba-market-pulse__MarketPulse_Q3_2019_ExecutiveSummary.txt,2019Q3,500K-1M,43,28,30,,,71,top-3 list; unlisted types censored
+ibba-market-pulse__MarketPulse_Q3_2019_ExecutiveSummary.txt,2019Q3,1M-2M,44,26,21,,,70,top-3 list; unlisted types censored
+ibba-market-pulse__MarketPulse_Q3_2019_ExecutiveSummary.txt,2019Q3,2M-5M,47,,41,,,,top-2 list; unlisted types censored
+ibba-market-pulse__MarketPulse_Q3_2019_ExecutiveSummary.txt,2019Q3,5M-50M,,,44,44,,,top-2 list; unlisted types censored
+ibba-market-pulse__MarketPulse-report-Q4_2019.txt,2019ANN,MainStreet,43,31,23,,1,74,full-year 2019; PE platform 1% + PE add-on garbled ('12%' impossible: other parts sum 99) -> pe blank
+ibba-market-pulse__MarketPulse-report-Q4_2019.txt,2019ANN,LMM,18,13,40,25,4,31,full-year 2019; PE platform 13 + add-on 12; matches Q4-2022 4-yr series
+ibba-market-pulse__marketpulse-q1-2020-summary.txt,2020Q1,<500K,51,25,22,,,76,top-3 list; unlisted types censored
+ibba-market-pulse__marketpulse-q1-2020-summary.txt,2020Q1,500K-1M,48,22,28,,,70,top-3 list; unlisted types censored
+ibba-market-pulse__marketpulse-q1-2020-summary.txt,2020Q1,1M-2M,40,33,,,,73,top-2 list; unlisted types censored
+ibba-market-pulse__marketpulse-q1-2020-summary.txt,2020Q1,2M-5M,37,,37,,,,top-2 list; unlisted types censored
+ibba-market-pulse__marketpulse-q1-2020-summary.txt,2020Q1,5M-50M,,20,40,33,,,top-3 list; unlisted types censored; pe = PE add-on only
+ibba-market-pulse__marketpulse-q2-2020-summary.txt,2020Q2,<500K,45,30,20,,,75,top-3 list; unlisted types censored
+ibba-market-pulse__marketpulse-q2-2020-summary.txt,2020Q2,500K-1M,42,29,29,,,71,top-3 list; unlisted types censored
+ibba-market-pulse__marketpulse-q2-2020-summary.txt,2020Q2,1M-2M,40,33,,,,73,top-2 list; unlisted types censored; identical to Q1 2020 text (possible copy-over)
+ibba-market-pulse__marketpulse-q2-2020-summary.txt,2020Q2,2M-5M,40,27,,,,67,top-2 list; unlisted types censored
+ibba-market-pulse__marketpulse-q2-2020-summary.txt,2020Q2,5M-50M,,,13,67,,,"top-3 list; unlisted types censored: PE platform 40, add-on 27, existing 13"
+ibba-market-pulse__Market-Pulse-Q4-2020-ER.txt,2020ANN,MainStreet,44,29,24,1,2,73,full-year 2020 pie (PE = add-on 1)
+ibba-market-pulse__Market-Pulse-Q4-2020-ER.txt,2020ANN,LMM,22,18,33,22,4,40,full-year 2020 pie (PE platform 11 + add-on 11)
+ibba-market-pulse__IBBA_Q1_2021_Final_Executive-Summary.txt,2021Q1,<500K,39,34,25,,,73,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2021_Final_Executive-Summary.txt,2021Q1,500K-1M,37,27,30,,,64,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2021_Final_Executive-Summary.txt,2021Q1,1M-2M,27,29,,,,56,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2021_Final_Executive-Summary.txt,2021Q1,2M-5M,36,28,24,,,64,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2021_Final_Executive-Summary.txt,2021Q1,5M-50M,,,20,53,,,"top-3 list; unlisted types censored: PE platform 33, existing 20, PE add-on 20"
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2021Q2,<500K,50,28,22,0,1,78,"full distribution (Q2 2022 full report, prior-year column); exec summary Q2 2021 top-3 agrees"
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2021Q2,500K-1M,39,28,33,0,0,67,"full distribution (Q2 2022 full report, prior-year column)"
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2021Q2,1M-2M,34,31,31,3,,65,"full distribution (Q2 2022 full report, prior-year column); no 'other' bar"
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2021Q2,2M-5M,12,24,44,20,0,36,"full distribution (Q2 2022 full report, prior-year column)"
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2021Q2,5M-50M,21,7,43,28,0,28,"full distribution (Q2 2022 full report, prior-year column): PE platform 14 + add-on 14"
+ibba-market-pulse__ibba-q4-2022-market-pulse-execsum.txt,2021ANN,MainStreet,40,31,26,,,74,full-year 2021 from Q4-2022 4-yr series; Q4-2021 report text says individuals 74% (40+31) - internally inconsistent
+ibba-market-pulse__ibba-q4-2022-market-pulse-execsum.txt,2021ANN,LMM,17,17,40,24,,34,full-year 2021 from Q4-2022 4-yr series; Q4-2021 report text: existing 40%
+ibba-market-pulse__IBBA_Q1_2022_Executive-Report.txt,2022Q1,<500K,40,44,,,,84,top-2 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2022_Executive-Report.txt,2022Q1,500K-1M,41,32,24,,,73,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2022_Executive-Report.txt,2022Q1,1M-2M,34,20,40,,,54,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2022_Executive-Report.txt,2022Q1,2M-5M,19,19,44,,,38,top-3 list; unlisted types censored
+ibba-market-pulse__IBBA_Q1_2022_Executive-Report.txt,2022Q1,5M-50M,15,,45,25,,,top-3 list; unlisted types censored; pe = PE add-on only
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2022Q2,<500K,41,38,19,1,1,79,full distribution (Q2 2022 full report)
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2022Q2,500K-1M,38,30,25,4,4,68,full distribution (Q2 2022 full report)
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2022Q2,1M-2M,37,31,31,0,,68,full distribution (Q2 2022 full report); exec report's $1-2MM bullet is a copy of $2-5MM
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2022Q2,2M-5M,29,9,51,9,3,38,full distribution (Q2 2022 full report): PE platform 3 + add-on 6
+ibba-market-pulse__FULL_MP_Q2_2022_comp.txt,2022Q2,5M-50M,10,0,43,43,5,10,full distribution (Q2 2022 full report): PE platform 24 + add-on 19
+ibba-market-pulse__MP_Q3_2022_ExecRep.txt,2022Q3,<500K,44,33,,,,77,top-2 list; unlisted types censored
+ibba-market-pulse__MP_Q3_2022_ExecRep.txt,2022Q3,500K-1M,39,33,25,,,72,top-3 list; unlisted types censored
+ibba-market-pulse__MP_Q3_2022_ExecRep.txt,2022Q3,1M-2M,24,40,32,,,64,top-3 list; unlisted types censored
+ibba-market-pulse__MP_Q3_2022_ExecRep.txt,2022Q3,2M-5M,23,26,37,,,49,top-3 list; unlisted types censored
+ibba-market-pulse__MP_Q3_2022_ExecRep.txt,2022Q3,5M-50M,,,40,31,,,top-3 list; unlisted types censored: PE add-on 17 + platform 14
+ibba-market-pulse__ibba-q4-2022-market-pulse-execsum.txt,2022ANN,MainStreet,39,36,23,,,75,full-year 2022 (4-yr series chart + text); PE/other not legible
+ibba-market-pulse__ibba-q4-2022-market-pulse-execsum.txt,2022ANN,LMM,18,17,38,24,,35,full-year 2022 (4-yr series chart + text)
+ibba-market-pulse__ibba_q1_2023_executive_report.txt,2023Q1,<500K,44,38,,,,82,top-2 list; unlisted types censored
+ibba-market-pulse__ibba_q1_2023_executive_report.txt,2023Q1,500K-1M,47,24,22,,,71,top-3 list; unlisted types censored
+ibba-market-pulse__ibba_q1_2023_executive_report.txt,2023Q1,1M-2M,25,30,41,,,55,top-3 list; unlisted types censored
+ibba-market-pulse__ibba_q1_2023_executive_report.txt,2023Q1,2M-5M,18,27,37,,,45,top-3 list; unlisted types censored
+ibba-market-pulse__ibba_q1_2023_executive_report.txt,2023Q1,5M-50M,14,,57,14,,,top-3 list; unlisted types censored; pe = PE add-on only
+ibba-market-pulse__q2-2023-executive-report.txt,2023Q2,<500K,47,37,,,,84,top-2 list; unlisted types censored
+ibba-market-pulse__q2-2023-executive-report.txt,2023Q2,500K-1M,45,30,24,,,75,top-3 list; unlisted types censored
+ibba-market-pulse__q2-2023-executive-report.txt,2023Q2,1M-2M,29,33,31,,,62,top-3 list; unlisted types censored
+ibba-market-pulse__q2-2023-executive-report.txt,2023Q2,2M-5M,23,30,33,,,53,top-3 list; unlisted types censored
+ibba-market-pulse__q2-2023-executive-report.txt,2023Q2,5M-50M,,,39,39,,,top-3 list; unlisted types censored: PE add-on 22 + platform 17
+ibba-market-pulse__mp_q3_2023_executive-report.txt,2023Q3,<500K,49,32,,,,81,top-2 list; unlisted types censored
+ibba-market-pulse__mp_q3_2023_executive-report.txt,2023Q3,500K-1M,43,36,17,,,79,top-3 list; unlisted types censored
+ibba-market-pulse__mp_q3_2023_executive-report.txt,2023Q3,1M-2M,43,28,25,,,71,top-3 list; unlisted types censored
+ibba-market-pulse__mp_q3_2023_executive-report.txt,2023Q3,2M-5M,24,17,46,,,41,top-3 list; unlisted types censored
+ibba-market-pulse__mp_q3_2023_executive-report.txt,2023Q3,5M-50M,,,44,33,,,top-2 list; unlisted types censored; pe = PE add-on only
+ibba-market-pulse__mp_q4_2023_executive-report.txt,2023ANN,MainStreet,44,35,,,,79,full-year 2023 text
+ibba-market-pulse__mp_q4_2023_executive-report.txt,2023ANN,LMM,17,19,,23,,36,full-year 2023 text

@@ -400,3 +400,44 @@ so a whole class of bug fails at once instead of one case at a time.
   test.
 - The reset defaults are the framework's worked example ($6M, $1.45M, $3.24M ask).
 - `tests/browser.inputs.js` drives all of the above with real keystrokes.
+
+## Fitting the judgment parameters from public data (October 2026)
+
+**Verification pass first.** An independent reviewer reran every test. It also compared
+every number on screen with the model in 16 states at desktop and phone widths, and all of
+them matched. It found four defects, all fixed:
+- The utility equation printed the delay cost rounded to thousands.
+- The realisation block claimed the model lands above IBBA's sale-to-ask ratio. Above about
+  $1M it does not, so the caption now says so and gives the reason.
+- A thin buyer pool did not lower the closing probability. A pool thinner than typical now
+  scales P_C by the chance of engaging anyone at all, relative to a typical pool. As a
+  result, the optimiser no longer drops outreach where it matters most.
+- Red error outlines stayed on after Reset or a slider drag.
+
+**What was fitted.** Most hosts that publish the source data are blocked from this
+environment, so each dataset came from a public mirror on GitHub or from the reports
+already in the bundle. The scripts are in `fit/`, and `fit/README.md` gives each fetch
+command.
+
+| Was hand-set | Now | Data |
+|---|---|---|
+| SBA rate 10.5% | prime 6.75% + 1.5 to 2.0 pts by loan size | 4,812 change-of-ownership 7(a) loans, FY2023 |
+| employees = revenue ÷ $150k | receipts per employee by industry and firm size | Census SUSB 2022 |
+| GM salary = 2.4% of revenue | BLS industry median × firm-size pay ratio, p10–p90, 2026 $ | OEWS May 2021 × ECI |
+| industry SDE margins 7–21% × size curve, sd 0.45 | fitted 18–35% at $200k SDE, slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
+| equal weight on owner dependence, management depth | 0.90 and 0.48 of an equal share | 5,714 listings with descriptions |
+| buyer-type size windows | individual / strategic / financial share by deal value | IBBA buyer mix, 154 band-quarters |
+
+**What the data could not fit, and why.** The Data tab has a new ledger listing each of these
+with the data that would fit it:
+- **Listing text and the other quality weights:** listing text priced owner dependence and
+  management depth. Recurring revenue, growth and clean books showed no measurable asking
+  premium. That neither confirms nor rules them out, so they keep equal weights.
+- **Time-to-close:** the 103-day listing panel saw only 164 sales, too few to fit the
+  curve's shape.
+- **Anchoring:** fitting the sale price against the ask needs deal-level pairs of asking and
+  sale prices. The model's expected price sits 8 to 14 points below IBBA's average above $1M,
+  and no anchoring setting closes that gap: the measured value spread is too wide.
+  BIZCOMPS records both prices, so its raw rows would fix this.
+- **Records nobody publishes:** the competition premium, intervention effects and category
+  weights need the brokerage's own records.

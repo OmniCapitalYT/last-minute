@@ -184,6 +184,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(thin.PC<typ.PC,`a thin pool closes less often: ${thin.PC} vs ${typ.PC}`);
   ok(near(deep.PC,typ.PC,1e-12),"a deeper pool earns the competition premium, not a higher P_C");
   ok(thin.thinF>0&&thin.thinF<1&&typ.thinF===1,"thin-pool factor is 1 at a typical pool"); }
+/* 20. fitted buyer-type mix: shares sum to one; individuals fade and financial buyers rise with size */
+{ const m=v=>A.model({...median("prof",v),ask:1});
+  const small=m(8e4), big=m(8e6);
+  const ind=r=>r.buyers.find(b=>b.k==="ind").sizeFit, pep=r=>r.buyers.find(b=>b.k==="pep").sizeFit;
+  ok(ind(small)>ind(big)&&pep(big)>pep(small),"individuals at small deals, private equity at large ones");
+  for(const r of [small,big]) ok(r.buyers.every(b=>b.sizeFit>=0&&b.sizeFit<=1),"buyer presence in [0,1]"); }
 
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
