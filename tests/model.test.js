@@ -14,9 +14,9 @@ const finiteDeep=(o,seen=new Set())=>{
   return Object.values(o).every(v=>typeof v==="function"||finiteDeep(v,seen));
 };
 const median=(ind,ern)=>{
-  const I=A.IND[ind],RF=A.sizeRefs(ern),rev=ern/(I.em*RF.emk);
-  return {ind,ern,rev,yrs:6,buyers:I.buyers,rate:10.5,franchise:false,st:null,
-    jobs:Math.max(2,Math.round(rev/150000)),rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,
+  const I=A.IND[ind],RF=A.sizeRefs(ern),rev=ern/A.typMargin(ind,ern);
+  return {ind,ern,rev,yrs:6,buyers:I.buyers,franchise:false,st:null,
+    rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,
     gm:I.gm,ret:I.ret,fin:RF.fin,plt:.40};
 };
 
@@ -165,6 +165,25 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const s={...EX,ind,ern,rev:ern*7.5,buyers:150}, V=A.model({...s,ask:1}).V, r=A.model({...s,ask:V*.95});
   ok(r.q(.99)<=r.inputs.ask*Math.max(1,r.ft.pctAskSize)*(1+1e-9)&&r.q(.99)<=r.inputs.ask*1.0201,
      `${ind} ${ern}: realised price ${(r.q(.99)/r.inputs.ask*100).toFixed(1)}% of ask`); }
+
+/* 19. fitted v4 tables: rate, employees, GM salary, margins, quality weights, thin pools */
+{ const F=A.MODELS.fitted;
+  for(const p of [1e5,5e5,2e6,1e7,1e8]){ const r=A.sbaRate(p);
+    ok(r>=F.sba_rate.prime+1&&r<=F.sba_rate.prime+3,`SBA rate at ${p}: ${r}`); }
+  ok(A.sbaRate(1e7)<=A.sbaRate(3e5),"larger loans price no higher");
+  for(const k of Object.keys(A.IND)){
+    ok(A.jobsFor(2e6,k)>=1&&A.jobsFor(2e7,k)>A.jobsFor(2e6,k),`${k}: employees grow with revenue`);
+    const g=F.gm_wage.by_industry[k], w=F.gm_wage.wage_growth_2021_2026;
+    for(const rev of [3e5,5e6,2e8]){ const s=A.gmSalary({ind:k,rev});
+      ok(s>=g.p10*w-1&&s<=g.p90*w+1,`${k}: GM salary ${Math.round(s)} inside the BLS p10-p90`); }
+    const m=A.typMargin(k,5e5); ok(m>.1&&m<.5,`${k}: typical SDE margin ${m.toFixed(3)}`); }
+  let s2=0; for(const k in A.QW.w) s2+=(A.QW.w[k]/A.QW.norm)**2;
+  ok(near(s2,1,1e-12),"quality weights keep the composite standard normal");
+  const t=median("medical",1e6), V=A.model({...t,ask:1}).V;
+  const typ=A.model({...t,ask:V}), thin=A.model({...t,ask:V,buyers:5}), deep=A.model({...t,ask:V,buyers:600});
+  ok(thin.PC<typ.PC,`a thin pool closes less often: ${thin.PC} vs ${typ.PC}`);
+  ok(near(deep.PC,typ.PC,1e-12),"a deeper pool earns the competition premium, not a higher P_C");
+  ok(thin.thinF>0&&thin.thinF<1&&typ.thinF===1,"thin-pool factor is 1 at a typical pool"); }
 
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
