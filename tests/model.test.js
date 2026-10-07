@@ -183,7 +183,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const typ=A.model({...t,ask:V}), thin=A.model({...t,ask:V,buyers:5}), deep=A.model({...t,ask:V,buyers:600});
   ok(thin.PC<typ.PC,`a thin pool closes less often: ${thin.PC} vs ${typ.PC}`);
   ok(near(deep.PC,typ.PC,1e-12),"a deeper pool earns the competition premium, not a higher P_C");
-  ok(thin.thinF>0&&thin.thinF<1&&typ.thinF===1,"thin-pool factor is 1 at a typical pool"); }
+  ok(thin.thinF>0&&thin.thinF<1&&typ.thinF===1,"thin-pool factor is 1 at a typical pool");
+  const poor={...t,own:.95,mgt:.05,fin:.1,rec:0,cc:.6}, Vp=A.model({...poor,ask:1}).V;
+  ok(near(A.model({...poor,ask:Vp}).PC,typ.PC,1e-12),"closing probability at a fair ask does not depend on quality"); }
 /* 20. fitted buyer-type mix: shares sum to one; individuals fade and financial buyers rise with size */
 { const m=v=>A.model({...median("prof",v),ask:1});
   const small=m(8e4), big=m(8e6);

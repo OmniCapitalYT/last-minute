@@ -12,8 +12,8 @@ your machine.
 | `jobs` (receipts and payroll per employee) | `build_models.py` | Census SUSB 2022, US 6-digit NAICS by receipts size (`us_6digitnaics_rcptsize_2022.xlsx`) | census.gov/programs-surveys/susb |
 | `gm_wage` (general-manager wage percentiles) | `oews.py` | BLS OEWS May 2021, SOC 11-1021 | `git clone --depth 1 https://github.com/cran/oews2021` |
 | `sde_margin` (typical SDE margin by industry and size) | `dl_panel.py`, `hedonic.py`, `margin.py` | DealLedger broker-direct listings, CC0 | `git clone --depth 1 https://github.com/jeffsosville/dealledger` |
-| `quality_weights` (owner dependence, management depth) | `hed_fit.py` | same listings, those with descriptions | as above |
-| `buyer_mix` (individual / strategic / financial by deal size) | `ibba_buyer_mix.py`, `buyer_mix_fit.py` | IBBA / M&A Source Market Pulse reports, 2012–2023; values transcribed in `ibba_buyer_mix.csv` | ibba.org |
+| `quality_weights` (owner dependence, management depth) | `hed_fit.py`, `quality_weights.py` | same listings, those with descriptions; phrase effects converted to per-sd weights with a threshold model, shrunk toward 1 with a N(1, 0.5²) prior | as above |
+| `buyer_mix` (individual / strategic / financial by deal size) | `ibba_buyer_mix.py`; band knots built in `build_models.py` (`buyer_mix_fit.py` is the parametric check) | IBBA / M&A Source Market Pulse reports, 2012–2023; values transcribed in `ibba_buyer_mix.csv` | ibba.org |
 
 The prime rate (6.75%, in effect since 2025-12-11) is entered by hand in `build_models.py`.
 Update it when it changes.

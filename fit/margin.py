@@ -14,6 +14,10 @@ def huber(X,y,c=1.345,it=60):
     return b,e
 b,e=huber(X,m.lm.values)
 slope=b[0]; a=dict(zip(inds,b[1:]))
+# empirical-Bayes shrinkage toward the pooled level: an industry with n listings keeps
+# n/(n+50) of its own deviation (vet has 15 listings, staffing 48)
+cnt={k:int((m.ind==k).sum()) for k in inds}; abar=sum(a[k]*cnt[k] for k in inds)/sum(cnt.values())
+a={k:(cnt[k]*a[k]+50*abar)/(cnt[k]+50) for k in inds}
 sd=np.median(np.abs(e))/0.6745
 print('slope on ln(SDE) %.3f'%slope,'robust sd %.3f'%sd)
 for k in inds: print(k,'margin at $200k SDE %.3f'%np.exp(a[k]),'at $1M %.3f'%np.exp(a[k]+slope*np.log(5)))

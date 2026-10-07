@@ -423,10 +423,10 @@ command.
 |---|---|---|
 | SBA rate 10.5% | prime 6.75% + 1.5 to 2.0 pts by loan size | 4,812 change-of-ownership 7(a) loans, FY2023 |
 | employees = revenue ÷ $150k | receipts per employee by industry and firm size | Census SUSB 2022 |
-| GM salary = 2.4% of revenue | BLS industry median × firm-size pay ratio, p10–p90, 2026 $ | OEWS May 2021 × ECI |
-| industry SDE margins 7–21% × size curve, sd 0.45 | fitted 18–35% at $200k SDE, slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
-| equal weight on owner dependence, management depth | 0.90 and 0.48 of an equal share | 5,714 listings with descriptions |
-| buyer-type size windows | individual / strategic / financial share by deal value | IBBA buyer mix, 154 band-quarters |
+| GM salary = 2.4% of revenue | BLS industry wage distribution read at the firm's size rank, p10–p90, 2026 $ | OEWS May 2021 × ECI; Census employment by size |
+| industry SDE margins 7–21% × size curve, sd 0.45 | fitted 20–30% at $200k SDE (shrunk toward the pooled level), slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
+| equal weight on owner dependence, management depth | 1.24 and 0.60 of an equal share, shrunk toward 1 (neither clearly different from 1) | 5,714 listings with descriptions |
+| buyer-type size windows | individual / strategic / financial share by deal value, interpolated between IBBA bands | IBBA buyer mix, 47 complete band-quarters |
 
 **What the data could not fit, and why.** The Data tab has a new ledger listing each of these
 with the data that would fit it:
@@ -441,3 +441,23 @@ with the data that would fit it:
   BIZCOMPS records both prices, so its raw rows would fix this.
 - **Records nobody publishes:** the competition premium, intervention effects and category
   weights need the brokerage's own records.
+
+**A second reviewer checked the fits against the raw data.** Every table recomputed from
+its source. It found the following problems, all fixed:
+- **Owner-dependence weight.** The weight depended on a pooling choice no script made.
+  `fit/quality_weights.py` now does the conversion and uses only the owner-operated
+  phrase, because "absentee" disagrees with it. It shrinks both weights toward 1 and
+  reports the unshrunk figures.
+- **Thin-pool factor.** It used this business's own engagement, which made the closing
+  probability depend on quality. It now depends on pool size alone, and a test checks
+  that quality has no effect at a fair ask.
+- **Buyer-mix claim.** The Data tab overstated the buyer-mix data. The fit now
+  interpolates the observed bands, which a straight line in log value missed at the top.
+- **Wage growth** did not compound to its stated rates.
+- **Plausible risks, also addressed:**
+  - Industry margins are shrunk by n/(n+50).
+  - Staffing ratios use 4-digit industry groups rather than single niches.
+  - GM pay grows with firm size by rank.
+  - MBOs keep their own window.
+  - The prime-rate date is shown.
+- **Stale text** about equal weighting and Z/3 is updated.
