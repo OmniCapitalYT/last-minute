@@ -1736,18 +1736,16 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
             </div>
           </div>
           <p class="score-cap" id="o_cap"></p>
-          <div class="big-row">
-            <div class="big"><div class="k">Expected price if it closes <span class="pv j" title="The fitted value's measured spread, moved by anchoring and competition (both judgment), and capped at the ask"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
-            <div class="big"><div class="k">Probability of closing <span class="pv a"><i></i>aggregate</span></div><div class="n" id="o_pc">—</div></div>
-          </div>
-          <div class="big-row">
-            <div class="big"><div class="k">Model value <span class="pv f" title="BIZCOMPS fitted value, positioned inside its measured spread by the quality inputs (that placement is judgment)"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
-            <div class="big"><div class="k">Survival risk <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_risk">—</div></div>
-            <div class="big"><div class="k">Expected multiple <span class="pv f" title="Fitted multiple times the quality position (judgment)"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
-            <div class="big"><div class="k">Median time to close <span class="pv a"><i></i>aggregate</span></div><div class="n sm" id="o_t">—</div></div>
+        </div>
+        <div class="hero-stats">
+            <div class="big"><div class="k">Price if it closes <span class="pv j" title="The fitted value's measured spread, moved by anchoring and competition (both judgment), and capped at the ask"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
+            <div class="big"><div class="k">Chance of closing <span class="pv a"><i></i>aggregate</span></div><div class="n" id="o_pc">—</div></div>
             <div class="big"><div class="k">Expected proceeds <span class="pv j" title="Aggregate closing probability times a realised price that anchoring (judgment) moves"><i></i>judgment</span></div><div class="n sm" id="o_ev">—</div></div>
-            <div class="big wide"><div class="k">Pursue first <span class="pv j"><i></i>judgment</span></div><div class="n sm" id="o_bb">—</div></div>
-          </div>
+            <div class="big"><div class="k">Model value <span class="pv f" title="BIZCOMPS fitted value, positioned inside its measured spread by the quality inputs (that placement is judgment)"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
+            <div class="big"><div class="k">Expected multiple <span class="pv f" title="Fitted multiple times the quality position (judgment)"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
+            <div class="big"><div class="k">Survival risk <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_risk">—</div></div>
+            <div class="big"><div class="k">Median time to close <span class="pv a"><i></i>aggregate</span></div><div class="n sm" id="o_t">—</div></div>
+            <div class="big"><div class="k">Pursue first <span class="pv j"><i></i>judgment</span></div><div class="n sm" id="o_bb">—</div></div>
         </div>
       </div>
     </div>
@@ -1775,7 +1773,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           inside the measured residual spread by the quality inputs. The turn-by-turn build in the table
           is the old <i>judgment</i> stack &mdash; kept so the direction of each adjustment stays visible,
           but it does not move the value.</p>
-        <table id="multbl"></table>
+        <div class="tw"><table id="multbl"></table></div>
         <div class="eq"><div class="lbl">Multiple build and resulting value</div>
           <div id="eq_v"></div><div class="sub" id="eq_vs"></div></div>
         <div class="eq"><div class="lbl">Anchoring — what the ask does to the price actually achieved</div>
@@ -1810,7 +1808,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           publishes deal-level durations, so there is no hazard model to fit. The Weibull below is drawn
           only to give the curve a shape; its scale is re-solved so the median lands exactly on the
           published band median, and its tails carry no evidence.</p>
-        <svg id="tcurve" viewBox="0 0 760 250" role="img" aria-label="Cumulative probability of closing over time"></svg>
+        <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Cumulative probability of closing over time"></svg>
         <div class="eq"><div class="lbl">Scale re-solved to the published band median</div>
           <div id="eq_t"></div><div class="sub" id="eq_ts"></div></div>
         <div id="o_real"></div>
@@ -1824,8 +1822,8 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <div class="panel">
         <p class="lede">Every buyer archetype is placed by how well it fits this company and what it could
           justify paying. Size is the chance that buyer engages; brightness is the chance it closes.</p>
-        <svg id="starmap" viewBox="0 0 980 400" role="img" aria-label="Map of buyer archetypes by strategic fit and expected value"></svg>
-        <table id="buytbl"></table>
+        <svg id="starmap" viewBox="0 0 980 470" role="img" aria-label="Map of buyer archetypes by strategic fit and expected value"></svg>
+        <div class="tw"><table id="buytbl"></table></div>
         <div class="eq"><div class="lbl">Buyer-specific value and synergy</div>
           <div id="eq_b"></div><div class="sub" id="eq_bs"></div></div>
         <div class="eq"><div class="lbl">Competitive effect of a deeper buyer pool</div>
@@ -1881,7 +1879,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
               <div id="eq_g"></div><div class="sub" id="eq_gs"></div></div>
           </div>
         </div>
-        <table id="intbl" style="margin-top:16px"></table>
+        <div class="tw" style="margin-top:16px"><table id="intbl"></table></div>
         <p class="note">ΔValue is the change in what the business supports. ΔE[proceeds], ΔP<sub>C</sub>
           and ROI are measured on top of a free reprice to the model-supported range, because at an
           unchanged ask the ask itself caps the price and the improvement is not collected.</p>
@@ -3265,7 +3263,20 @@ function eqSet(id){
     el.textContent=tex.replace(/\\[a-zA-Z]+|[{}$]/g," ").replace(/\s+/g," ").trim(); return; }
   try{ katex.render(tex,el,{displayMode:display!==false,throwOnError:false}); }
   catch(e){ el.textContent=tex.replace(/\\[a-zA-Z]+|[{}$]/g," ").replace(/\s+/g," ").trim(); }
+  eqFit(el);
 }
+/* a formula wider than its panel is scaled down to fit (never below 60%), and only if it
+   still does not fit does it scroll, with a fade at the edge so it reads as more, not cut */
+function eqFit(el){
+  const k=el.querySelector(".katex-display")||el; if(!el.isConnected) return;
+  el.style.fontSize=""; el.classList.remove("scrolls");
+  const cw=el.clientWidth; if(!cw) return;
+  const sw=k.scrollWidth; if(sw<=cw+1) return;
+  el.style.fontSize=Math.max(.6,(cw-4)/sw*.97)*100+"%";
+  if((el.querySelector(".katex-display")||el).scrollWidth>el.clientWidth+1) el.classList.add("scrolls");
+}
+if(typeof addEventListener==="function") addEventListener("resize",(function(){ let t=0; return function(){ clearTimeout(t);
+  t=setTimeout(()=>document.querySelectorAll(".eq [id]").forEach(eqFit),150); }; })());
 function eq(id,tex,display){
   const el=$(id); if(!el) return;
   if(EQ.last.get(id)===tex+"|"+(display!==false)){ EQ.pending.delete(id); return; }
@@ -3278,7 +3289,7 @@ function eqArm(){
   if(EQ.io||!("IntersectionObserver" in window)) return;
   EQ.io=new IntersectionObserver(es=>es.forEach(e=>{
     const id=e.target.id;
-    if(e.isIntersecting){ EQ.near.add(id); eqSet(id); } else EQ.near.delete(id);
+    if(e.isIntersecting){ EQ.near.add(id); eqSet(id); eqFit(e.target); } else EQ.near.delete(id);
   }),{rootMargin:"900px 0px"});
   document.querySelectorAll(".eq [id]").forEach(el=>EQ.io.observe(el));
 }
@@ -3311,7 +3322,7 @@ function drawOrbit(r){
 
 /* ============ time-to-close curve ============ */
 function drawCurve(r){
-  const W=760,H=250,L=52,R=22,T=16,Bm=38,TMAX=540;
+  const W=760,H=270,L=52,R=22,T=40,Bm=38,TMAX=540;
   const px=t=>L+(t/TMAX)*(W-L-R), py=v=>T+(1-v)*(H-T-Bm);
   let g=`<defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="rgba(140,120,255,.32)"/><stop offset="1" stop-color="rgba(77,163,255,0)"/>
@@ -3348,7 +3359,7 @@ function drawCurve(r){
   if(tm<TMAX) g+=`<line x1="${px(tm)}" y1="${T}" x2="${px(tm)}" y2="${py(0)}" stroke="#ffc640" stroke-opacity=".55" stroke-dasharray="2 4"/>
     <text x="${px(tm)+6}" y="${T+13}" fill="#ffc640" font-size="10.6" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">median ${Math.round(tm)}d</text>`;
   g+=`<line x1="${L}" y1="${py(0)}" x2="${W-R}" y2="${py(0)}" stroke="rgba(77,163,255,.3)"/>`;
-  g+=`<text x="${L+6}" y="${T+12}" fill="#8793a8" font-size="11" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">share of the deals that close, closed by day t (${pc(r.PC)} of listings close)</text>`;
+  g+=`<text x="${L}" y="16" fill="#8793a8" font-size="11" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">share of the deals that close, closed by day t (${pc(r.PC)} of listings close)</text>`;
   $("tcurve").innerHTML=g;
   /* What the seller actually ends up with, which is three numbers the console has
      been holding and not showing: the share of the ask a deal in this industry and
@@ -3395,7 +3406,7 @@ function drawStars(r){
      Mark radius encodes engagement probability, fill opacity encodes closing
      probability. Both are redundant with the tooltip, so the chart never
      depends on judging area by eye. */
-  const W=980,H=400,L=78,R=210,T=30,Bm=56;
+  const W=980,H=470,L=78,R=230,T=24,Bm=104;
   const IW=W-L-R, IH=H-T-Bm;
   const vals=r.buyers.map(b=>b.Vj).concat([r.V]);
   const raw_lo=Math.min(...vals), raw_hi=Math.max(...vals);
@@ -3426,7 +3437,7 @@ function drawStars(r){
     g+=`<text x="${L-10}" y="${y+3.5}" text-anchor="end" fill="#7d8aa3" font-size="10"
          font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">${money(v)}</text>`;
   }
-  g+=`<text x="${L+IW/2}" y="${H-12}" text-anchor="middle" fill="#7d8aa3" font-size="10.5"
+  g+=`<text x="${L+IW/2}" y="${H-Bm+40}" text-anchor="middle" fill="#7d8aa3" font-size="10.5"
        font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Strategic fit →</text>`;
   g+=`<text transform="translate(16,${T+IH/2}) rotate(-90)" text-anchor="middle" fill="#7d8aa3"
        font-size="10.5" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Value to buyer →</text>`;
@@ -3446,7 +3457,7 @@ function drawStars(r){
   });
 
   /* ---- labels: single right-hand column, collision-resolved ---- */
-  const LH=25;
+  const LH=29;
   const place=r.buyers.map(b=>({b,x:px(b.fit),y:py(b.Vj),rad:5+12*b.PE}))
                       .sort((a,c)=>a.y-c.y);
   place.forEach((o,i)=>{ o.ly = i===0 ? o.y : Math.max(o.y, place[i-1].ly+LH); });
@@ -3478,14 +3489,14 @@ expected value ${money(b.EV)}</title>
   });
 
   /* ---- size legend: makes the radius encoding readable instead of guessed ---- */
-  const lgY=T+6;
-  g+=`<text x="${L+6}" y="${lgY}" fill="#7d8aa3" font-size="9.6"
-       font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Mark size: engagement. Fill: close rate</text>`;
+  const lgY=H-30;
+  g+=`<text x="${L}" y="${lgY+4}" fill="#7d8aa3" font-size="10.5"
+       font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Mark size: engagement · brightness: close rate</text>`;
   [0.2,0.5,0.8].forEach((pe,i)=>{
-    const cxx=L+22+i*54, rr=5+12*pe;
-    g+=`<circle cx="${cxx}" cy="${lgY+26}" r="${(rr*1.9).toFixed(1)}" fill="url(#shalo)" opacity=".7"/>
-        <circle cx="${cxx}" cy="${lgY+26}" r="${(rr*.42).toFixed(1)}" fill="#f4f8ff" fill-opacity=".85"/>`;
-    g+=`<text x="${cxx}" y="${lgY+56}" text-anchor="middle" fill="#7d8aa3" font-size="9"
+    const cxx=L+300+i*86, rr=5+12*pe;
+    g+=`<circle cx="${cxx}" cy="${lgY}" r="${(rr*1.9).toFixed(1)}" fill="url(#shalo)" opacity=".7"/>
+        <circle cx="${cxx}" cy="${lgY}" r="${(rr*.42).toFixed(1)}" fill="#f4f8ff" fill-opacity=".85"/>`;
+    g+=`<text x="${cxx+rr*.42+8}" y="${lgY+4}" fill="#9aa6bd" font-size="10.5"
          font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">${Math.round(pe*100)}%</text>`;
   });
 
@@ -3887,10 +3898,10 @@ function render(){
   $("buytbl").innerHTML=
     `<tr><th>Buyer type</th><th class="n">Engages</th><th class="n">Closes if engaged</th>
       <th class="n">Synergy captured</th><th class="n">Value to buyer</th><th class="n">Expected value</th></tr>`
-    +r.buyers.map(b=>`<tr${b.sizeFit>=.05?"":' class="muted" title="Rarely buys at this deal size"'}><td>${b.n}${b===r.best?' <span class="tag pick">pursue first</span>':''}${b.sizeFit>=.05?"":' <span class="muted">· rarely at this size</span>'}</td>
+    +r.buyers.map(b=>`<tr${b.sizeFit>=.05?"":' class="muted" title="Rarely buys at this deal size"'}><td>${b.n}${b===r.best?' <span class="tag pick">pursue first</span>':''}${b===r.top?' <span class="tag">pays most</span>':''}${b.sizeFit>=.05?"":' <span class="muted">· rarely at this size</span>'}</td>
       <td class="n">${pc(b.PE)}</td><td class="n">${pc(b.PCj)}</td>
       <td class="n ${b.S>0?"pos":"muted"}">${b.S>0?money(b.S):"—"}</td>
-      <td class="n">${money(b.Vj)}${b===r.top?' <span class="tag">pays most</span>':''}</td>
+      <td class="n">${money(b.Vj)}</td>
       <td class="n">${money(b.EV)}</td></tr>`).join("");
   eq("eq_b",`\\begin{aligned}
     V_j&=E\\cdot M\\big(1+(m_j-1)\\,s_j\\big)+\\varphi S_j,\\qquad
@@ -3939,10 +3950,10 @@ function render(){
         +'the price-gap penalty is already at its maximum, so no lever moves it until the ask comes down.';
     } else el.innerHTML='';
   })();
-  eq("eq_d",`\\frac{\\partial y}{\\partial x_i}\\approx\\frac{y(x_i+h)-y(x_i-h)}{2h},
-    \\;\\; y\\in\\{V,\\,P_C\\,E[P_{\\text{real}}]\\},
-    \\qquad \\text{reported}=\\frac{\\partial y}{\\partial x_i}\\cdot\\sigma_i
-    \\;\\text{\\small(one peer sd for the quality levers; 5\\% for the ask, 25\\% for the buyer pool)}`);
+  eq("eq_d",`\\begin{gathered}\\frac{\\partial y}{\\partial x_i}\\approx\\frac{y(x_i+h)-y(x_i-h)}{2h},
+    \\qquad y\\in\\{V,\\,P_C\\,E[P_{\\text{real}}]\\},
+    \\qquad \\text{reported}=\\frac{\\partial y}{\\partial x_i}\\cdot\\sigma_i\\\\[4pt]
+    \\text{\\small one peer sd for the quality levers; 5\\% for the ask; 25\\% for the buyer pool}\\end{gathered}`);
   (function(){
     const os=sn.filter(o=>o.oneSided).map(o=>o.n);
     const el=$("sensnote"); if(!el) return;
@@ -3953,10 +3964,10 @@ function render(){
       : "";
   })();
   const top=sn.filter(o=>o.k!=="ask"&&o.k!=="buyers").sort((a,b)=>Math.abs(b.dV)-Math.abs(a.dV))[0];
-  eq("eq_ds",`\\text{largest: }\\frac{\\partial V}{\\partial\\,\\text{${tt(top.n)}}}
-    =${tm(top.dV,2)}\\;\\text{${tt(top.unit)}},\\qquad
-    \\frac{\\partial E[\\text{proceeds}]}{\\partial\\,\\text{${tt(top.n)}}}=${tm(top.dE,2)},\\qquad
-    \\frac{\\partial P_C}{\\partial\\,\\text{${tt(top.n)}}}=${tpts(top.dP)}`);
+  eq("eq_ds",`\\begin{gathered}\\text{largest lever: ${tt(top.n)}, ${tt(top.unit)}}\\\\[3pt]
+    \\Delta V=${tm(top.dV,2)},\\qquad
+    \\Delta E[\\text{proceeds}]=${tm(top.dE,2)},\\qquad
+    \\Delta P_C=${tpts(top.dP)}\\end{gathered}`);
 
   /* ---------- §14–17 interventions ---------- */
   const it=interventionTable(s,r);
@@ -6200,6 +6211,101 @@ canvas.burst{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none
 
 @media(prefers-reduced-motion:reduce){.anam,.probe::after{animation:none}.probe{display:none!important}}
 </style>
+<style id="v7-clean">
+/* ═════════════════════════════════════════════════════════════════════════
+   v7: tidy-up. Same palette, same space layers; fewer competing sizes, one
+   alignment per element, nothing clipped or stacked on top of something else.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ---- section headings: one line, the framework tag beside it, never under it */
+.sec-head{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;
+  gap:18px!important;margin:0 0 clamp(18px,2.4vh,26px)!important}
+.sec-head h2{display:block!important;position:relative;flex:1 1 auto!important;min-width:0;max-width:none!important;
+  font-size:clamp(24px,2.05vw,33px)!important;line-height:1.15!important;letter-spacing:-.018em!important}
+.sec-head h2 .split-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sec-head .ref{flex:none!important;white-space:nowrap;font-size:11.5px!important;letter-spacing:.02em!important;
+  color:var(--ink3)!important;padding:4px 11px!important;border:1px solid rgba(160,180,230,.16)!important;
+  border-radius:999px!important;background:rgba(12,18,40,.5)!important;line-height:1.3}
+@media(min-width:1081px){ .waypoint{top:50%!important;margin-top:-22px} }
+@media(max-width:1080px){
+  .waypoint{position:static!important;flex:none;width:30px!important;height:30px!important;margin:0!important} }
+@media(max-width:560px){
+  .sec-head{flex-wrap:wrap!important;row-gap:8px!important;gap:12px!important}
+  .sec-head h2{flex:1 1 calc(100% - 46px)!important;font-size:24px!important}
+  .sec-head .ref{margin-left:42px} }
+
+/* ---- hero: scores beside the planet, every headline figure in one even strip */
+.hero{grid-template-rows:auto auto;min-height:0!important}
+.hero-read{display:flex;flex-direction:column;justify-content:center}
+.hero-read .score-cap{margin-bottom:0}
+.hero-stats{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  border-top:1px solid var(--hair,rgba(160,180,230,.14));position:relative;z-index:1}
+.hero-stats .big{margin:0!important;min-width:0;padding:20px clamp(16px,1.7vw,28px) 22px;
+  border-right:1px solid var(--hair,rgba(160,180,230,.14));display:flex!important;flex-direction:column!important}
+.hero-stats .big:nth-child(4n){border-right:0}
+.hero-stats .big:nth-child(n+5){border-top:1px solid var(--hair,rgba(160,180,230,.14))}
+.hero-stats .big .k{display:flex!important;flex-direction:row!important;align-items:baseline!important;
+  justify-content:space-between!important;gap:10px!important;min-height:0!important;flex:none!important;
+  margin:0 0 10px!important;font-size:12.5px!important;line-height:1.35!important;min-height:2.7em!important;align-items:flex-start!important}
+.hero-stats .big .k .pv{flex:none;font-size:10.5px!important;opacity:.8;white-space:nowrap}
+.hero-stats .big .n,.hero-stats .big .n.sm{margin:0!important;padding:0!important;color:var(--ink,#eef2fb)!important;
+  font-size:clamp(18px,1.45vw,22px)!important;font-weight:600!important;letter-spacing:-.01em!important;line-height:1.2!important}
+.hero-stats .big .n#o_bb{font-size:16px!important;line-height:1.3!important;color:#cbd9ff!important}
+.hero-stats .big .n .sub2{margin-top:6px;font-size:11.5px!important;font-weight:400!important;line-height:1.5!important;
+  letter-spacing:0!important;color:var(--ink3,#8590a8)!important}
+.hero-stats .big .n .muted{font-size:.7em;font-weight:400}
+@media(max-width:1180px){
+  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero-stats .big:nth-child(4n){border-right:1px solid var(--hair,rgba(160,180,230,.14))}
+  .hero-stats .big:nth-child(2n){border-right:0}
+  .hero-stats .big:nth-child(n+3){border-top:1px solid var(--hair,rgba(160,180,230,.14))} }
+@media(max-width:400px){ .hero-stats .big{padding:16px 14px 18px} }
+
+/* ---- reading: shorter lines, calmer weight, so the figures lead */
+.lede{max-width:70ch!important;font-size:15px!important;line-height:1.7!important;color:var(--ink2,#b9c3d8)!important}
+.note,.rzf,.qnote{max-width:86ch}
+.panel>.note:last-child{margin-bottom:0}
+
+/* ---- tables: figures only; the magnitude bars behind every numeric cell made five
+        competing bar charts per table */
+td.inked::before,td.inked::after{display:none!important}
+table td,table th{vertical-align:middle}
+td .tag{display:inline-block;margin-left:8px;padding:1px 8px!important;border-radius:999px!important;
+  border:1px solid rgba(160,180,230,.2)!important;font-size:10.5px!important;line-height:1.5;vertical-align:1px}
+td .tag.pick{border-color:rgba(158,203,255,.45)!important;background:rgba(77,163,255,.12)!important}
+
+/* ---- equations: fit the panel; when one still cannot, fade the edge it scrolls past */
+.eq [id].scrolls{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent)}
+.eq .lbl{margin-bottom:10px}
+
+/* ---- wide tables scroll inside their panel on a phone instead of crushing their columns */
+.tw{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+@media(max-width:700px){
+  .tw>table{min-width:600px}
+  .tw{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+  .sec-head h2{flex:1 1 0!important}
+  .hero-stats .big .k{flex-direction:row!important;flex-wrap:wrap!important;gap:2px 8px!important} }
+
+/* ---- small stat groups elsewhere (optimizer cards, value gap): label then figure, no gap */
+.big .k{min-height:0!important;flex:none!important;margin-bottom:6px!important}
+.big .n{margin-top:0!important}
+.big-row{align-items:flex-start}
+
+/* ---- tables: a number column never touches the text column after it */
+td.n+td:not(.n),th.n+th:not(.n){padding-left:22px!important}
+td:not(.n)+td.n,th:not(.n)+th.n{padding-left:16px}
+
+/* ---- provenance lists: badges sit on the text line instead of stretching it */
+li>.pv{display:inline-flex!important;align-items:center;gap:5px;line-height:1!important;vertical-align:1px;margin-right:4px}
+#srcs li,#view-data li{line-height:1.65}
+
+/* ---- charts breathe */
+#starmap,#tcurve{display:block;width:100%;height:auto}
+/* phone: the title takes its own line beside the planet, the tag drops under it */
+@media(max-width:560px){ .sec-head h2{flex:1 1 calc(100% - 46px)!important} }
+</style>
+
 <script id="v6-js">
 /* v6: a probe riding the mission line, aurora over the closing horizon, and a
    supernova burst from a score dial when its score moves. Decoration only. */

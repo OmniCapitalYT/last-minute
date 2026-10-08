@@ -22,7 +22,9 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
                 katex:document.querySelectorAll(".katex-error").length,
                 hscroll:document.documentElement.scrollWidth>innerWidth+1,
                 /* body clips overflow, so also look for content cut off at the edge */
-                offscreen:[...document.querySelectorAll("#view-console table,#view-console .panel,#view-console .eq")]
+                /* a table inside a .tw wrapper scrolls on purpose on a phone: check the wrapper */
+                offscreen:[...document.querySelectorAll("#view-console table,#view-console .tw,#view-console .panel,#view-console .eq")]
+                  .filter(e=>!(e.tagName==="TABLE"&&e.closest(".tw")))
                   .filter(e=>e.offsetParent&&e.getBoundingClientRect().right>innerWidth+1).length};
       });
       if(r.bad) issues.push(`[${width}] ${tag}: ${r.bad} NaN/Infinity/undefined in text`);

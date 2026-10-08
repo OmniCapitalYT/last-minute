@@ -461,3 +461,25 @@ its source. It found the following problems, all fixed:
   - MBOs keep their own window.
   - The prime-rate date is shown.
 - **Stale text** about equal weighting and Z/3 is updated.
+
+## UI clean-up (October 2026)
+
+Nothing in the palette or the space layers changed. A final style layer (`v7-clean`) and a
+few markup moves tidy the layout:
+- **Section headings** sit on one line with the framework tag beside them. The title had
+  been squeezed to half its width because the word-split reveal reused the `.split`
+  two-column layout class.
+- **The hero's eight headline figures** form one even strip under the planet and the
+  scores. That replaces two ragged columns that left a large gap under the planet.
+  "Price if it closes" and "Chance of closing" are shortened so their labels fit.
+- **Tables** lose the bars behind every numeric cell, which had produced five competing
+  bar charts per table. Both buyer tags sit with the buyer's name, and number columns are
+  spaced from the text column beside them. On a phone, wide tables scroll inside their
+  panel instead of crushing their columns.
+- **Long equations** are split across lines. Any that are still too wide shrink to fit
+  (to 60% at most) and only then scroll, with a fade at the edge.
+- **Charts:** the star map gets room for its labels, with its legend under the plot, and
+  the time-curve caption no longer sits on the median marker.
+- **Stat groups and lists:** the optimizer cards' small stats lose the gap between label
+  and value, provenance badges sit on the text line, and lede paragraphs are narrower and
+  calmer.
