@@ -683,5 +683,57 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.includes("Pepperdine 2016, se")&&HTML.includes("GF Data&rsquo;s add-on/platform"),"Data tab: buyer-factor consistency check");
 }
 
+/* 27. quality weights (fit/quality_weights.py; rec and grw checked by fit/quality_weights_v2.py, RESULT test_invariants):
+   metadata and text only. own and mgt keep their fitted weights (mgt flagged weak), the other seven keep weight 1;
+   the stored evidence must keep agreeing with what the Data tab says about it */
+{ const fs=require("fs"), path=require("path");
+  const HTML=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const W=A.MODELS.fitted.quality_weights, D=A.MODELS.value.quality_band.dimensions, C=W.checked, zs=v=>v[0]/v[1];
+  let s2=0,ss=0; for(const k in A.QW.w){ s2+=(A.QW.w[k]/A.QW.norm)**2; ss+=A.QW.w[k]**2; }
+  ok(near(s2,1,1e-12)&&near(A.QW.norm,Math.sqrt(ss),1e-12),"QW: composite standard normal, norm = root sum of squared weights");
+  ok(D.length===9&&D.every(k=>A.QW.w[k]>0&&A.QW.w[k]<=2),"QW: every weight in (0, 2]");
+  ok(W.fitted.length+W.judgment.length===9&&D.every(k=>W.fitted.includes(k)!==W.judgment.includes(k)),"QW: fitted and judgment partition the nine dimensions");
+  ok(D.filter(k=>W[k]!==undefined).sort().join()===W.fitted.slice().sort().join(),"QW: fitted = exactly the dimensions with a stored weight");
+  ok(Array.isArray(W.weak)&&W.weak.every(k=>W.fitted.includes(k))&&W.weak.includes("mgt")&&!W.weak.includes("own")&&typeof W.weak_note==="string","QW: management depth flagged weak, owner dependence not");
+  for(const k of W.judgment) ok(A.QW.w[k]===1&&W[k]===undefined,`QW: ${k} is judgment and keeps weight 1`);
+  for(const k of W.fitted) ok(A.QW.w[k]===W[k]&&W.se[k]>0&&W.se[k]<0.5,`QW: ${k} uses its fitted weight, se below the prior sd`);
+  ok(W.judgment.includes("rec")&&W.judgment.includes("grw"),"QW: recurring revenue and growth stay judgment (relative weight not identified)");
+  /* growth: positive direction in EF sale prices, mainly a discount on declining businesses; level not identified */
+  ok(C.grw.ef_range[0]<1&&C.grw.ef_range[1]>1&&C.grw.ratio[1]<1&&C.grw.ratio[2]>1,"growth: EF range and the ratio interval both include an equal share");
+  ok(C.grw.oos===true&&C.grw.ef_all_specs_positive===true&&zs(C.grw.ef_12m)>1.96&&C.grw.ef_12m_own_sd[0]>0,"growth: positive in every EF specification, significant on twelve-month windows, adds out of sample");
+  { const Q=C.grw.ef_quintiles.effect, S=C.grw.ef_quintiles.se, mid=Q[2]-Q[0], top=Math.max(Math.abs(Q[3]-Q[2]),Math.abs(Q[4]-Q[2]));
+    ok(Q.length===5&&Q[0]===0&&Q[1]<Q[2]&&Q[2]/S[2]>1.96&&top<mid/3,`growth: the shrinking fifths are discounted (${mid}), the fastest-growing fifths add little (${top})`);
+    ok(zs(C.grw.ef_report_decreasing_vs_stable.window)<-1.96&&Math.abs(zs(C.grw.ef_report_increasing_vs_stable.window))<1.96,"growth: EF's own tables discount declining businesses, no significant premium for growing ones, on listed earnings"); }
+  /* recurring revenue: ask premium significant, sale premium not, difference not significant either */
+  ok(C.rec.oos===false&&C.rec.ratio[1]<1&&C.rec.ratio[2]>1,"recurring revenue: no out-of-sample value, ratio interval includes an equal share");
+  ok(Math.abs(zs(C.rec.ef))<1.96&&Math.abs(zs(C.rec.flippa_auctions))<1.96,"recurring revenue: sale-price premium not significant (EF sales, Flippa auctions)");
+  ok(zs(C.rec.ef_ask)>1.96&&zs(C.rec.flippa_asks)>1.96,"recurring revenue: asking-price premium significant (EF last ask, Flippa final asks)");
+  ok(Math.abs(zs(C.rec.ef_sale_minus_ask))<1.96,"recurring revenue: the sale-minus-ask difference is not significant either");
+  ok(C.mgt.oos===false&&C.mgt.ratio[1]<1&&C.mgt.ratio[2]>1,"management depth: weak (no out-of-sample value, ratio includes an equal share)");
+  ok(C.q[2]>0.05,"equal relative weights across the nine measured dimensions are not rejected");
+  /* the model: a business at every peer median sits at the band midpoint; one sd moves qz by sign*w/norm */
+  const I=A.IND.medical, RF=A.sizeRefs(1.45e6);
+  const med={ind:"medical",rev:6e6,ern:1.45e6,yrs:6,buyers:I.buyers,franchise:false,st:null,rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,gm:I.gm,ret:I.ret,fin:RF.fin,plt:.40,ask:3.24e6};
+  const r0=A.model(med);
+  ok(near(r0.qz,0,1e-12)&&near(r0.qFactor,1,1e-6),"QW: a business at every peer median sits at the band midpoint");
+  const dz={rec:.28,grw:.13,gm:.13,ret:.13,cc:.13,plt:.22};
+  for(const k of Object.keys(dz)){ const sg=(k==="cc"||k==="plt")?-1:1, r1=A.model({...med,[k]:med[k]+dz[k]});
+    ok(near(r1.qz-r0.qz,sg*A.QW.w[k]/A.QW.norm,1e-9),`QW: one sd of ${k} moves the composite by w/norm`); }
+  ok(A.model({...med,rec:med.rec+.2}).V>r0.V&&A.model({...med,grw:med.grw+.1}).V>r0.V,"QW: more recurring revenue or growth raises value (growth: direction confirmed; recurring revenue: judgment)");
+  const jw=W.judgment.map(k=>A.QW.w[k]/A.QW.norm); ok(jw.every(x=>near(x,jw[0],1e-15)),"QW: the seven judgment dimensions share one per-sd effect");
+  /* Data tab: the reviewers' corrected wording, and the evidence template renders the stored numbers */
+  for(const bad of ["asking prices only","none in sale prices","partly lost in negotiation","no reachable data prices them","not identifiable there"])
+    ok(!HTML.includes(bad),`Data tab / comments no longer say "${bad}"`);
+  ok(HTML.includes("not significant either")&&HTML.includes("driven mainly by declining businesses being discounted")&&HTML.includes("growth above zero adds little"),"Data tab: corrected recurring-revenue and growth wording");
+  ok(HTML.includes("Management depth is <b>weakly supported</b>")&&HTML.includes("<b>Management depth is weakly supported</b>"),"Data tab: management depth marked weak in Quality positioning and in Fitted from public data");
+  { const a=HTML.indexOf("${(C=>{ const Q=C.grw.ef_quintiles.effect"), b=HTML.indexOf("})(MODELS.fitted.quality_weights.checked)}",a);
+    ok(a>0&&b>a,"Data tab: evidence template found");
+    if(a>0&&b>a){ const txt=new Function("C","return ("+HTML.slice(a+3,b+1)+")(C)")(C);
+      ok(!/NaN|undefined|Infinity/.test(txt),"Data tab: evidence template renders no NaN/undefined");
+      ok(txt.includes("2,644 online-business sales")&&txt.includes("419 of them final asks")&&txt.includes("multiples 13% and 6% lower")&&txt.includes("within\n        3% of it")
+         &&txt.includes("10% less than")&&txt.includes("2% less, not significant")&&txt.includes("0.60&ndash;0.94")&&txt.includes("0.09 to 2.59")
+         &&txt.includes("0.42 of an equal share")&&txt.includes("-1.92, se 2.13")&&txt.includes("-0.25, se 0.17"),"Data tab: evidence template quotes the stored numbers"); } }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

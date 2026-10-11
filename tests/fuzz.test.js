@@ -135,6 +135,15 @@ for(let i=0;i<N;i++){
       if(Math.abs(rb.nEngRef-r.nEngRef)>1e-12*Math.max(1,r.nEngRef)) ref=false; pv=rb; }
     ok(mono,"more buyers never lower P_C, thinF or expected proceeds",ctx(s));
     ok(ref,"typical pool independent of the buyers contacted",ctx(s)); }
+  /* 7h. quality composite (fit/quality_weights.py, quality_weights_v2.py: metadata only): qz is the weighted sum of the
+     signed z-scores over the weights' norm (own, cc and plt count against), judgment dimensions weigh 1, fitted ones
+     their stored weight, and the composite moves by exactly sign*w/norm per unit of z */
+  { let q=0; const Wq=A.MODELS.fitted.quality_weights;
+    for(const k of A.MODELS.value.quality_band.dimensions) q+=A.QW.w[k]*((k==="own"||k==="cc"||k==="plt")?-r.z[k]:r.z[k]);
+    ok(Math.abs(r.qz-q/A.QW.norm)<1e-12*Math.max(1,Math.abs(q)),"qz = signed weighted z over the norm",ctx(s,{qz:r.qz,q:q/A.QW.norm}));
+    ok(Wq.judgment.every(k=>A.QW.w[k]===1)&&Wq.fitted.every(k=>A.QW.w[k]===Wq[k]),"QW reads only the fitted weights",ctx(s));
+    const rg=A.model({...s,grw:s.grw+.013});
+    ok(Math.abs((rg.qz-r.qz)-(rg.z.grw-r.z.grw)*A.QW.w.grw/A.QW.norm)<1e-12,"growth moves qz by w/norm per unit of z",ctx(s,{d:rg.qz-r.qz})); }
 
   /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
      (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises

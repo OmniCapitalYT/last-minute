@@ -636,3 +636,32 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   unchanged with the strategic premium in [0.08, 0.18]); tests/fuzz.test.js 7g (thinF in (0,1], exactly 1 from the
   typical pool, within the cap's lift of the Poisson ratio, no quality input; P_C, thinF and expected proceeds never
   fall as buyers rise; premium identical). The judgment-inventory regex now expects `+ 2 + 1`.
+
+## Quality weights checked against online-business sales, October 2026
+
+`fit/quality_weights_v2.py` (revision 2), integrated as metadata and text only. **No weight moves**: owner dependence
+1.24 and management depth 0.60 stay; the other seven keep weight 1. Model output is bit-identical (400 random
+businesses, 0 of 28,000 numeric fields differ).
+- **Growth.** A positive direction appears in Empire Flippers sale prices (positive in all 39 EF specifications and out
+  of sample), driven mainly by declining businesses being discounted: against the middle fifth of growth the two
+  shrinking fifths sell at multiples 13% and 6% lower, the two fastest-growing fifths within 3% (EF's own 2021 tables on
+  listed earnings: declining -10% vs stable, growing -2%, not significant). Growth above zero adds little. The weight
+  relative to the other dimensions is not identified (0.60-0.94 of an equal share on twelve-month windows, 2.59 re-based
+  to trailing earnings, partly mechanical; 0.09-2.59 across bases and units; ratio 1.32 [0.27, 3.55]).
+- **Recurring revenue.** The asking-price premium is significant (EF last ask 0.42, se 0.16; Flippa final asks 2.17,
+  se 0.84); the sale-price premium is not (EF 0.17, se 0.24; Flippa auctions -1.92, se 2.13); and the difference between
+  them is not significant either (EF sale minus ask -0.25, se 0.17). The fit's wording "a premium in asking prices only,
+  none in sale prices" was not adopted, on review.
+- **Management depth** is marked weak (`weak: ["mgt"]`, `weak_note`): no out-of-sample value in broker listings, ratio to
+  the other measured dimensions 0.99 [-0.11, 3.13]. The settled 0.60 is kept, not re-decided.
+- **Metadata.** `MODELS.fitted.quality_weights` gains `fitted`, `weak`, `weak_note`, `judgment` and `checked` (the
+  evidence the Data tab quotes, plus `grw.ef_quintiles`, `grw.ef_report_decreasing_vs_stable` and `mgt` added at
+  integration); `QW` reads none of it. `MODELS.value.quality_band.weighting` now describes the weighted composite.
+- **UI.** Quality note under the band and the "what the sliders move" note ("no reachable data identifies their relative
+  weight"); Quality-positioning table (management depth weak; the judgment row quotes the online-sales evidence, numbers
+  read live from `checked`); weak-proxy note; Fitted-from-public-data quality-weights row (management depth weak, rec and
+  grw checked, no change); Still-judgement status. No fitted-parameter row is added; the counts are unchanged.
+- **Tests.** tests/model.test.js section 27 (the fit's quality_weights.test.js folded in, with the recurring-revenue
+  check changed from "sale minus ask < 0" to "the difference is not significant", plus the growth-shape checks, the
+  banned wording and the rendered evidence template); tests/fuzz.test.js 7h (qz is the signed weighted z over the norm;
+  QW reads only the fitted weights; growth moves qz by w/norm).
