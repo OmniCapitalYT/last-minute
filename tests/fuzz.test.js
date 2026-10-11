@@ -46,6 +46,11 @@ for(let i=0;i<N;i++){
   ok(r.capShare>=0&&r.capShare<=1,"ceiling share in [0,1]",ctx(s));
   /* 5. scores in range */
   const sc=A.omniScore(r); ok(sc>=1&&sc<=99&&Number.isInteger(sc),"score in 1..99",ctx(s,{sc}));
+  ok(Object.values(r.cats).every(v=>v>=1&&v<=99&&Number.isInteger(v)),"category scores in 1..99",ctx(s,{cats:r.cats}));
+  /* the business score (this profile at its proceeds optimum, same reference population) is never below the Omni score */
+  { const scQ=A.omniScore(A.model({...s,ask:V0*A.bestRatio(s,0,0)})); ok(scQ>=sc,"business score not below the Omni score",ctx(s,{sc,scQ})); }
+  /* the ceiling share is continuous in the ask: no 1/48 steps */
+  ok(Math.abs(A.model({...s,ask:s.ask*1.001}).capShare-r.capShare)<.01,"ceiling share continuous in the ask",ctx(s));
 
   /* 6. monotone in every quality input: improving one never lowers value or proceeds */
   const better={rec:Math.min(1,s.rec+.1),cc:Math.max(.005,s.cc-.05),ret:Math.min(.99,s.ret+.03),

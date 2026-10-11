@@ -38,6 +38,27 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
   await p.evaluate(()=>{ const g=document.getElementById("i_gm"); g.value=80; g.dispatchEvent(new Event("input",{bubbles:true})); });
   await p.waitForTimeout(1200); s=await st();
   ok(Math.abs(s.gm-.80)<1e-9,`a change straight after reset survives: gm ${s.gm}`);
+
+  /* the two scores rank against one population: at the optimal ask they agree, elsewhere the business score is not lower */
+  await p.click("#reset"); await p.waitForTimeout(1200);
+  await p.evaluate(()=>{ IN.ask=STATE.r.askOpt; scheduleRender(); }); await p.waitForTimeout(1500);
+  let sc=await p.evaluate(()=>({o:+document.getElementById("o_score").textContent,b:+document.getElementById("o_score_biz").textContent}));
+  ok(sc.o===sc.b,`at the optimal ask both scores agree: Omni ${sc.o}, business ${sc.b}`);
+  await p.evaluate(()=>{ IN.ask=3.24e6; scheduleRender(); }); await p.waitForTimeout(1500);
+  sc=await p.evaluate(()=>({o:+document.getElementById("o_score").textContent,b:+document.getElementById("o_score_biz").textContent}));
+  ok(sc.b>=sc.o,`the business score is never the lower: Omni ${sc.o}, business ${sc.b}`);
+  /* closings held at a ceiling below the ask are labelled as the ask ceiling, not "at the ask" */
+  await p.evaluate(()=>{ const r=document.getElementById("i_buy"); r.value=600; r.dispatchEvent(new Event("input",{bubbles:true})); IN.ask=7.36e6; scheduleRender(); });
+  await p.waitForTimeout(1500);
+  const ov=await p.evaluate(()=>document.getElementById("o_val").textContent);
+  ok(/% at the ask ceiling of \$6\.1\dM/.test(ov),`price tile names the ceiling: ${ov}`);
+  /* a fitted table rebuilt by fit/build_models.py (no quality_weights_v2 metadata) still renders the Data tab */
+  const qwErr=await p.evaluate(()=>{ const W=MODELS.fitted.quality_weights, keep={};
+    for(const k of ["own","mgt","se","raw","hedonic","prior","source"]) keep[k]=W[k];
+    MODELS.fitted.quality_weights=keep; let err=null; try{ renderData();
+      if(/undefined|NaN/.test(document.getElementById("dataviews").textContent)) err="undefined or NaN in the Data tab"; }catch(e){ err=e.message; }
+    MODELS.fitted.quality_weights=W; renderData(); return err; });
+  ok(qwErr===null,"Data tab renders without the quality_weights_v2 metadata"+(qwErr?": "+qwErr:""));
   ok(errs.length===0,"no page errors"+(errs.length?": "+errs.join(" | "):""));
   await b.close(); process.exit(fail?1:0);
 })();

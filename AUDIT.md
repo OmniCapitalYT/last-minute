@@ -539,12 +539,14 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   patient seller's recommendation is decided, it is an extrapolation, and the two mechanisms part by 4.3-4.7 points of
   E[P|close]/ask. The extrapolation, not the fit, sets the patient-seller answer.
 - **Optimiser (decided: shown as a range).** For a patient seller (theta = .75, the default) bestRatio's utility has two
-  near-equal peaks, ~1.15x and the 1.5x cap. At FAN_S = 0.80 the interior one wins by 0.27% of value (framework
-  example; re-checked on the integrated page with the time-to-close, OEWS and SBA-risk fits in), so the default
-  recommendation moves from 1.50x to 1.15x. The cap returns for s between 0.860 and 0.865 (P(s >= 0.865) = 0.37) and,
-  at FAN_S = 0.80, for theta from about 0.765; across 0.75-0.85 the two peaks never differ by more than 0.48% of value.
-  With overpricing_time integrated (T_ELAST 0.10, a judgment) the flip at the default $900/day moves to about s 0.90
-  (0.864 with no delay cost, where the time effect cannot matter).
+  near-equal peaks, ~1.15x and the 1.5x cap. With no delay cost, at FAN_S = 0.80 the interior one wins by 0.27% of
+  value (framework example; re-checked on the integrated page with the time-to-close, OEWS and SBA-risk fits in), so the
+  default recommendation moves from 1.50x to 1.15x. With no delay cost the cap returns for s above about 0.866 (margin
+  +0.000008 of value at 0.866, -0.000071 at 0.868; the same on the page before overpricing_time; P(s >= 0.865) = 0.37)
+  and, at FAN_S = 0.80, for theta from about 0.763; across 0.75-0.85 the two peaks never differ by more than 0.48% of value.
+  With overpricing_time integrated (T_ELAST 0.10, a judgment), at the console default of $900/day the interior peak wins
+  by 0.42% of value, the cap returns for s above about 0.90 (flip near 0.904) and for theta from about 0.77 (flip near
+  0.7695; the Data tab's "77% kept at $900 a day").
   This is a coin-flip, and the 1.15x end follows from choosing narrowing and applying it to an ask the console sets as a
   multiple of V, which carries no information: under the information reading such an ask faces the whole fan, and the
   whole fan or selection keep the cap. The whole fan, though, misses realisation at typical asks, so neither end is a data

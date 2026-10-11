@@ -2862,7 +2862,10 @@ function model(s){
                   : (s.ern<b.lo) ? Math.max(0,1-(b.lo-s.ern)/(b.lo*.85))
                   : (s.ern>b.hi) ? Math.max(0,1-(s.ern-b.hi)/(b.hi*1.6)) : 1;
     const raw=b.fit(nrm), fit0=b.fit({ownN:.5,mgtN:.5,recN:.5,grwN:.5,retN:.5,gmN:.5});
-    const PE=sizeFit>0?clamp(sig(1.35*(raw-.72))*sizeFit*(0.55+0.45*sig(z.fin)),.01,.95):0;
+    /* no floor: a 0.01 floor jumped to 0 where sizeFit reaches 0 (expected offers moved 1.4% on a 0.02% change
+       in earnings at the search-fund and MBO window edges), and the typical pool (peRef) has none, so the two
+       counts compared in the competition premium were on different bases */
+    const PE=sizeFit>0?clamp(sig(1.35*(raw-.72))*sizeFit*(0.55+0.45*sig(z.fin)),0,.95):0;
     // a buyer that will not look at a deal this size captures none of the synergy
     // and pays none of the premium its category would otherwise support
     /* the synergy pool scales with revenue but is capitalised at the earnings multiple,
@@ -2939,7 +2942,8 @@ function model(s){
   out.ceil=softMin(s.ask,out.V*RHO_MAX)*out.askCeil;
 
   /* ---- §21 categories --------------------------------------- */
-  const sc=c=>Math.round(100*sig(1.1*c));
+  /* held to 1..99 like the Omni score: a bare 0 or 100 reads as a failed computation, not a verdict */
+  const sc=c=>Math.max(1,Math.min(99,Math.round(100*sig(1.1*c))));
   out.cats={
     "Financial quality":       sc(.9*z.fin+.45*z.em+.5*z.gm+.35*z.size+.25*clamp((s.yrs-4)/3,-1,1)),
     "Revenue quality":         sc(.85*z.rec-.75*z.cc+.6*z.ret),
@@ -2989,15 +2993,23 @@ function model(s){
      ask, against IBBA's measured 0.85-1.02. */
   const RN=fanNodes(), NN=RN.length, comp=1+out.compPrem;
   const Pf=new Array(NN), Pc=new Array(NN), Fw=new Array(NN);
-  let sw=0, sp=0, scap=0;
+  let sw=0, sp=0;
   for(let i=0;i<NN;i++){
     const W=out.V*RN[i];
     Pf[i]=W*anchorAt(rhoOf(s.ask/W))*comp;     /* increasing in W: A's elasticity is < 1 */
     Pc[i]=softMin(Pf[i],out.ceil);
     const wt=1;
-    Fw[i]=sw+wt/2; sw+=wt; sp+=wt*Pc[i]; if(Pf[i]>=out.ceil) scap+=wt;
+    Fw[i]=sw+wt/2; sw+=wt; sp+=wt*Pc[i];
   }
   for(let i=0;i<NN;i++) Fw[i]/=sw;
+  /* share of closings at the ceiling: where the uncapped price crosses the ceiling, read log-linearly
+     between slice centres (and extended linearly past the outer ones), so it is continuous in every
+     input. A hard count of slices moved it in 1/48 steps on a 0.05% change in the ask. */
+  const capAt=(()=>{ const lc=Math.log(out.ceil), lp=i=>Math.log(Math.max(Pf[i],1e-300));
+    const cross=(i,j)=>Fw[i]+(Fw[j]-Fw[i])*(lc-lp(i))/Math.max(1e-12,lp(j)-lp(i));
+    let k=0; while(k<NN&&Pf[k]<out.ceil) k++;
+    const p=k===0?cross(0,1):k===NN?cross(NN-2,NN-1):cross(k-1,k);
+    return clamp(1-p,0,1); })();
   /* weighted quantile: log-linear between slice centres, flat past the outer ones */
   const wq=(arr,p)=>{
     if(p<=Fw[0]) return arr[0]; if(p>=Fw[NN-1]) return arr[NN-1];
@@ -3010,7 +3022,7 @@ function model(s){
   out.VrealFree=wq(Pf,.5);                    /* the median before the ceiling */
   out.Vreal=q(.5);                            /* the median realised price */
   out.Vmean=sp/sw;                            /* E[price | close] */
-  out.capShare=scap/sw;                       /* share of closed outcomes at the ceiling */
+  out.capShare=capAt;                         /* share of closed outcomes at the ceiling */
   out.askBinds=out.VrealFree>out.ceil;        /* the ceiling binds at the median */
   out.range=[q(.30),q(.70)];
   out.scen={bear:[q(.08),q(.22)],base:[q(.38),q(.62)],bull:[q(.80),q(.94)]};
@@ -3058,16 +3070,18 @@ function model(s){
                 construction, because each dimension is standardised against its
                 own peer median. Setting dimension k to z = Z*w_k/|w| puts the
                 weighted composite at exactly Z.
-     price    - the reference is priced at REF_RATIO of model value, so a deal
-                asking far more than the business supports scores below the
-                population rather than alongside it.
+     price    - every reference business is priced at the ask that maximises its
+                expected proceeds, so a deal asking more (or less) than that scores
+                below where its quality alone would put it.
 
    Size is deliberately absent. It is already reported as the model value, the
    multiple, the size band and the time-to-close band; folding it into the score
    as well left the nine quality inputs sharing 12 points between them. */
+/* a typical market ask (1.05x value): no longer the score's reference price (see refDistAt); kept as
+   the market-priced benchmark the tests and the live self-audit price a median business at */
 const REF_RATIO=1.05;
 const REFC=new Map();
-function refDistAt(s,mode){
+function refDistAt(s){
   const ern=Math.max(s.ern,1e3);
   /* Keyed on the exact size, not a size bucket. Bucketing looked harmless - the
      population is smooth in size - but the reference was built at whichever size
@@ -3084,11 +3098,16 @@ function refDistAt(s,mode){
      revenue, so the score measures only what the quality inputs and the ask change. */
   const I=IND[s.ind]||IND.prof, RF=sizeRefs(ern);
   const rev=s.rev>0?s.rev:ern/typMargin(s.ind||"prof",ern);
-  const key=(s.ind||"prof")+"|"+ern.toPrecision(6)+"|"+rev.toPrecision(6)+"|"+(mode||"mkt");
+  const key=(s.ind||"prof")+"|"+ern.toPrecision(6)+"|"+rev.toPrecision(6);
   const hit=REFC.get(key); if(hit) return hit;
-  /* The Omni score's peers are priced as the market prices them (REF_RATIO). The
-     business score prices the subject at its proceeds optimum, so its peers must be
-     too - otherwise a median business beats a market-priced median and scores 53-54.
+  /* ONE population for both scores: peers priced at their proceeds optimum. The business
+     score prices the subject at its proceeds optimum, so its peers must be too - against
+     peers at a market ask (REF_RATIO) a median business scored 53-54. The Omni score used
+     to rank against those market-priced peers instead, so the two scores read different
+     populations and the Omni score sat ABOVE the business score whenever the ask was the
+     optimal one (81 against 79 on the framework example at the same ask and the same
+     proceeds). On one population the business score is never the lower of the two, and a
+     median business asking REF_RATIO scores a point or two under 50: what its ask costs.
      The optimum depends on the gap curve and the ceiling, not on quality, so one ratio
      solved on the median profile serves the whole population. */
   /* Zc is the composite quality z; dimension k sits at Zc*w_k/|w|, which puts the
@@ -3101,7 +3120,7 @@ function refDistAt(s,mode){
       grw:clamp(I.grw+z("grw")*.13,-.6,1.5),  gm :clamp(I.gm+z("gm")*.13,.02,.97),
       ret:clamp(I.ret+z("ret")*.13,.05,.99),  fin:clamp(RF.fin+z("fin")*.28,.02,1),
       plt:clamp(.40-z("plt")*.22,.02,.999)}; };
-  const ratio=mode==="opt"?bestRatio(mkT(0),0,0):REF_RATIO;
+  const ratio=bestRatio(mkT(0),0,0);
   const xs=[];
   for(let i=1;i<=128;i++){
     /* van der Corput: deterministic and evenly spread, so the score does not
@@ -3130,8 +3149,8 @@ function refDistAt(s,mode){
   if(REFC.size>96) REFC.delete(REFC.keys().next().value);
   REFC.set(key,out); return out;
 }
-function omniScore(r,mode){
-  const R=refDistAt(r.inputs||{ern:1e6,ind:"prof"},mode);
+function omniScore(r){
+  const R=refDistAt(r.inputs||{ern:1e6,ind:"prof"});
   const x=Math.log(Math.max(r.EVp,1));
   /* Count the reference population that this deal beats, rather than reading a
      normal CDF off its mean and standard deviation. The population is mildly
@@ -3206,8 +3225,9 @@ const FIELD_RANGE={own:[.02,.99],mgt:[.02,.99],fin:[.02,1],rec:[0,1],ret:[.05,.9
    price-elastic the closing probability is and on what a retained business is
    worth to the owner: ~1.1x when a failed sale is a total loss. For an owner content to
    keep it (theta = .75) the utility has two near-equal peaks, an interior one near 1.15x
-   and the 1.5x cap. At FAN_S = 0.80 the interior one wins by 0.27% of value (framework example); the
-   cap wins for FAN_S above about 0.860-0.865 or theta from about 0.765. That knife-edge is set by how
+   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.42% of value
+   (framework example; 0.27% with no delay cost); the cap wins for FAN_S above about 0.90 (about 0.866
+   with no delay cost) or theta from about 0.77 (0.763 with no delay cost). That knife-edge is set by how
    widely prices scatter at asks of 1.4-1.5x, where FAN_S (calibrated near 1.07x) is
    extrapolated; the whole fan, or selection on closing, keep the cap. The render shows
    both ends as a range when they are within 1% of value (AUDIT.md, Oct 2026). Solved once
@@ -3248,32 +3268,52 @@ function bestRatio(s0,theta,lamT){
    A patient seller's utility often has two near-equal peaks, an interior ask near 1.15x and the
    RHO_MAX cap. Which one wins turns on how widely prices scatter at high asks (FAN_S is calibrated
    near 1.07x and extrapolated there), so when the other peak is within 1% of value the note gives
-   the range instead of presenting one end as the answer (fit/anchoring_realization.py). */
+   the range instead of presenting one end as the answer (fit/anchoring_realization.py).
+   The other peak must be a real one: below the cap, an interior local maximum of the objective on a
+   0.02 grid over bestRatio's own domain (refined by a parabola through the three points), not the
+   last ask a scan reached; at the cap, only if the objective still rises into it. When the walk-away
+   ask is the cap and the objective climbs all the way there, there is no second peak and no end to
+   win, so the note says how flat the top is instead (the lowest ask within 1% of value). */
 function optNote(s,V,rSell,rKeep){
   const U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed;
   const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<Math.abs(U(rSell))*.01;
   const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMed-rKeep.tMed)), dd=days===1?"a day":`${days} days`;
   const lam=s.lamT>0?` and a cost of delay of ${money(s.lamT)} a day`:"";
   if(money(V*s.optRho)===money(V*s.rhoSell))
-    return {kind:"same",gain,coin:false,alt:null,text:`With ${pc(s.theta)} of value retained if the sale fails${lam}, both objectives agree on the same price. `
+    return {kind:"same",gain,coin:false,alt:null,flat:null,text:`With ${pc(s.theta)} of value retained if the sale fails${lam}, both objectives agree on the same price. `
       +`Above model value a higher ask also lengthens the time to close, which only the second figure charges for.`};
-  let alt=null;
+  let alt=null, flat=null;
   if(s.theta>0){
-    if(atEdge){ for(let m=1.0;m<=1.35+1e-9;m+=.025){ const x=model({...s,ask:V*m}); if(!alt||U(x)>alt.u) alt={u:U(x),m}; } }
-    else { const x=model({...s,ask:V*RHO_MAX}); alt={u:U(x),m:RHO_MAX}; }
-    if(U(rKeep)-alt.u>.01*V) alt=null;
+    const uK=U(rKeep), H=.02;
+    if(atEdge){
+      const ms=[], us=[];
+      for(let m=.80;m<=RHO_MAX-.06+1e-9;m+=H){ ms.push(m); us.push(U(model({...s,ask:V*m}))); }
+      for(let i=1;i<ms.length-1;i++) if(us[i]>=us[i-1]&&us[i]>=us[i+1]){
+        const d=us[i-1]-2*us[i]+us[i+1], m=d<0?clamp(ms[i]+H*(us[i-1]-us[i+1])/(2*d),ms[i-1],ms[i+1]):ms[i];
+        const u=Math.max(us[i],U(model({...s,ask:V*m})));
+        if(!alt||u>alt.u) alt={u,m:u>us[i]?m:ms[i]}; }
+      if(alt&&uK-alt.u>.01*V) alt=null;
+      if(!alt){ /* no second peak within 1%: the lowest ask from which the objective stays within 1% of value up to the cap */
+        let i=ms.length-1; if(uK-us[i]<=.01*V){ while(i>0&&uK-us[i-1]<=.01*V) i--;
+          flat=i>0?ms[i]-H*(.01*V-(uK-us[i]))/Math.max(1e-12,us[i]-us[i-1]):ms[0]; }
+        if(flat!==null&&flat>RHO_MAX-.1) flat=null; }
+    } else {
+      const x=model({...s,ask:V*RHO_MAX}), xb=model({...s,ask:V*(RHO_MAX-H)});
+      if(U(x)>=U(xb)&&uK-U(x)<=.01*V) alt={u:U(x),m:RHO_MAX};
+    }
   }
   const range=alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,U(rKeep)-alt.u)/V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `
-    +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `:"";
+    +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `
+    :flat!==null?`There is no second peak: to this owner the objective rises all the way to the cap, but slowly, so every ask from ${flat.toFixed(2)}× value up comes within 1% of value of the cap. `:"";
   if(s.optRho<s.rhoSell)
-    return {kind:"lower",gain,coin,alt,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
+    return {kind:"lower",gain,coin,alt,flat,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
       +`Listing at ${money(V*s.optRho)} gives up ${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds, but it is `
       +`${pp(Math.max(0,rKeep.PC-rSell.PC)).replace("+","")} more likely to close and closes ${days>=1?`about ${dd}`:"slightly"} sooner, `
       +`which at ${money(s.lamT)} a day is worth ${money(gain)} to this owner`
       +(coin?`, so the two are close to a coin toss. `:`. `)
       +range
       +`An owner who does not count the wait should use the left-hand number.`};
-  return {kind:"higher",gain,coin,alt,text:`The gap between these is the real decision. The higher price gives up `
+  return {kind:"higher",gain,coin,alt,flat,text:`The gap between these is the real decision. The higher price gives up `
     +`${pp(Math.max(0,rSell.PC-rKeep.PC)).replace("+","")} of closing probability and `
     +`${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds for a bigger cheque if it does close`
     +(days>=1?`, takes about ${dd} longer to close,`:``)+` and only `
@@ -3904,13 +3944,15 @@ function render(){
   /* Two scores, because two very different things pull the percentile down: a weak
      business, and a good business priced away from what it supports. The business
      score prices the same profile at the ask that maximises its expected proceeds,
-     so it measures the business alone; the Omni score uses the ask as entered. The
-     gap between them is what the pricing decision costs - which is why the business
-     score can never be the lower of the two. */
+     so it measures the business alone; the Omni score uses the ask as entered. Both
+     rank against the same peers (priced at their own optimum, refDistAt), so the gap
+     between them is what the pricing decision costs - which is why the business score
+     can never be the lower of the two, and the same ask gives the same score on both.
+     The max() only covers an ask outside the optimiser's scan that happens to earn more. */
   (function(){
     const rho=s.rhoSell, askOpt=r.V*rho;
     const rq=model({...s,ask:askOpt});
-    r.scoreQ=omniScore(rq,"opt"); r.askOpt=askOpt;
+    r.scoreQ=Math.max(omniScore(rq),r.score); r.askOpt=askOpt;
     $("o_score_biz").textContent=r.scoreQ;
     $("o_score_biz_n").textContent="at the optimal ask of "+money(askOpt);
     $("o_score_n").textContent="at your ask of "+money(s.ask);
@@ -3936,7 +3978,8 @@ function render(){
   { const lo=r.q(.10), hi=r.q(.90);
     $("o_val").innerHTML=money(r.Vmean)+'<span class="sub2">'
       +(hi-lo<.005*hi?'nearly every closing at the ask ceiling'
-        :'80% between '+money(lo)+' and '+money(hi)+(r.capShare>=.3?' &middot; '+pc(r.capShare)+' at the ask':''))
+        :'80% between '+money(lo)+' and '+money(hi)+(r.capShare>=.3?' &middot; '+pc(r.capShare)+' at the ask ceiling'
+          +(r.ceil<.99*s.ask?' of '+money(r.ceil):''):''))
       +'</span>'; }
   $("o_pc").textContent=pc(r.PC);
   $("o_ev").innerHTML=money(r.EVp)
@@ -4353,6 +4396,9 @@ const badge=k=>`<span class="st ${k}">${{pub:"published",der:"derived",sgn:"sign
 
 function renderData(){
   const V=MODELS.value, R=MODELS.risk, C=MODELS.close_and_timing;
+  /* the sale-price check of the quality weights (fit/quality_weights_v2.py); fit/build_models.py does not
+     emit it, so a rebuilt fitted table may lack it and the rows below then say so instead of throwing */
+  const QWC=(MODELS.fitted.quality_weights||{}).checked||null;
   const nJudg = Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length
     + Object.keys(B).length + Object.keys(NL).length + Object.keys(G).length
     + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11 + 2 + 1;
@@ -4367,8 +4413,10 @@ function renderData(){
              + 2 + Object.keys(MODELS.fitted.sde_margin.ln_at_ref).length  /* margin slope, spread, industry levels */
              + 2                                                       /* two quality weights */
              + MODELS.fitted.buyer_mix.knots.length*2                  /* buyer-mix log-ratios by band */
-             + new Set(MODELS.fitted.ttc_shape.beta).size              /* time-to-close shape levels */
-             + 1;                                                      /* ENG_SHARE: offers per closed deal (IBBA) */
+             + new Set(MODELS.fitted.ttc_shape.beta).size;             /* time-to-close shape levels */
+  /* the two CALIBRATED constants, FAN_S and ENG_SHARE (offers per closed deal, IBBA), are badged
+     "calibrated" in their rows and counted in no tally: they are set to reproduce a market average,
+     not estimated from transaction outcomes */
   let h="";
 
   /* ── headline tally ─────────────────────────────────────────── */
@@ -4689,11 +4737,11 @@ function renderData(){
         ${MODELS.fitted.quality_weights.own.toFixed(2)} and ${MODELS.fitted.quality_weights.mgt.toFixed(2)} of an equal share, from ${MODELS.fitted.quality_weights.hedonic.n.toLocaleString()} broker listings
         (asking multiples on description phrases), shrunk toward 1; standard errors about 0.3, so neither is
         clearly different from an equal share. Management depth is <b>weakly supported</b> (no out-of-sample value;
-        about ${MODELS.fitted.quality_weights.checked.mgt.ratio[0].toFixed(2)} of an equal share against the other measured dimensions)</td></tr>
+        ${QWC&&QWC.mgt?`about ${QWC.mgt.ratio[0].toFixed(2)} of an equal share against the other measured dimensions`:"not compared against the other measured dimensions in this build"})</td></tr>
       <tr><td>Weights of the other seven, and the peer medians and spreads</td><td><span class="pv j"><i></i>judgment</span> &mdash;
         recurring revenue, growth and clean books show no measurable asking premium in listing text, and
         &ldquo;repeat customers&rdquo; carries the wrong sign (restaurant and retail copy), so listing text cannot
-        price them. ${(C=>{ const Q=C.grw.ef_quintiles.effect, pc=x=>Math.abs((Math.exp(x)-1)*100).toFixed(0),
+        price them. ${QWC ? (C=>{ const Q=C.grw.ef_quintiles.effect, pc=x=>Math.abs((Math.exp(x)-1)*100).toFixed(0),
           sig=v=>Math.abs(v[0]/v[1])>1.96;
           return `Recurring revenue and growth were also checked against
         ${C.ef_n.toLocaleString()} online-business sales (Empire Flippers, sale multiples reconstructed per deal) and
@@ -4715,7 +4763,8 @@ function renderData(){
         ${C.rec.flippa_auctions[0].toFixed(2)}, se ${C.rec.flippa_auctions[1].toFixed(2)}), and the difference between sale and ask is
         not significant either (Empire Flippers ${C.rec.ef_sale_minus_ask[0].toFixed(2)}, se ${C.rec.ef_sale_minus_ask[1].toFixed(2)}).
         Recurring revenue adds nothing out of sample in Empire Flippers or broker listings. Against the other measured dimensions
-        neither is distinguishable from an equal share`; })(MODELS.fitted.quality_weights.checked)}</td></tr>
+        neither is distinguishable from an equal share`; })(QWC) : `Their check against online-business sale prices
+        (fit/quality_weights_v2.py) is not in this build of the fitted table`}</td></tr>
       </tbody></table></div>
     <p class="note" style="margin-top:10px">Listing text is a weak proxy: a phrase like &ldquo;owner-operated&rdquo;
     flags the high end of owner dependence, and the asking price stands in for the sale price. Empire Flippers
@@ -4934,12 +4983,12 @@ function renderData(){
         Unshrunk: ${Fv.quality_weights.raw.own[0].toFixed(2)} and ${Fv.quality_weights.raw.mgt[0].toFixed(2)}. Owner dependence uses the
         owner-operated phrase only: &ldquo;absentee / manager-run&rdquo; (${(Fv.quality_weights.hedonic.absentee_or_manager_run[0]*100>=0?"+":"")}${(Fv.quality_weights.hedonic.absentee_or_manager_run[0]*100).toFixed(0)}%)
         disagrees with it, as listing copy uses it loosely. Phrase flags are noisy, so both effects are understated.
-        <b>Management depth is weakly supported</b>: it adds nothing out of sample in broker listings, and against the
-        other measured dimensions it sits at ${Fv.quality_weights.checked.mgt.ratio[0].toFixed(2)} of an equal share (95% interval
-        ${Fv.quality_weights.checked.mgt.ratio[1].toFixed(2)} to ${Fv.quality_weights.checked.mgt.ratio[2].toFixed(2)}), so its
-        ${Fv.quality_weights.mgt.toFixed(2)} is kept as settled, not re-decided. Recurring revenue and growth were checked against
-        ${Fv.quality_weights.checked.ef_n.toLocaleString()} online-business sales (${Fv.quality_weights.checked.source}) and keep an
-        equal share: neither weight is identified (see Quality positioning).</td></tr>
+        <b>Management depth is weakly supported</b>: it adds nothing out of sample in broker listings${QWC&&QWC.mgt?`, and against the
+        other measured dimensions it sits at ${QWC.mgt.ratio[0].toFixed(2)} of an equal share (95% interval
+        ${QWC.mgt.ratio[1].toFixed(2)} to ${QWC.mgt.ratio[2].toFixed(2)})`:""}, so its
+        ${Fv.quality_weights.mgt.toFixed(2)} is kept as settled, not re-decided. ${QWC?`Recurring revenue and growth were checked against
+        ${QWC.ef_n.toLocaleString()} online-business sales (${QWC.source}) and keep an
+        equal share: neither weight is identified (see Quality positioning).`:`Recurring revenue and growth keep an equal share.`}</td></tr>
       <tr><td>Shape of the time-to-close curve (how spread out closings are around the median)</td>
         <td>Weibull, shape k = ${KW} (judgment), scale re-solved to the band median</td>
         <td>log-logistic, &beta; ${Fv.ttc_shape.beta[0].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[0].toFixed(2)} under $500K and
@@ -5050,7 +5099,7 @@ function renderData(){
           one broker panel with sale marks (DealLedger, 31 sales in six weeks) is uninformative; DealStats has
           <code>Days To Sell</code> (paid)</span></td></tr>
       <tr><td>Competition premium (&kappa; = ${COMP_K.toFixed(2)}) and its half-saturation; the shape of the thin-pool factor and its cap
-          (the offer share that sets its scale is now fitted)</td>
+          (the offer share that sets its scale is now calibrated to IBBA)</td>
           <td>deal-level offer counts with ask and sale prices, including listings that drew no offer; buyer-level outreach rows
           (contacted, offers, closed)</td>
           <td><span class="st free">IBBA&rsquo;s quarterly band averages bound &kappa; only to
