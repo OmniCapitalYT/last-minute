@@ -79,6 +79,15 @@ def prime_on(days):
     return PR_V[np.clip(np.searchsorted(PR_D, days, side='right') - 1, 0, len(PR_V) - 1)]
 
 
+def prime_month(days):
+    """the base rate SBA rules peg a variable 7(a) rate to: the prime "in effect on the first business day of the month"
+    (13 CFR 120.214(c); SOP 50 10 8 Sec. B Ch. 1 Para. B.4.a.v, as amended by Procedural Notice 5000-875051), i.e. the
+    H.15 prime on the first H.15 business day on or after the 1st of the month containing `days` (int days since epoch).
+    Rate adjustments after disbursement use the same rule for the adjustment month (120.214(a))."""
+    m1 = np.asarray(days, dtype=np.int64).astype('datetime64[D]').astype('datetime64[M]').astype('datetime64[D]').astype(np.int64)
+    return PR_V[np.clip(np.searchsorted(PR_D, m1, side='left'), 0, len(PR_V) - 1)]
+
+
 chg = pr.prime_rate_pct.ne(pr.prime_rate_pct.shift())
 PRIME_NOW = float(pr.prime_rate_pct.iloc[-1])
 PRIME_SINCE = str(pr.date[chg].iloc[-1].date())
@@ -90,6 +99,62 @@ raw = pd.read_csv(SBA + 'clean/sba7a_chow_loans_fy2018_2026.csv', low_memory=Fal
                   dtype={'NaicsCode': str, 'naics2': str, 'naics4': str, 'BorrZip': str, 'FranchiseCode': str},
                   parse_dates=['ApprovalDate', 'FirstDisbursementDate', 'start_date', 'ChargeOffDate', 'PaidInFullDate'])
 say('CHOW file rows', len(raw))
+# The clean file's prime_at_approval / spread_over_prime use the H.15 prime ON the approval date. SBA rules set a variable
+# 7(a) rate as base rate + spread with the base "the prime rate ... in effect on the first business day of the month"
+# (13 CFR 120.214(c); SOP 50 10 8 Sec. B Ch. 1 Para. B.4.a.v.b.iii, PN 5000-875051), so a loan approved after a mid-month
+# prime change is priced off the month-start prime. Recompute both on that rule (approval month; FOIA has no application
+# date), and check it on the data: in months with a mid-month change, loans approved after the change should show the same
+# spread as those approved before it under the right convention.
+_ad = raw.ApprovalDate.values.astype('datetime64[D]').astype(np.int64)
+raw['prime_h15_approval_date'] = prime_on(_ad)
+raw['prime_at_approval'] = prime_month(_ad)
+raw['spread_over_prime'] = (raw.InitialInterestRate - raw.prime_at_approval).round(4)
+_tv = (raw.RevolverStatus == 0) & raw.InitialInterestRate.gt(0)
+_dif = (raw.prime_at_approval - raw.prime_h15_approval_date).abs()
+PRIME_RULE = {'rule': 'prime in effect on the first business day of the approval month (H.15), the base 13 CFR 120.214(c) and SOP 50 10 8 '
+                      'Sec. B Ch. 1 Para. B.4.a.v (PN 5000-875051) peg variable 7(a) rates to; previously the H.15 prime on the approval date',
+              'citation': ['13 CFR 120.214(c) (eCFR, current 2026-10-01): "The prime rate will be that which is in effect on the first business '
+                           'day of the month, as printed in a national financial newspaper published each business day."',
+                           'SOP 50 10 8 Sec. B, Ch. 1, Para. B.4.a.v.b.iii as amended by SBA Procedural Notice 5000-875051 (eff. 2026-03-01): '
+                           '"The Prime Rate will be that rate which is in effect on the first business day of the month, as identified in a '
+                           'national financial newspaper or website."',
+                           '13 CFR 120.214(d): the initial maximum allowable rate is determined as of the date SBA receives the application'],
+              'share_changed_term_loans': float(np.mean(_dif[_tv] > 1e-9)),
+              'share_changed_variable_fy2025_26': float(np.mean(_dif[_tv & (raw.FixedorVariableInterestInd == 'V') & (raw.ApprovalFY >= 2025)] > 1e-9)),
+              'abs_change_counts': {('%.2f' % k): int(v) for k, v in _dif[_tv & (_dif > 1e-9)].round(2).value_counts().sort_index().items()}}
+# empirical check: months with a mid-month prime change (FY2018-26), variable term loans approved in that month after vs before it
+_vv = raw[_tv & (raw.FixedorVariableInterestInd == 'V')]
+_chg = pr[pr.prime_rate_pct.ne(pr.prime_rate_pct.shift())]
+_chg = _chg[(_chg.date >= '2017-10-01') & (_chg.date <= ASOF)]
+_rows = []
+for _, c in _chg.iterrows():
+    if c.date.day == 1: continue
+    m_ = _vv.ApprovalDate.dt.to_period('M') == c.date.to_period('M')
+    post, pre = _vv[m_ & (_vv.ApprovalDate >= c.date)], _vv[m_ & (_vv.ApprovalDate < c.date)]
+    if len(post) < 10 or len(pre) < 10: continue
+    dP = float(c.prime_rate_pct - prime_on(np.array([np.datetime64(c.date.date(), 'D').astype(np.int64) - 1]))[0])
+    _rows.append({'change': str(c.date.date()), 'dprime': dP, 'n_pre': len(pre), 'n_post': len(post),
+                  'pre_mean': float(pre.spread_over_prime.mean()),
+                  'post_mean_month_rule': float(post.spread_over_prime.mean()),
+                  'post_mean_approval_date': float((post.InitialInterestRate - post.prime_h15_approval_date).mean())})
+_pc = pd.DataFrame(_rows)
+_w = _pc.n_post.values
+_slope = lambda y: float(np.sum(_w * _pc.dprime * y) / np.sum(_w * _pc.dprime ** 2))   # share of the prime move seen in the spread
+PRIME_RULE['midmonth_check'] = {
+    'months': int(len(_pc)), 'loans_after_change': int(_pc.n_post.sum()),
+    'slope_post_minus_pre_on_dprime_month_rule': _slope(_pc.post_mean_month_rule - _pc.pre_mean),
+    'slope_post_minus_pre_on_dprime_approval_date': _slope(_pc.post_mean_approval_date - _pc.pre_mean),
+    'mean_abs_gap_month_rule': float(np.average(np.abs(_pc.post_mean_month_rule - _pc.pre_mean), weights=_w)),
+    'mean_abs_gap_approval_date': float(np.average(np.abs(_pc.post_mean_approval_date - _pc.pre_mean), weights=_w)),
+    'by_month': [{k: (r4(v) if isinstance(v, float) else v) for k, v in r.items()} for r in _rows]}
+say('prime reference date: %s' % PRIME_RULE['rule'])
+say('  term loans whose base changes: %.3f (variable FY2025-26 %.3f); |change| counts %s' % (
+    PRIME_RULE['share_changed_term_loans'], PRIME_RULE['share_changed_variable_fy2025_26'], PRIME_RULE['abs_change_counts']))
+say('  mid-month check (%d months, %d loans approved after a change): share of the prime move that shows up in the post-vs-pre '
+    'spread gap: month rule %.3f, approval-date prime %.3f; mean |gap| %.3f vs %.3f pp' % (
+        PRIME_RULE['midmonth_check']['months'], PRIME_RULE['midmonth_check']['loans_after_change'],
+        PRIME_RULE['midmonth_check']['slope_post_minus_pre_on_dprime_month_rule'], PRIME_RULE['midmonth_check']['slope_post_minus_pre_on_dprime_approval_date'],
+        PRIME_RULE['midmonth_check']['mean_abs_gap_month_rule'], PRIME_RULE['midmonth_check']['mean_abs_gap_approval_date']))
 
 # ----------------------------------------------------------------------------------------------------------------
 # 1. spread over prime by loan size, FY2025-26 approvals
@@ -169,6 +234,10 @@ for fv in ['V', 'F']:
     if True:
         say('   share of loans at the three most common spreads', s.spread_over_prime.round(2).value_counts(normalize=True).head(3).round(3).to_dict())
 spread_band_tab = pd.DataFrame(SPREAD_ROWS)
+_sv_old = sp[(sp.ApprovalFY >= 2025) & (sp.FixedorVariableInterestInd == 'V')].copy()
+_sv_old['spread_over_prime'] = _sv_old.InitialInterestRate - _sv_old.prime_h15_approval_date
+PRIME_RULE['knots_approval_date_prime'] = fit_spread(_sv_old).tolist()
+say('knots with the approval-date prime (previous definition):', np.round(PRIME_RULE['knots_approval_date_prime'], 3), ' month-start rule:', np.round(spread_res['V']['values'], 3))
 spread_band_tab.to_csv(OUT + 'spread_by_band_fy2025_26.csv', index=False)
 say(spread_band_tab.round(3).to_string())
 # drift by FY (variable)
@@ -279,7 +348,7 @@ def panel(rows, a0, a1, ev):
     i, dt, b, cy, mid, y = i[keep], dt[keep], b[keep], cy[keep], mid[keep], y[keep]
     loan = rows[i]
     P = {'loan': loan, 'dt': dt, 'b': b, 'cy': cy, 'y': y}
-    P['dprimeV'] = (prime_on(mid.astype(np.int64)) - prime0[loan]) * (1 - fx[loan])
+    P['dprimeV'] = (prime_month(mid.astype(np.int64)) - prime0[loan]) * (1 - fx[loan])   # base resets on the month-start prime
     P['lnamt_x_age'] = LV['lnamt'][loan] * age_term(b)
     return P
 
@@ -412,7 +481,7 @@ def predict_cif(fco, fpif, rows, a0, a1, use_cal=True, extra_co=None, override=N
     h1 = np.exp(lbc[b] + calc + loanpart); h2 = np.exp(lbp[b] + lp[i] + calp)
     if 'dprimeV' in fpif['covs'] and use_cal:   # realised prime path (validation only); 0 in the app (flat prime)
         mday = st_day[rows][i] + (s[keep] + dt / 2) * MPD
-        h2 = h2 * np.exp(par(fpif, 'dprimeV') * (prime_on(mday.astype(np.int64)) - prime0[rows][i]) * (1 - fx[rows][i]))
+        h2 = h2 * np.exp(par(fpif, 'dprimeV') * (prime_month(mday.astype(np.int64)) - prime0[rows][i]) * (1 - fx[rows][i]))
     L = h1 + h2; Ld = L * dt
     cs = np.cumsum(Ld); first = np.r_[0, np.flatnonzero(np.diff(i)) + 1]
     base = (cs - Ld)[first]; grp = np.repeat(np.arange(len(first)), np.diff(np.r_[first, len(i)]))
@@ -1442,7 +1511,7 @@ say('timing', TIMING)
 # save the fit (consumed by section 6: JS tables, patched copy, RESULT.json)
 # ----------------------------------------------------------------------------------------------------------------
 FIT = {'prime': {'value': PRIME_NOW, 'since': PRIME_SINCE, 'h15_last_obs': PRIME_LAST_OBS,
-                 'recent_changes': [[str(a.date()), float(b)] for a, b in zip(prime_changes.date, prime_changes.prime_rate_pct)]},
+                 'recent_changes': [[str(a.date()), float(b)] for a, b in zip(prime_changes.date, prime_changes.prime_rate_pct)], 'spread_base': PRIME_RULE},
        'spread': spread_res, 'spread_validation': spread_val, 'spread_drift_variable_by_fy': drift.reset_index().to_dict('records'),
        'spread_share_above_sba_max': frac_above_cap,
        'hazard': {'n_loans': int(len(d)), 'events': np.bincount(d.ev.values).tolist(), 'exclusions': excl,
@@ -1665,12 +1734,13 @@ SBA_RATE = {"prime": PRIME_NOW, "prime_asof": PRIME_SINCE, "prime_source": "Fed 
             "spread_knots": [[R4(math.log(k)), float(round(v, 2))] for k, v in zip(SP_KNOTS_USD, spq['values'])],
             "spread_knots_se": [float(round(v, 3)) for v in spq['unc']],
             "spread_knots_boot_se": [float(round(v, 3)) for v in spq['se']],
+            "spread_base": "prime in effect on the first business day of the approval month (13 CFR 120.214(c))",
             "n": spq['n'], "n_cancelled": int(_stc.get('CANCLD', 0)), "n_undisbursed": int(_stc.get('COMMIT', 0)),
             "median_spread": float(spq['median_all']),
             "fixed_rate_knots": [[R4(math.log(k)), float(round(v, 2))] for k, v in zip(SP_KNOTS_USD, spread_res['F']['values'])],
             "fixed_rate_n": spread_res['F']['n'],
             "source": ("SBA FOIA 7(a) as of 2026-06-30, change-of-ownership variable-rate term loans approved FY2025-26 (Oct 2024 - Jun 2026), "
-                       "including %d cancelled and %d approved but not yet disbursed: median of initial rate minus H.15 prime on the approval date, "
+                       "including %d cancelled and %d approved but not yet disbursed: median of initial rate minus the prime in effect on the first business day of the approval month (Fed H.15; the base SBA rules peg variable 7(a) rates to, 13 CFR 120.214(c)), "
                        "by ln(loan), made non-increasing. Knot uncertainty %.2f-%.2f pp (the largest of the bootstrap SE, the range across "
                        "samples - disbursed only, FY2025 only, FY2026 only, FY2018-26 - and 0.05 pp, because rates heap at quarter points)"
                        % (_stc.get('CANCLD', 0), _stc.get('COMMIT', 0), min(spq['unc']), max(spq['unc'])))}
@@ -1873,8 +1943,9 @@ PATCHES = [
    is taken as 85% of the price, the usual SBA acquisition structure. */""",
      """/* SBA 7(a) acquisition rate: today's prime (Fed H.15) plus the median spread lenders charged on
    variable-rate change-of-ownership loans of this size approved FY2025-26 (SBA FOIA as of
-   2026-06-30). Was a flat 10.5%. The loan is taken as 85% of the price, the usual SBA
-   acquisition structure. */"""),
+   2026-06-30), measured over the prime in effect on the first business day of the approval
+   month, the base SBA rules peg variable 7(a) rates to (13 CFR 120.214(c)). Was a flat 10.5%.
+   The loan is taken as 85% of the price, the usual SBA acquisition structure. */"""),
     ("""  $("o_conf").textContent=`Fitted on ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} resolved acquisitions — value R² ${MODELS.value.cv_r2_log}, risk AUC ${MODELS.risk.cv_auc}`;""",
      """  $("o_conf").textContent=`Fitted on ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} acquisition loans — value R² ${MODELS.value.cv_r2_log}, 5-year risk AUC ${MODELS.risk.cv_auc}`;"""),
     ("""             + 1 + Object.keys(R.coefficients).length + Object.keys(R.industry_effects).length
@@ -1895,7 +1966,7 @@ PATCHES = [
     are charged off later, so the note's lifetime loss runs higher, by about ${((R.lgd.post_term_ratio-1)*100).toFixed(0)}% on mature 7(a) loans).
     A 6% chance of default on a $2M note is not a 6% problem.</p>"""),
     ("""        <td>${Fv.sba_rate.n.toLocaleString()} change-of-ownership 7(a) loans, FY2023 (SBA FOIA)</td></tr>""",
-     """        <td>${Fv.sba_rate.n.toLocaleString()} variable-rate change-of-ownership 7(a) loans approved FY2025&ndash;26, including cancelled and undisbursed approvals (SBA FOIA as of 2026-06-30); prime from Fed H.15; each size point &plusmn;${Math.min(...Fv.sba_rate.spread_knots_se).toFixed(2)}&ndash;${Math.max(...Fv.sba_rate.spread_knots_se).toFixed(2)} pts</td></tr>"""),
+     """        <td>${Fv.sba_rate.n.toLocaleString()} variable-rate change-of-ownership 7(a) loans approved FY2025&ndash;26, including cancelled and undisbursed approvals (SBA FOIA as of 2026-06-30); spread over the prime on the first business day of the approval month, as SBA rules set it (Fed H.15); each size point &plusmn;${Math.min(...Fv.sba_rate.spread_knots_se).toFixed(2)}&ndash;${Math.max(...Fv.sba_rate.spread_knots_se).toFixed(2)} pts</td></tr>"""),
     ("""<li><span class="pv f"><i></i>fitted</span> <b>Post-acquisition survival risk</b> &mdash;
 logistic on <b>${MODELS.risk.n_fit.toLocaleString()}</b> resolved SBA 7(a) acquisition loans, industry
 table from <b>1,152,544</b> mature loans. CV AUC <b>${MODELS.risk.cv_auc}</b>, Brier ${MODELS.risk.cv_brier}.
@@ -2332,16 +2403,23 @@ PARAMS = [
             format(salt['FY2018_26']['n'], ','), '/'.join('%.2f' % v for v in salt['FY2018_26']['values']))),
   'n': ('%s variable-rate change-of-ownership term loans approved FY2025-26, including %d cancelled and %d approved but undisbursed (the rate offered at approval); '
         'fixed-rate: %s, reported apart' % (format(spq['n'], ','), SBA_RATE['n_cancelled'], SBA_RATE['n_undisbursed'], format(spread_res['F']['n'], ','))),
-  'method': 'median regression on a piecewise-linear (tent) basis in ln(loan), knots $100k/$300k/$600k/$1.2M/$2.5M/$4.5M, then pool-adjacent-violators to make it non-increasing; spread = InitialInterestRate - H.15 prime on the approval date',
-  'validation': 'temporal: fitted on FY2025, predicting FY2026 loans (n=%s): MAE %.3f pp vs %.3f for the current FY2023 knots (bias +%.2f pp: spreads rose) and %.3f for a flat median; 5-fold CV MAE %.3f vs %.3f current. %.1f%% of loans exceed the SBA maximum spread for their size (full SOP 50 10 schedule: 6.5/6.0/4.5/3.0 pp).'
+  'method': 'median regression on a piecewise-linear (tent) basis in ln(loan), knots $100k/$300k/$600k/$1.2M/$2.5M/$4.5M, then pool-adjacent-violators to make it non-increasing; spread = InitialInterestRate - the prime in effect on the first business day of the approval month (H.15), the base SBA rules peg variable 7(a) rates to: 13 CFR 120.214(c) "The prime rate will be that which is in effect on the first business day of the month"; SOP 50 10 8 Sec. B Ch. 1 Para. B.4.a.v as amended by PN 5000-875051 (eff. 2026-03-01). Earlier fits used the prime on the approval date, which mis-measured %.1f%% of term loans by 0.25-1.5 pp (loans approved after a mid-month prime change)' % (100 * PRIME_RULE['share_changed_term_loans']),
+  'validation': ('temporal: fitted on FY2025, predicting FY2026 loans (n=%s): MAE %.3f pp vs %.3f for the current FY2023 knots (bias %+.2f pp%s) and %.3f for a flat median; 5-fold CV MAE %.3f vs %.3f current. %.1f%% of loans exceed the SBA maximum spread for their size (full SOP 50 10 schedule: 6.5/6.0/4.5/3.0 pp). '
+                 'Reference date checked on the data: in the %d months with a mid-month prime change (FY2018-26, %s variable loans approved after the change), the post-vs-pre-change gap in mean spread carries %.2f of the prime move under the month-start rule vs %.2f with the approval-date prime (mean |gap| %.2f vs %.2f pp), so lenders price off the month-start prime. '
+                 'Knots with the approval-date prime (previous fit, same sample rule): %s; MAE on the holdout is not comparable across the two definitions.')
                 % (format(spread_val['holdout_FY2026_n'], ','), spread_val['mae_new_fit_on_FY2025'], spread_val['mae_current_FY2023_knots'], spread_val['bias_current_knots_pp'],
-                   spread_val['mae_flat_FY2025_median'], spread_val['cv5_mae_new'], spread_val['cv5_mae_current_knots'], 100 * frac_above_cap),
+                   ': spreads rose' if spread_val['bias_current_knots_pp'] > 0.02 else (': spreads fell' if spread_val['bias_current_knots_pp'] < -0.02 else ''),
+                   spread_val['mae_flat_FY2025_median'], spread_val['cv5_mae_new'], spread_val['cv5_mae_current_knots'], 100 * frac_above_cap,
+                   PRIME_RULE['midmonth_check']['months'], format(PRIME_RULE['midmonth_check']['loans_after_change'], ','),
+                   PRIME_RULE['midmonth_check']['slope_post_minus_pre_on_dprime_month_rule'], PRIME_RULE['midmonth_check']['slope_post_minus_pre_on_dprime_approval_date'],
+                   PRIME_RULE['midmonth_check']['mean_abs_gap_month_rule'], PRIME_RULE['midmonth_check']['mean_abs_gap_approval_date'],
+                   '/'.join('%.2f' % v for v in PRIME_RULE['knots_approval_date_prime'])),
   'recommended_value': json.dumps(SBA_RATE['spread_knots']) + '; spread_knots_se ' + json.dumps(SBA_RATE['spread_knots_se']) + ' (sample-choice uncertainty); source string says "including cancelled and undisbursed approvals"'},
  {'param': 'fixed-rate spread over prime (report only; not used)', 'current_value': 'not modelled',
   'fitted_value': ', '.join('%.2f' % v for v in spread_res['F']['values']) + ' at the same knots', 'se': ', '.join('%.3f' % v for v in spread_res['F']['unc']) + ' (same rule as variable)',
   'n': '%s fixed-rate loans FY2025-26 (%.0f%% of term loans)' % (format(spread_res['F']['n'], ','), 100 * spread_res['F']['n'] / (spread_res['F']['n'] + spq['n'])),
   'method': 'same as variable', 'validation': 'none needed (not wired in)',
-  'recommended_value': 'keep sbaRate on the variable-rate table (87% of loans, and SBA acquisition notes are usually prime-based); store fixed_rate_knots for display'},
+  'recommended_value': 'keep sbaRate on the variable-rate table (%.0f%% of loans, and SBA acquisition notes are usually prime-based); store fixed_rate_knots for display' % (100 * spq['n'] / (spread_res['F']['n'] + spq['n']))},
  {'param': 'Charge-off probability: horizon and population base (replaces MODELS.risk.base_rate 0.0569 "resolved-only"); base_cif = the denominator of rel',
   'current_value': 'base_rate 5.69%% = 774/13,613 resolved loans, no horizon; resolved-only rate on this term-loan population %s. Previous fit: base_cif 1.93%% / 4.81%% (FY2024-26 book with fixed-rate notes\' low spreads run through the variable slope); the console\'s own pricing of that book averaged %.3fx / %.3fx of it, so rel ran about 10%% high'
                    % (pc_(RESOLVED_ONLY), *BASE_DIAG['previous_definition']['console_over_base']),
@@ -2572,7 +2650,7 @@ PARAMS = [
 ]
 NOT_ID = [
  ('The rate LEVEL as a risk factor separate from the spread: given the spread, prime at approval is %+.2f (SE %.2f) per pp with calendar terms and %+.2f (SE %.2f) once approval cohorts are controlled '
-  '(rate level: %+.2f (%.2f) and %+.2f (%.2f)); approval-date prime varied mainly across the COVID-relief cohorts (3.25%% in FY2021), and prime moves after approval show no effect, so the level is '
+  '(rate level: %+.2f (%.2f) and %+.2f (%.2f)); approval-month prime varied mainly across the COVID-relief cohorts (3.25%% in FY2021), and prime moves after approval show no effect, so the level is '
   'not applied. Direction stated as a labelled judgment: a loan written at today\'s %.2f%% prime (sample mean %.2f%%) may run %.0f-%.0f%% above the level shown.'
   % (RATE_LEVEL['coef_calendar'][0], RATE_LEVEL['coef_calendar'][1], RATE_LEVEL['coef_calendar_cohort'][0], RATE_LEVEL['coef_calendar_cohort'][1],
      RATE_LEVEL['level_coef_calendar'][0], RATE_LEVEL['level_coef_calendar'][1], RATE_LEVEL['level_coef_calendar_cohort'][0], RATE_LEVEL['level_coef_calendar_cohort'][1],

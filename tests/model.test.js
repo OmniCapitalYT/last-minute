@@ -282,5 +282,123 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(r.betaT===2.64&&Math.abs(r.tQ(.75)/r.tQ(.25)-Math.pow(9,1/2.64))<1e-9,
        `worked example: beta ${r.betaT}, quartiles ${r.tQ(.25).toFixed(0)}-${r.tQ(.75).toFixed(0)} d`); } }
 
+/* 23. SBA risk refresh (fit/sba_risk_refresh.py; RESULT test_invariants): competing-risk hazard, charged off
+   within 5 / 8 / 10 years if 2023-26 conditions hold; H.15 prime and FY2025-26 spread table; staffing not used */
+{ const fs=require("fs"), path=require("path");
+  const HTML=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const R=A.MODELS.risk, F=A.MODELS.fitted, PR=F.sba_rate.prime;
+  const PINS=[{"args": [1000000.0, "medical", null, 10, false, null], "p5": 0.013185443385233407, "p8": 0.034686887718461956, "pTerm": 0.04158610968566404, "lgd": 0.6008056544102781, "expLoss": 0.02498516984407299, "rel": 0.7373423703131923}, {"args": [300000.0, "rest", 10.5, 12, true, "TX"], "p5": 0.0648660194374464, "p8": 0.12852339606860294, "pTerm": 0.15408669954664808, "lgd": 0.6243882819012078, "expLoss": 0.09620992959375921, "rel": 2.7320336799051077}, {"args": [5000000.0, "home", null, 30, false, "CA"], "p5": 0.008145831324026047, "p8": 0.02969939541600232, "pTerm": 0.035606605164245186, "lgd": 0.5824328970421608, "expLoss": 0.02073845819964769, "rel": 0.631322786600092}, {"args": [40000000.0, "ecom", 9.0, 60, false, "NY"], "p5": 0.008755474177616511, "p8": 0.0330519726517333, "pTerm": 0.03962601001216305, "lgd": 0.5808520292789736, "expLoss": 0.023016848327793833, "rel": 0.702588830002891}, {"args": [764705.8823529412, "fit", null, 8, false, null], "p5": 0.029182196281486647, "p8": 0.07207561419593358, "pTerm": 0.08641145385950479, "lgd": 0.6054283974620153, "expLoss": 0.052315948032522853, "rel": 1.5321179762323545}, {"args": [150000.0, "auto", 12.0, 4, false, "FL"], "p5": 0.06543029305563433, "p8": 0.12369183373613088, "pTerm": 0.1482941394662473, "lgd": 0.6278803980961786, "expLoss": 0.0931109833233976, "rel": 2.6293287139405552}];
+  /* the average sector: fitRisk with every sector table emptied ("zzz" maps to 81, which then carries no effect) */
+  const avgSector=fn=>{ const a=R.industry_effects,b=R.pif.sector; R.industry_effects={}; R.pif.sector={};
+    try{ return fn(); } finally { R.industry_effects=a; R.pif.sector=b; } };
+  /* 1. the console reproduces the fitted model exactly (Python mirror on the shipped, rounded tables) */
+  for(const c of PINS){ const r=A.fitRisk(...c.args);
+    for(const k of ["p5","p8","pTerm","lgd","expLoss","rel"]) ok(Math.abs(r[k]-c[k])<=1e-9*Math.max(1,Math.abs(c[k])),`pin ${JSON.stringify(c.args)} ${k}: ${r[k]} vs ${c[k]}`); }
+  /* 2. horizons: 0 < p5 < p8 < pTerm < 1, headline is the term, and the term uses the stated tail factor */
+  for(const k of Object.keys(A.IND)) for(const v of [2e5,1e6,4e6]){ const r=A.fitRisk(v,k,null,10,false,null);
+    ok(r.p5>0&&r.p5<r.p8&&r.p8<r.pTerm&&r.pTerm<0.5,`${k} ${v}: horizons ordered ${r.p5} ${r.p8} ${r.pTerm}`);
+    ok(r.p===r.pTerm&&Math.abs(r.pTerm-r.p8*R.tail_factor)<1e-12,`${k}: headline is the term`); }
+  ok(R.horizon_months===60&&R.observed_months===96&&R.term_months===120,"horizons are 5 / 8 / 10 years");
+  /* the tail factor is a labelled transfer judgment: inside the loan-band range of mature vintages, with an SE that covers it */
+  ok(R.tail_factor>=1.1&&R.tail_factor<=1.3,"tail factor inside the 1.1-1.3 range mature vintages show");
+  ok(R.tail_factor_se>=0.07,"tail factor SE covers the loan-band range (>= 0.07)");
+  ok(R.tail_by_band["<150k"].ratio<R.tail_factor&&R.tail_factor<R.tail_by_band[">=1.5M"].ratio,"tail factor between the small- and large-loan ratios");
+  /* 3. larger loans are no riskier at the table rate over 5 years; flat beyond the 7(a) cap */
+  for(const k of Object.keys(A.IND)){ let prev=1;
+    for(const v of [5e4,1e5,3e5,1e6,3e6,5.8e6]){ const p=A.fitRisk(v,k,null,10,false,null).p5; ok(p<=prev+1e-12,`${k}: 5-year risk falls with size at ${v}`); prev=p; }
+    ok(Math.abs(A.fitRisk(6e6,k,null,10,false,null).p5-A.fitRisk(6e8,k,null,10,false,null).p5)<1e-12,`${k}: flat above the $5M loan cap`); }
+  /* 3b. the size effect fades with time on book: the large/small ratio is closer to 1 over 8 years than over 5 */
+  { const s=A.fitRisk(2e5,"prof",null,10,false,null), b=A.fitRisk(5e6,"prof",null,10,false,null);
+    ok(R.co.age_coef.lnamt>0&&R.co.coef.lnamt<0,"size lowers risk, less so with time on book");
+    ok(b.p8/s.p8>b.p5/s.p5,"size gradient flatter at 8 years than at 5"); }
+  /* 4. a higher spread raises risk up to prime+3, and is flat above (the fitted hinge) */
+  { let prev=0; for(const s of [0,1,2,2.5,3]){ const p=A.fitRisk(1e6,"rest",PR+s,10,false,null).p5; ok(p>prev,`spread ${s}: risk rises`); prev=p; }
+    ok(A.fitRisk(1e6,"rest",PR+3,10,false,null).p5===A.fitRisk(1e6,"rest",PR+6,10,false,null).p5,"flat above prime+3"); }
+  /* 4b. risk depends on the spread, not the rate level: moving prime and the rate together changes nothing */
+  { const p0=A.fitRisk(9e5,"auto",PR+2,6,false,null).p; F.sba_rate.prime=PR+1.5; const p1=A.fitRisk(9e5,"auto",PR+3.5,6,false,null).p; F.sba_rate.prime=PR;
+    ok(Math.abs(p0-p1)<1e-15,"rate level not applied (spread only)"); }
+  /* 5. rate omitted = rate from sbaRate */
+  ok(A.fitRisk(8e5,"auto",undefined,6,false,null).p5===A.fitRisk(8e5,"auto",A.sbaRate(8e5),6,false,null).p5,"default rate is sbaRate");
+  /* 6. population anchors: base and observed 5-year rate are the same order; reference loan near the base */
+  ok(R.base_cif.h60>0.01&&R.base_cif.h60<0.035,"population 5-year charge-off between 1% and 3.5%");
+  ok(Math.abs(R.base_cif.h60-R.aj_pooled.cif60)<3*R.aj_pooled.cif60_se+0.003,"model population average near the Aalen-Johansen 5-year rate");
+  ok(Math.abs(R.base_cif.term-R.base_cif.h96*R.tail_factor)<1e-3,"population term = 8-year x tail factor");
+  ok(R.base_cif.spec_range.h96[0]<=R.base_cif.h96+1e-4&&R.base_cif.h96<=R.base_cif.spec_range.h96[1]+1e-4,"shipped 8-year level inside its specification range");
+  /* the stated level uncertainty includes the reference period: 2025-26 ran below 2023-24, and the range brackets the shipped level */
+  ok(R.base_cif.conditions.ratio<1&&R.base_cif.conditions_range.h96[0]<R.base_cif.h96&&R.base_cif.h96<R.base_cif.conditions_range.h96[1],"reference-period range brackets the shipped 8-year level");
+  ok(R.base_cif.level_range.h96[0]<=Math.min(R.base_cif.spec_range.h96[0],R.base_cif.conditions_range.h96[0])+1e-9&&R.base_cif.level_range.h96[1]>=Math.max(R.base_cif.spec_range.h96[1],R.base_cif.conditions_range.h96[1])-1e-9,"level range = specifications and reference periods");
+  ok((R.base_cif.level_range.h96[1]-R.base_cif.level_range.h96[0])/R.base_cif.h96>0.2,"stated level range is not the narrow specification range alone");
+  /* the reference loan ($650k note, table rate, average sector, no state) sits near the average loan */
+  { const r=avgSector(()=>A.fitRisk(6.5e5/0.85,"zzz",null,8,false,null)); ok(r.rel>0.8&&r.rel<1.2,`reference loan rel ${r.rel}`);
+    ok(Math.abs(r.rel-r.pTerm/R.base_cif.term)<1e-12,"rel = pTerm / base_cif.term"); }
+  /* 6d. base_cif is what fitRisk prices: fitRisk applied to every FY2024-26 acquisition loan (its own size, sector and 6-digit
+         effect, state and franchise flag; table rate, variable note) averages base_cif.h60 / h96 within 2%, and rel averages 1 */
+  { const BK=JSON.parse(fs.readFileSync(path.join(__dirname,"sba_book_fy2024_26.json"),"utf8"));
+    const ie=R.industry_effects, ps=R.pif.sector; let s5=0,s8=0,sr=0; const n=BK.loan.length;
+    try{ for(let i=0;i<n;i++){ R.industry_effects={"81":BK.sec_co[BK.sec[i]]+BK.n6[i]/1e4}; R.pif.sector={"81":BK.sec_pif[BK.sec[i]]};
+        const r=A.fitRisk(BK.loan[i]/R.loan_share,"zzz",null,null,BK.fr[i]===1,BK.st_keys[BK.st[i]]); s5+=r.p5; s8+=r.p8; sr+=r.rel; } }
+    finally { R.industry_effects=ie; R.pif.sector=ps; }
+    ok(n===BK.n&&n>10000,`book fixture has ${n} loans`);
+    ok(Math.abs(s5/n/R.base_cif.h60-1)<0.02,`console-priced book 5-yr mean ${s5/n} vs base_cif.h60 ${R.base_cif.h60}`);
+    ok(Math.abs(s8/n/R.base_cif.h96-1)<0.02,`console-priced book 8-yr mean ${s8/n} vs base_cif.h96 ${R.base_cif.h96}`);
+    ok(Math.abs(sr/n-1)<0.02,`rel averages 1 over the book: ${sr/n}`); }
+  /* 6b. by loan band: the fitted model (own spreads and rate type, realised calendar) matches the observed 5-year rate within
+         2 SE; the console (table spreads, variable note, current conditions, shrunk) within 1.5 SE and 0.90-1.25x */
+  for(const b of Object.keys(R.size_band_cif)){ const B=R.size_band_cif[b];
+    ok(B.cif60>0.003&&B.cif60<0.06,`band ${b} observed 5-yr rate`);
+    ok(Math.abs(B.model60_insample-B.cif60)<=2*B.cif60_se,`band ${b}: fitted model (own spreads, realised calendar) ${B.model60_insample} vs observed ${B.cif60} (SE ${B.cif60_se})`);
+    ok(Math.abs(B.model60_table_spread-B.cif60)<=1.5*B.cif60_se&&B.model60_table_spread/B.cif60>0.90&&B.model60_table_spread/B.cif60<1.25,
+       `band ${b}: console at table spreads ${B.model60_table_spread} vs observed ${B.cif60}`);
+    const r=avgSector(()=>A.fitRisk(B.loan_median/R.loan_share,"zzz",null,null,false,null));
+    ok(Math.abs(r.p5-B.cif60)<=3*B.cif60_se+0.004,`band ${b}: fitRisk at the band median (average sector) ${r.p5} vs observed ${B.cif60}`); }
+  /* 6c. multiples stay in a believable range for realistic console inputs (table rate, any industry, $200k-$10M, 2-50 staff) */
+  for(const k of Object.keys(A.IND)) for(const v of [2e5,6e5,2e6,1e7]) for(const j of [2,8,50]){ const r=A.fitRisk(v,k,null,j,false,null);
+    ok(r.rel>0.2&&r.rel<3.5,`${k} ${v} ${j} staff: rel ${r.rel}`); }
+  /* 6e. staffing does not enter: SBA's jobs count is not the console's head count */
+  for(const k of ["staff","rest","medical"]) ok(A.fitRisk(2e6,k,null,2,false,"TX").p===A.fitRisk(2e6,k,null,90,false,"TX").p,`${k}: risk does not move with staffing`);
+  ok(R.co.coef.lnjobs===undefined&&R.pif.coef.lnjobs===undefined&&R.staffing.applied===false,"no staffing coefficient shipped");
+  /* 7. effects: unknown state/industry = 0; shrunk effects bounded; out-of-time shrink in (0,1] */
+  ok(A.fitRisk(1e6,"medical",null,10,false,"ZZ").p5===A.fitRisk(1e6,"medical",null,10,false,null).p5,"unknown state is national");
+  for(const k in R.state_effects) ok(Math.abs(R.state_effects[k])<0.6,`state ${k} bounded`);
+  for(const k in R.naics6_effects) ok(Math.abs(R.naics6_effects[k])<0.6,`naics6 ${k} bounded`);
+  for(const k of Object.keys(A.IND)){ ok(R.industry_effects[A.IND2NAICS[k]]!==undefined,`${k} has a charge-off sector effect`);
+    ok(R.pif.sector[A.IND2NAICS[k]]!==undefined,`${k} has a payoff sector effect`); }
+  ok(R.co.log_base[0]===null,"no charge-off in the first six months on book");
+  ok(R.co.lp_shrink>0.5&&R.co.lp_shrink<=1,"out-of-time shrink in (0.5, 1]");
+  /* 7b. shipped SEs are clustered (lender / two-way), never below the Hessian SEs */
+  for(const k in R.co.se) ok(R.co.se[k]>=R.co.se_hessian[k]-1e-4,`co.se ${k} clustered >= Hessian`);
+  ok(R.co.se.lnamt>=1.2*R.co.se_hessian.lnamt,"size SE inflated by clustering");
+  /* 8. severity: timing-weighted mean LGD in a sane band, falling with age at charge-off and not rising with size;
+        expected loss below the term probability */
+  ok(R.lgd.b_age<0,"severity falls the later a loan fails (amortisation)");
+  { let prev=1; for(const v of [3e4,2e5,1e6,3e6,6e6]){ const r=A.fitRisk(v,"prof",null,10,false,null);
+    ok(r.lgd>0.4&&r.lgd<0.95,`lgd at ${v}: ${r.lgd}`);
+    if(R.lgd.b_size<=0) ok(r.lgd<=prev+0.01,`lgd does not rise with size at ${v}`); prev=r.lgd;
+    ok(r.expLoss>0&&r.expLoss<r.pTerm&&Math.abs(r.expLoss-r.pTerm*r.lgd)<1e-12,"expected loss = term probability x mean severity"); } }
+  /* 9. rate table: H.15 prime and date; spreads non-increasing in size and inside SBA's maximum; knot uncertainty >= 0.05 */
+  ok(PR===7.00&&F.sba_rate.prime_asof==="2026-09-17","prime 7.00% since 2026-09-17 (H.15)");
+  { let prev=99; for(const v of [5e4,2e5,6e5,1.5e6,4e6,1e7]){ const s=A.sbaRate(v)-PR; ok(s<=prev+1e-12&&s>=1.3&&s<=2.6,`spread at ${v}: ${s}`); prev=s; } }
+  ok(F.sba_rate.spread_knots_se.every(v=>v>=0.0)&&Math.max(...F.sba_rate.spread_knots_se)>=0.05,"knot uncertainty reflects sample choice, not the heaped bootstrap");
+  ok(/cancelled/.test(F.sba_rate.source),"rate source says the sample includes cancelled and undisbursed approvals");
+  /* 10. the full model carries it through; headline risk never rises with revenue at a fixed margin (within 1%), and is flat once
+         the note hits the $5M cap */
+  { const EX={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,ask:3.24e6};
+    const r=A.model(EX);
+    ok(isFinite(r.risk.p)&&r.risk.p>0&&r.risk.p<0.3&&r.risk.p5<r.risk.p,"model() risk finite and ordered");
+    for(const k of Object.keys(A.IND)){ let prev=Infinity, bad=0;
+      for(let i=0;i<=48;i++){ const rev=3e5*Math.pow(4e7/3e5,i/48); const o=A.model({...EX,ind:k,rev,ern:rev*1.45/6,ask:rev*.54});
+        if(o.risk.p>prev*1.01) bad++; prev=o.risk.p; }
+      ok(bad===0,`${k}: headline risk rises with revenue in ${bad} steps`); } }
+  /* 11. labels: the 10-year figure is conditional on current conditions; checks the Data tab must show; state label */
+  ok(R.conditions==="2023-26","conditions label");
+  { const i=HTML.indexOf('const e=$("o_risk")'), j=HTML.indexOf('e.innerHTML=h;})();',i), H=HTML.slice(i,j);
+    ok(i>0&&j>i&&/conditions hold/.test(H),"hero says 'if 2023-26 conditions hold'");
+    ok(!/-yr term/.test(H)&&/charged off within /.test(H),"hero says 'within 10 yrs', not 'the 10-yr term'");
+    ok(/conditions_range/.test(H),"hero tooltip shows the reference-period range"); }
+  for(const f of ["vintage_oe","cal_holdout_slope","lp_shrink","spec_range","conditions_range","level_range","through_cycle","rate_level.uplift_range","tail_by_band","real_estate","spread_channel","staffing"])
+    ok(HTML.indexOf("R."+f)>=0||HTML.indexOf("R.validation."+f)>=0||HTML.indexOf("R.co."+f)>=0||HTML.indexOf("R.base_cif."+f)>=0,`Data tab shows ${f}`);
+  ok(HTML.indexOf("pts default risk")<0&&HTML.indexOf("pts charge-off risk, 10 yr")>=0,"state dropdown labels the 10-year charge-off risk");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

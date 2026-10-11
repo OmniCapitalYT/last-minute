@@ -421,7 +421,8 @@ command.
 
 | Was hand-set | Now | Data |
 |---|---|---|
-| SBA rate 10.5% | prime 6.75% + 1.5 to 2.0 pts by loan size | 4,812 change-of-ownership 7(a) loans, FY2023 |
+| SBA rate 10.5% | prime 7.00% (Fed H.15, since 2026-09-17) + 1.42 to 2.50 pts by loan size, measured over the prime on the first business day of the approval month (13 CFR 120.214(c)); first fit was prime 6.75% + 1.5 to 2.0 pts on FY2023 loans | 9,218 variable-rate change-of-ownership 7(a) loans approved FY2025–26, incl. cancelled and undisbursed (SBA FOIA as of 2026-06-30; `fit/sba_risk_refresh.py`) |
+| survival risk: logistic on resolved loans only, no horizon | competing-risk hazard: charged off within 10 years if 2023–26 conditions hold (5.6% for the average FY2024–26 loan), 5 years beside it (1.9%); loan-level effects shrunk ×0.74 out of time; years 9–10 borrowed from mature 7(a) loans (×1.20, judgment); staffing dropped (SBA's jobs count is not the console's head count) | 41,200 SBA 7(a) acquisition loans FY2018–26, open loans censored (`fit/sba_risk_refresh.py`) |
 | employees = revenue ÷ $150k | receipts per employee by industry and firm size | Census SUSB 2022 |
 | GM salary = 2.4% of revenue | BLS industry wage distribution (wages only) read at the firm's size rank, p10–p90, June 2026 $ | OEWS May 2025 (EB-shrunk to parent NAICS) × ECI management W&S to 2026Q2; Census employment by size |
 | industry SDE margins 7–21% × size curve, sd 0.45 | fitted 20–30% at $200k SDE (shrunk toward the pooled level), slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
@@ -448,6 +449,11 @@ with the data that would fit it:
   BIZCOMPS records both prices, so its raw rows would fix this.
 - **Records nobody publishes:** the competition premium, intervention effects and category
   weights need the brokerage's own records.
+- **Survival risk beyond the data:** no acquisition loan is older than 8.5 years (SBA flags change of
+  ownership only since Dec 2017), so years 9–10 of the 10-year figure are a labelled transfer from mature
+  7(a) loans. Whether 2023–26 conditions hold is not identified (charge-offs in 2025–26 ran 0.65× the
+  2023–24 rate; either period as current puts the 8-year level at 4.1–5.7%, against 4.7% shipped), and the
+  FOIA file has no default dates, lender underwriting or business-quality fields. The SEs are parameter-only.
 
 **A second reviewer checked the fits against the raw data.** Every table recomputed from
 its source. It found the following problems, all fixed:

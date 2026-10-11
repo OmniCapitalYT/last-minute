@@ -1,0 +1,80 @@
+{
+ "prime": 7.0,
+ "prime_asof": "2026-09-17",
+ "prime_source": "Fed H.15 bank prime loan rate (RIFSPBLP_N.B), observed through 2026-10-02",
+ "spread_knots": [
+  [
+   11.5129,
+   2.5
+  ],
+  [
+   12.6115,
+   2.5
+  ],
+  [
+   13.3047,
+   2.0
+  ],
+  [
+   13.9978,
+   2.0
+  ],
+  [
+   14.7318,
+   2.0
+  ],
+  [
+   15.3196,
+   1.42
+  ]
+ ],
+ "spread_knots_se": [
+  0.05,
+  0.05,
+  0.188,
+  0.05,
+  0.05,
+  0.076
+ ],
+ "spread_knots_boot_se": [
+  0.014,
+  0.014,
+  0.053,
+  0.002,
+  0.015,
+  0.068
+ ],
+ "spread_base": "prime in effect on the first business day of the approval month (13 CFR 120.214(c))",
+ "n": 9218,
+ "n_cancelled": 770,
+ "n_undisbursed": 999,
+ "median_spread": 2.0,
+ "fixed_rate_knots": [
+  [
+   11.5129,
+   1.0
+  ],
+  [
+   12.6115,
+   0.77
+  ],
+  [
+   13.3047,
+   0.45
+  ],
+  [
+   13.9978,
+   0.45
+  ],
+  [
+   14.7318,
+   0.45
+  ],
+  [
+   15.3196,
+   0.25
+  ]
+ ],
+ "fixed_rate_n": 1362,
+ "source": "SBA FOIA 7(a) as of 2026-06-30, change-of-ownership variable-rate term loans approved FY2025-26 (Oct 2024 - Jun 2026), including 770 cancelled and 999 approved but not yet disbursed: median of initial rate minus the prime in effect on the first business day of the approval month (Fed H.15; the base SBA rules peg variable 7(a) rates to, 13 CFR 120.214(c)), by ln(loan), made non-increasing. Knot uncertainty 0.05-0.19 pp (the largest of the bootstrap SE, the range across samples - disbursed only, FY2025 only, FY2026 only, FY2018-26 - and 0.05 pp, because rates heap at quarter points)"
+}

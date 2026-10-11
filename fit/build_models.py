@@ -20,12 +20,14 @@ for ind,c in N6.items():
     susb[ind]={'naics':c,'knots':kn,'rpe':round(tot[3]/tot[1]),'ppe':round(tot[2]/tot[1])}
 # GM wages: OEWS May 2025, EB-shrunk, x ECI to 2026Q2; written by `python3 -I oews_refresh.py --write-repo`
 # (oews.py and its May-2021 oews.json are superseded)
-mg=json.load(open('margin.json')); sr=json.load(open('sba_rate.json')); QWJ=json.load(open('quality_weights.json'))
+mg=json.load(open('margin.json')); QWJ=json.load(open('quality_weights.json'))
 BM=json.load(open('ibba/summary.json'))
 out={
  'model':'omni_fitted_v4','asof':'2026-10-07',
- 'sba_rate':{'prime':6.75,'prime_asof':'2025-12-11','spread_knots':[[math.log(1e5),2.0],[math.log(7.5e5),2.0],[math.log(1.5e6),1.75],[math.log(3.5e6),1.5]],
-   'n':sr['n_fy23'],'median_spread':sr['median_fy23'],'source':'SBA FOIA 7(a), change-of-ownership loans approved FY2023 (Oct 2022 - Sep 2023), initial rate minus WSJ prime on the approval date'},
+ # SBA rate: Fed H.15 prime (7.00% since 2026-09-17) + median spread of FY2025-26 variable-rate change-of-ownership
+ # 7(a) loans over the prime on the first business day of the approval month (13 CFR 120.214(c)); written by
+ # fit/sba_risk_refresh.py (its MODELS_fitted_sba_rate.json, copied here). sba_rate.py and its FY2023 table are superseded.
+ 'sba_rate':json.load(open('sba_rate_fy2025_26.json')),
  'jobs':{'by_industry':susb,'source':'Census SUSB 2022, US 6-digit NAICS by enterprise receipts size: receipts and payroll per paid employee'},
  'gm_wage':json.load(open('gm_wage.json')),
  'sde_margin':{'slope':round(mg['slope'],4),'ref_sde':2e5,'sd':round(mg['sd'],4),'ln_at_ref':{k:round(v,4) for k,v in mg['a'].items()},'n':mg['n'],'sde_range':[math.log(4e4),math.log(3e6)],

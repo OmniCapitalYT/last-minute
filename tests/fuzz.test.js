@@ -81,6 +81,18 @@ for(let i=0;i<N;i++){
     ok(ra.betaT===r.betaT&&Math.abs(ra.F(ra.tMed)-.5)<1e-12,"curve shape independent of the ask",ctx(s));
     if(r.tMult===undefined) ok(ra.F(180)===r.F(180)&&ra.F(365)===r.F(365),"curve independent of the ask",ctx(s)); }
 
+  /* 7d. survival risk (fit/sba_risk_refresh.py): charged off within 5 < 8 < 10 years, headline = 10-year term
+     (8-year x tail factor), rel against base_cif.term, expected loss below the probability; it reads the value,
+     not the ask, and ignores staffing; with no rate entered it prices at sbaRate(V) */
+  { const k=r.risk, R=A.MODELS.risk;
+    ok([k.p5,k.p8,k.pTerm,k.rel,k.lgd,k.expLoss].every(fin)&&k.p5>0&&k.p5<k.p8&&k.p8<k.pTerm&&k.pTerm<.5,"risk horizons ordered",ctx(s,{p5:k.p5,p8:k.p8,p:k.pTerm}));
+    ok(k.p===k.pTerm&&Math.abs(k.pTerm-k.p8*R.tail_factor)<1e-12&&Math.abs(k.rel-k.pTerm/R.base_cif.term)<1e-12,"risk headline is the 10-year term",ctx(s));
+    ok(k.expLoss>0&&k.expLoss<k.pTerm&&k.lgd>.4&&k.lgd<.95,"expected loss below the charge-off probability",ctx(s,{lgd:k.lgd}));
+    ok(A.model({...s,ask:s.ask*1.7}).risk.p===k.p,"risk independent of the ask",ctx(s));
+    ok(A.model({...s,jobs:s.jobs*7+3}).risk.p===k.p,"risk ignores staffing",ctx(s));
+    const rt=A.model({...s,rate:undefined});
+    ok(rt.rate===A.sbaRate(rt.V)&&rt.risk.p===A.fitRisk(rt.V,s.ind,A.sbaRate(rt.V),null,!!s.franchise,s.st||null).p,"no rate entered prices at the table rate",ctx(s)); }
+
   /* 8. the proceeds optimum beats the entered ask, and does not depend on theta */
   if(i%5===0){ const rs=A.bestRatio(s,0,s.lamT), ro=A.model({...s,ask:V0*rs});
     ok(ro.EVp>=r.EVp*(1-1e-6),"proceeds optimum at least as good as the entered ask",ctx(s,{rs}));

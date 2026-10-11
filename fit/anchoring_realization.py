@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Fit the realised-price block of index.html (revision 3, after a second independent review).
+"""Fit the realised-price block of index.html (revision 4: the fanNodes() slice means are exact).
+
+Revision 4 changes: an independent review found that fanNodes() read a 4,000-point grid in 48 slices of
+k = M/N = 83.33 points: each slice summed 84 points (j < k), overlapped the next and divided by 83.33, so
+every node ran ~0.8% high (the top one 4.9%; nodes' mean 1.104 against the fan's 1.092). The nodes are now
+exact slice means: ln R is linear in z = probit(p) between knots and beyond them, so E[R^s; a<z<b] has a
+closed form per piece. The fix is part of the patched page, the grid and the optimiser pages, and the
+'current' (whole spread, s = 1) baseline is the page with that fix alone (fixonly/, fanNodes_fix.diff);
+the shipped page is reported beside it. FAN_S is recalibrated on the fixed nodes.
 
 Revision 3 changes: FAN_S is labelled a CALIBRATION (mechanism not identified), not a fit; the source
 structure is carried in the model average (IBBA's two sub-$1M bands as two sources or as one; DealStats
@@ -95,7 +103,7 @@ def wmean(x, w):
     return float(np.sum(np.asarray(x) * np.asarray(w)) / np.sum(w))
 
 
-log("anchoring_realization.py (revision 3)  run", time.strftime("%Y-%m-%d %H:%M:%S"))
+log("anchoring_realization.py (revision 4)  run", time.strftime("%Y-%m-%d %H:%M:%S"))
 log("index.html sha256[:16] =", sha(INDEX))
 
 # =====================================================================================
@@ -399,11 +407,72 @@ log(f"EF reconstruction's own anchoring fits ({P_EF_PAR}): pass-through of ln as
 # =====================================================================================
 # 2. THE MODEL ITSELF ON A GRID (harness + source overrides)
 # =====================================================================================
-# Overrides: ALPHA, FAN_S and AMAX become settable; the fan nodes become slice means of R(p)^s (the
-# form recommended for index.html); the 48 capped prices, the at-ceiling flags and each slice's own
+# Overrides: ALPHA, FAN_S and AMAX become settable; the fan nodes become EXACT slice means of R(p)^s (the
+# form recommended for index.html, including the fanNodes fix); the 48 capped prices, the at-ceiling flags and each slice's own
 # chance of closing relative to the base (1 - gapPenalty at the slice's gap; used only for the
 # selection alternative) are exported. Evaluated at a median 'prof' business with $400k of earnings
 # (V ~ $1.0M, comp = 0, ceiling = ask); scale-freeness is verified across 16 industries x 4 sizes.
+# fanNodes(): the shipped page reads a 4,000-point grid in 48 slices of k = M/N = 83.33 points; each slice sums 84
+# points (j < k), overlaps the next and divides by 83.33, so every node runs ~0.8% high. FAN_FIX_BLOCK replaces it with
+# exact slice means (closed form per piece of the piecewise-linear-in-z log fan); FAN_S_BLOCK is the same with
+# R(p)^FAN_S (ln R^s = s c + s B z, the same form). FAN_FIX alone is the 'current' baseline (whole spread, s = 1).
+FAN_OLD_BLOCK = r"""/* The price distribution is carried on 48 equal-probability slices of the measured
+   fan. Each node is the MEAN of its slice (from a 4,000-point grid), not its midpoint,
+   so the nodes reproduce the fan's mean to 0.15% (1.092 vs the measured 1.0907)
+   where midpoints lose the right tail and fall to 1.085. */
+let FAN_NODES=null;
+function fanNodes(){
+  if(FAN_NODES) return FAN_NODES;
+  const N=48,M=4000,out=[];
+  for(let i=0;i<N;i++){ let s=0; const k=M/N;
+    for(let j=0;j<k;j++) s+=fanRatio((i*k+j+.5)/M); out.push(s/k); }
+  return FAN_NODES=out;
+}
+"""
+FAN_FIX_BLOCK = r"""/* The price distribution is carried on 48 equal-probability slices of the measured
+   fan. Each node is the exact MEAN of its slice, not its midpoint. ln R is linear in
+   z = probit(p) between knots and continues at the end slopes beyond them (fanRatio),
+   so on a piece where ln R = c + B z, E[R; a<z<b] = exp(c+B^2/2) (Phi(b-B) - Phi(a-B)),
+   and a slice's mean is 48 times the sum over its pieces: no grid, and the open-ended
+   outer slices keep their whole tails. The nodes reproduce the fan's mean, 1.0924 vs
+   the measured 1.0907 (0.15%), to within the normal CDF's approximation (< 5e-5 per
+   node); midpoints lose the right tail and fall to 1.085. This replaced a 4,000-point
+   grid cut into 48 slices of 83.3 points: each summed 84 points and overlapped the
+   next, so every node ran ~0.8% high (the top one 4.9%) and their mean was 1.104. */
+let FAN_NODES=null;
+function fanNodes(){
+  if(FAN_NODES) return FAN_NODES;
+  const N=48,Z=FAN.z,Y=FAN.y,n=Z.length,out=[];
+  if(n<2){ for(let i=0;i<N;i++) out.push(1); return FAN_NODES=out; }
+  const seg=[];                    /* ln R = c + B z on [L,U]; the end pieces are open */
+  for(let j=0;j<=n;j++){
+    const i0=Math.min(Math.max(j-1,0),n-2), B=(Y[i0+1]-Y[i0])/(Z[i0+1]-Z[i0]);
+    seg.push({L:j===0?-Infinity:Z[j-1],U:j===n?Infinity:Z[j],c:Y[i0]-B*Z[i0],B});
+  }
+  for(let i=0;i<N;i++){
+    const lo=i===0?-Infinity:nqnt(i/N), hi=i===N-1?Infinity:nqnt((i+1)/N);
+    let s=0;
+    for(const g of seg){ const a=Math.max(lo,g.L), b=Math.min(hi,g.U);
+      if(a<b) s+=Math.exp(g.c+g.B*g.B/2)*(ncdf(b-g.B)-ncdf(a-g.B)); }
+    out.push(N*s);
+  }
+  return FAN_NODES=out;
+}
+"""
+FAN_S_BLOCK = FAN_FIX_BLOCK
+for _o, _n in [
+        ("   next, so every node ran ~0.8% high (the top one 4.9%) and their mean was 1.104. */\n",
+         "   next, so every node ran ~0.8% high (the top one 4.9%) and their mean was 1.104.\n"
+         "   Each node is the slice mean of R(p)^FAN_S: the realised-price fan keeps FAN_S of the\n"
+         "   value spread, in logs (median kept); ln R^FAN_S = FAN_S c + FAN_S B z has the same form,\n"
+         "   and the fan's mean above is the FAN_S = 1 case. */\n"),
+        ("    for(const g of seg){ const a=Math.max(lo,g.L), b=Math.min(hi,g.U);\n"
+         "      if(a<b) s+=Math.exp(g.c+g.B*g.B/2)*(ncdf(b-g.B)-ncdf(a-g.B)); }\n",
+         "    for(const g of seg){ const a=Math.max(lo,g.L), b=Math.min(hi,g.U), c=FAN_S*g.c, B=FAN_S*g.B;\n"
+         "      if(a<b) s+=Math.exp(c+B*B/2)*(ncdf(b-B)-ncdf(a-B)); }\n")]:
+    assert FAN_S_BLOCK.count(_o) == 1, _o[:60]
+    FAN_S_BLOCK = FAN_S_BLOCK.replace(_o, _n)
+FAN_FIX = [[FAN_OLD_BLOCK, FAN_FIX_BLOCK]]
 S_GRID = np.round(np.arange(0.05, 1.6001, 0.025), 4)
 M_GRID = np.round(np.exp(np.arange(math.log(0.30), math.log(4.50) + 1e-9, 0.01)), 6)   # wide, for premium dispersion up to sd 0.4
 AL_GRID = [0.30, 0.45, 0.55, 0.70, 0.85]
@@ -411,23 +480,32 @@ AM_GRID = [1.30, 1.66]
 OVR = [
     ["const ALPHA_ANCHOR=.55;", "let ALPHA_ANCHOR=.55; let FAN_S=1; MODELS.__set=function(a,s,am){ALPHA_ANCHOR=a;FAN_S=s;AMAX=am;FAN_NODES=null;};"],
     ["const AMAX=1.30;", "let AMAX=1.30;"],
-    ["for(let j=0;j<k;j++) s+=fanRatio((i*k+j+.5)/M);", "for(let j=0;j<k;j++) s+=Math.pow(fanRatio((i*k+j+.5)/M),FAN_S);"],
+    [FAN_OLD_BLOCK, FAN_S_BLOCK],
     ["const wt=1;", "const wt=(MODELS.__sel?Math.max(1e-12,1-gapPenalty((s.ask/W-1)*100)):1);"],
     ["out.Vmean=sp/sw;", "out.Vmean=sp/sw; out.__Pc=Pc.slice(); out.__Pf=Pf.slice(); out.__G=RN.map(x=>1-gapPenalty((s.ask/(out.V*x)-1)*100));"]]
 JS_GRID = r"""
 const H=require(__HARNESS__), fs=require("fs");
 const spec=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
-const A=H.load(spec.ovr), B=H.load([]);
+const A=H.load(spec.ovr), B=H.load(spec.fix), B0=H.load([]);
 function median(ind,ern){const I=A.IND[ind],R=A.sizeRefs(ern);
   return{ind,ern,rev:ern/A.typMargin(ind,ern),yrs:6,buyers:I.buyers,franchise:false,st:null,
          rec:I.rec,cc:.16,own:R.own,mgt:R.mgt,grw:I.grw,gm:I.gm,ret:I.ret,fin:R.fin,plt:.40};}
-const out={check:[],scale:[]};
-/* 1. with the defaults the overridden model reproduces the shipped model exactly */
+const out={check:[],scale:[],bug:[]};
+/* 1. with the defaults the overridden model reproduces the model with the fanNodes fix alone exactly;
+      the shipped page (fanNodes overlap bug) is compared with it */
 A.MODELS.__set(.55,1,1.30);
 for(const ind of Object.keys(A.IND)) for(const ern of [1.2e5,4e5,1.5e6]) for(const m of [.8,1,1.1,1.4]){
-  const t=median(ind,ern), V=B.model({...t,ask:1}).V, a=A.model({...t,ask:V*m}), b=B.model({...t,ask:V*m});
+  const t=median(ind,ern), V=B.model({...t,ask:1}).V, a=A.model({...t,ask:V*m}), b=B.model({...t,ask:V*m}), b0=B0.model({...t,ask:V*m});
   out.check.push(Math.max(Math.abs(a.Vmean/b.Vmean-1),Math.abs(a.capShare-b.capShare),Math.abs(a.Vreal/b.Vreal-1),Math.abs(a.EVp/b.EVp-1),
-                          Math.abs(a.q(.08)/b.q(.08)-1)));}
+                          Math.abs(a.q(.08)/b.q(.08)-1)));
+  out.bug.push([b0.Vmean/b.Vmean-1, b0.q(.08)/b.q(.08)-1, b0.VrealFree/b.VrealFree-1]);}
+/* the nodes: shipped vs exact, and a brute-force check of the exact ones (200,000 midpoints per slice) */
+{ const n0=B0.fanNodes(), n1=B.fanNodes(), mean=a=>a.reduce((x,y)=>x+y,0)/a.length, K=200000; let worst=0;
+  for(let i=1;i<47;i++){ let s=0; for(let j=0;j<K;j++) s+=B.fanRatio((i+(j+.5)/K)/48); worst=Math.max(worst,Math.abs(n1[i]/(s/K)-1)); }
+  const rel=n0.map((x,i)=>x/n1[i]-1);
+  out.nodes={shipped_mean:mean(n0),exact_mean:mean(n1),midpoint_mean:mean(Array.from({length:48},(_,i)=>B.fanRatio((i+.5)/48))),
+             interior_bias_min:Math.min(...rel.slice(1,47)),interior_bias_max:Math.max(...rel.slice(1,47)),bias_top:rel[47],bias_bottom:rel[0],
+             exact_vs_brute_interior:worst,shipped:n0,exact:n1}; }
 /* the fan's own location: E[ln R] and E[R] (the fan median is 1 by construction) */
 let sl=0,sr=0; const NF=400000; for(let i=0;i<NF;i++){const x=A.fanRatio((i+.5)/NF); sl+=Math.log(x); sr+=x;}
 out.ElnR=sl/NF; out.ER=sr/NF; out.p50=A.fanRatio(.5);
@@ -462,7 +540,7 @@ if os.path.isdir(GDIR):
 os.makedirs(GDIR)
 with open(os.path.join(GDIR, "grid_driver.js"), "w") as f:
     f.write(JS_GRID)
-spec = {"alpha": AL_GRID, "amax": AM_GRID, "s": S_GRID.tolist(), "m": M_GRID.tolist(), "ind": "prof", "ern": 4e5, "out": GDIR, "ovr": OVR}
+spec = {"alpha": AL_GRID, "amax": AM_GRID, "s": S_GRID.tolist(), "m": M_GRID.tolist(), "ind": "prof", "ern": 4e5, "out": GDIR, "ovr": OVR, "fix": FAN_FIX}
 with open(os.path.join(GDIR, "grid_spec.json"), "w") as f:
     json.dump(spec, f)
 t_g = time.time()
@@ -478,7 +556,15 @@ GC = np.fromfile(os.path.join(GDIR, "grid_C.u8"), dtype=np.uint8).reshape(nA, nA
 GG = np.fromfile(os.path.join(GDIR, "grid_G.f64"), dtype=np.float64).reshape(nS, nM, NN)
 ELNR = float(ginfo["ElnR"])
 log(f"harness grid: {ginfo['n']} model evaluations in {time.time() - t_g:.1f}s (s {S_GRID[0]}-{S_GRID[-1]}, rho {M_GRID[0]}-{M_GRID[-1]:.2f}, "
-    f"ALPHA {AL_GRID}, AMAX {AM_GRID}); overridden vs shipped model at defaults, max rel diff = {ginfo['maxCheck']:.2e}")
+    f"ALPHA {AL_GRID}, AMAX {AM_GRID}); overridden model at defaults vs the page with the fanNodes fix alone, max rel diff = {ginfo['maxCheck']:.2e}")
+NODES = ginfo["nodes"]
+BUG = np.array(ginfo["bug"])
+log(f"fanNodes: shipped nodes' mean {NODES['shipped_mean']:.4f}, exact {NODES['exact_mean']:.4f} (slice midpoints {NODES['midpoint_mean']:.4f}; measured mean/median "
+    f"1.0907); shipped/exact per node: interior {100 * NODES['interior_bias_min']:+.2f}% to {100 * NODES['interior_bias_max']:+.2f}%, top {100 * NODES['bias_top']:+.2f}%, bottom "
+    f"{100 * NODES['bias_bottom']:+.2f}%; exact vs brute force (200,000 midpoints per slice), interior: {NODES['exact_vs_brute_interior']:.1e}")
+log(f"fanNodes bug effect on the model (shipped / fixed - 1, 16 industries x 3 sizes x ask 0.8-1.4 V): E[P|close] {100 * BUG[:, 0].min():+.2f}% to {100 * BUG[:, 0].max():+.2f}%, "
+    f"q(.08) {100 * BUG[:, 1].min():+.2f}% to {100 * BUG[:, 1].max():+.2f}%, uncapped median {100 * BUG[:, 2].min():+.2f}% to {100 * BUG[:, 2].max():+.2f}%")
+assert NODES["exact_vs_brute_interior"] < 1e-4
 log(f"fan location: median R = {ginfo['p50']:.4f}, E[ln R] = {ELNR:.4f}, E[R] = {ginfo['ER']:.4f}")
 log("scale-freeness (alpha, s, rho, worst |dP/ask| across 16 industries x 4 sizes):", ginfo["scale"])
 assert ginfo["maxCheck"] < 1e-9
@@ -1378,7 +1464,7 @@ console.log(JSON.stringify(out));
 with open(os.path.join(OUT, "optimiser.js"), "w") as f:
     f.write(OPT_JS)
 S_OPT = [1.0, 0.95, 0.9, 0.875, 0.85, 0.825, 0.8, 0.775, 0.75, 0.7, 0.6, 0.5]
-S_FINE = [round(x, 3) for x in np.arange(0.80, 0.9601, 0.005)]
+S_FINE = [round(x, 3) for x in np.arange(0.70, 0.9601, 0.005)]
 with open(os.path.join(OUT, "optimiser_spec.json"), "w") as f:
     json.dump({"pages": PAGES, "ovr": OVR, "s": S_OPT, "s_fine": S_FINE, "fan": FAN_S_REC}, f)
 t_o = time.time()
@@ -1553,10 +1639,12 @@ SPREAD_OLD = (
     "      <span class=\"n\" style=\"color:#5ee0a8\">${SIGMA_DISPLAY.toFixed(3)}</span><span class=\"n muted\">lognormal sigma implied by p10/p90 (display only)</span><span class=\"st pub\">fitted</span></div>\n"
     "    <p class=\"note\">The 80% interval spans ${V.fan_quantiles.p10.toFixed(2)}&times;&ndash;${V.fan_quantiles.p90.toFixed(2)}&times; the point estimate. That is the honest\n"
     "    width of small-business valuation; a single number implies precision this data cannot support.</p>\n")
+INT_RHO = float(OU[(OU.page == PAGES[0][0]) & (OU["mode"] == "narrowed (FAN_S)")].interior_rho.iloc[0])   # the interior peak at FAN_S
+INT_TXT = f"{INT_RHO:.2f}x"
 BEST_OLD = ("   worth to the owner: ~1.05x when a failed sale is a total loss, ~1.4x when the\n"
             "   owner is content to keep it. Solved once per render and reused, so the 2^11\n")
 BEST_NEW = ("   worth to the owner: ~1.1x when a failed sale is a total loss. For an owner content to\n"
-            "   keep it (theta = .75) the utility has two near-equal peaks, an interior one near 1.15x\n"
+            f"   keep it (theta = .75) the utility has two near-equal peaks, an interior one near {INT_TXT}\n"
             f"   and the 1.5x cap. At FAN_S = {FAN_S_REC:.2f} the {'interior one' if MARGIN_FAN > 0 else 'cap'} wins by {100 * abs(MARGIN_FAN):.2f}% of value (framework example); the\n"
             f"   cap wins for FAN_S above about {S_FLIP_LO:.3f}-{S_FLIP_HI:.3f} or theta above {(JUMP_FAN if JUMP_FAN is not None else 1):.2f}. That knife-edge is set by how\n"
             "   widely prices scatter at asks of 1.4-1.5x, where FAN_S (calibrated near 1.07x) is\n"
@@ -1565,7 +1653,7 @@ BEST_NEW = ("   worth to the owner: ~1.1x when a failed sale is a total loss. Fo
             "   per render and reused, so the 2^11\n")
 UI_OLD = ("  const uGain=Uat(rKeep)-Uat(rSell), atEdge=s.optRho>RHO_MAX-.02;\n")
 UI_NEW = ("  const uGain=Uat(rKeep)-Uat(rSell), atEdge=s.optRho>RHO_MAX-.02;\n"
-          "  /* A patient seller's utility often has two near-equal peaks, an interior ask near 1.15x and the\n"
+          "  /* A patient seller's utility often has two near-equal peaks, an interior ask near " + INT_TXT + " and the\n"
           "     RHO_MAX cap. Which one wins turns on how widely prices scatter at high asks (FAN_S is calibrated\n"
           "     near 1.07x and extrapolated there), so when the other peak is within 1% of value the note gives\n"
           "     the range instead of presenting one end as the answer. */\n"
@@ -1578,13 +1666,13 @@ UI_NEW = ("  const uGain=Uat(rKeep)-Uat(rSell), atEdge=s.optRho>RHO_MAX-.02;\n"
           "  }\n")
 UI_NOTE_OLD = ("      +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as \"test the market\", not as a measured optimum. `:\"\")\n")
 UI_NOTE_NEW = (UI_NOTE_OLD +
-               "      +(alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,Uf(rKeep)-alt.u)/r.V,2)} of value to this owner, so read the patient-seller price as a range, `\n"
+               "      +(alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,Uf(rKeep)-alt.u)/r.V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `\n"
                "        +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `:\"\")\n")
 # On the pending overpricing_time stack the note lives in optNote(s,V,rSell,rKeep): the same logic, rebased there.
 PATCH_STACK_ALT = {
     UI_OLD: ("  const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMed-rKeep.tMed));\n",
              "  const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMed-rKeep.tMed));\n"
-             "  /* two near-equal peaks (an interior ask near 1.15x and the RHO_MAX cap): when the other one is within\n"
+             "  /* two near-equal peaks (an interior ask near " + INT_TXT + " and the RHO_MAX cap): when the other one is within\n"
              "     1% of value, give the range instead of one end (FAN_S is extrapolated at high asks; AUDIT.md, Oct 2026) */\n"
              "  let alt=null;\n"
              "  if(s.theta>0&&money(V*s.optRho)!==money(V*s.rhoSell)){\n"
@@ -1592,7 +1680,7 @@ PATCH_STACK_ALT = {
              "    else { const x=model({...s,ask:V*RHO_MAX}); alt={u:U(x),m:RHO_MAX}; }\n"
              "    if(U(rKeep)-alt.u>.01*V) alt=null;\n"
              "  }\n"
-             "  const rangeTxt=alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,U(rKeep)-alt.u)/V,2)} of value to this owner, so read the patient-seller price as a range, `\n"
+             "  const rangeTxt=alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,U(rKeep)-alt.u)/V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `\n"
              "    +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `:\"\";\n"),
     UI_NOTE_OLD: ("    +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as \"test the market\", not as a measured optimum. `:\"\")\n",
                   "    +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as \"test the market\", not as a measured optimum. `:\"\")\n"
@@ -1601,11 +1689,7 @@ PATCH_STACK_ALT = {
 PATCH = [
     ("title=\"The fitted value's measured spread, moved by anchoring and competition (both judgment), and capped at the ask\"",
      "title=\"The fitted value's measured spread, narrowed to the share that remains once a business is listed (calibrated), moved by anchoring and competition (both judgment), and capped at the ask\""),
-    ("   where midpoints lose the right tail and fall to 1.085. */\n",
-     "   where midpoints lose the right tail and fall to 1.085. Each node is the slice mean of\n"
-     "   R(p)^FAN_S: the realised-price fan keeps FAN_S of the value spread, in logs (median kept). */\n"),
-    ("for(let j=0;j<k;j++) s+=fanRatio((i*k+j+.5)/M);",
-     "for(let j=0;j<k;j++) s+=Math.pow(fanRatio((i*k+j+.5)/M),FAN_S);"),
+    (FAN_OLD_BLOCK, FAN_S_BLOCK),
     ("const ALPHA_ANCHOR=.55;\n",
      "const ALPHA_ANCHOR=.55;\n" + FAN_COMMENT + f"const FAN_S={FAN_S_REC:.2f};\n" + MTYP_COMMENT + f"const M_TYP={M_TYP:.3f};\n"),
     ("  out.ALPHA=ALPHA_ANCHOR;\n", "  out.ALPHA=ALPHA_ANCHOR; out.fanS=FAN_S; out.mTyp=M_TYP;\n"),
@@ -1667,6 +1751,18 @@ diff = "".join(difflib.unified_diff(html.splitlines(True), patched.splitlines(Tr
 with open(os.path.join(OUT, "index.html.diff"), "w", encoding="utf-8") as f:
     f.write(diff)
 log(f"  patched copy written ({len(PATCH)} replacements); diff {len(diff.splitlines())} lines -> {OUT}/index.html.diff")
+# the fanNodes fix alone (the 'current' whole-spread baseline; separable from FAN_S)
+assert html.count(FAN_OLD_BLOCK) == 1
+fixonly = html.replace(FAN_OLD_BLOCK, FAN_FIX_BLOCK)
+FIXDIR = os.path.join(OUT, "fixonly")
+if os.path.isdir(FIXDIR):
+    shutil.rmtree(FIXDIR)
+shutil.copytree(TESTS, os.path.join(FIXDIR, "tests"))
+with open(os.path.join(FIXDIR, "index.html"), "w", encoding="utf-8") as f:
+    f.write(fixonly)
+with open(os.path.join(OUT, "fanNodes_fix.diff"), "w", encoding="utf-8") as f:
+    f.write("".join(difflib.unified_diff(html.splitlines(True), fixonly.splitlines(True), "a/index.html", "b/index.html", n=1)))
+log(f"  fanNodes fix alone -> {FIXDIR}/index.html (diff {OUT}/fanNodes_fix.diff)")
 
 # ---------------- before / after through both versions of the model ----------------
 BA_JS = r"""
@@ -1675,7 +1771,7 @@ function load(file){ let html=fs.readFileSync(file,"utf8"); let src=html.slice(h
   src=src.slice(0,src.indexOf("/* ============ bar helpers"));
   const ctx={console,Math,Map,JSON,Object,Array,Number,String,isFinite,Set,Infinity,NaN}; vm.createContext(ctx);
   vm.runInContext(src+";this.API={model,bestRatio,IND,sizeRefs,typMargin,fitClose};",ctx); return ctx.API; }
-const V0=load(process.argv[2]), V1=load(process.argv[3]), M=+process.argv[4];
+const V0=load(process.argv[2]), V1=load(process.argv[3]), V2=load(process.argv[4]), M=+process.argv[5];
 const median=(A,ind,ern)=>{const I=A.IND[ind],RF=A.sizeRefs(ern);return {ind,ern,rev:ern/A.typMargin(ind,ern),yrs:6,buyers:I.buyers,
   franchise:false,st:null,rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,gm:I.gm,ret:I.ret,fin:RF.fin,plt:.40};};
 const EX={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,ask:3.24e6};
@@ -1685,7 +1781,7 @@ function row(lab,A,s){ const r=A.model(s), a=s.ask; return {case:lab,V:r.V,ask:a
   q05:r.q(.05)/a,bear_lo:r.scen.bear[0]/a,bear_hi:r.scen.bear[1]/a,
   base_lo:r.scen.base[0]/a,base_hi:r.scen.base[1]/a,bull_lo:r.scen.bull[0]/a,bull_hi:r.scen.bull[1]/a,range_lo:r.range[0]/a,range_hi:r.range[1]/a,
   bear_lo_usd:r.scen.bear[0],bear_hi_usd:r.scen.bear[1]}; }
-for(const [ver,A] of [["current",V0],["patched",V1]]){
+for(const [ver,A] of [["shipped",V0],["current",V1],["patched",V2]]){
   out.push({ver,...row("framework example (ask 0.79x value)",A,EX)});
   for(const [ind,ern] of [["prof",1.2e5],["prof",4e5],["home",4e5],["mfg",1.5e6]]){
     const t=median(A,ind,ern), V=A.model({...t,ask:1}).V;
@@ -1703,7 +1799,7 @@ console.log(JSON.stringify(out));
 """
 with open(os.path.join(OUT, "before_after.js"), "w") as f:
     f.write(BA_JS)
-p = subprocess.run(["node", os.path.join(OUT, "before_after.js"), INDEX, os.path.join(PDIR, "index.html"), f"{M_TYP:.3f}"],
+p = subprocess.run(["node", os.path.join(OUT, "before_after.js"), INDEX, os.path.join(FIXDIR, "index.html"), os.path.join(PDIR, "index.html"), f"{M_TYP:.3f}"],
                    capture_output=True, text=True, timeout=900)
 if p.returncode != 0:
     log(p.stderr[-3000:])
@@ -1717,7 +1813,7 @@ def ba(case, ver, col):
     return float(v.iloc[0]) if len(v) else float("nan")
 
 
-log("\n=== Before / after (current vs patched model) ===")
+log("\n=== Before / after (shipped page | current = fanNodes fix alone, whole spread | patched = fix + FAN_S) ===")
 piv = BA.pivot_table(index="case", columns="ver", values=["rho", "E_P_over_ask", "share_at_ask", "below_ask_mean", "bear_lo", "bear_hi", "q05", "median_P", "EVp"],
                      aggfunc="first", sort=False)
 with pd.option_context("display.width", 320, "display.max_columns", 30, "display.float_format", "{:,.4f}".format):
@@ -1729,7 +1825,9 @@ BL = ba(CQ, "patched", "below_ask_mean")
 BL_LO, BL_HI = math.floor((BL - 0.04) * 100) / 100, math.ceil((BL + 0.04) * 100) / 100
 R75 = ba("optimal ask, framework example, theta=0.75", "patched", "rho")
 R75_CUR = ba("optimal ask, framework example, theta=0.75", "current", "rho")
-DER = {v: {k: ba(CQ, v, k) for k in ["E_P_over_ask", "share_at_ask", "below_ask_mean", "q05", "bear_lo", "bear_hi"]} for v in ["current", "patched"]}
+R75_SHIP = ba("optimal ask, framework example, theta=0.75", "shipped", "rho")
+R0_SHIP, R0_CUR = ba("optimal ask, framework example, theta=0", "shipped", "rho"), ba("optimal ask, framework example, theta=0", "current", "rho")
+DER = {v: {k: ba(CQ, v, k) for k in ["E_P_over_ask", "share_at_ask", "below_ask_mean", "q05", "bear_lo", "bear_hi"]} for v in ["shipped", "current", "patched"]}
 log(f"  test bands: q(.08)/ask [{Q8_LO}, {Q8_HI}] (patched {Q8:.3f}, current {ba(CQ, 'current', 'bear_lo'):.3f}); below-ask mean [{BL_LO}, {BL_HI}] (patched {BL:.3f}); "
     f"bestRatio(EX,.75) patched {R75:.3f} (current {R75_CUR:.3f})")
 
@@ -1760,7 +1858,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [1.2e5,4e5,1.5e6]){
   const below=(r.Vmean-r.capShare*r.ceil)/(r.inputs.ask*(1-r.capShare));
   ok(below>=__BL_LO__&&below<=__BL_HI__,`${ind} ${ern}: below-ask mean ${below.toFixed(4)}`);
   /* 3. the downside narrows by the documented amount: the bear scenario's low end, q(.08)/ask
-        (was 0.52 with the whole value spread; Empire Flippers' analog q08 of sale/ask is 0.63) */
+        (was __Q8_CUR__ with the whole value spread; Empire Flippers' analog q08 of sale/ask is 0.63) */
   const q8=r.q(.08)/r.inputs.ask;
   ok(q8>=__Q8_LO__&&q8<=__Q8_HI__,`${ind} ${ern}: bear low end q(.08)/ask ${q8.toFixed(4)}`);
   /* 4. narrowing keeps the centre: the uncapped median is V*A(rho)*(1+comp) */
@@ -1778,7 +1876,7 @@ for(const t of [EX,median("prof",1.6e5),median("mfg",1.5e6)]){
     pv=r.Vmean; pr=r.Vmean/r.inputs.ask; }
 }
 /* 7. the optimiser. theta=0 does not move. At theta=.75 (the default) bestRatio's utility has two near-equal
-      peaks, an interior ask near 1.15x and the 1.5x cap. Which wins is a knife-edge in FAN_S (flip near
+      peaks, an interior ask near __INT__ and the 1.5x cap. Which wins is a knife-edge in FAN_S (flip near
       __FLIP__) and in theta, so the WINNER is not pinned: the answer must be one of the two peaks, and the
       peaks must lie within 1% of value of each other (the page then shows the range; AUDIT.md, Oct 2026). */
 const b0=A.bestRatio(EX,0,900), b75=A.bestRatio(EX,.75,900);
@@ -1791,7 +1889,8 @@ ok((b75>=1.08&&b75<=1.25)||b75>=1.45,`bestRatio(EX,.75) ${b75.toFixed(3)} is nei
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
 """.replace("__S__", f"{FAN_S_REC:.2f}").replace("__M__", f"{M_TYP:.3f}").replace("__BL_LO__", f"{BL_LO:.2f}").replace("__BL_HI__", f"{BL_HI:.2f}") \
-   .replace("__Q8_LO__", f"{Q8_LO:.2f}").replace("__Q8_HI__", f"{Q8_HI:.2f}").replace("__FLIP__", f"s = {S_FLIP_LO:.3f}-{S_FLIP_HI:.3f} on this page")
+   .replace("__Q8_LO__", f"{Q8_LO:.2f}").replace("__Q8_HI__", f"{Q8_HI:.2f}").replace("__FLIP__", f"s = {S_FLIP_LO:.3f}-{S_FLIP_HI:.3f} on this page").replace("__INT__", INT_TXT) \
+   .replace("__Q8_CUR__", f"{DER['current']['bear_lo']:.2f}")
 with open(os.path.join(PDIR, "tests", "anchoring_realization.test.js"), "w") as f:
     f.write(NEW_TEST)
 with open(os.path.join(OUT, "anchoring_realization.test.js"), "w") as f:
@@ -1883,13 +1982,16 @@ except Exception as e:
 log("  rendered pages (headless Chromium):", json.dumps(UI, ensure_ascii=False)[:5000])
 UIP = UI.get(os.path.join(PDIR, "index.html"), {})
 UIC = UI.get(INDEX, {})
-UI_NOTE_SHOWN = "range" in UIP.get("optimiser", {}).get("note", "")
+UI_NOTE_SHOWN = "close to a tie, so read the patient-seller price as a range" in UIP.get("optimiser", {}).get("note", "")
 UIS = UI.get(os.path.join(STK_P, "index.html"), {})
-UI_NOTE_SHOWN_STACK = "range" in UIS.get("optimiser", {}).get("note", "")
+UI_NOTE_SHOWN_STACK = "close to a tie, so read the patient-seller price as a range" in UIS.get("optimiser", {}).get("note", "")
 log(f"  optimiser range note on the default inputs: patched page {UI_NOTE_SHOWN}; stack + patch {UI_NOTE_SHOWN_STACK} ({len(UIS.get('errors', []))} page errors on the stack page)")
 TESTRES.append(run_test(os.path.join(PDIR, "tests", "browser.sweep.js"), "browser.sweep.js on the PATCHED copy", timeout=2400))
 TESTRES.append(run_test(os.path.join(PDIR, "tests", "browser.inputs.js"), "browser.inputs.js on the PATCHED copy", timeout=1200))
-tests_ok = all(t["rc"] == 0 for t in TESTRES[1:4]) and TESTRES[4]["rc"] != 0
+TESTRES.append(run_test(os.path.join(FIXDIR, "tests", "model.test.js"), "model.test.js on the fanNodes fix alone"))
+TESTRES.append(run_test(os.path.join(FIXDIR, "tests", "fuzz.test.js"), "fuzz.test.js on the fanNodes fix alone"))
+TESTRES.append(run_test(os.path.join(FIXDIR, "tests", "browser.inputs.js"), "browser.inputs.js on the fanNodes fix alone", timeout=1200))
+tests_ok = all(t["rc"] == 0 for t in TESTRES[1:4]) and TESTRES[4]["rc"] != 0 and all(t["rc"] == 0 for t in TESTRES if "fix alone" in t["label"])
 
 # ---------------- AUDIT.md and fit/README.md (patched copies) ----------------
 HEADROOM = 100 * (float(IBW["5M-50M"].mean()) - 1)
@@ -1906,7 +2008,7 @@ STK_FLIP_TXT = (f"{FL_STK[0]:.3f}-{FL_STK[1]:.3f}" if FL_STK and FL_STK[0] is no
 WIN_TXT = "interior one" if MARGIN_FAN > 0 else "cap"
 OPTION_B = ("Option B (if sign-off keeps the 1.5x answer): ship FAN_S for the realised-price display only and give bestRatio's candidate asks "
             "the whole fan, since an ask set as a multiple of V carries no information: `let FAN_NODES={}; function fanNodes(sh){ sh=(sh===undefined?FAN_S:sh); "
-            "if(FAN_NODES[sh]) return FAN_NODES[sh]; ... s+=Math.pow(fanRatio((i*k+j+.5)/M),sh); ... return FAN_NODES[sh]=out; }`, `const RN=fanNodes(s.fanShare);` in model(), "
+            "if(FAN_NODES[sh]) return FAN_NODES[sh]; ... c=sh*g.c, B=sh*g.B ... return FAN_NODES[sh]=out; }`, `const RN=fanNodes(s.fanShare);` in model(), "
             "and `model({...s0,ask:V*m,fanShare:1})` inside bestRatio's U(). The default patient-seller answer then stays at the cap "
             f"({R75_CUR:.2f}x) and theta=0 is unchanged; the displayed price at that ask is still the calibrated one.")
 AUDIT_NOTE = f"""
@@ -1916,6 +2018,12 @@ AUDIT_NOTE = f"""
 fan-width problem, not an anchoring one: sale-to-ask data fix (1 - alpha) * s, and with the value model's whole
 spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
 
+- **fanNodes() fixed (revision 4).** The 48 fan nodes were read off a 4,000-point grid in slices of k = M/N = 83.33
+  points: each slice summed 84 points, overlapped the next and divided by 83.33, so every node ran
+  {100 * NODES['interior_bias_min']:.1f}-{100 * NODES['interior_bias_max']:.1f}% high (the top one {100 * NODES['bias_top']:.1f}%) and their mean was {NODES['shipped_mean']:.4f} against the fan's {NODES['exact_mean']:.4f}
+  (measured mean/median 1.0907). They are now exact slice means (closed form per piece of the piecewise-linear log fan;
+  {NODES['exact_vs_brute_interior']:.0e} from brute force). With the whole spread this lowers E[P|close] by up to {-100 * BUG[:, 0].min():.2f}% and, at the typical premium,
+  E[P|close]/first ask from {DER['shipped']['E_P_over_ask']:.3f} to {DER['current']['E_P_over_ask']:.3f}. Every 'current' figure below is the fixed page with the whole spread.
 - **What the data show (robust).** At the typical first-ask premium ({M_TYP:.3f}x value) the whole spread gives E[P|close]/ask
   {RB['bbs']['current']:.3f}, short of every like-for-like market average: BizBuySell's deal-level {RB['bbs']['target']:.3f} on the first ask, and IBBA's
   under-$1M deals (binned by sale price) {RB['ibc']['target']:.3f} against the model's {RB['ibc']['current']:.3f}. Narrowing the realised-price fan and
@@ -1945,11 +2053,11 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   patient seller's recommendation is decided, it is an extrapolation, and the two mechanisms part by {100 * SEP_HI[0]:.1f}-{100 * SEP_HI[1]:.1f} points of
   E[P|close]/ask. The extrapolation, not the fit, sets the patient-seller answer.
 - **Optimiser (needs sign-off before merge).** For a patient seller (theta = .75, the default) bestRatio's utility has two
-  near-equal peaks, ~1.15x and the 1.5x cap. At FAN_S = {FAN_S_REC:.2f} the {WIN_TXT} wins by {100 * abs(MARGIN_FAN):.2f}% of value (framework
+  near-equal peaks, ~{INT_TXT} and the 1.5x cap. At FAN_S = {FAN_S_REC:.2f} the {WIN_TXT} wins by {100 * abs(MARGIN_FAN):.2f}% of value (framework
   example), so the default recommendation moves from {R75_CUR:.2f}x to {R75:.2f}x. On this page the cap returns for s between {FLIP_TXT}
   (P(s >= {S_FLIP_HI:.3f}) = {P_ABOVE_FLIP:.2f}) and, at FAN_S = {FAN_S_REC:.2f}, for theta from {(JUMP_FAN if JUMP_FAN is not None else float('nan')):.2f}; across {SPEC_LO:.2f}-{SPEC_HI:.2f} the two peaks
   never differ by more than {100 * MAX_ABS_MARGIN_RANGE:.2f}% of value. With the pending overpricing_time stack the flip is at s {STK_FLIP_TXT}.
-  This is a coin-flip, and the 1.15x end follows from choosing narrowing and applying it to an ask the console sets as a
+  This is a coin-flip, and the {INT_TXT} end follows from choosing narrowing and applying it to an ask the console sets as a
   multiple of V, which carries no information: under the information reading such an ask faces the whole fan, and the
   whole fan or selection keep the cap. The whole fan, though, misses realisation at typical asks, so neither end is a data
   result. The page therefore shows the patient-seller price as a range whenever the other peak is within 1% of value, and
@@ -2037,7 +2145,8 @@ VALID_TXT = (
     f"browser.sweep.js {tr_.get('browser.sweep.js on the PATCHED copy', 'n/a')}; browser.inputs.js {tr_.get('browser.inputs.js on the PATCHED copy', 'n/a')}; "
     f"headless render: {len(UIP.get('errors', []))} page errors, {UIP.get('katex', 'n/a')} KaTeX errors, {UIP.get('unrendered_visible', 'n/a')} unrendered templates, optimiser range note shown "
     f"on the default inputs: {UI_NOTE_SHOWN} (stack + patch: {UI_NOTE_SHOWN_STACK}); on the pending-fit stack + this patch: model.test.js {tr_.get('model.test.js on the pending stack + this patch', 'n/a')}, new test "
-    f"{tr_.get('new test on the pending stack + this patch', 'n/a')}.")
+    f"{tr_.get('new test on the pending stack + this patch', 'n/a')}. The fanNodes fix ALONE (fixonly/): model.test.js {tr_.get('model.test.js on the fanNodes fix alone', 'n/a')}; "
+    f"fuzz.test.js {tr_.get('fuzz.test.js on the fanNodes fix alone', 'n/a')}; browser.inputs.js {tr_.get('browser.inputs.js on the fanNodes fix alone', 'n/a')}.")
 
 PARAMS = [
     {"param": "FAN_S (new constant): share of the value model's out-of-fold log residual spread kept in the realised-price fan once a business is listed; fan nodes become slice means "
@@ -2081,11 +2190,31 @@ PARAMS = [
                 "ask/median sale) at DealStats' own premium = its D + d. Pooled per structure by Bayesian RE on a (mu, tau) grid (DL and HKSJ reported); posteriors mixed over structure, "
                 "premium reading and d; rounded to 0.05."),
      "validation": VALID_TXT,
-     "recommended_value": (f"{FAN_S_REC:.2f}: the model-averaged posterior mean {POST['mean']:.3f} rounded to 0.05. It lies {CUT_DIST:.3f} from the rounding cut, so "
+     "recommended_value": (f"{FAN_S_REC:.2f}: the model-averaged posterior mean {POST['mean']:.3f} rounded to 0.05, calibrated on the EXACT fan nodes (revision 3, on the "
+                           f"shipped nodes that ran ~0.8% high, gave 0.832 (sd 0.202) -> 0.85). It lies {CUT_DIST:.3f} from the rounding cut, so "
                            f"{SPEC_LO:.2f}-{SPEC_HI:.2f} are equally defensible (by structure {STRUCT_ROUND_TXT}; "
                            f"equal reading weights {R05(POST_EQ['mean']):.2f}). Label it 'calibrated to market sale-to-ask averages; mechanism not identified' (badge 'calibrated', not "
                            f"'fitted'). Ship only with explicit sign-off on the patient-seller consequence (a coin-flip; see the optimiser row) and with the range note in the UI. Refit if "
                            f"ALPHA changes (ALPHA .30/.45/.55/.70/.85 -> {', '.join(f'{x:.2f}' for x in P13.s_pooled_post)}, primary structure)")},
+    {"param": "fanNodes(): the 48 equal-probability slice means of the realised-price fan (BUG FIX found by an independent review; not a parameter)",
+     "current_value": (f"shipped: a 4,000-point grid read in slices of k = M/N = 83.33 points; each slice sums 84 points (j < k), overlaps the next and divides by 83.33. Nodes' mean "
+                       f"{NODES['shipped_mean']:.4f}; shipped/exact per node {100 * NODES['interior_bias_min']:+.2f}% to {100 * NODES['interior_bias_max']:+.2f}% inside, top {100 * NODES['bias_top']:+.2f}%, "
+                       f"bottom {100 * NODES['bias_bottom']:+.2f}%"),
+     "fitted_value": (f"exact slice means: nodes' mean {NODES['exact_mean']:.4f} = the fan's own mean (measured mean/median 1.0907; slice midpoints {NODES['midpoint_mean']:.4f}); "
+                      f"exact to {NODES['exact_vs_brute_interior']:.1e} against 200,000 midpoints per slice (the page's A-S normal CDF sets that floor)"),
+     "se": "n/a (numerical)",
+     "n": "48 slices; 15 measured fan quantiles",
+     "method": ("ln R is linear in z = probit(p) between the knots and continues at the end slopes beyond them (fanRatio), so on each piece ln R = c + B z and "
+                "E[R; a<z<b] = exp(c + B^2/2) (Phi(b-B) - Phi(a-B)); a slice's mean is 48 x the sum over the pieces inside its probit bounds (open at the two ends). "
+                "With FAN_S: c -> FAN_S c, B -> FAN_S B"),
+     "validation": (f"effect on the model (shipped / fixed - 1; 16 industries x 3 sizes x ask 0.8-1.4 V): E[P|close] {100 * BUG[:, 0].min():+.2f}% to {100 * BUG[:, 0].max():+.2f}%, "
+                    f"q(.08) {100 * BUG[:, 1].min():+.2f}% to {100 * BUG[:, 1].max():+.2f}%, uncapped median {100 * BUG[:, 2].min():+.2f}% to {100 * BUG[:, 2].max():+.2f}%. At the typical premium "
+                    f"(prof $400k) E[P|close]/first ask with the whole spread {DER['shipped']['E_P_over_ask']:.4f} -> {DER['current']['E_P_over_ask']:.4f}, q(.08)/ask "
+                    f"{DER['shipped']['bear_lo']:.3f} -> {DER['current']['bear_lo']:.3f}; bestRatio(EX, 0) {R0_SHIP:.3f} -> {R0_CUR:.3f}x, bestRatio(EX, .75) {R75_SHIP:.2f} -> {R75_CUR:.2f}x. "
+                    f"Tests on the fix alone: model.test.js {tr_.get('model.test.js on the fanNodes fix alone', 'n/a')}; fuzz.test.js {tr_.get('fuzz.test.js on the fanNodes fix alone', 'n/a')}; "
+                    f"browser.inputs.js {tr_.get('browser.inputs.js on the fanNodes fix alone', 'n/a')}"),
+     "recommended_value": (f"ship it with or without FAN_S ({OUT}/fanNodes_fix.diff; the patched page carries it with FAN_S). FAN_S above is calibrated on the fixed nodes. The other "
+                           "pending fits were run on the shipped nodes; anything they read from E[P|close] or the price quantiles moves by the amounts above")},
     {"param": "d: mean ln(first ask / ask at sale) among sold deals (puts the market targets on the model's first-ask basis). Not a model constant",
      "current_value": "not modelled (revision 1 implicitly 0)",
      "fitted_value": (f"Main Street {D_MS:.4f} = -(net asking-price drift {DRIFT['net, |chg|<=0.5']:+.4f} per listing-year, DealLedger) x {T_LIST:.3f} years (IBBA mean listing->LOI, <$1M bands); "
@@ -2141,8 +2270,10 @@ PARAMS = [
      "validation": f"realisation level changes by under 1 point ({p55.Er_at_post:.4f} vs {p55h.Er_at_post:.4f})",
      "recommended_value": "1.30 unchanged (judgment, bounded 1.2-1.7)"},
     {"param": "Derived: E[P|close]/ask, share closing at the ask, below-ask mean and downside quantiles at the typical first-ask premium (every size below ~$9M of value)",
-     "current_value": (f"E/first ask {DER['current']['E_P_over_ask']:.3f} ({DER['current']['E_P_over_ask'] * ED:.3f} on the ask at sale); at the ask {DER['current']['share_at_ask']:.4f} "
-                       f"({int(round(DER['current']['share_at_ask'] * 48))}/48 slices); below-ask mean {DER['current']['below_ask_mean']:.3f}; q05/q08 {DER['current']['q05']:.3f}/{DER['current']['bear_lo']:.3f}"),
+     "current_value": (f"whole spread, fixed fanNodes: E/first ask {DER['current']['E_P_over_ask']:.3f} ({DER['current']['E_P_over_ask'] * ED:.3f} on the ask at sale); at the ask {DER['current']['share_at_ask']:.4f} "
+                       f"({int(round(DER['current']['share_at_ask'] * 48))}/48 slices); below-ask mean {DER['current']['below_ask_mean']:.3f}; q05/q08 {DER['current']['q05']:.3f}/{DER['current']['bear_lo']:.3f}. "
+                       f"Shipped page (fanNodes bug): E/first ask {DER['shipped']['E_P_over_ask']:.3f}; at the ask {DER['shipped']['share_at_ask']:.4f}; below-ask mean {DER['shipped']['below_ask_mean']:.3f}; "
+                       f"q05/q08 {DER['shipped']['q05']:.3f}/{DER['shipped']['bear_lo']:.3f}"),
      "fitted_value": (f"E/first ask {DER['patched']['E_P_over_ask']:.3f} ({DER['patched']['E_P_over_ask'] * ED:.3f} on the ask at sale); at the ask {DER['patched']['share_at_ask']:.4f} "
                       f"({int(round(DER['patched']['share_at_ask'] * 48))}/48); below-ask mean {DER['patched']['below_ask_mean']:.3f}; q05/q08 {DER['patched']['q05']:.3f}/{DER['patched']['bear_lo']:.3f}"),
      "se": (f"E[P|close]/ask {abs(at_s(MO['Er'], min(FAN_S_REC + POST['sd'], 1.6)) - at_s(MO['Er'], FAN_S_REC - POST['sd'])) / 2:.3f} per posterior sd of s; across premium readings "
@@ -2158,8 +2289,8 @@ PARAMS = [
                     f"${ba('live self-audit: BizBuySell median profile at ask $350k/0.94', 'patched', 'median_P') / 1e3:.1f}k after"),
      "recommended_value": "follows from FAN_S; disclosed in the Data tab"},
     {"param": "Optimiser consequence: bestRatio(EX, theta=.75, lamT=900), the default patient-seller recommendation",
-     "current_value": (f"{R75_CUR:.2f}x (the cap; U/V {uP.loc['current (s=1)', 'corner_U_over_V']:.4f} vs interior {uP.loc['current (s=1)', 'interior_U_over_V']:.4f} at "
-                       f"{uP.loc['current (s=1)', 'interior_rho']:.2f}x: the two peaks already differ by only {100 * (uP.loc['current (s=1)', 'corner_U_over_V'] - uP.loc['current (s=1)', 'interior_U_over_V']):.2f}% of value)"),
+     "current_value": (f"{R75_CUR:.2f}x on the fixed page with the whole spread (shipped page {R75_SHIP:.2f}x) ({'the cap' if R75_CUR >= 1.45 else 'interior'}; U/V {uP.loc['current (s=1)', 'corner_U_over_V']:.4f} cap vs interior {uP.loc['current (s=1)', 'interior_U_over_V']:.4f} at "
+                       f"{uP.loc['current (s=1)', 'interior_rho']:.2f}x: the two peaks already differ by only {100 * abs(uP.loc['current (s=1)', 'corner_U_over_V'] - uP.loc['current (s=1)', 'interior_U_over_V']):.2f}% of value)"),
      "fitted_value": (f"{R75:.2f}x at FAN_S={FAN_S_REC:.2f}: the {WIN_TXT} wins by {100 * abs(MARGIN_FAN):.2f}% of value (U/V {OM0.loc[FAN_S_REC, 'interior_U_over_V']:.4f} interior vs "
                       f"{OM0.loc[FAN_S_REC, 'corner_U_over_V']:.4f} cap). Margin interior - cap by s: " + ", ".join(f"{k:g}: {100 * v:+.2f}%" for k, v in MARGIN.items()) +
                       f". The flip is between s {FLIP_TXT} on this page (fine grid, step 0.005); on each pending page alone (coarse grid): {ALONE_FLIP_TXT}; on the pending stack "
@@ -2171,7 +2302,7 @@ PARAMS = [
             f"two peaks differ by at most {100 * MAX_ABS_MARGIN_RANGE:.2f}% of value: a coin-flip"),
      "n": "framework example, prof $160k and mfg $1.5M medians; this page, the pending stack and 5 pending-fit pages alone",
      "method": f"bestRatio on a coarse grid of s on every page and a fine grid ({S_FINE[0]:.2f}-{S_FINE[-1]:.2f}, step 0.005) on this page and the stack; a theta sweep 0-1 in steps of 0.01; the utility at the best interior ask vs the 1.5x cap on a 0.005 grid",
-     "validation": (f"The 1.15x end follows from choosing narrowing and applying it to an ask the console sets as a multiple of V, which carries no information; under the information "
+     "validation": (f"The {INT_TXT} end follows from choosing narrowing and applying it to an ask the console sets as a multiple of V, which carries no information; under the information "
                     "reading such an ask faces the whole fan, and the whole fan or selection keep the cap. The whole fan, however, misses realisation at typical asks, so neither end is a "
                     f"data result. UI: the patched page shows the range on the default inputs (rendered note: '{UIP.get('optimiser', {}).get('note', '')[-260:]}')"),
      "recommended_value": (f"Needs explicit sign-off as a product choice before FAN_S merges: the default patient-seller answer moves {R75_CUR:.2f}x -> {R75:.2f}x by "
@@ -2213,8 +2344,13 @@ NOT_ID = [
 ]
 IMPL = (
     f"index.html, model half. (1) After `const ALPHA_ANCHOR=.55;` add the FAN_S provenance comment (labelled CALIBRATED) and `const FAN_S={FAN_S_REC:.2f};`, then the M_TYP comment and "
-    f"`const M_TYP={M_TYP:.3f};` (M_TYP is read only by renderCalib and the tests). (2) In fanNodes() change `s+=fanRatio((i*k+j+.5)/M);` to `s+=Math.pow(fanRatio((i*k+j+.5)/M),FAN_S);` "
-    "(slice means of R(p)^FAN_S; median kept) and extend the comment above fanNodes. (3) `out.ALPHA=ALPHA_ANCHOR;` -> `out.ALPHA=ALPHA_ANCHOR; out.fanS=FAN_S; out.mTyp=M_TYP;`. (4) §23 comment: "
+    f"`const M_TYP={M_TYP:.3f};` (M_TYP is read only by renderCalib and the tests). (2) fanNodes() BUG FIX, separable and wanted with or without FAN_S: the 4,000-point grid "
+    "read in slices of k = M/N = 83.33 points summed 84 per slice (j < k), overlapped the next and divided by 83.33 (every node "
+    f"{100 * NODES['interior_bias_min']:+.1f}% to {100 * NODES['interior_bias_max']:+.1f}%, the top one {100 * NODES['bias_top']:+.1f}%; nodes' mean {NODES['shipped_mean']:.4f} vs the fan's {NODES['exact_mean']:.4f}). "
+    "Replace the body by exact slice means: ln R = c + B z on each piece between knots (and beyond them, as in fanRatio), so a slice's mean is "
+    "48 * sum over pieces of exp(c+B^2/2) (ncdf(b-B) - ncdf(a-B)) with the slice's probit bounds (open at the ends); "
+    f"exact to {NODES['exact_vs_brute_interior']:.0e} against brute force (the A-S normal CDF's error). The fix alone is {OUT}/fanNodes_fix.diff ({OUT}/fixonly/index.html). "
+    "With FAN_S, the pieces use c=FAN_S*g.c, B=FAN_S*g.B (slice means of R(p)^FAN_S, median kept), and the comment above fanNodes says so. (3) `out.ALPHA=ALPHA_ANCHOR;` -> `out.ALPHA=ALPHA_ANCHOR; out.fanS=FAN_S; out.mTyp=M_TYP;`. (4) §23 comment: "
     "the fan slice is 'kept at FAN_S of its log spread (calibrated to sale-to-ask averages; information in the ask and selection on closing explain them alike)'. (5) bestRatio's comment: replace "
     "'~1.05x when a failed sale is a total loss, ~1.4x when the owner is content to keep it' with the two-peak statement (computed margin, flip location in s and theta, extrapolation, range in "
     "the render). P_C, fitClose, the gap penalty, the ceiling, RHO_MAX, ALPHA and AMAX are untouched; price stays independent of closing, so EVp = P_C x E[P|close]. UI: (6) the 'Price if it "
@@ -2231,7 +2367,7 @@ IMPL = (
     "bisection (it hard-coded .55); the row becomes 'Fit-consistency check, not an external benchmark: expected price if it closes, as a share of the first ask, at the typical premium "
     "(M_TYP x value)', band 87.5-92.5%. (14) Optimiser card: after `const uGain=...atEdge=...;` compute the other peak (the RHO_MAX cap when the answer is interior; the best ask in 1.00-1.35x "
     "on a 0.025 grid when it is at the cap) with the same utility including lamT*tMed, and when it is within 1% of value append 'Asking Xx value instead is worth within Y% of value to this "
-    "owner, so read the patient-seller price as a range, a-bx value: which end wins turns on how widely prices scatter at high asks, which the data do not settle.' "
+    "owner, close to a tie, so read the patient-seller price as a range, a-bx value: which end wins turns on how widely prices scatter at high asks, which the data do not settle.' "
     "The pending overpricing_time fit moves this note into optNote(s,V,rSell,rKeep); the same logic, rebased there, is in the script (PATCH_STACK_ALT) and is applied and rendered in "
     "pending_stack_with_fan. "
     f"All {len(PATCH)} replacements are applied verbatim in {PDIR}/index.html (diff {OUT}/index.html.diff). (15) Add tests/anchoring_realization.test.js "
@@ -2275,7 +2411,12 @@ INVARIANTS = [
     "Documented property, not tested: below ~$9M of value the realisation block is scale-free (P/ask depends only on ask/V); a future size effect would intentionally break it.",
 ]
 CAVEATS = (
-    f"WHAT CHANGED FROM REVISION 2. (1) FAN_S is presented as a CALIBRATION, not a fit: the robust finding is that the whole spread realises {RB['bbs']['current']:.3f} of the first ask at the "
+    f"WHAT CHANGED IN REVISION 4. fanNodes() fixed: the shipped nodes summed 84 grid points per slice over 83.33 and overlapped, running "
+    f"{100 * NODES['interior_bias_min']:.1f}-{100 * NODES['interior_bias_max']:.1f}% high (top {100 * NODES['bias_top']:.1f}%); they are now exact slice means. The grid, the optimiser pages, the "
+    f"'current' baseline (fixonly/: the fix alone, whole spread) and the patched page all use the exact nodes; the shipped page is reported beside them. Recalibrated on the exact nodes "
+    f"FAN_S's posterior mean is {POST['mean']:.3f} (sd {POST['sd']:.3f}) against revision 3's 0.832 (sd 0.202), recommendation {FAN_S_REC:.2f} (was 0.85); the patient-seller flip sits "
+    f"at s {FLIP_TXT} (was 0.855-0.860). "
+    f"WHAT CHANGED FROM REVISION 2 (revision 3). (1) FAN_S is presented as a CALIBRATION, not a fit: the robust finding is that the whole spread realises {RB['bbs']['current']:.3f} of the first ask at the "
     f"typical premium against {RB['bbs']['target']:.3f} at BizBuySell, and both narrowing and selection raise it; P(s<1) is reported as conditional on narrowing; the Data tab drops 'the data "
     f"say s < 1' and uses a 'calibrated' badge (st adj), including in the Model II panel. (2) The source structure is carried in the model average: IBBA's sub-$1M bands as two sources or one, "
     f"DealStats out or in (equal weights). That moves the posterior mean from {POST_PRIMARY_STRUCT['mean']:.3f} (revision 2's structure) to {POST['mean']:.3f} and the recommendation to "
