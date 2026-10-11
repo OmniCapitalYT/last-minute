@@ -400,5 +400,79 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.indexOf("pts default risk")<0&&HTML.indexOf("pts charge-off risk, 10 yr")>=0,"state dropdown labels the 10-year charge-off risk");
 }
 
+/* 24. realised-price fan (fit/anchoring_realization.py; RESULT test_invariants): FAN_S = 0.80 of the value model's log
+   spread is kept once a business is listed (CALIBRATED, mechanism not identified); M_TYP = 1.071 is the typical
+   first-ask premium (self-audit and tests only); fanNodes() are exact slice means; ALPHA and AMAX unchanged */
+{ const fs=require("fs"), path=require("path");
+  const HTML=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const EXF={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,
+             fin:.74,yrs:6,buyers:65,st:null,franchise:false,ask:3.24e6};
+  const r0=A.model(EXF), FAN_S=r0.fanS, M_TYP=r0.mTyp;
+  ok(FAN_S>0&&FAN_S<=1&&near(FAN_S,0.80,1e-12),`FAN_S is exposed and equals the calibrated 0.80 (got ${FAN_S})`);
+  ok(near(M_TYP,1.071,1e-12),`M_TYP is exposed and equals 1.071 (got ${M_TYP})`);
+  ok(r0.ALPHA===.55&&A.AMAX===1.30,"anchoring alpha 0.55 and A_max 1.30 unchanged (judgment)");
+  /* 24a. fanNodes(): 48 exact slice means of R(p)^FAN_S (the old 4,000-point grid overlapped its slices and ran
+          0.8-0.9% high, 4.9% at the top); brute force with 20,000 midpoints per slice agrees to ~2e-5 */
+  { const nodes=A.fanNodes(), N=48, M=20000; let worst=0;
+    ok(nodes.length===N&&nodes.every((v,i)=>i===0||v>=nodes[i-1]),"48 fan nodes, increasing");
+    for(let i=0;i<N;i++){ let t=0; for(let j=0;j<M;j++) t+=Math.pow(A.fanRatio((i+(j+.5)/M)/N),FAN_S);
+      worst=Math.max(worst,Math.abs(nodes[i]/(t/M)-1)); }
+    ok(worst<2e-4,`fan nodes are the slice means of R^FAN_S (worst relative gap ${worst.toExponential(2)})`); }
+  for(const ind of Object.keys(A.IND)) for(const ern of [1.2e5,4e5,1.5e6]){
+    const t=median(ind,ern), V=A.model({...t,ask:1}).V; if(V>8.5e6) continue;
+    const r=A.model({...t,ask:V*M_TYP}), e=r.Vmean/r.inputs.ask;
+    /* 24b. at the typical first-ask premium the model closes where Main-Street averages do on the first ask
+            (BizBuySell 0.917 on the ask at sale = 0.905 on the first); larger deals realise more in the data,
+            which the model does not have, so at $1.5M only a floor */
+    if(ern<1e6) ok(e>=.875&&e<=.925,`${ind} ${ern}: E[P|close]/ask ${e.toFixed(4)} at the typical premium`);
+    else ok(e>=.875,`${ind} ${ern}: E[P|close]/ask ${e.toFixed(4)} below the Main-Street floor`);
+    /* 24c. a point mass at the ask, and the below-ask mean, in the calibrated range */
+    ok(r.capShare>=.30&&r.capShare<=.55,`${ind} ${ern}: share closing at the ask ${r.capShare.toFixed(3)}`);
+    const below=(r.Vmean-r.capShare*r.ceil)/(r.inputs.ask*(1-r.capShare));
+    ok(below>=.77&&below<=.86,`${ind} ${ern}: below-ask mean ${below.toFixed(4)}`);
+    /* 24d. downside disclosure: the bear scenario's low end q(.08)/ask (0.52 with the whole spread; EF analog 0.63) */
+    const q8=r.q(.08)/r.inputs.ask;
+    ok(q8>=.56&&q8<=.65,`${ind} ${ern}: bear low end q(.08)/ask ${q8.toFixed(4)}`);
+    /* 24e. narrowing keeps the centre: the uncapped median is V x A(rho) x (1+comp) */
+    ok(Math.abs(r.VrealFree/(V*r.anchorF*(1+r.compPrem))-1)<.01,`${ind} ${ern}: uncapped median moved`);
+    /* 24f. the closing probability does not read the realised-price block; EVp = P_C x E[P|close] */
+    const fp=A.fitClose(r.inputs.ask,r.V,undefined,r.Vbase).p;
+    ok(near(r.PC,r.thinF<1?Math.min(.95,Math.max(.02,fp*r.thinF)):fp,1e-9),`${ind} ${ern}: P_C changed`);
+    ok(Math.abs(r.EVp-r.PC*r.Vmean)<=1e-9*r.EVp,`${ind} ${ern}: EVp = P_C x E[P|close]`);
+  }
+  /* 24g. price rises with the ask and its share of the ask falls, from 0.4x to 3x value */
+  for(const t of [EXF,median("prof",1.6e5),median("mfg",1.5e6)]){
+    const V=A.model({...t,ask:1}).V; let pv=-Infinity, pr=Infinity;
+    for(let rho=.4;rho<=3.0001;rho+=.02){ const r=A.model({...t,ask:V*rho});
+      ok(r.Vmean>=pv*(1-1e-9),`${t.ind} rho=${rho.toFixed(2)}: E[P|close] fell as the ask rose`);
+      ok(r.Vmean/r.inputs.ask<=pr*(1+1e-9),`${t.ind} rho=${rho.toFixed(2)}: E[P|close]/ask rose with the ask`);
+      pv=r.Vmean; pr=r.Vmean/r.inputs.ask; } }
+  /* 24h. optimiser: theta = 0 does not move. At theta = .75 (the default) the utility has two near-equal peaks, near
+          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.860-0.865) and theta (~0.765), so the
+          WINNER is not pinned: it must be one of the two peaks, and the peaks must lie within 1% of value (the page
+          then shows the patient-seller price as a range) */
+  { const b0=A.bestRatio(EXF,0,900), b75=A.bestRatio(EXF,.75,900);
+    ok(b0>=1.08&&b0<=1.13,`bestRatio(EX,0) ${b0.toFixed(3)}`);
+    ok((b75>=1.08&&b75<=1.25)||b75>=1.45,`bestRatio(EX,.75) ${b75.toFixed(3)} is neither the interior peak nor the cap`);
+    const V=A.model({...EXF,ask:1}).V; let ui=-Infinity, uc=-Infinity;
+    for(let k=0;k<=140;k++){ const m=.80+k*.005, r=A.model({...EXF,ask:V*m}), u=r.EVp+(1-r.PC)*.75*r.V-900*r.tMed;
+      if(m<1.35) ui=Math.max(ui,u); else uc=Math.max(uc,u); }
+    ok(Math.abs(ui-uc)<.01*V,`theta=.75: the two peaks differ by ${(100*(ui-uc)/V).toFixed(2)}% of value (expected a near-tie)`); }
+  /* 24i. the self-audit's fit-consistency row (renderCalib's own profile) reads 'in range' */
+  { const I=A.IND.prof, R=A.sizeRefs(158950);
+    const p={ind:"prof",rev:703000,ern:158950,ask:0,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,
+             fin:R.fin,yrs:6,buyers:(I.buyers||50)};
+    const V=A.model({...p,ask:1}).V, r=A.model({...p,ask:V*M_TYP}), e=r.Vmean/r.inputs.ask;
+    ok(e>=.875&&e<=.925,`self-audit fit-consistency row ${e.toFixed(4)} in 87.5-92.5%`); }
+  /* 24j. the page says what it does: R^s in the scenario equations, the calibrated badge, the benchmark label from $2M,
+          the range note in the optimiser card, the self-audit row labelled as the fit's own target */
+  ok(HTML.includes("cdot R^{s}")&&HTML.includes("R(0.10)^{s}=${Math.pow(")&&HTML.includes("R(p)^{s},")&&HTML.includes("s=${FAN_S.toFixed(2)}"),"eq_s / eq_ss / eq_a show R^s");
+  ok(/share of the value spread kept once a business is listed \(FAN_S;[\s\S]{0,120}<span class="st adj">calibrated<\/span>/.test(HTML),"Data tab: FAN_S row badged calibrated");
+  ok(/r\.Vbase>=2e6\?'Market benchmark: sale price as a share of the advisor&rsquo;s benchmark/.test(HTML),"realisation block: $2M+ IBBA ratio is a benchmark");
+  ok(HTML.indexOf("close to a tie, so read the patient-seller price as a range")>0,"optimiser card: range note");
+  ok(HTML.indexOf("Fit-consistency check, not an external benchmark")>0&&HTML.indexOf("Listing premium implied by")<0,"self-audit row replaced");
+  ok(HTML.indexOf("const M=4000")<0&&HTML.indexOf("M=4000,out=[]")<0,"old overlapping-grid fanNodes gone");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

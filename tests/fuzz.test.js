@@ -93,6 +93,16 @@ for(let i=0;i<N;i++){
     const rt=A.model({...s,rate:undefined});
     ok(rt.rate===A.sbaRate(rt.V)&&rt.risk.p===A.fitRisk(rt.V,s.ind,A.sbaRate(rt.V),null,!!s.franchise,s.st||null).p,"no rate entered prices at the table rate",ctx(s)); }
 
+  /* 7e. realised-price fan (fit/anchoring_realization.py): the closing probability never reads the price block
+     (P_C = fitClose x thin-pool factor), the expected price rises with the ask while its share of the ask falls,
+     and the narrowed fan keeps the uncapped centre at V x A(rho) x (1+comp) */
+  { const fp=A.fitClose(s.ask,r.V,s.chan,r.Vbase).p;
+    ok(Math.abs(r.PC-(r.thinF<1?Math.min(.95,Math.max(.02,fp*r.thinF)):fp))<1e-9,"P_C independent of the price block",ctx(s,{PC:r.PC,fp}));
+    ok(r.fanS===.80&&Math.abs(r.VrealFree/(r.V*r.anchorF*(1+r.compPrem))-1)<.01,"narrowed fan keeps the centre",ctx(s));
+    const rh=A.model({...s,ask:s.ask*1.05});
+    ok(rh.Vmean>=r.Vmean*(1-1e-9),"E[P|close] non-decreasing in the ask",ctx(s,{a:r.Vmean,b:rh.Vmean}));
+    ok(rh.Vmean/rh.inputs.ask<=r.Vmean/r.inputs.ask*(1+1e-9),"E[P|close]/ask non-increasing in the ask",ctx(s)); }
+
   /* 8. the proceeds optimum beats the entered ask, and does not depend on theta */
   if(i%5===0){ const rs=A.bestRatio(s,0,s.lamT), ro=A.model({...s,ask:V0*rs});
     ok(ro.EVp>=r.EVp*(1-1e-6),"proceeds optimum at least as good as the entered ask",ctx(s,{rs}));

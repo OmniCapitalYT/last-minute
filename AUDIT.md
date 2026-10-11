@@ -46,8 +46,8 @@ node tests/browser.sweep.js    # every select and slider at 1440px and 390px (ne
 ## Left as documented judgment (not changed)
 
 - **The anchoring strength (α = 0.55) and the 0.45 maximum gap penalty** come
-  from the spec. Because of them, a patient seller (θ = 0.75) is told to ask
-  about 1.57×, with a 34% chance of closing. That follows from the spec's own reasoning ("~1.4× when the owner
+  from the spec. Because of them, a patient seller (θ = 0.75) was told to ask
+  about 1.57×, with a 34% chance of closing (superseded: see "Realised-price fan" below; now a near-tie, shown as a range). That follows from the spec's own reasoning ("~1.4× when the owner
   is content to keep it"), but neither number is estimated.
 - **Quality positioning moves the median, and the full residual fan is then
   applied around it.** If quality really explains part of the residual, the
@@ -496,3 +496,64 @@ few markup moves tidy the layout:
 - **Stat groups and lists:** the optimizer cards' small stats lose the gap between label
   and value, provenance badges sit on the text line, and lede paragraphs are narrower and
   calmer.
+
+## Realised-price fan (FAN_S), October 2026
+
+`fit/anchoring_realization.py` (revision 4). The earlier note that "no anchoring setting closes the gap" with IBBA was a
+fan-width problem, not an anchoring one: sale-to-ask data fix (1 - alpha) * s, and with the value model's whole
+spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
+
+- **fanNodes() fixed (revision 4).** The 48 fan nodes were read off a 4,000-point grid in slices of k = M/N = 83.33
+  points: each slice summed 84 points, overlapped the next and divided by 83.33, so every node ran
+  0.8-0.9% high (the top one 4.9%) and their mean was 1.1044 against the fan's 1.0924
+  (measured mean/median 1.0907). They are now exact slice means (closed form per piece of the piecewise-linear log fan;
+  2e-05 from brute force). With the whole spread this lowers E[P|close] by up to -0.15% and, at the typical premium,
+  E[P|close]/first ask from 0.870 to 0.868. Every 'current' figure below is the fixed page with the whole spread.
+- **What the data show (robust).** At the typical first-ask premium (1.071x value) the whole spread gives E[P|close]/ask
+  0.868, short of every like-for-like market average: BizBuySell's deal-level 0.905 on the first ask, and IBBA's
+  under-$1M deals (binned by sale price) 0.870 against the model's 0.848. Narrowing the realised-price fan and
+  selection on closing (whole fan, each scenario weighted by its own chance of closing; 0.911) both close the gap.
+- **What changed.** The realised-price fan keeps FAN_S = 0.80 of the value model's log spread (fan nodes are slice means of
+  R(p)^FAN_S; the median, P_C and everything else are unchanged). E[P|close]/ask at the typical premium goes from 0.868 to
+  0.890 of the first ask (0.879 to 0.901 of the ask at sale). FAN_S is **calibrated, not fitted**: the
+  mechanism is not identified, and it is labelled that way in the Data tab.
+- **How sure.** Per source s (premium reading G, Main-Street d): BizBuySell 0.66, IBBA under $500K 0.93, $500K-1M
+  0.54 (under $1M as one source 0.85), DealStats 0.89. Averaged over four source structures (IBBA's bands as two
+  sources or one; DealStats in or out), three readings of the typical premium and two of the ask: 0.812 (sd 0.20,
+  90% 0.50-1.15), rounded to 0.80, which is 0.013 from the rounding cut: 0.75-0.85 are equally
+  defensible. P(s < 1) is 0.78-0.89 by structure, but only under narrowing: under selection the sources need
+  s of BizBuySell 1.10, IBBA under $500K at least 1.60, $500K-1M 0.91 (under $1M as one 1.47). If the spread of asks across listings were pricing noise rather than information, s would be 0.64, 0.49 and 0.33 at noise sd 0.2, 0.3 and 0.4
+  (Empire Flippers' pass-through 0.98 implies a noise sd near 0.04; an analog). Calibrated to 2022+ alone: 0.68.
+- **Which ask.** The model's ask is the first listing price. The market sources report the ask standing at sale, about
+  1.3% below the first on Main Street (DealLedger net asking-price drift x IBBA months listed to LOI). That figure rests on
+  an error rule: 49% of the observed ask changes move by more than 0.5 in logs (median factor 4.4; many with a
+  changed title, index-page keys or a factor of ten) and are treated as no change; taken at face value the drift is
+  +0.074 a year (the sign flips), excluding them gives -0.030. Empire Flippers' 8.8% gap comes
+  mostly from re-pricing as monthly profit arrives and does not transfer.
+- **Downside.** The bear scenario narrows: at the typical premium its low end q(.08) goes from 0.52 to 0.60
+  of the ask (Empire Flippers' analog q08 of sale/last ask: 0.63); for the framework example the bear band goes
+  from $2.29M-$3.05M to $2.64M-$3.16M.
+  The Data tab now separates value uncertainty (the whole spread) from the realised-price fan; the scenario equations show R^s.
+- **Calibrated near 1.07x, extrapolated above.** FAN_S is set at the typical premium. At asks of 1.4-1.5x value, where the
+  patient seller's recommendation is decided, it is an extrapolation, and the two mechanisms part by 4.3-4.7 points of
+  E[P|close]/ask. The extrapolation, not the fit, sets the patient-seller answer.
+- **Optimiser (decided: shown as a range).** For a patient seller (theta = .75, the default) bestRatio's utility has two
+  near-equal peaks, ~1.15x and the 1.5x cap. At FAN_S = 0.80 the interior one wins by 0.27% of value (framework
+  example; re-checked on the integrated page with the time-to-close, OEWS and SBA-risk fits in), so the default
+  recommendation moves from 1.50x to 1.15x. The cap returns for s between 0.860 and 0.865 (P(s >= 0.865) = 0.37) and,
+  at FAN_S = 0.80, for theta from about 0.765; across 0.75-0.85 the two peaks never differ by more than 0.48% of value.
+  With the pending overpricing_time fit the flip moves to about s 0.94.
+  This is a coin-flip, and the 1.15x end follows from choosing narrowing and applying it to an ask the console sets as a
+  multiple of V, which carries no information: under the information reading such an ask faces the whole fan, and the
+  whole fan or selection keep the cap. The whole fan, though, misses realisation at typical asks, so neither end is a data
+  result. The decision was to ship the narrowed fan everywhere and show the patient-seller price as a range ("close to a
+  tie") whenever the other peak is within 1% of value; the tests check the near-tie, not the winner. Option B (not taken)
+  would have kept the 1.5x answer by giving bestRatio's candidate asks the whole fan (a `fanShare` argument to
+  `fanNodes()`, `model({...s0,ask:V*m,fanShare:1})` inside bestRatio's U()) while the displayed price stays calibrated.
+  This replaces the "about 1.57x" note under "Left as documented judgment".
+- **Known inconsistency.** The ask ceiling still takes headroom from IBBA's $5M+ ratio (up to 2.6% above the ask),
+  which is a ratio to an advisor's benchmark, not to an ask.
+- **Data notes.** BizBuySell sector names were harmonised across the 2016-18 tables (15 spellings -> 10 sectors) before
+  clustering; IBBA quarters are resampled in calendar blocks (8 quarters are missing inside 2017Q4-2026Q2, no wrap-around);
+  IBBA values are whole percentages read off chart labels; the BizBuySell 2018 market table had its price columns swapped
+  (a check only).
