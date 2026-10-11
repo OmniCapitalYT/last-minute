@@ -18,8 +18,8 @@ for ind,c in N6.items():
         #  employment-weighted share of the industry in smaller firms (band midpoint)]
         kn.append([round(math.log(rc/f),4), round(rc/e), round(p/e), round((cum+e/2)/tot[1],4)]); cum+=e
     susb[ind]={'naics':c,'knots':kn,'rpe':round(tot[3]/tot[1]),'ppe':round(tot[2]/tot[1])}
-oews=json.load(open('oews.json'))
-gm={k:{'naics':v['naics'],'p10':v['p10'],'p25':v['p25'],'p50':v['p50'],'p75':v['p75'] if v['p75']==v['p75'] else 208000.0,'p90':v['p90'] if v['p90']==v['p90'] else 208000.0} for k,v in oews.items()}
+# GM wages: OEWS May 2025, EB-shrunk, x ECI to 2026Q2; written by `python3 -I oews_refresh.py --write-repo`
+# (oews.py and its May-2021 oews.json are superseded)
 mg=json.load(open('margin.json')); sr=json.load(open('sba_rate.json')); QWJ=json.load(open('quality_weights.json'))
 BM=json.load(open('ibba/summary.json'))
 out={
@@ -27,7 +27,7 @@ out={
  'sba_rate':{'prime':6.75,'prime_asof':'2025-12-11','spread_knots':[[math.log(1e5),2.0],[math.log(7.5e5),2.0],[math.log(1.5e6),1.75],[math.log(3.5e6),1.5]],
    'n':sr['n_fy23'],'median_spread':sr['median_fy23'],'source':'SBA FOIA 7(a), change-of-ownership loans approved FY2023 (Oct 2022 - Sep 2023), initial rate minus WSJ prime on the approval date'},
  'jobs':{'by_industry':susb,'source':'Census SUSB 2022, US 6-digit NAICS by enterprise receipts size: receipts and payroll per paid employee'},
- 'gm_wage':{'by_industry':gm,'wage_growth_2021_2026':1.233,'topcode':208000,'source':'BLS OEWS May 2021, SOC 11-1021 General and Operations Managers, by industry; scaled to 2026 by the ECI private wages and salaries index (5.7%, 4.6%, 4.1%, 3.5%, 3.5% assumed for 2026)'},
+ 'gm_wage':json.load(open('gm_wage.json')),
  'sde_margin':{'slope':round(mg['slope'],4),'ref_sde':2e5,'sd':round(mg['sd'],4),'ln_at_ref':{k:round(v,4) for k,v in mg['a'].items()},'n':mg['n'],'sde_range':[math.log(4e4),math.log(3e6)],
    'source':'DealLedger broker-direct listings (CC0), Feb-Oct 2026: robust regression of ln(cash flow / revenue) on ln(cash flow) with industry effects, n=5,055'},
  'quality_weights':{'own':QWJ['own']['weight'],'mgt':QWJ['mgt']['weight'],'se':{'own':QWJ['own']['se'],'mgt':QWJ['mgt']['se']},'raw':{'own':[QWJ['own']['raw'],QWJ['own']['raw_se']],'mgt':[QWJ['mgt']['raw'],QWJ['mgt']['raw_se']]},

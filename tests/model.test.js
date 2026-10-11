@@ -173,7 +173,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(A.sbaRate(1e7)<=A.sbaRate(3e5),"larger loans price no higher");
   for(const k of Object.keys(A.IND)){
     ok(A.jobsFor(2e6,k)>=1&&A.jobsFor(2e7,k)>A.jobsFor(2e6,k),`${k}: employees grow with revenue`);
-    const g=F.gm_wage.by_industry[k], w=F.gm_wage.wage_growth_2021_2026;
+    const g=F.gm_wage.by_industry[k], w=F.gm_wage.wage_growth;
     for(const rev of [3e5,5e6,2e8]){ const s=A.gmSalary({ind:k,rev});
       ok(s>=g.p10*w-1&&s<=g.p90*w+1,`${k}: GM salary ${Math.round(s)} inside the BLS p10-p90`); }
     const m=A.typMargin(k,5e5); ok(m>.1&&m<.5,`${k}: typical SDE margin ${m.toFixed(3)}`); }
@@ -192,6 +192,38 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const ind=r=>r.buyers.find(b=>b.k==="ind").sizeFit, pep=r=>r.buyers.find(b=>b.k==="pep").sizeFit;
   ok(ind(small)>ind(big)&&pep(big)>pep(small),"individuals at small deals, private equity at large ones");
   for(const r of [small,big]) ok(r.buyers.every(b=>b.sizeFit>=0&&b.sizeFit<=1),"buyer presence in [0,1]"); }
+
+/* 21. GM wage table (OEWS May 2025, oews_refresh): shape, SEs, no top-code, no 2021 growth field */
+{ const W=A.MODELS.fitted.gm_wage, BI=W.by_industry, P=["p10","p25","p50","p75","p90"];
+  const naics21={home:"238220",medical:"621100",vet:"541940",msp:"541500",prof:"541200",mfg:"339900",dist:"423000",
+    staff:"561320",land:"561730",wash:"811190",auto:"811110",constr:"238900",fit:"713940",rest:"722511"};
+  ok(W.base==="OEWS May 2025","GM wages are the May 2025 OEWS release");
+  ok(typeof W.wage_growth==="number"&&W.wage_growth>=1&&W.wage_growth<=1.08,`wage growth to June 2026 ${W.wage_growth}`);
+  ok(W.wage_growth_2021_2026===undefined&&W.topcode===null,"no May-2021 growth factor and no top-code left");
+  ok(W.wage_growth_se>0&&W.wage_growth_se<=.03,`economy-wide growth SE ${W.wage_growth_se}`);
+  ok(Array.isArray(W.wage_growth_se_pct)&&W.wage_growth_se_pct.length===5
+     &&W.wage_growth_se_pct.every(v=>typeof v==="number"&&v>=W.wage_growth_se&&v<=.08)
+     &&W.wage_growth_se_pct[0]===Math.max(...W.wage_growth_se_pct),"percentile growth SEs, p10 the largest");
+  ok(W.noise&&W.noise.kappa2>=1&&W.noise.kappa2<=6,`noise kappa^2 ${W.noise&&W.noise.kappa2}`);
+  ok(typeof W.se_note==="string"&&W.se_note.length>0&&typeof W.wage_growth_se_note==="string"&&W.wage_growth_se_note.length>0,"SE notes present");
+  ok(/wages (and salaries )?only/i.test(W.source),"source says the figures are wages only");
+  for(const k of Object.keys(A.IND)){ const g=BI[k];
+    ok(g&&P.every(p=>typeof g[p]==="number")&&P.every((p,i)=>i===0||g[p]>g[P[i-1]])&&g.p10>25000&&g.p90<5e5,
+       `${k}: GM wage percentiles strictly increasing, inside $25k-$500k`);
+    if(!g) continue;
+    ok(P.every(p=>g[p]!==208000),`${k}: no percentile pinned at the old 2021 top-code`);
+    ok(g.se===undefined&&[g.se_sampling,g.se_total].every(a=>Array.isArray(a)&&a.length===5)
+       &&g.se_sampling.every((v,i)=>v>0&&v<=g.se_total[i]&&g.se_total[i]<=.35),`${k}: se_sampling <= se_total <= 0.35`);
+    if(k!=="ecom") ok(g.se_sampling.every(v=>v>=.005)&&g.se_total.every(v=>v>=.03),`${k}: SEs not implausibly small`);
+    if(naics21[k]) ok(g.naics===naics21[k],`${k}: keeps NAICS ${naics21[k]}`);
+    let prev=0, mono=true;
+    for(let e=5;e<=9;e+=.25){ const v=A.gmSalary({ind:k,rev:10**e}); if(!isFinite(v)||v<prev*(1-1e-12)) mono=false; prev=v; }
+    ok(mono,`${k}: GM salary finite and non-decreasing in revenue`); }
+  ok(BI.saas.naics==="513200","saas reads NAICS 2022 513200 (Software publishers)");
+  ok(BI.ecom.naics==="44-45"&&/p75 [\d,]+-[\d,]+/.test(BI.ecom.bridge||"")&&/p90 [\d,]+-[\d,]+/.test(BI.ecom.bridge||""),
+     "e-commerce is a labelled bridge with its p75/p90 range");
+  const gm=A.gmSalary({ind:"medical",rev:6e6});
+  ok(gm>8e4&&gm<1e5,`example medical practice GM salary ${Math.round(gm)} in $80k-$100k`); }
 
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

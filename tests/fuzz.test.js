@@ -64,6 +64,11 @@ for(let i=0;i<N;i++){
     for(const o of ["V","Vreal","Vmean","EVp","PC","tMed","cashShare"])
       ok(Math.abs(r2[o]/r[o]-1)<.01,`continuous: ${o} in ${k}`,ctx(s,{k,o,a:r[o],b:r2[o]})); }
 
+  /* 7b. GM salary (the hire-a-GM cost): inside the industry's p10-p90 band, never falling with revenue */
+  { const W=A.MODELS.fitted.gm_wage, g=W.by_industry[s.ind], gs=A.gmSalary(s), gs2=A.gmSalary({...s,rev:s.rev*1.5});
+    ok(fin(gs)&&gs>=g.p10*W.wage_growth-1&&gs<=g.p90*W.wage_growth+1,"GM salary inside the BLS p10-p90",ctx(s,{gs}));
+    ok(gs2>=gs*(1-1e-12),"GM salary non-decreasing in revenue",ctx(s,{gs,gs2})); }
+
   /* 8. the proceeds optimum beats the entered ask, and does not depend on theta */
   if(i%5===0){ const rs=A.bestRatio(s,0,s.lamT), ro=A.model({...s,ask:V0*rs});
     ok(ro.EVp>=r.EVp*(1-1e-6),"proceeds optimum at least as good as the entered ask",ctx(s,{rs}));

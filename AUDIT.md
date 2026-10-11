@@ -423,7 +423,7 @@ command.
 |---|---|---|
 | SBA rate 10.5% | prime 6.75% + 1.5 to 2.0 pts by loan size | 4,812 change-of-ownership 7(a) loans, FY2023 |
 | employees = revenue ÷ $150k | receipts per employee by industry and firm size | Census SUSB 2022 |
-| GM salary = 2.4% of revenue | BLS industry wage distribution read at the firm's size rank, p10–p90, 2026 $ | OEWS May 2021 × ECI; Census employment by size |
+| GM salary = 2.4% of revenue | BLS industry wage distribution (wages only) read at the firm's size rank, p10–p90, June 2026 $ | OEWS May 2025 (EB-shrunk to parent NAICS) × ECI management W&S to 2026Q2; Census employment by size |
 | industry SDE margins 7–21% × size curve, sd 0.45 | fitted 20–30% at $200k SDE (shrunk toward the pooled level), slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
 | equal weight on owner dependence, management depth | 1.24 and 0.60 of an equal share, shrunk toward 1 (neither clearly different from 1) | 5,714 listings with descriptions |
 | buyer-type size windows | individual / strategic / financial share by deal value, interpolated between IBBA bands | IBBA buyer mix, 47 complete band-quarters |
