@@ -571,8 +571,9 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   median. gapPenalty, P_C, the prices and both scores do not read it.
 - **T_ELAST = 0.10, a labelled judgment, not an estimate.** The script's chain gives 0.15 (pooled sale-clock
   elasticity 0.52 x P_C at value 0.64, shrunk toward zero). Reviewers showed the two documented ways of converting the
-  analogs give about 0.07 (time-given-sale scale) and 0.15 (clock scale); the pooled 95% interval includes zero; and the
-  only Main-Street source (DealLedger, 362 listings, 31 sales) is uninformative (-0.14, SE 0.55). So the sign comes from
+  analogs give about 0.09 (time-given-sale scale; about 0.06-0.07 if only the marketing leg were stretched) and 0.15
+  (clock scale); the pooled 95% interval includes zero; and the only Main-Street source (DealLedger, 362 listings,
+  31 sales) is uninformative (-0.14, SE 0.55). So the sign comes from
   the analogs (Flippa, Empire Flippers) and the size is set between the two conventions. Stated range 0.05-0.26. Most of
   the analogs' effect rests on Flippa's window hazard, which also counts listings that never sell (already charged by
   Pepperdine's P_C penalty).

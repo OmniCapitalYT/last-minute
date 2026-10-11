@@ -2355,10 +2355,11 @@ const GAP_TAIL_K=(function(){ const h=.5; return PEN_MAX*(GAP_F(100)-GAP_F(100-h
    The only Main-Street source (DealLedger broker listings, 362 listings, 31 sales) is uninformative
    (-0.14, SE 0.55), and pooled and shrunk toward zero the 95% interval includes zero. The SIZE is
    not identified: the two documented ways of carrying the analogs to this console's estimand (time
-   to close among deals that close) give about 0.07 (time-given-sale scale) and 0.15 (sale-clock
-   scale times P_C at value). T_ELAST = 0.10 is set between them by judgment; stated range 0.05-0.26.
-   Part of the analogs' effect is listings that never sell, which the Pepperdine P_C penalty already
-   charges, so a larger value would double count. T_SMOOTH is judgment too. */
+   to close among deals that close) give about 0.09 (time-given-sale scale; about 0.06-0.07 if only
+   the marketing leg were stretched) and 0.15 (sale-clock scale times P_C at value). T_ELAST = 0.10
+   is set between them by judgment; stated range 0.05-0.26. Part of the analogs' effect is listings
+   that never sell, which the Pepperdine P_C penalty already charges, so a larger value would double
+   count. T_SMOOTH is judgment too. */
 const T_ELAST=0.10, T_SMOOTH=0.1;
 function timeMult(ask,val){
   if(!(ask>0&&val>0)) return 1;
@@ -3269,51 +3270,76 @@ function bestRatio(s0,theta,lamT){
    RHO_MAX cap. Which one wins turns on how widely prices scatter at high asks (FAN_S is calibrated
    near 1.07x and extrapolated there), so when the other peak is within 1% of value the note gives
    the range instead of presenting one end as the answer (fit/anchoring_realization.py).
-   The other peak must be a real one: below the cap, an interior local maximum of the objective on a
-   0.02 grid over bestRatio's own domain (refined by a parabola through the three points), not the
-   last ask a scan reached; at the cap, only if the objective still rises into it. When the walk-away
-   ask is the cap and the objective climbs all the way there, there is no second peak and no end to
-   win, so the note says how flat the top is instead (the lowest ask within 1% of value). */
+   The other peak must be a real one, wherever the walk-away ask sits: a local maximum of the objective
+   on a 0.02 grid over bestRatio's whole domain (.80 to the cap), other than the walk-away ask's own
+   grid peak, refined by a parabola through the three points; the cap counts only if the objective
+   still rises into it. So an interior peak anywhere below the cap is found, including one between
+   1.44x and 1.48x, and the second peak is never assumed to be the cap. A peak that exists one 1%
+   step of the share kept either side counts too, so where the walk-away ask jumps between steps the
+   range shows on both sides of the jump. When the walk-away ask is the
+   cap and no other peak is within 1%, the note says how flat the top is (the lowest ask from which
+   every grid ask up to the cap is within 1% of value, rounded UP and checked at the printed ask); it
+   says "no second peak" only when there is none (a shoulder whose dip is under 0.01% of value is not
+   a peak), and otherwise names the other peak and how far below the cap it is. */
 function optNote(s,V,rSell,rKeep){
   const U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed;
   const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<Math.abs(U(rSell))*.01;
   const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMed-rKeep.tMed)), dd=days===1?"a day":`${days} days`;
   const lam=s.lamT>0?` and a cost of delay of ${money(s.lamT)} a day`:"";
-  if(money(V*s.optRho)===money(V*s.rhoSell))
-    return {kind:"same",gain,coin:false,alt:null,flat:null,text:`With ${pc(s.theta)} of value retained if the sale fails${lam}, both objectives agree on the same price. `
-      +`Above model value a higher ask also lengthens the time to close, which only the second figure charges for.`};
-  let alt=null, flat=null;
+  let alt=null, flat=null, peak=null;
   if(s.theta>0){
-    const uK=U(rKeep), H=.02;
-    if(atEdge){
-      const ms=[], us=[];
-      for(let m=.80;m<=RHO_MAX-.06+1e-9;m+=H){ ms.push(m); us.push(U(model({...s,ask:V*m}))); }
-      for(let i=1;i<ms.length-1;i++) if(us[i]>=us[i-1]&&us[i]>=us[i+1]){
-        const d=us[i-1]-2*us[i]+us[i+1], m=d<0?clamp(ms[i]+H*(us[i-1]-us[i+1])/(2*d),ms[i-1],ms[i+1]):ms[i];
-        const u=Math.max(us[i],U(model({...s,ask:V*m})));
-        if(!alt||u>alt.u) alt={u,m:u>us[i]?m:ms[i]}; }
-      if(alt&&uK-alt.u>.01*V) alt=null;
-      if(!alt){ /* no second peak within 1%: the lowest ask from which the objective stays within 1% of value up to the cap */
-        let i=ms.length-1; if(uK-us[i]<=.01*V){ while(i>0&&uK-us[i-1]<=.01*V) i--;
-          flat=i>0?ms[i]-H*(.01*V-(uK-us[i]))/Math.max(1e-12,us[i]-us[i-1]):ms[0]; }
-        if(flat!==null&&flat>RHO_MAX-.1) flat=null; }
-    } else {
-      const x=model({...s,ask:V*RHO_MAX}), xb=model({...s,ask:V*(RHO_MAX-H)});
-      if(U(x)>=U(xb)&&uK-U(x)<=.01*V) alt={u:U(x),m:RHO_MAX};
+    const uK=U(rKeep), H=.02, Um=m=>U(model({...s,ask:V*m})), ms=[], xs=[];
+    /* the objective on bestRatio's own grid, over its whole domain: .80 up to and including the cap */
+    for(let m=.80;m<=RHO_MAX+1e-9;m+=H){ ms.push(m); xs.push(model({...s,ask:V*m})); }
+    const us=xs.map(U), top=ms.length-1, isMax=(v,i)=>i>0&&v[i]>=v[i-1]&&(i===top||v[i]>=v[i+1]);
+    /* the share kept is entered in 1% steps: a peak that exists one step either side is as real as one here (it is
+       where the walk-away ask jumps to when a peak appears or vanishes), so it is a candidate too, valued at this share */
+    const nb=[s.theta-.01,s.theta+.01].filter(th=>th>=0&&th<=1).map(th=>xs.map(x=>x.EVp+(1-x.PC)*th*x.V-s.lamT*x.tMed));
+    /* the walk-away ask's own peak is the grid point bestRatio refined around (its coarse winner, within a step of
+       s.optRho); any other local maximum on the grid is a separate peak, with a dip between the two */
+    let own=0; for(let i=1;i<=top;i++) if(us[i]>us[own]) own=i;
+    if(Math.abs(ms[own]-s.optRho)>H+1e-9) own=clamp(Math.round((s.optRho-.80)/H),0,top);
+    let best=null;
+    for(let i=1;i<=top;i++){
+      const here=isMax(us,i);                                   /* the cap counts only if U still rises into it */
+      if(Math.abs(i-own)<2||!(here||nb.some(v=>isMax(v,i)))) continue;
+      let m=ms[i], u=us[i], lo=us[i];
+      if(here){ for(let j=Math.min(i,own);j<=Math.max(i,own);j++) lo=Math.min(lo,us[j]);   /* the dip toward the own peak */
+        if(i<top){ const d=us[i-1]-2*us[i]+us[i+1];
+          if(d<0){ const mr=clamp(ms[i]+H*(us[i-1]-us[i+1])/(2*d),ms[i-1],ms[i+1]), ur=Um(mr); if(ur>u){ u=ur; m=mr; } } } }
+      if(Math.abs(m-s.optRho)<=H) continue;
+      if(!best||u>best.u) best={u,m};
+      /* a peak the note NAMES beyond a tie must be one here, with a real dip (0.01% of value), not a shoulder */
+      if(here&&u-lo>=1e-4*V&&(!peak||u>peak.u)) peak={u,m};
+    }
+    if(best&&uK-best.u<=.01*V) alt=best;
+    if(atEdge&&!alt){ /* the lowest ask from which the objective stays within 1% of value of the walk-away ask up to the cap,
+                         rounded UP to the printed 0.01 and checked there, so the stated ask really is within 1% */
+      let i=top; if(uK-us[i]<=.01*V){ while(i>0&&uK-us[i-1]<=.01*V) i--;
+        let f=i>0?ms[i]-H*(.01*V-(uK-us[i]))/Math.max(1e-12,us[i]-us[i-1]):ms[0];
+        f=Math.ceil(f*100-1e-6)/100;
+        while(f<RHO_MAX&&uK-Um(f)>.01*V) f=Math.round(f*100+1)/100;
+        flat=f<=RHO_MAX-.1+1e-9?f:null; }
     }
   }
   const range=alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,U(rKeep)-alt.u)/V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `
     +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `
-    :flat!==null?`There is no second peak: to this owner the objective rises all the way to the cap, but slowly, so every ask from ${flat.toFixed(2)}× value up comes within 1% of value of the cap. `:"";
+    :flat===null?""
+    :peak?`The objective has another peak, at ${peak.m.toFixed(2)}× value, but to this owner it is worth ${pc(Math.max(0,U(rKeep)-peak.u)/V,2)} of value less than the cap, beyond a tie. `
+      +`Near the cap the top is flat: every ask from ${flat.toFixed(2)}× value up comes within 1% of value of the cap. `
+    :`There is no second peak: to this owner the objective rises all the way to the cap, but slowly, so every ask from ${flat.toFixed(2)}× value up comes within 1% of value of the cap. `;
+  if(money(V*s.optRho)===money(V*s.rhoSell))
+    return {kind:"same",gain,coin:false,alt,flat,peak,text:`With ${pc(s.theta)} of value retained if the sale fails${lam}, both objectives agree on the same price. `
+      +`Above model value a higher ask also lengthens the time to close, which only the second figure charges for.`+(range?" "+range.trim():"")};
   if(s.optRho<s.rhoSell)
-    return {kind:"lower",gain,coin,alt,flat,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
+    return {kind:"lower",gain,coin,alt,flat,peak,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
       +`Listing at ${money(V*s.optRho)} gives up ${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds, but it is `
       +`${pp(Math.max(0,rKeep.PC-rSell.PC)).replace("+","")} more likely to close and closes ${days>=1?`about ${dd}`:"slightly"} sooner, `
       +`which at ${money(s.lamT)} a day is worth ${money(gain)} to this owner`
       +(coin?`, so the two are close to a coin toss. `:`. `)
       +range
       +`An owner who does not count the wait should use the left-hand number.`};
-  return {kind:"higher",gain,coin,alt,flat,text:`The gap between these is the real decision. The higher price gives up `
+  return {kind:"higher",gain,coin,alt,flat,peak,text:`The gap between these is the real decision. The higher price gives up `
     +`${pp(Math.max(0,rSell.PC-rKeep.PC)).replace("+","")} of closing probability and `
     +`${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds for a bigger cheque if it does close`
     +(days>=1?`, takes about ${dd} longer to close,`:``)+` and only `
@@ -4677,7 +4703,8 @@ function renderData(){
     source, DealLedger broker listings (362 listings, 31 sales), is uninformative: &minus;0.14 (SE 0.55), no
     predictive power. Pooled and shrunk toward zero, the 95% interval includes zero. The <b>size</b> is not
     identified. The two documented ways of carrying the analogs to this console&rsquo;s measure (time to close among
-    deals that close) give about 0.07 on the time-given-sale scale and 0.15 on the sale-clock scale (times the
+    deals that close) give about 0.09 on the time-given-sale scale (about 0.06&ndash;0.07 if only the marketing leg
+    were stretched) and 0.15 on the sale-clock scale (times the
     closing probability at value, 0.64); b sits between them, and changing one analysis choice at a time or
     leaving one source out gives 0.05&ndash;0.26. Most of the analogs&rsquo; effect comes from Flippa, whose window
     also counts listings that never sell, which the Pepperdine closing-probability penalty already charges: a larger
@@ -4875,7 +4902,7 @@ function renderData(){
       <colgroup><col style="width:30%"><col style="width:9%"><col></colgroup><thead><tr><th>Block</th><th class="n" style="padding-right:18px">Count</th><th style="padding-left:6px">Reaches which reported number?</th></tr></thead><tbody>
         <tr><td><code>IND</code> peer table<div class="muted" style="font-size:11.5px">${Object.keys(IND).length} industries &times; ${Object.keys(IND[Object.keys(IND)[0]]).length} fields</div></td>
             <td class="n" style="padding-right:18px">${Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length}</td>
-            <td style="padding-left:6px">z-scores, category scores, buyer mix, and through the z-scores the quality position of the value. <code>IND</code> buyers is also the typical pool that the thin-pool factor and the competition premium are measured against, so below a typical pool it moves the closing probability, expected proceeds and the Omni score (the fitted offer share absorbs its level, not the user&rsquo;s ratio to it). The industry level of the value comes from the fitted NAICS table.</td></tr>
+            <td style="padding-left:6px">z-scores, category scores, buyer mix, and through the z-scores the quality position of the value. <code>IND</code> buyers is also the typical pool that the thin-pool factor and the competition premium are measured against, so below a typical pool it moves the closing probability, expected proceeds and the Omni score (the calibrated offer share absorbs its level, not the user&rsquo;s ratio to it). The industry level of the value comes from the fitted NAICS table.</td></tr>
         <tr><td><code>d{}</code> multiple deltas<div class="muted" style="font-size:11.5px">rec, own, mgt, cc, grw, gm, ret, fin, plt, buy, tail, em, yrs</div></td>
             <td class="n" style="padding-right:18px">13</td>
             <td style="color:#5ee0a8;padding-left:6px">Nothing. Superseded by the fitted equation &mdash; retained only for the explainability panel.</td></tr>
@@ -5021,7 +5048,8 @@ function renderData(){
         <td>no effect: the ask never changed the time to close</td>
         <td>the band median &times; e<sup>${T_ELAST.toFixed(2)}&middot;h</sup>, h the log gap above value (first 10% rounded); exactly
         the band median at or below value. The <b>sign</b> is from data, the <b>size</b> is a labelled judgment, set between
-        the two documented conversions (about 0.07 on the time-given-sale scale, 0.15 on the sale-clock scale); stated range
+        the two documented conversions (about 0.09 on the time-given-sale scale, about 0.06&ndash;0.07 if only the marketing
+        leg were stretched, and 0.15 on the sale-clock scale); stated range
         0.05&ndash;0.26</td>
         <td>Online-marketplace analogs: Flippa, 3,409 listings followed 219 days (sale hazard &minus;0.99 per log point
         above comparables); Empire Flippers, 1,563 sold listings (time to sale +0.19, SE 0.17, fragile across
@@ -5112,7 +5140,7 @@ function renderData(){
           (a Flippa watchers snapshot leans toward less), and whether a deeper pool raises the closing probability are not measured</span></td></tr>
       <tr><td>Buyer archetypes: fit functions, synergy shares, multiple factors, seller share &phi;</td>
           <td>who bought what, at what premium</td>
-          <td><span class="st free">the size mix is fitted; the multiple factors, synergy shares and &phi; are checked, not fitted. Bankers
+          <td><span class="st free">the size mix is fitted; the multiple factors are checked, not fitted. Bankers
           report strategic buyers paying ${(MODELS.fitted.competition.strategic_premium.pepperdine_2016[0]*100).toFixed(1)}% over financial buyers
           (Pepperdine 2016, se ${(MODELS.fitted.competition.strategic_premium.pepperdine_2016[1]*100).toFixed(1)}, n=120) and about
           ${Math.round(MODELS.fitted.competition.strategic_premium.pepperdine_2025_secondary[0]*100)}% (2025, secondary quote); pooled
@@ -6850,6 +6878,7 @@ td .tag.pick{border-color:rgba(158,203,255,.45)!important;background:rgba(77,163
 /* ---- tables: a number column never touches the text column after it */
 td.n+td:not(.n),th.n+th:not(.n){padding-left:22px!important}
 td:not(.n)+td.n,th:not(.n)+th.n{padding-left:16px}
+td.n+td.n,th.n+th.n{padding-left:16px}   /* two number columns side by side never run together either */
 
 /* ---- provenance lists: badges sit on the text line instead of stretching it */
 li>.pv{display:inline-flex!important;align-items:center;gap:5px;line-height:1!important;vertical-align:1px;margin-right:4px}

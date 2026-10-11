@@ -494,7 +494,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
 }
 
 /* 25. overpricing costs time (fit/overpricing_time.py; RESULT test_invariants). T_ELAST = 0.10 is a LABELLED JUDGMENT,
-   set between the two documented conversions of the analogs (about 0.07 time-given-sale, 0.15 sale clock); stated
+   set between the two documented conversions of the analogs (about 0.09 time-given-sale, 0.15 sale clock); stated
    range 0.05-0.26. The band median is exact at or below model value and stretched by timeMult above it; the
    proceeds optimum (and with it the business score) reads neither theta nor the cost of delay; the note under
    the listing cards is written from the optimiser's own delay-inclusive objective */
@@ -513,7 +513,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.indexOf("time to close depends on deal size, not on the ask")<0,"the old 'delay cost does not move either' note is gone");
   ok(/const tMedA=FT\.days\*out\.tMult;/.test(HTML)&&(HTML.match(/FT\.days/g)||[]).length===1,"FT.days is read exactly once in model() (the tMedA line)");
   ok(HTML.includes('id="o_t_pv"')&&HTML.includes('id="o_tstretch"')&&HTML.includes("aggregate × judgment"),"tile tag and live stretch note present");
-  ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&HTML.includes("about 0.07 on the time-given-sale scale and 0.15 on the sale-clock scale"),
+  ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&/about 0\.09 on the time-given-sale scale \(about 0\.06&ndash;0\.07 if only the marketing leg\s+were stretched\) and 0\.15 on the sale-clock scale/.test(HTML)
+     &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
   ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
@@ -537,6 +538,38 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(Math.round(50*(lo+hi))===pct,`Data tab: patient-seller cap from ${(50*(lo+hi)).toFixed(1)}% kept at $${lam}/day (text says ${pct}%)`); } }
   /* small deals leave the cap at $900/day at theta .75 */
   ok(A.bestRatio({...EXO,ind:"medical",ern:1.5e5,rev:1.5e5/0.24},.75,900)<1.25,"small deal: the walk-away ask is interior");
+  /* reference for the note under the listing cards, on a 0.005 grid (4x finer than bestRatio's): the local maxima of the
+     objective at this share kept AND one 1% step of it either side (the cap counts if the objective rises into it), each
+     valued at this share, with its distance from the walk-away ask and its dip toward it. The margins (0.95% vs 1%, 0.06
+     vs 0.02, dip 3e-4 vs 1e-4 of value) absorb the coarse grid's resolution; inside them the note must agree exactly. */
+  const noteRef=ss=>{
+    const V=A.model({...ss,ask:1}).V, th=ss.theta, lam=ss.lamT, ms=[], xs=[];
+    for(let k=0;k<=140;k++){ const m=.80+k*.005; ms.push(m); xs.push(A.model({...ss,ask:V*m})); }
+    const Ut=t=>xs.map(x=>x.EVp+(1-x.PC)*t*x.V-lam*x.tMed), u=Ut(th), L=ms.length-1, jo=Math.round((ss.optRho-.80)/.005);
+    const isMax=(v,j)=>j>0&&v[j]>=v[j-1]&&(j===L||v[j]>=v[j+1]), pk=[];
+    for(const t of [th,th-.01,th+.01]) if(t>=0&&t<=1){ const v=t===th?u:Ut(t);
+      for(let j=1;j<=L;j++) if(isMax(v,j)){ let lo=u[j]; for(let q=Math.min(j,jo);q<=Math.max(j,jo);q++) lo=Math.min(lo,u[q]);
+        pk.push({m:ms[j],u:u[j],here:t===th,depth:(u[j]-lo)/V,d:Math.abs(ms[j]-ss.optRho)}); } }
+    const U=m=>{ const x=A.model({...ss,ask:V*m}); return x.EVp+(1-x.PC)*th*x.V-lam*x.tMed; };
+    return {V,pk,U,ms,u,uK:U(ss.optRho)};
+  };
+  const checkNote=(ss,n,tag)=>{
+    const R=noteRef(ss), V=R.V, uK=R.uK;
+    /* the range: shown exactly when another peak (here or one 1% step of theta away) is within 1% of value */
+    if(n.alt) ok(n.text.includes("close to a tie, so read the patient-seller price as a range")&&uK-n.alt.u<=.01*V*(1+1e-9)&&Math.abs(n.alt.m-ss.optRho)>.02
+      &&R.pk.some(p=>Math.abs(p.m-n.alt.m)<=.025&&p.d>.015),`range end ${n.alt.m.toFixed(3)} is a real peak within 1% ${tag}`);
+    else ok(!/as a range/.test(n.text)&&!R.pk.some(p=>p.d>.06&&uK-p.u<=.0095*V),`no range only when no other peak is within 1% ${tag}: ${n.text}`);
+    /* the flat top: only at the cap, printed rounded UP, and the printed ask and every fine-grid ask above it within 1% */
+    if(n.flat!==null&&n.flat!==undefined){
+      const above=R.ms.map((m,j)=>[m,R.u[j]]).filter(v=>v[0]>=n.flat-1e-9);
+      ok(!n.alt&&ss.optRho>A.RHO_MAX-.02&&Math.abs(n.flat*100-Math.round(n.flat*100))<1e-9
+        &&n.text.includes(`every ask from ${n.flat.toFixed(2)}× value up comes within 1% of value of the cap`)
+        &&uK-R.U(n.flat)<=.01*V&&above.every(v=>uK-v[1]<=.01*V),`flat-top ask ${n.flat}: it and every ask above it within 1% ${tag}`);
+      if(/There is no second peak/.test(n.text)) ok(!n.peak&&!R.pk.some(p=>p.here&&p.d>.03&&p.depth>3e-4),`'no second peak' only when there is none ${tag}`);
+      else ok(!!n.peak&&n.text.includes(`another peak, at ${n.peak.m.toFixed(2)}× value`)&&uK-n.peak.u>.01*V
+        &&R.pk.some(p=>p.here&&Math.abs(p.m-n.peak.m)<=.025&&p.depth>=.99e-4),`the other peak named beyond a tie is real ${tag}: ${n.text}`); }
+    else ok(!/no second peak|another peak, at/.test(n.text),`no flat-top wording without a flat top ${tag}`);
+  };
   for(const [ind,ern] of [["medical",1.45e6],["rest",1.5e5],["mfg",5e6],["msp",4e5],["prof",5e4]]){
     const s={...EXO,ind,ern,rev:ern/0.24}, V=A.model({...s,ask:1}).V, r1=A.model({...s,ask:V});
     const base=A.fitTiming(r1.Vbase,ind).days;
@@ -582,15 +615,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       else ok(n.kind==="higher"&&n.text.includes("higher price"),`a higher walk-away ask is described as higher ${tag}`);
       ok(n.coin===(!same&&U(rKeep)-U(rSell)<Math.abs(U(rSell))*.01)&&(!n.coin||/coin toss/.test(n.text)),`coin-toss wording on the delay-inclusive gain ${tag}`);
       /* the patient-seller range (anchoring_realization) is shown exactly when ANOTHER PEAK (a local maximum of the
-         objective on a fine grid, more than 0.06 from the walk-away ask; the cap counts if the objective rises into it)
-         is within 1% of value - never because a scan stopped somewhere */
-      if(!same&&th>0){ const g=[]; for(let k=0;k<=140;k++){ const m=.80+k*.005; g.push([m,U(A.model({...ss,ask:V*m}))]); }
-        const pk=g.filter((v,j)=>j>0&&v[1]>=g[j-1][1]&&(j===g.length-1||v[1]>=g[j+1][1])&&Math.abs(v[0]-ss.optRho)>.06);
-        const best=pk.length?Math.max(...pk.map(v=>v[1])):-Infinity, tie=U(rKeep)-best<=.01*V;
-        ok(!!n.alt===tie&&(!tie||n.text.includes("close to a tie, so read the patient-seller price as a range")),`range note iff another peak ties ${tag}`);
-        if(n.alt) ok(Math.abs(n.alt.m-ss.optRho)>.06&&pk.some(v=>Math.abs(v[0]-n.alt.m)<=.025),`range end ${n.alt.m.toFixed(3)} is a real peak ${tag}`);
-        if(n.flat!==null&&n.flat!==undefined) ok(!n.alt&&ss.optRho>A.RHO_MAX-.02&&U(rKeep)-U(A.model({...ss,ask:V*(n.flat+.01)}))<=.01*V
-          &&/no second peak/.test(n.text),`flat-top note only at the cap, and the asks above it are within 1% ${tag}`); }
+         objective, here or one 1% step of theta away, apart from the walk-away ask's own; the cap counts if the objective
+         rises into it) is within 1% of value - never because a scan stopped somewhere, and also when both cards agree */
+      if(th>0) checkNote(ss,n,tag);
     }
   }
   /* the default state (framework example, 75% kept, $900/day): the two peaks tie and the note shows the range */
@@ -610,6 +637,29 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     e9.rhoSell=A.bestRatio(e9,0,0); e9.optRho=A.bestRatio(e9,.9,900);
     const n9=A.optNote(e9,V9,A.model({...e9,ask:V9*e9.rhoSell}),A.model({...e9,ask:V9*e9.optRho}));
     ok(!n9.alt&&n9.flat>1.3&&n9.flat<1.42,`framework example at 90% kept: flat top from ${n9.flat}, no range`); }
+  const noteAt=(s0,th,lam)=>{ const t={...s0,theta:th,lamT:lam}, V=A.model({...t,ask:1}).V; t.rhoSell=A.bestRatio(t,0,0); t.optRho=A.bestRatio(t,th,lam);
+    return {t,o:t.optRho,n:A.optNote(t,V,A.model({...t,ask:V*t.rhoSell}),A.model({...t,ask:V*t.optRho}))}; };
+  /* a walk-away flip between ~1.22x and ~1.45x on one 1% step of theta, NEITHER end at the cap (the second peak is not
+     assumed to be the cap): the range covers both peaks on both sides of the flip */
+  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.93,.94],1200],
+                             [{ind:"home",rev:326000,ern:55000,grw:.66,gm:.77,rec:.59,cc:.07,ret:.70,plt:.24,own:.95,mgt:.36,fin:.14,yrs:6,buyers:440},[.92,.93],900]]){
+    const out=ths.map(th=>noteAt(s0,th,lam));
+    ok(Math.abs(out[1].o-out[0].o)>.2&&out.every(({o,n})=>o<A.RHO_MAX-.02&&n.alt&&Math.min(o,n.alt.m)<1.25&&Math.max(o,n.alt.m)>1.44&&/as a range/.test(n.text)),
+       `walk-away flip ${out.map(v=>v.o.toFixed(3)).join(" -> ")} below the cap: the range on both sides`);
+    for(const v of out) checkNote(v.t,v.n,`(flip at theta ${v.t.theta})`); }
+  /* at the cap with an interior peak more than 1% below it, the note names that peak instead of claiming none, and the
+     flat-top ask is rounded up (framework example at 85% kept; auto repair $900k/$200k at 90%) */
+  { const f=noteAt({...EXO,ind:"medical",rev:6e6,ern:1.45e6},.85,900), a=noteAt({...EXO,ind:"auto",rev:9e5,ern:2e5},.9,900);
+    for(const [v,pm,lo,hi,fl] of [[f,1.22,1.3,1.35,1.37],[a,1.24,1.08,1.13,1.32]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
+      const U=m=>{ const x=A.model({...v.t,ask:V*m}); return x.EVp+(1-x.PC)*v.t.theta*x.V-v.t.lamT*x.tMed; }, gap=n.peak?(U(v.o)-n.peak.u)/V*100:NaN;
+      ok(v.o>A.RHO_MAX-.02&&!n.alt&&n.peak&&Math.abs(n.peak.m-pm)<.015&&gap>lo&&gap<hi&&!/no second peak|rises all the way/.test(n.text)
+         &&n.text.includes(`another peak, at ${n.peak.m.toFixed(2)}× value, but to this owner it is worth ${gap.toFixed(2)}% of value less than the cap, beyond a tie`)
+         &&n.flat===fl&&U(v.o)-U(fl)<=.01*V&&U(v.o)-U(fl-.01)>.01*V,`${v.t.ind} at ${v.t.theta}: other peak at ${n.peak?n.peak.m.toFixed(3):"none"} ${gap.toFixed(3)}% below, flat from ${n.flat} (${n.text})`);
+      checkNote(v.t,n,`(${v.t.ind} at ${v.t.theta})`); } }
+  /* every industry near the knife edge: the note's three readings (range, named peak, no second peak) against the reference */
+  for(const ind of Object.keys(A.IND)) for(const [th,lam] of [[.85,900],[.9,4000],[.95,900]]){
+    const I=A.IND[ind], v=noteAt({...EXO,ind,ern:4e5,rev:4e5/.24,grw:I.grw,gm:I.gm,rec:I.rec,ret:I.ret},th,lam);
+    checkNote(v.t,v.n,`(${ind}, theta ${th}, $${lam}/day)`); }
 }
 
 /* 26. competition (fit/competition_buyers.py, integrated in part): ENG_SHARE replaces the 0.34 engaged share and is

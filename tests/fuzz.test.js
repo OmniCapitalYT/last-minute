@@ -160,6 +160,16 @@ for(let i=0;i<N;i++){
     ok(ru<=A.RHO_MAX+1e-9&&rs<=A.RHO_MAX+1e-9,"recommended asks stay where the closing data reach",ctx(s,{rs,ru}));
     if(s.lamT>0){ const u0=A.bestRatio(s,s.theta,0), U=m=>{ const x=A.model({...s,ask:V0*m}); return x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed; };
       ok(U(ru)>=U(u0)-1e-6*Math.abs(U(u0)),"walk-away ask optimal on the delay-inclusive objective",ctx(s,{ru,u0})); } }
+
+  /* 9. the walk-away ask can jump between two peaks of its objective as the share kept moves one 1% step (the slider's
+     step). Wherever bestRatio jumps by more than 0.1 between adjacent steps, the note under the listing cards must show
+     the range (or, at the cap, how flat the top is) on BOTH sides, so the jump is never silent. Theta is scanned in 5%
+     steps and every 1% step inside an interval that moved by more than 0.1 is checked. */
+  if(i%10===0){ const rs=A.bestRatio(s,0,0), memo={}, br=k=>memo[k]!==undefined?memo[k]:(memo[k]=A.bestRatio(s,k/100,s.lamT));
+    const note=k=>{ const t={...s,theta:k/100,rhoSell:rs,optRho:br(k)}; return A.optNote(t,V0,A.model({...t,ask:V0*rs}),A.model({...t,ask:V0*t.optRho})); };
+    const shown=n=>!!n.alt||(n.flat!==null&&n.flat!==undefined);
+    for(let c=0;c<100;c+=5) if(Math.abs(br(c+5)-br(c))>.1) for(let k=c;k<c+5;k++) if(Math.abs(br(k+1)-br(k))>.1)
+      ok(shown(note(k))&&shown(note(k+1)),"a walk-away jump between 1% steps of theta shows the range on both sides",ctx(s,{theta:k/100,from:br(k),to:br(k+1)})); }
 }
 
 const names=Object.keys(fails);
