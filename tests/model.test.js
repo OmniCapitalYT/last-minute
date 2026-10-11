@@ -118,7 +118,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6]){
 
 /* 13. the expected-proceeds optimum must not depend on how much the owner values
        keeping the business (theta); only the utility optimum may */
-{ const r0=A.model(EX), base={...EX,rhoSell:A.bestRatio(EX,0,900)};
+{ const r0=A.model(EX), base={...EX,rhoSell:A.bestRatio(EX,0,0)};
   const a=A.optimize({...base,optRho:A.bestRatio(EX,.75,900)},r0,1e5,900,.75);
   const b=A.optimize({...base,optRho:A.bestRatio(EX,0,900)},r0,1e5,900,0);
   ok(near(a.V.net,b.V.net,1e-6),`proceeds optimum independent of theta: ${a.V.net} vs ${b.V.net}`);
@@ -138,7 +138,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6]){
 /* 15. the business score: a median business priced at its proceeds optimum scores 50,
        and the score does not move with earnings once transferability sits at the
        size-adjusted peer medians (size lives in the model value, not the score) */
-{ const biz=s=>{ const V=A.model({...s,ask:1}).V; return A.omniScore(A.model({...s,ask:V*A.bestRatio(s,0,900)}),"opt"); };
+{ const biz=s=>{ const V=A.model({...s,ask:1}).V; return A.omniScore(A.model({...s,ask:V*A.bestRatio(s,0,0)}),"opt"); };
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]){
     ok(biz(median(ind,ern))===50,`median ${ind} ${ern}: business score 50`); }
   const sc=[.6e6,1e6,1.45e6,2e6,3e6].map(e=>{ const R=A.sizeRefs(e); return biz({...EX,ern:e,own:R.own,mgt:R.mgt,fin:R.fin}); });
@@ -275,7 +275,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const ra=A.model({...s,ask:s.ask*1.7}), rq=A.model({...s,own:.2,mgt:.9,fin:.2});
     ok(ra.betaT===r.betaT&&rq.betaT===r.betaT,`shape independent of the ask and quality: ${tag}`);
     ok(Math.abs(ra.F(ra.tMed)-.5)<1e-12,`median exact after an ask change: ${tag}`);
-    if(r.tMult===undefined) ok([30,90,180,365,540].every(t=>ra.F(t)===r.F(t)&&rq.F(t)===r.F(t)),`curve independent of the ask and quality: ${tag}`); }
+    /* overpricing_time: the ask (and, above value, quality through the gap) only rescales the curve with the median */
+    ok([30,90,180,365,540].every(t=>Math.abs(ra.F(t*ra.tMult/r.tMult)-r.F(t))<1e-12&&Math.abs(rq.F(t*rq.tMult/r.tMult)-r.F(t))<1e-12),
+       `curve rescaled exactly with the median: ${tag}`);
+    if(rho<=1&&rq.inputs.ask<=rq.V) ok([30,90,180,365,540].every(t=>rq.F(t)===r.F(t)),`curve independent of quality at or below value: ${tag}`); }
   /* the worked example ($3.49M fitted value): the upper level, quartiles 9^(1/beta) = 2.30x apart */
   { const ex={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,
       yrs:6,buyers:65,st:null,franchise:false,ask:3.24e6}, r=A.model(ex);
@@ -472,6 +475,109 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.indexOf("close to a tie, so read the patient-seller price as a range")>0,"optimiser card: range note");
   ok(HTML.indexOf("Fit-consistency check, not an external benchmark")>0&&HTML.indexOf("Listing premium implied by")<0,"self-audit row replaced");
   ok(HTML.indexOf("const M=4000")<0&&HTML.indexOf("M=4000,out=[]")<0,"old overlapping-grid fanNodes gone");
+}
+
+/* 25. overpricing costs time (fit/overpricing_time.py; RESULT test_invariants). T_ELAST = 0.10 is a LABELLED JUDGMENT,
+   set between the two documented conversions of the analogs (about 0.07 time-given-sale, 0.15 sale clock); stated
+   range 0.05-0.26. The band median is exact at or below model value and stretched by timeMult above it; the
+   proceeds optimum (and with it the business score) reads neither theta nor the cost of delay; the note under
+   the listing cards is written from the optimiser's own delay-inclusive objective */
+{ const fs=require("fs"), path=require("path");
+  const HTML=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const T=A.T_ELAST, TS=A.T_SMOOTH;
+  ok(T===0.10&&T>=0.05&&T<=0.26,`T_ELAST ${T} is the 0.10 judgment, inside the stated range 0.05-0.26`);
+  ok(TS===0.1,`T_SMOOTH ${TS}`);
+  ok([[1,1],[.5,1],[0,1],[-1,1],[NaN,1],[2,0],[2,-1],[2,NaN],[1e-300,1]].every(([a,v])=>A.timeMult(a,v)===1),
+     "timeMult is exactly 1 at or below value and for invalid inputs");
+  ok(Math.abs(Math.log(A.timeMult(Math.E,1))-T*(1-TS/2))<1e-12,"timeMult = e^{T_ELAST (x - T_SMOOTH/2)} past the rounding zone");
+  ok(Math.abs(Math.log(A.timeMult(Math.exp(TS/2),1))-T*TS/8)<1e-12,"timeMult = e^{T_ELAST x^2/(2 T_SMOOTH)} inside it");
+  /* the page: rhoSell does not read the cost of delay; the note comes from optNote and keeps the range wording */
+  ok(/s\.rhoSell=bestRatio\(s,0,0\);/.test(HTML)&&!/rhoSell=bestRatio\(s,0,s\.lamT\)/.test(HTML),"render computes rhoSell as bestRatio(s,0,0)");
+  ok(/\$\("o_listnote"\)\.textContent=optNote\(s,r\.V,rSell,rKeep\)\.text;/.test(HTML),"the optimiser note is written by optNote");
+  ok(HTML.indexOf("time to close depends on deal size, not on the ask")<0,"the old 'delay cost does not move either' note is gone");
+  ok(/const tMedA=FT\.days\*out\.tMult;/.test(HTML)&&(HTML.match(/FT\.days/g)||[]).length===1,"FT.days is read exactly once in model() (the tMedA line)");
+  ok(HTML.includes('id="o_t_pv"')&&HTML.includes('id="o_tstretch"')&&HTML.includes("aggregate × judgment"),"tile tag and live stretch note present");
+  ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&HTML.includes("about 0.07 on the time-given-sale scale and 0.15 on the sale-clock scale"),
+     "Data tab states b as a labelled judgment between the two conversions");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH");
+  /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
+  for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
+    const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
+    ok(A.omniScore(A.model({...s,ask:V*A.bestRatio(s,0,0)}),"opt")===50,`median ${ind} ${ern}: business score 50 at $${lamT}/day`); }
+  /* why rhoSell must not take lamT: once time reads the ask, a cost of delay lowers the delay-aware ask */
+  { const s=median("rest",1.5e5); ok(A.bestRatio(s,0,4000)<A.bestRatio(s,0,0)-1e-3,"a cost of delay lowers the delay-aware ask"); }
+  const EXO={grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false};
+  /* the walk-away asks the Data tab quotes (75% kept): $900/day 1.14, 1.14, 1.15, 1.15; $4,000/day 1.10, 1.13, 1.14, 1.14
+     for earnings $150k/$400k/$1.45M/$5M. If another change moves them, update the Data-tab paragraph. */
+  { const Q={900:["1.14","1.14","1.15","1.15"],4000:["1.10","1.13","1.14","1.14"]};
+    [1.5e5,4e5,1.45e6,5e6].forEach((ern,i)=>{ const s={...EXO,ind:"medical",ern,rev:ern/0.24};
+      for(const lam of [900,4000]){ const b=A.bestRatio(s,.75,lam);
+        ok(b.toFixed(2)===Q[lam][i],`Data tab: walk-away ask at $${ern} and $${lam}/day ${b.toFixed(3)} (text says ${Q[lam][i]})`); } }); }
+  /* the knife edge the Data tab quotes for the framework example: the cap wins from about 76% kept with no delay cost,
+     77% at $900/day, 79% at $4,000/day */
+  { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6};
+    for(const [lam,pct] of [[0,76],[900,77],[4000,79]]){ let lo=.70,hi=.86;
+      for(let k=0;k<12;k++){ const m=(lo+hi)/2; A.bestRatio(ex,m,lam)>1.45?hi=m:lo=m; }
+      ok(Math.round(50*(lo+hi))===pct,`Data tab: patient-seller cap from ${(50*(lo+hi)).toFixed(1)}% kept at $${lam}/day (text says ${pct}%)`); } }
+  /* small deals leave the cap at $900/day at theta .75 */
+  ok(A.bestRatio({...EXO,ind:"medical",ern:1.5e5,rev:1.5e5/0.24},.75,900)<1.25,"small deal: the walk-away ask is interior");
+  for(const [ind,ern] of [["medical",1.45e6],["rest",1.5e5],["mfg",5e6],["msp",4e5],["prof",5e4]]){
+    const s={...EXO,ind,ern,rev:ern/0.24}, V=A.model({...s,ask:1}).V, r1=A.model({...s,ask:V});
+    const base=A.fitTiming(r1.Vbase,ind).days;
+    for(const m of [0,0.3,0.6,0.9,0.999,1]){ const rm=A.model({...s,ask:V*m});
+      ok(rm.tMed===base&&rm.tMult===1,`time unchanged at ${m}x value (${ind})`); }
+    /* scan rho 0.5..3 in 0.001 steps: non-decreasing, small steps, t90/t180/t365 never rise */
+    let prev=-Infinity,maxStep=0,mono=true,pq=[Infinity,Infinity,Infinity],monoQ=true;
+    for(let k=0;k<=2500;k++){ const m=0.5+k*0.001, r=A.model({...s,ask:V*m});
+      if(r.tMed<prev-1e-9) mono=false; if(prev>-Infinity) maxStep=Math.max(maxStep,r.tMed-prev); prev=r.tMed;
+      const q=[r.t90,r.t180,r.t365]; if(q.some((v,j)=>v>pq[j]+1e-12)) monoQ=false; pq=q; }
+    ok(mono,`tMed non-decreasing in the ask (${ind})`); ok(maxStep<0.5,`tMed steps under half a day per 0.001 of rho (${ind}): ${maxStep}`);
+    ok(monoQ,`t90/t180/t365 non-increasing in the ask (${ind})`);
+    ok(A.model({...s,ask:V*1.01}).tMed>base,`time strictly longer above value (${ind})`);
+    const d=1e-6, dR=(A.model({...s,ask:V*(1+d)}).tMed-r1.tMed)/d, dL=(r1.tMed-A.model({...s,ask:V*(1-d)}).tMed)/d;
+    ok(Math.abs(dR)<1&&Math.abs(dL)<1,`slope of tMed continuous (zero) at value (${ind}): ${dL} / ${dR}`);
+    const el=Math.log(A.model({...s,ask:V*3}).tMed/A.model({...s,ask:V*1.5}).tMed)/Math.log(2);
+    ok(Math.abs(el-T)<1e-9,`elasticity above the rounding zone is T_ELAST (${ind}): ${el}`);
+    { const r2=A.model({...s,ask:V*2});
+      ok(Math.abs(r2.tMed-r2.ft.days*A.timeMult(2*V,r2.V))<1e-9*r2.tMed,`tMed = band median x timeMult (${ind})`);
+      ok(r2.ft.days===base&&r2.ft.loi===r1.ft.loi&&r2.betaT===r1.betaT,`band median, LOI leg and shape unchanged by the ask (${ind})`);
+      /* the price block does not read the multiplier: same P_C, prices and value as the band-only curve */
+      ok(r2.V===r1.V&&r2.Vbase===r1.Vbase&&Math.abs(r2.PC-A.fitClose(2*V,r2.V,undefined,r2.Vbase).p*(r2.thinF<1?r2.thinF:1))<1e-9,`P_C and value do not read the time multiplier (${ind})`); }
+    for(const a of [1e-6,1,1e3,1e9,1e12]) ok(isFinite(A.model({...s,ask:a}).tMed),`finite at ask ${a} (${ind})`);
+    /* a better business at the same ask is never slower: a higher model value narrows the gap */
+    const better={rec:Math.min(1,s.rec+.1),cc:Math.max(.005,s.cc-.05),ret:Math.min(.99,s.ret+.03),plt:Math.max(.02,s.plt-.08),
+      grw:Math.min(1.5,s.grw+.05),gm:Math.min(.97,s.gm+.03),own:Math.max(.02,s.own-.1),mgt:Math.min(.99,s.mgt+.1),fin:Math.min(1,s.fin+.1)};
+    for(const k in better){ const a0=A.model({...s,ask:1.4*V}), a1=A.model({...s,[k]:better[k],ask:1.4*V});
+      ok(a1.tMed<=a0.tMed+1e-9,`better ${k} never lengthens the time to close at a fixed ask (${ind})`); }
+    for(const lam of [0,900,4000]) for(const th of [0,.2,.75]){
+      const tag=`(${ind}, theta ${th}, $${lam}/day)`, ru=A.bestRatio(s,th,lam);
+      ok(ru<=A.RHO_MAX+1e-9,`utility optimum within RHO_MAX ${tag}`);
+      ok(ru<=A.bestRatio(s,th,0)+1e-9,`a cost of delay never raises the recommended ask ${tag}`);
+      /* the note under the two listing cards describes the cards actually shown */
+      const ss={...s,theta:th,lamT:lam}; ss.rhoSell=A.bestRatio(ss,0,0); ss.optRho=ru;
+      const rSell=A.model({...ss,ask:V*ss.rhoSell}), rKeep=A.model({...ss,ask:V*ss.optRho});
+      const n=A.optNote(ss,V,rSell,rKeep), U=x=>x.EVp+(1-x.PC)*th*x.V-lam*x.tMed;
+      ok(U(rKeep)>=U(rSell)-1e-6*Math.abs(U(rSell)),`walk-away card at least as good on the optimiser's objective ${tag}`);
+      ok(!/[−-]\$/.test(n.text)&&!/NaN|undefined|Infinity|1 days/.test(n.text),`no negative money, NaN or '1 days' in the note ${tag}: ${n.text}`);
+      const same=A.money(V*ss.optRho)===A.money(V*ss.rhoSell);
+      if(same) ok(n.kind==="same",`same figure: 'agree' note ${tag}`);
+      else if(ss.optRho<ss.rhoSell) ok(n.kind==="lower"&&n.text.includes(A.money(V*ss.optRho))&&!n.text.includes("higher price")&&rKeep.tMed<=rSell.tMed&&/sooner/.test(n.text),
+        `a lower walk-away ask is described as lower and faster ${tag}: ${n.text}`);
+      else ok(n.kind==="higher"&&n.text.includes("higher price"),`a higher walk-away ask is described as higher ${tag}`);
+      ok(n.coin===(!same&&U(rKeep)-U(rSell)<Math.abs(U(rSell))*.01)&&(!n.coin||/coin toss/.test(n.text)),`coin-toss wording on the delay-inclusive gain ${tag}`);
+      /* the patient-seller range (anchoring_realization) is shown exactly when the other peak is within 1% of value */
+      if(!same&&th>0){ const atEdge=ss.optRho>A.RHO_MAX-.02; let best=-Infinity, m0=null;
+        if(atEdge){ for(let m=1.0;m<=1.35+1e-9;m+=.025){ const u=U(A.model({...ss,ask:V*m})); if(u>best){best=u;m0=m;} } }
+        else { best=U(A.model({...ss,ask:V*A.RHO_MAX})); m0=A.RHO_MAX; }
+        const tie=U(rKeep)-best<=.01*V;
+        ok(!!n.alt===tie&&(!tie||n.text.includes("close to a tie, so read the patient-seller price as a range")),`range note iff the peaks tie ${tag}`); }
+    }
+  }
+  /* the default state (framework example, 75% kept, $900/day): the two peaks tie and the note shows the range */
+  { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,theta:.75,lamT:900}, V=A.model({...ex,ask:1}).V;
+    ex.rhoSell=A.bestRatio(ex,0,0); ex.optRho=A.bestRatio(ex,.75,900);
+    const n=A.optNote(ex,V,A.model({...ex,ask:V*ex.rhoSell}),A.model({...ex,ask:V*ex.optRho}));
+    ok(n.kind==="higher"&&!!n.alt&&/1\.1\d–1\.50× value/.test(n.text),`framework example: patient-seller range shown (${n.text})`); }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

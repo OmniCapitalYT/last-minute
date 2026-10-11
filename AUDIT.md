@@ -437,7 +437,8 @@ with the data that would fit it:
   premium. That neither confirms nor rules them out, so they keep equal weights.
 - **Time-to-close:** the 103-day listing panel saw only 164 sales, too few to fit the
   curve's shape. *Superseded:* the shape is now fitted from IBBA's per-band histograms (see the
-  table above); only the effect of quality and of the ask on time remain unfitted.
+  table above); only the effect of quality and of the ask on time remain unfitted (the ask's effect is now a
+  labelled judgment, T_ELAST 0.10: see "Overpricing costs time" below).
   **Open follow-up:** refit the time-to-close band medians to the 2020–25 histograms (grouped medians
   6.6 / 8.1 / 8.3 / 9.3 / 9.9 months; Option B in `fit/time_to_close_shape.py`). It moves the median, so the
   optimiser's delay cost, the intervention table and the BizBuySell days-on-market self-check must be
@@ -542,7 +543,8 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   example; re-checked on the integrated page with the time-to-close, OEWS and SBA-risk fits in), so the default
   recommendation moves from 1.50x to 1.15x. The cap returns for s between 0.860 and 0.865 (P(s >= 0.865) = 0.37) and,
   at FAN_S = 0.80, for theta from about 0.765; across 0.75-0.85 the two peaks never differ by more than 0.48% of value.
-  With the pending overpricing_time fit the flip moves to about s 0.94.
+  With overpricing_time integrated (T_ELAST 0.10, a judgment) the flip at the default $900/day moves to about s 0.90
+  (0.864 with no delay cost, where the time effect cannot matter).
   This is a coin-flip, and the 1.15x end follows from choosing narrowing and applying it to an ask the console sets as a
   multiple of V, which carries no information: under the information reading such an ask faces the whole fan, and the
   whole fan or selection keep the cap. The whole fan, though, misses realisation at typical asks, so neither end is a data
@@ -557,3 +559,36 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   clustering; IBBA quarters are resampled in calendar blocks (8 quarters are missing inside 2017Q4-2026Q2, no wrap-around);
   IBBA values are whole percentages read off chart labels; the BizBuySell 2018 market table had its price columns swapped
   (a check only).
+
+## Overpricing costs time (T_ELAST), October 2026
+
+`fit/overpricing_time.py` (revision 3), integrated with a different constant than the script recommends.
+- **What changed.** Above model value the band median is multiplied by `timeMult(ask, V)` = e^(T_ELAST h), h = ln(ask/V)
+  with its first T_SMOOTH = 0.1 rounded (Huber): exactly 1 at or below value, continuous slope at value, log-linear
+  above. The band (and the curve's shape) stay keyed on Vbase; the drawn curve, pinned to out.tMed, is rescaled with the
+  median. gapPenalty, P_C, the prices and both scores do not read it.
+- **T_ELAST = 0.10, a labelled judgment, not an estimate.** The script's chain gives 0.15 (pooled sale-clock
+  elasticity 0.52 x P_C at value 0.64, shrunk toward zero). Reviewers showed the two documented ways of converting the
+  analogs give about 0.07 (time-given-sale scale) and 0.15 (clock scale); the pooled 95% interval includes zero; and the
+  only Main-Street source (DealLedger, 362 listings, 31 sales) is uninformative (-0.14, SE 0.55). So the sign comes from
+  the analogs (Flippa, Empire Flippers) and the size is set between the two conventions. Stated range 0.05-0.26. Most of
+  the analogs' effect rests on Flippa's window hazard, which also counts listings that never sell (already charged by
+  Pepperdine's P_C penalty).
+- **Optimiser.** `render()` now prices the business score at `bestRatio(s,0,0)`: the proceeds optimum reads neither
+  theta nor the cost of delay (it was `bestRatio(s,0,s.lamT)`, identical while time ignored the ask). The note under the
+  two listing cards is written by `optNote()` from the optimiser's own delay-inclusive objective: same figure / a lower
+  walk-away ask ("the cost of delay pulls the second figure below ... closes sooner") / a higher one ("takes about N
+  days longer"). The patient-seller range from the FAN_S step is kept inside optNote (same 1% of value rule, now on the
+  delay-inclusive utility). The old note's "Delay cost does not move either" is gone.
+- **Effect.** Framework example: 248 days at value, 252 at 1.2x, 257 at 1.5x, 265 at 2x. Walk-away ask (75% kept)
+  at $900/day 1.14, 1.14, 1.15, 1.15 for earnings $150k/$400k/$1.45M/$5M (1.15 everywhere with T_ELAST = 0); at
+  $4,000/day 1.10, 1.13, 1.14, 1.14. The patient-seller cap returns from about 76% kept with no delay cost, 77% at
+  $900/day, 79% at $4,000/day. The script's knife-edge text (cap at $1.45M and $5M, a jump near $736k of earnings) was
+  computed before the FAN_S change and no longer applies; the Data tab quotes the integrated page.
+- **UI.** "Median time to close" tile tag reads "aggregate × judgment" above value with a live note under the curve
+  (band days × multiplier); the eq_ts equation shows t_med = t_band e^(0.10 h); Model III note, provenance line,
+  judgment inventory (+2), Fitted-from-public-data row (badged judgment) and the Still-judgement row updated.
+- **Tests.** tests/model.test.js section 25 (timeMult exactness, monotone and smooth tMed, exact elasticity above the
+  rounding zone, price block untouched, better business never slower, optNote branches, coin-toss and range wording,
+  the Data-tab numbers pinned); tests/fuzz.test.js 7f and section 8 (proceeds optimum at lamT 0; walk-away ask optimal
+  on the delay-inclusive objective); the curve-independence checks became exact-rescaling checks.

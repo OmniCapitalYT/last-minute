@@ -79,7 +79,8 @@ for(let i=0;i<N;i++){
     ok(cdf&&r.F(20*r.tMed)>.99,"curve a proper CDF",ctx(s));
     const ra=A.model({...s,ask:s.ask*1.7});
     ok(ra.betaT===r.betaT&&Math.abs(ra.F(ra.tMed)-.5)<1e-12,"curve shape independent of the ask",ctx(s));
-    if(r.tMult===undefined) ok(ra.F(180)===r.F(180)&&ra.F(365)===r.F(365),"curve independent of the ask",ctx(s)); }
+    /* overpricing_time: a different ask only rescales the curve with the median, F_a(t) = F(t x tMult_a / tMult) */
+    ok([90,180,365].every(t=>Math.abs(ra.F(t*ra.tMult/r.tMult)-r.F(t))<1e-12),"curve rescaled exactly with the median",ctx(s,{a:r.tMult,b:ra.tMult})); }
 
   /* 7d. survival risk (fit/sba_risk_refresh.py): charged off within 5 < 8 < 10 years, headline = 10-year term
      (8-year x tail factor), rel against base_cif.term, expected loss below the probability; it reads the value,
@@ -103,12 +104,30 @@ for(let i=0;i<N;i++){
     ok(rh.Vmean>=r.Vmean*(1-1e-9),"E[P|close] non-decreasing in the ask",ctx(s,{a:r.Vmean,b:rh.Vmean}));
     ok(rh.Vmean/rh.inputs.ask<=r.Vmean/r.inputs.ask*(1+1e-9),"E[P|close]/ask non-increasing in the ask",ctx(s)); }
 
-  /* 8. the proceeds optimum beats the entered ask, and does not depend on theta */
-  if(i%5===0){ const rs=A.bestRatio(s,0,s.lamT), ro=A.model({...s,ask:V0*rs});
+  /* 7f. overpricing costs time (fit/overpricing_time.py; T_ELAST a labelled judgment): the band median is exact at
+     or below model value, stretched by timeMult above it; band, LOI leg and shape never read the ask; a longer ask
+     never shortens the time to close or raises the share closed by day 180; a better business is never slower at a
+     fixed ask; the price block (P_C, prices, value) does not read the multiplier */
+  { const fT=A.fitTiming(r.Vbase,s.ind), Vv=r.V;
+    ok(r.ft.days===fT.days&&r.ft.loi===fT.loi&&r.tMed===fT.days*r.tMult,"tMed = band median x timeMult",ctx(s,{tMult:r.tMult}));
+    ok(s.ask>Vv?r.tMult>1-1e-15:r.tMult===1,"timeMult exactly 1 at or below value, at least 1 above",ctx(s,{rho:s.ask/Vv,tMult:r.tMult}));
+    const rl=A.model({...s,ask:Vv*.97}); ok(rl.tMed===A.fitTiming(rl.Vbase,s.ind).days,"band median exact below value",ctx(s));
+    const rh=A.model({...s,ask:s.ask*1.25});
+    ok(rh.ft.days===r.ft.days&&rh.ft.loi===r.ft.loi&&rh.betaT===r.betaT,"band, LOI leg and shape independent of the ask",ctx(s));
+    ok(rh.tMed>=r.tMed*(1-1e-12)&&rh.t180<=r.t180+1e-12,"higher ask never faster",ctx(s,{a:r.tMed,b:rh.tMed}));
+    if(s.ask>Vv*1.2){ const rq=A.model({...s,rec:Math.min(1,s.rec+.1),mgt:Math.min(.99,s.mgt+.1)});
+      if(rq.Vbase===r.Vbase&&rq.V>=r.V) ok(rq.tMed<=r.tMed+1e-9,"better business never slower at a fixed ask",ctx(s)); } }
+
+  /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
+     (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises
+     the walk-away ask */
+  if(i%5===0){ const rs=A.bestRatio(s,0,0), ro=A.model({...s,ask:V0*rs});
     ok(ro.EVp>=r.EVp*(1-1e-6),"proceeds optimum at least as good as the entered ask",ctx(s,{rs}));
-    ok(Math.abs(A.bestRatio({...s,theta:.9},0,s.lamT)-rs)<1e-9,"proceeds optimum independent of theta",ctx(s));
+    ok(Math.abs(A.bestRatio({...s,theta:.9},0,0)-rs)<1e-9,"proceeds optimum independent of theta",ctx(s));
     const ru=A.bestRatio(s,s.theta,s.lamT);
-    ok(ru<=A.RHO_MAX+1e-9&&rs<=A.RHO_MAX+1e-9,"recommended asks stay where the closing data reach",ctx(s,{rs,ru})); }
+    ok(ru<=A.RHO_MAX+1e-9&&rs<=A.RHO_MAX+1e-9,"recommended asks stay where the closing data reach",ctx(s,{rs,ru}));
+    if(s.lamT>0){ const u0=A.bestRatio(s,s.theta,0), U=m=>{ const x=A.model({...s,ask:V0*m}); return x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed; };
+      ok(U(ru)>=U(u0)-1e-6*Math.abs(U(u0)),"walk-away ask optimal on the delay-inclusive objective",ctx(s,{ru,u0})); } }
 }
 
 const names=Object.keys(fails);

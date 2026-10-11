@@ -1744,7 +1744,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
             <div class="big"><div class="k">Model value <span class="pv f" title="BIZCOMPS fitted value, positioned inside its measured spread by the quality inputs (that placement is judgment)"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
             <div class="big"><div class="k">Expected multiple <span class="pv f" title="Fitted multiple times the quality position (judgment)"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
             <div class="big"><div class="k">Survival risk <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_risk">—</div></div>
-            <div class="big"><div class="k">Median time to close <span class="pv a"><i></i>aggregate</span></div><div class="n sm" id="o_t">—</div></div>
+            <div class="big"><div class="k">Median time to close <span class="pv a" id="o_t_pv"><i></i>aggregate</span></div><div class="n sm" id="o_t">—</div></div>
             <div class="big"><div class="k">Pursue first <span class="pv j"><i></i>judgment</span></div><div class="n sm" id="o_bb">—</div></div>
         </div>
       </div>
@@ -1809,9 +1809,11 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           (4,533 closed deals over 15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4), with its median pinned to the band median. It describes deals that
           closed and says nothing about a listing that never does. Its shape depends on deal size, never on
           the ask: deals under $500K are more spread out than larger ones. Because the published $500K&ndash;$1M median is shorter than the recent histograms show,
-          the curve&rsquo;s long end can rise slightly with size between $250k and $707k.</p>
+          the curve&rsquo;s long end can rise slightly with size between $250k and $707k. For an ask above
+          model value the median, and the curve with it, is stretched by a <b>judgment</b> multiplier: overpricing costs time.</p>
         <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Cumulative probability of closing over time"></svg>
-        <div class="eq"><div class="lbl">Median pinned to the band median; shape fitted by size band</div>
+        <p class="note" id="o_tstretch" style="margin:4px 0 0"></p>
+        <div class="eq"><div class="lbl">Median pinned to the band median, stretched above model value; shape fitted by size band</div>
           <div id="eq_t"></div><div class="sub" id="eq_ts"></div></div>
         <div id="o_real"></div>
       </div>
@@ -2334,6 +2336,30 @@ const GAP_F=mcubic(GAP_CDF.g,GAP_CDF.f);
    at the rate the curve was falling there, so the join is smooth and no new
    parameter is chosen. */
 const GAP_TAIL_K=(function(){ const h=.5; return PEN_MAX*(GAP_F(100)-GAP_F(100-h))/h/(1-PEN_MAX); })();
+/* Overpricing costs time - a LABELLED JUDGMENT, not an estimate (fit/overpricing_time.py, Oct 2026).
+   Above model value the band median (fitTiming: deals sold at their usual ask) is stretched by
+   e^{T_ELAST*h}, h = ln(ask/V) with its first T_SMOOTH rounded (Huber): exactly 1 at or below value,
+   continuous with a continuous slope at value (no optimiser sits on a kink), log-linear above. It
+   stretches the WHOLE listing-to-close median, LOI-to-close included (about 36% of it), which the
+   analogs barely measure: their clocks time the marketing leg.
+   What the data fix is the SIGN, from online-marketplace analogs: an ask above comparables slows the
+   sale (Flippa, 3,409 listings followed 219 days: sale hazard -0.99 per log point above comparables;
+   Empire Flippers, 1,563 sold listings: time to sale +0.19, SE 0.17, 0.02-0.45 across estimators).
+   The only Main-Street source (DealLedger broker listings, 362 listings, 31 sales) is uninformative
+   (-0.14, SE 0.55), and pooled and shrunk toward zero the 95% interval includes zero. The SIZE is
+   not identified: the two documented ways of carrying the analogs to this console's estimand (time
+   to close among deals that close) give about 0.07 (time-given-sale scale) and 0.15 (sale-clock
+   scale times P_C at value). T_ELAST = 0.10 is set between them by judgment; stated range 0.05-0.26.
+   Part of the analogs' effect is listings that never sell, which the Pepperdine P_C penalty already
+   charges, so a larger value would double count. T_SMOOTH is judgment too. */
+const T_ELAST=0.10, T_SMOOTH=0.1;
+function timeMult(ask,val){
+  if(!(ask>0&&val>0)) return 1;
+  const x=Math.log(ask/val);
+  if(!(x>0)) return 1;
+  const h=x<T_SMOOTH?x*x/(2*T_SMOOTH):x-T_SMOOTH/2;
+  return Math.exp(T_ELAST*h);
+}
 function gapPenalty(gap){
   /* pricing at or below model value carries no price penalty */
   if(!(gap>0))return 0;
@@ -2370,7 +2396,8 @@ function fitClose(ask,val,channel,size){
 /* ---- Model III: time to close (AGGREGATE, IBBA Market Pulse) ----
    Size-band medians (a lookup) and a curve shape fitted by size band to IBBA's grouped
    histograms (MODELS.fitted.ttc_shape). No deal-level durations exist, so nothing here
-   has covariates beyond deal size. */
+   has covariates beyond deal size. (The ask enters only in model(), through timeMult: a
+   labelled judgment that stretches the band median when the ask is above model value.) */
 /* Published figures are band medians. Read off a band they jump at every edge: $1 of
    earnings across $5M of value added 76 days and $73k of expected proceeds. Treat each
    median as the value at its band's geometric centre and interpolate in ln(price),
@@ -2774,8 +2801,13 @@ function model(s){
      business moved into a slower size band and every quality fix added days */
   const FT=fitTiming(out.Vbase,s.ind);
   out.ft=FT;
+  /* Overpricing costs time (T_ELAST, a labelled judgment). The band stays keyed on Vbase, so the size
+     band never moves with the ask; only the gap between the ask and model value stretches the band
+     median, and the drawn curve, pinned to out.tMed below, is rescaled with it. */
+  out.tMult=timeMult(s.ask,out.V);
+  const tMedA=FT.days*out.tMult;
   out.etaT=etaT; out.lamEjudg=lamE;
-  out.tMed=FT.days;
+  out.tMed=tMedA;
   /* drawn curve: log-logistic pinned to the FINAL median out.tMed (set above), shape beta by size band */
   const betaT=FT.beta, tMd=out.tMed;
   const Ffit=t=>t>0?1/(1+Math.pow(t/tMd,-betaT)):0;
@@ -3173,6 +3205,49 @@ function bestRatio(s0,theta,lamT){
   }
   const m=(a+b)/2;
   return U(m)>=best.u ? m : best.m;
+}
+/* The note under the two listing cards, written from the optimiser's own objective with the cost of
+   delay included. Above model value a higher ask lengthens the time to close (timeMult), so a cost of
+   delay can pull the walk-away ask BELOW the proceeds-maximising one; the note then says so instead of
+   calling it "the higher price", and a gain is never printed below zero.
+   A patient seller's utility often has two near-equal peaks, an interior ask near 1.15x and the
+   RHO_MAX cap. Which one wins turns on how widely prices scatter at high asks (FAN_S is calibrated
+   near 1.07x and extrapolated there), so when the other peak is within 1% of value the note gives
+   the range instead of presenting one end as the answer (fit/anchoring_realization.py). */
+function optNote(s,V,rSell,rKeep){
+  const U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed;
+  const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<Math.abs(U(rSell))*.01;
+  const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMed-rKeep.tMed)), dd=days===1?"a day":`${days} days`;
+  const lam=s.lamT>0?` and a cost of delay of ${money(s.lamT)} a day`:"";
+  if(money(V*s.optRho)===money(V*s.rhoSell))
+    return {kind:"same",gain,coin:false,alt:null,text:`With ${pc(s.theta)} of value retained if the sale fails${lam}, both objectives agree on the same price. `
+      +`Above model value a higher ask also lengthens the time to close, which only the second figure charges for.`};
+  let alt=null;
+  if(s.theta>0){
+    if(atEdge){ for(let m=1.0;m<=1.35+1e-9;m+=.025){ const x=model({...s,ask:V*m}); if(!alt||U(x)>alt.u) alt={u:U(x),m}; } }
+    else { const x=model({...s,ask:V*RHO_MAX}); alt={u:U(x),m:RHO_MAX}; }
+    if(U(rKeep)-alt.u>.01*V) alt=null;
+  }
+  const range=alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,U(rKeep)-alt.u)/V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `
+    +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `:"";
+  if(s.optRho<s.rhoSell)
+    return {kind:"lower",gain,coin,alt,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
+      +`Listing at ${money(V*s.optRho)} gives up ${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds, but it is `
+      +`${pp(Math.max(0,rKeep.PC-rSell.PC)).replace("+","")} more likely to close and closes ${days>=1?`about ${dd}`:"slightly"} sooner, `
+      +`which at ${money(s.lamT)} a day is worth ${money(gain)} to this owner`
+      +(coin?`, so the two are close to a coin toss. `:`. `)
+      +range
+      +`An owner who does not count the wait should use the left-hand number.`};
+  return {kind:"higher",gain,coin,alt,text:`The gap between these is the real decision. The higher price gives up `
+    +`${pp(Math.max(0,rSell.PC-rKeep.PC)).replace("+","")} of closing probability and `
+    +`${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds for a bigger cheque if it does close`
+    +(days>=1?`, takes about ${dd} longer to close,`:``)+` and only `
+    +`pays off if the owner genuinely can walk away: it assumes a failed process still leaves them `
+    +`${pc(s.theta)} of the value. `
+    +(coin?`Even then it is worth only ${money(gain)} more to this owner${s.lamT>0?" after the cost of delay":""}, so the two are close to a coin toss. `:"")
+    +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as "test the market", not as a measured optimum. `:"")
+    +range
+    +`A seller who must exit should use the left-hand number.`};
 }
 function applyAll(s0,r0,keys,rho){
   const mul={},add={},ceilAt={},floorAt={};
@@ -3781,7 +3856,7 @@ function render(){
   let r=model(s);
   r.score=omniScore(r);
   s.optRho=bestRatio(s,s.theta,s.lamT);   // utility optimum: depends on theta
-  s.rhoSell=bestRatio(s,0,s.lamT);        // expected-proceeds optimum: does not
+  s.rhoSell=bestRatio(s,0,0);             // expected-proceeds optimum: reads neither theta nor the cost of delay
   Object.assign(STATE,{s,r});
   if(window.OMNI_STLAB) window.OMNI_STLAB(r,s);
   syncMoneySliders(s,r.V);
@@ -3882,6 +3957,11 @@ function render(){
   $("o_mult").innerHTML=xx(r.M)+" SDE"
     +(r.fv.wedge?'<span class="sub2">'+xx(r.M*r.fv.wedge)+' EBITDA</span>':"");
   $("o_t").textContent=Math.round(r.tMed)+" days";
+  { const pv=$("o_t_pv"), j=r.tMult>1.0005;   /* above value the median carries a judgment multiplier */
+    pv.className="pv "+(j?"j":"a"); pv.innerHTML="<i></i>"+(j?"aggregate × judgment":"aggregate");
+    pv.title=j?`Band median ${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)} for an ask above model value (overpricing costs time, a labelled judgment)`:"";
+    $("o_tstretch").textContent=j?`Your ask is ${Math.round((s.ask/r.V-1)*100)}% above model value, so the median here is the band's `
+      +`${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)} (overpricing costs time: a labelled judgment, see the Data tab).`:""; }
   /* The observed share of SBA acquisition loans of this size charged off within 5 years
      (Aalen-Johansen, open loans censored) sits beside the fitted number, so the model can be
      checked against the population it came from. */
@@ -4018,8 +4098,8 @@ function render(){
      curve that conditions on the size band and nothing else */
   eq("eq_t",`F(t)=\\frac{1}{1+(t/t_{\\text{med}})^{-\\beta_{\\text{band}}}},\\qquad S(t)=1-F(t),\\qquad
     F(t_{\\text{med}})=\\tfrac12\\;\\text{by construction}`);
-  eq("eq_ts",`\\beta=${r.betaT.toFixed(2)},\\quad t_{\\text{med}}=${tn(r.tMed)}\\text{ d},\\quad
-    t_{25\\%}=${tn(r.tQ(.25))}\\text{ d},\\quad t_{75\\%}=${tn(r.tQ(.75))}\\text{ d}`);
+  eq("eq_ts",`\\begin{gathered}t_{\\text{med}}=t_{\\text{band}}\\,e^{${T_ELAST.toFixed(2)}\\,h}=${tn(r.ft.days)}\\times${r.tMult.toFixed(3)}=${tn(r.tMed)}\\text{ d}\\\\[3pt]
+    \\beta=${r.betaT.toFixed(2)},\\quad t_{25\\%}=${tn(r.tQ(.25))}\\text{ d},\\quad t_{75\\%}=${tn(r.tQ(.75))}\\text{ d}\\end{gathered}`);
 
   /* ---------- §10–12, §20 buyers ---------- */
   drawStars(r);
@@ -4154,34 +4234,9 @@ function render(){
   $("o_list2").textContent=money(r.V*s.optRho);
   $("o_listp2").textContent=`${s.optRho.toFixed(2)}× value · ${pc(rKeep.PC)} to close · `
     +`${money(rKeep.EVp)} expected proceeds`;
-  /* "agree" only when the two figures on screen are the same figure */
-  const sameAsk=money(r.V*s.optRho)===money(r.V*rhoSell);
-  const Uat=x=>x.EVp+(1-x.PC)*s.theta*x.V;
-  const uGain=Uat(rKeep)-Uat(rSell), atEdge=s.optRho>RHO_MAX-.02;
-  /* A patient seller's utility often has two near-equal peaks, an interior ask near 1.15x and the
-     RHO_MAX cap. Which one wins turns on how widely prices scatter at high asks (FAN_S is calibrated
-     near 1.07x and extrapolated there), so when the other peak is within 1% of value the note gives
-     the range instead of presenting one end as the answer. */
-  const Uf=x=>Uat(x)-s.lamT*x.tMed;
-  let alt=null;
-  if(!sameAsk&&s.theta>0){
-    if(atEdge){ for(let m=1.0;m<=1.35+1e-9;m+=.025){ const x=model({...s,ask:r.V*m}); if(!alt||Uf(x)>alt.u) alt={u:Uf(x),m}; } }
-    else { const x=model({...s,ask:r.V*RHO_MAX}); alt={u:Uf(x),m:RHO_MAX}; }
-    if(Uf(rKeep)-alt.u>.01*r.V) alt=null;
-  }
-  $("o_listnote").textContent=sameAsk
-    ? `With ${pc(s.theta)} of value retained if the sale fails, both objectives agree on the same price. `
-      +`Delay cost does not move either: time to close depends on deal size, not on the ask.`
-    : `The gap between these is the real decision. The higher price gives up `
-      +`${pp(rSell.PC-rKeep.PC).replace("+","")} of closing probability and `
-      +`${money(rSell.EVp-rKeep.EVp)} of expected proceeds for a bigger cheque if it does close, and only `
-      +`pays off if the owner genuinely can walk away: it assumes a failed process still leaves them `
-      +`${pc(s.theta)} of the value. `
-      +(uGain<Math.abs(Uat(rSell))*.01?`Even then it is worth only ${money(uGain)} more to this owner, so the two are close to a coin toss. `:"")
-      +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as "test the market", not as a measured optimum. `:"")
-      +(alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,Uf(rKeep)-alt.u)/r.V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `
-        +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `:"")
-      +`A seller who must exit should use the left-hand number.`;
+  /* written from the optimiser's own objective, cost of delay included, with the patient-seller
+     range when the two peaks are within 1% of value (optNote, model section) */
+  $("o_listnote").textContent=optNote(s,r.V,rSell,rKeep).text;
   const best=optimize(s,r,s.budget,s.lamT,s.theta);
   const card=(t,sel,sub,accent,rho)=>{
     const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:INTERV.find(i=>i.k===k).n)
@@ -4265,7 +4320,7 @@ function renderData(){
   const V=MODELS.value, R=MODELS.risk, C=MODELS.close_and_timing;
   const nJudg = Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length
     + Object.keys(B).length + Object.keys(NL).length + Object.keys(G).length
-    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11;
+    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11 + 2;
   const nFit = 1 + Object.keys(V.coefficients).length + Object.keys(V.industry_effects).length
              + Object.keys(V.industry_effects_naics6||{}).length
              + R.co.log_base.filter(v=>v!=null).length + R.pif.log_base.length    /* hazard baselines */
@@ -4527,6 +4582,35 @@ function renderData(){
     curve overstates the share closed by day 180 by about 9 pts (15 before) and by day 365 by about 7 (3
     before). Everything here describes deals that closed, sampled by the quarter they closed in; the most recent
     quarters run slightly steeper.</p>
+    <p class="note"><b>Overpricing costs time (added Oct 2026) &mdash; a labelled judgment, not an estimate.</b>
+    The band median above, and the curve drawn through it, hold for an ask at or below model value. Above it the
+    median is multiplied by e<sup>b&middot;h</sup>, where h is the log gap between the ask and model value with its
+    first 10% rounded smoothly, and <b>b = ${T_ELAST.toFixed(2)}</b>, set by judgment. What the data fix is the
+    <b>sign</b>: on online marketplaces an ask above comparables slows the sale. Flippa, 3,409 listings followed
+    219 days: sale hazard &minus;0.99 per log point above comparables after calibrating its reconstructed asks.
+    Empire Flippers, 1,563 sold listings, first ask against a hedonic fair price: time-to-sale elasticity 0.19
+    (SE 0.17), 0.02&ndash;0.45 across estimators and outlier trims, and no out-of-sample gain. The only Main-Street
+    source, DealLedger broker listings (362 listings, 31 sales), is uninformative: &minus;0.14 (SE 0.55), no
+    predictive power. Pooled and shrunk toward zero, the 95% interval includes zero. The <b>size</b> is not
+    identified. The two documented ways of carrying the analogs to this console&rsquo;s measure (time to close among
+    deals that close) give about 0.07 on the time-given-sale scale and 0.15 on the sale-clock scale (times the
+    closing probability at value, 0.64); b sits between them, and changing one analysis choice at a time or
+    leaving one source out gives 0.05&ndash;0.26. Most of the analogs&rsquo; effect comes from Flippa, whose window
+    also counts listings that never sell, which the Pepperdine closing-probability penalty already charges: a larger
+    b would count it twice. It stretches the whole listing-to-close median, including the LOI-to-close leg (about
+    36% of it), which the analogs barely measure. ${(()=>{ const ex={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,
+      cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false}, Vx=model({...ex,ask:1}).V,
+      t=[1,1.2,1.5,2].map(m=>Math.round(model({...ex,ask:Vx*m}).tMed));
+      return `For the framework example (model value ${money(Vx)}) the median is ${t[0]} days at value, ${t[1]} at
+      1.2&times;, ${t[2]} at 1.5&times; and ${t[3]} at 2&times;.`; })()} It moves the time to close, the
+    curve and the shares closed by 90, 180 and 365 days, and through the cost of delay the walk-away ask; the closing
+    probability, the price, the expected proceeds, the proceeds-maximising ask and both scores do not read it. With
+    75% of value kept and $900 a day of delay cost the walk-away ask is 1.14&times;, 1.14&times;, 1.15&times; and
+    1.15&times; for earnings of $150k, $400k, $1.45M and $5M (1.15&times; at every size with b = 0), and
+    1.10&times;, 1.13&times;, 1.14&times; and 1.14&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
+    near 1.15&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
+    cap wins from about 77% kept at $900 a day, 76% with no delay cost and 79% at $4,000) and in the realised-price
+    fan, not a measurement of b; the console shows both ends as a range when they are within 1% of value.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     <p class="note" style="margin-bottom:12px">The industry effects in Model II were fitted on BIZCOMPS.
     BVR&rsquo;s DealStats Value Index measures the same thing on a different database, different vintage.
@@ -4695,6 +4779,9 @@ function renderData(){
         <tr><td>Bounds &amp; constants<div class="muted" style="font-size:11.5px">ALPHA, AMAX, PMIN, PMAX, LAM0, KW, PHI, clamps</div></td>
             <td class="n" style="padding-right:18px">11</td>
             <td style="color:#ff8e7a;padding-left:6px">Price anchoring, competitive premium (LAM0 and KW feed only the undisplayed judgment hazard).</td></tr>
+        <tr><td>Overpricing time multiplier<div class="muted" style="font-size:11.5px">T_ELAST = ${T_ELAST.toFixed(2)}, T_SMOOTH = ${T_SMOOTH}</div></td>
+            <td class="n" style="padding-right:18px">2</td>
+            <td style="color:#ff8e7a;padding-left:6px">Median time to close above model value (sign from online-marketplace analogs, size judgment), and through it the walk-away ask when a cost of delay is set.</td></tr>
       </tbody></table></div>
 
     <p class="note" style="margin-top:14px"><b>Read the third column carefully.</b> Fitting the value
@@ -4710,7 +4797,8 @@ function renderData(){
     closed prices around the fitted estimate (half of sales land between
     ${V.quality_band.lo.toFixed(2)}&times; and ${V.quality_band.hi.toFixed(2)}&times; of it). So they move the model value
     and the multiple, and through the value they move the price gap, the closing probability, the
-    expected proceeds and the loan size behind the survival risk. They do <b>not</b> move the size band:
+    expected proceeds, the loan size behind the survival risk and, for an ask above model value, the time to
+    close (a higher value narrows the gap). They do <b>not</b> move the size band:
     the base close rate, the time to close and the cash share are read at the fitted value before
     quality positioning, so improving the business never pushes it into a slower band. Years of clean
     history feeds only the confidence figure, the category bars and the judgment panels that are not used.</p>
@@ -4806,6 +4894,20 @@ function renderData(){
         under-$500K level is missed by 5 points, and on 2022&ndash;26 quarters per-band averages beat
         the model (3.0 vs 3.4 points; whole spread 4.4). Effect: at the typical
         premium the bear scenario&rsquo;s low end rises from 0.52 to 0.60 of the ask.</td></tr>
+      <tr><td>Time to close when the ask is above model value (overpricing costs time)
+        &nbsp;<span class="st free">judgment</span></td>
+        <td>no effect: the ask never changed the time to close</td>
+        <td>the band median &times; e<sup>${T_ELAST.toFixed(2)}&middot;h</sup>, h the log gap above value (first 10% rounded); exactly
+        the band median at or below value. The <b>sign</b> is from data, the <b>size</b> is a labelled judgment, set between
+        the two documented conversions (about 0.07 on the time-given-sale scale, 0.15 on the sale-clock scale); stated range
+        0.05&ndash;0.26</td>
+        <td>Online-marketplace analogs: Flippa, 3,409 listings followed 219 days (sale hazard &minus;0.99 per log point
+        above comparables); Empire Flippers, 1,563 sold listings (time to sale +0.19, SE 0.17, fragile across
+        estimators, no out-of-sample gain). The only Main-Street panel, DealLedger (362 broker listings, 31 sales), is
+        uninformative (&minus;0.14, SE 0.55). Pooled and shrunk toward zero the 95% interval includes zero, so no
+        Main-Street size is identified; most of the analogs&rsquo; effect may be listings that never sell, which the
+        closing-probability penalty already charges. IBBA band-by-quarter cells (0.90, SE 0.70) are ecological and
+        reverse-causal, and were not used</td></tr>
       </tbody></table></div></div></section>`;
   }
 
@@ -4825,10 +4927,13 @@ function renderData(){
           moves the price at the 1.5&times; cap by under 3%. Empire Flippers&rsquo; pass-through of the ask into the sale price,
           0.98 (SE 0.04; online businesses, an analog), mixes anchoring with information in the ask, so it is only an upper
           bound. Both stay judgment, at the spec&rsquo;s values</span></td></tr>
-      <tr><td>Effect of business quality on time to close, and the Main-Street size of any effect of the ask
-          (the curve&rsquo;s shape by size band is now fitted)</td>
-          <td>per-deal listing and closing dates</td>
-          <td><span class="st free">a 103-day listing panel was too sparse (164 observed sales); DealStats has
+      <tr><td>Effect of business quality on time to close, and the Main-Street size of the effect of the ask
+          (T_ELAST = ${T_ELAST.toFixed(2)}; the curve&rsquo;s shape by size band is now fitted)</td>
+          <td>per-deal listing and closing dates with the first ask and an independent value, including listings that
+          never sell</td>
+          <td><span class="st free">a 103-day listing panel was too sparse (164 observed sales); online-marketplace
+          analogs (Flippa, Empire Flippers) fix the sign of the ask&rsquo;s effect but not its Main-Street size, and the
+          one broker panel with sale marks (DealLedger, 31 sales in six weeks) is uninformative; DealStats has
           <code>Days To Sell</code> (paid)</span></td></tr>
       <tr><td>Competition premium (&kappa;), engaged-buyer share, thin-pool closing factor</td>
           <td>buyer-level outreach rows: contacted, NDA, LOI, bids, closed</td>
@@ -4970,7 +5075,9 @@ IBBA / M&amp;A Source Market Pulse, <b>12 quarterly editions 2018&ndash;2023</b>
 overlapping five-year windows and corroborated by BVR&rsquo;s 228-day all-size median.
 Median is a size-band lookup; the curve shape is <b>fitted</b> from IBBA&rsquo;s per-band histograms
 of months to close (15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4; 4,533 closed deals; no deal-level durations): a log-logistic with
-&beta; 2.20 under $500K and 2.64 from $500K up (no gradient above $500K is identified).</li>
+&beta; 2.20 under $500K and 2.64 from $500K up (no gradient above $500K is identified).
+Above model value the band median is stretched by a <b>judgment</b> multiplier (Model III, <i>Overpricing costs time</i>):
+online-marketplace analogs give its sign, not its size.</li>
 
 <li><span class="pv j"><i></i>judgment</span> <b>Omni score, quality-factor deltas, buyer archetypes,
 strategic premium, intervention ROI and the optimizer</b> &mdash; none of these are fitted.
