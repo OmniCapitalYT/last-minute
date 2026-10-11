@@ -171,7 +171,12 @@ for(let i=0;i<N;i++){
     ok(mono,"P_C non-increasing in the ask",ctx(s)); ok(cons,"EVp = P_C x E[P|close] at every ask",ctx(s));
     const r30=A.model({...s,ask:V0*30}), r60=A.model({...s,ask:V0*60});
     ok(r30.PC===0||r60.PC<r30.PC,"no floor: P_C still falls between 30x and 60x value",ctx(s,{a:r30.PC,b:r60.PC}));
-    ok(r.buyers.every(b=>b.PCj>=0&&b.PCj<=.95&&Math.abs(b.EV-b.PE*b.PCj*b.Vj)<1e-9*Math.max(1,b.EV)),"buyer EV = P_E x P_C,j x V_j",ctx(s)); }
+    ok(r.buyers.every(b=>b.PCj>=0&&b.PCj<=.95&&Math.abs(b.EV-b.PE*b.PCj*b.Pj)<1e-9*Math.max(1,b.EV)),"buyer EV = P_E x P_C,j x price_j",ctx(s));
+    /* AUDIT_FINDINGS R1-4/R1-5: a buyer is paid at most what this listing can realise (its own value, under the ask
+       ceiling) and closes on the gap to its OWN value: the same close rate as the deal's base x penalty read at V_j */
+    ok(r.buyers.every(b=>b.Pj<=Math.min(b.Vj,r.ceil)*(1+1e-9)&&b.Pj>0),"buyer price never above its value or the ask ceiling",ctx(s));
+    ok(r.buyers.every(b=>Math.abs(b.PCj-Math.min(.95,Math.max(0,A.fitClose(s.ask,b.Vj,s.chan,r.Vbase).p*r.thinF*(.8+.42*b.PE))))<1e-12),"buyer close rate reads the gap to its own value",ctx(s));
+    { const rh=A.model({...s,ask:s.ask*1.1}); ok(r.buyers.every(b=>{ const h=rh.buyers.find(x=>x.k===b.k); return h.PCj<=b.PCj+1e-12; }),"no buyer closes more often at a higher ask",ctx(s)); } }
 
   /* 7k. SBA note rate (fit/sba_risk_refresh.py): prime plus a spread that never rises with the loan size, inside the
      fitted knots, continuous; the charge-off risk never falls as the rate rises and is continuous in earnings */
@@ -206,6 +211,7 @@ for(let i=0;i<N;i++){
      names only differences that move, in the direction they move */
   if(i%10===0&&s.lamT>0){ const t={...s,rhoSell:A.bestRatio(s,0,0)}; t.optRho=A.bestRatio(s,s.theta,s.lamT);
     const rS=A.model({...t,ask:V0*t.rhoSell}), rK=A.model({...t,ask:V0*t.optRho}), n=A.optNote(t,V0,rS,rK);
+    ok(n.coin===(n.kind!=="same"&&n.gain<.01*V0),"coin-toss flag is the 1%-of-value rule",ctx(s,{gain:n.gain,V0}));
     if(n.kind==="lower"){ const tv=s.lamT*Math.max(0,rS.tMean-rK.tMean), U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMean;
       ok(n.text.includes("worth "+A.money(tv)+" at ")&&n.text.includes("that is worth "+A.money(n.gain)),"lower note prints the time value and the net",ctx(s,{text:n.text}));
       ok(Math.abs((U(rK)-U(rS))-(tv-(rS.EVp-rK.EVp)-s.theta*V0*(rK.PC-rS.PC)))<1e-6*V0,"net = time value - proceeds given up - value kept lost",ctx(s)); } }
@@ -217,7 +223,12 @@ for(let i=0;i<N;i++){
     ok((c.kind==="same")===(sameK&&(!best.U.keys.includes("reprice")||uRho.toFixed(2)===t.rhoSell.toFixed(2))),"card subtitle 'same' exactly when the programmes match",ctx(s,{text:c.text}));
     ok(!(/spends \S+ less/.test(c.text)&&dC>=0)&&!(/spends \S+ more/.test(c.text)&&dC<=0),"card subtitle spend direction",ctx(s,{text:c.text,dC}));
     ok(!(/less from start to close/.test(c.text)&&dT>0)&&!(/longer from start to close/.test(c.text)&&dT<0),"card subtitle time direction",ctx(s,{text:c.text,dT}));
-    ok(!/less elapsed time and spend/.test(c.text),"card subtitle never asserts less time and spend unchecked",ctx(s)); }
+    ok(!/less elapsed time and spend/.test(c.text),"card subtitle never asserts less time and spend unchecked",ctx(s));
+    /* AUDIT_FINDINGS R1-10: every term named after "pays only through" really adds to U; one named after "while" works against it */
+    { const ret=x=>(1-x.PC)*t.theta*x.r.V, dRet=ret(best.U)-ret(best.V), dDel=-t.lamT*dT;
+      const m=c.text.match(/pays only through (.*?)(, while (.*))?\.$/), named=m?m[1]:"", against=m&&m[3]?m[3]:"";
+      ok(!(named.includes("value retained")&&dRet<=0)&&!(named.includes("cost of delay")&&dDel<=0)
+         &&!(against.includes("value retained")&&dRet>=0)&&!(against.includes("cost of delay")&&dDel>=0),"card subtitle names each term in its true direction",ctx(s,{text:c.text,dRet,dDel})); } }
 
   /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
      (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises

@@ -616,7 +616,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       else if(ss.optRho<ss.rhoSell) ok(n.kind==="lower"&&n.text.includes(A.money(V*ss.optRho))&&!n.text.includes("higher price")&&rKeep.tMean<=rSell.tMean&&/sooner/.test(n.text),
         `a lower walk-away ask is described as lower and faster ${tag}: ${n.text}`);
       else ok(n.kind==="higher"&&n.text.includes("higher price"),`a higher walk-away ask is described as higher ${tag}`);
-      ok(n.coin===(!same&&U(rKeep)-U(rSell)<Math.abs(U(rSell))*.01)&&(!n.coin||/coin toss/.test(n.text)),`coin-toss wording on the delay-inclusive gain ${tag}`);
+      ok(n.coin===(!same&&U(rKeep)-U(rSell)<.01*V)&&(!n.coin||/coin toss/.test(n.text)),`coin-toss wording on the delay-inclusive gain ${tag}`);
       /* the patient-seller range (anchoring_realization) is shown exactly when ANOTHER PEAK (a local maximum of the
          objective, here or one 1% step of theta away, apart from the walk-away ask's own; the cap counts if the objective
          rises into it) is within 1% of value - never because a scan stopped somewhere, and also when both cards agree */
@@ -907,7 +907,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* #14/#18: the lower note prints the time value and the net separately */
   { const {s,V}=prep({theta:0,lamT:4000,rev:8e5,ern:1.5e5,ask:4.5e5}), rS=A.model({...s,ask:V*s.rhoSell}), rK=A.model({...s,ask:V*s.optRho}), n=A.optNote(s,V,rS,rK);
     const tv=s.lamT*(rS.tMean-rK.tMean);
-    ok(n.kind==="lower"&&n.text.includes(`worth ${A.money(tv)} at ${A.money(4000)} a day`)&&n.text.includes(`Net of the proceeds given up, that is worth ${A.money(n.gain)} to this owner`)
+    ok(n.kind==="lower"&&n.text.includes(`worth ${A.money(tv)} at $4,000 a day`)&&n.text.includes(`Net of the proceeds given up, that is worth ${A.money(n.gain)} to this owner`)
        &&tv>n.gain,`#14: lower note: time value ${A.money(tv)}, net ${A.money(n.gain)} (${n.text})`); }
   /* #5/#25: no 2% floor; the equation carries the tail, the size-interpolated base and the thin-pool factor */
   { const V=A.model({...FX,ask:1}).V, p=[28,30,50,100].map(m=>A.model({...FX,ask:V*m}));

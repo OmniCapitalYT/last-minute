@@ -2888,10 +2888,9 @@ function model(s){
        40% of value - above anything the lower-middle market publishes. */
     const S=Math.min(b.syn*synE*out.M*sizeFit, .40*s.ern*out.M/PHI);
     const Vj=s.ern*out.M*(1+(b.mf-1)*sizeFit) + PHI*S;
-    const PCj=clamp(out.PC*(0.80+0.42*PE),0,.95);
-    return {...b,sizeFit,PE,S,Vj,PCj,EV:PE*PCj*Vj,fit:clamp(raw*sizeFit,0,1.15),fit0};
-  }).sort((a,b)=>b.EV-a.EV);
-  out.best=out.buyers[0];                                   // who to pursue first
+    /* close rate and EV are set below, once the thin-pool factor and the ask ceiling are known */
+    return {...b,sizeFit,PE,S,Vj,fit:clamp(raw*sizeFit,0,1.15),fit0};
+  });
   /* only a buyer that will look at a deal this size can be the one who pays most */
   const looking=out.buyers.filter(b=>b.sizeFit>=.05);
   out.top=(looking.length?looking:out.buyers).slice().sort((a,b)=>b.Vj-a.Vj)[0];
@@ -2929,11 +2928,7 @@ function model(s){
      using this business's own engagement made P_C depend on quality */
   out.nPool=s.buyers*peRef*ENG_SHARE;
   out.thinF=capOne((1-Math.exp(-out.nPool))/Math.max(1e-9,1-Math.exp(-out.nEngRef)));
-  if(out.thinF<1){
-    out.PC=clamp(out.PC*out.thinF,0,.95); out.fc.p=out.PC;
-    for(const b of out.buyers){ b.PCj=clamp(out.PC*(0.80+0.42*b.PE),0,.95); b.EV=b.PE*b.PCj*b.Vj; }
-    out.buyers.sort((a,b)=>b.EV-a.EV); out.best=out.buyers[0];
-  }
+  if(out.thinF<1){ out.PC=clamp(out.PC*out.thinF,0,.95); out.fc.p=out.PC; }
 
   /* ---- §8b anchoring -----------------------------------------------------
      E[V|X] is what the business supports; it cannot depend on what is asked.
@@ -2955,6 +2950,22 @@ function model(s){
      $5M+), and past RHO_MAX the ceiling stops rising with the ask. */
   out.askCeil=Math.max(1,FT.pctAskSize);
   out.ceil=softMin(s.ask,out.V*RHO_MAX)*out.askCeil;
+
+  /* ---- buyer close rates and expected values (judgment ranking) ----------------------------
+     Each buyer closes on the gap between the ask and ITS OWN value V_j (the same Pepperdine base and
+     penalty as P_C, read against what that buyer would pay), scaled by its engagement and, below a
+     typical pool, the thin-pool factor; and it is paid at most what this listing can realise: V_j held
+     under the same ask ceiling as every realised price. It was PE x P_C x V_j with the gap read against
+     model value, so a buyer asked 45% above what it would pay closed as often as one asked 1% below, and
+     the ranking rewarded money the ask caps away (AUDIT_FINDINGS R1-4, R1-5). The aggregate P_C stays
+     the calibrated figure behind the proceeds. */
+  for(const b of out.buyers){
+    b.PCj=clamp(fitClose(s.ask,b.Vj,s.chan,out.Vbase).p*out.thinF*(0.80+0.42*b.PE),0,.95);
+    b.Pj=softMin(b.Vj,out.ceil);
+    b.EV=b.PE*b.PCj*b.Pj;
+  }
+  out.buyers.sort((a,b)=>b.EV-a.EV);
+  out.best=out.buyers[0];                                   // who to pursue first
 
   /* ---- §21 categories --------------------------------------- */
   /* held to 1..99 like the Omni score: a bare 0 or 100 reads as a failed computation, not a verdict */
@@ -3312,9 +3323,14 @@ function bestRatio(s0,theta,lamT){
    a peak), and otherwise names the other peak and how far below the cap it is. */
 function optNote(s,V,rSell,rKeep){
   const U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMean;
-  const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<Math.abs(U(rSell))*.01;
+  /* "close to a coin toss" when the gain is under 1% of value, the same scale as the range/tie rule below. It was 1%
+     of |U|, whose level carries the whole delay charge and changes sign, so the caveat came and went with the cost
+     of delay for an unchanged gain (AUDIT_FINDINGS R1-11) */
+  const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<.01*V;
+  /* the per-day cost exactly as entered: money() rounds $1,450 to "$1k" (AUDIT_FINDINGS R1-23) */
+  const lamTxt="$"+Math.round(s.lamT).toLocaleString("en-US");
   const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMean-rKeep.tMean)), dd=days===1?"a day":`${days} days`;
-  const lam=s.lamT>0?` and a cost of delay of ${money(s.lamT)} a day`:"";
+  const lam=s.lamT>0?` and a cost of delay of ${lamTxt} a day`:"";
   let alt=null, flat=null, peak=null;
   if(s.theta>0){
     const uK=U(rKeep), H=.02, Um=m=>U(model({...s,ask:V*m})), ms=[], xs=[];
@@ -3352,7 +3368,7 @@ function optNote(s,V,rSell,rKeep){
     }
   }
   const range=alt?`Asking ${alt.m.toFixed(2)}× value instead is worth within ${pc(Math.max(0,U(rKeep)-alt.u)/V,2)} of value to this owner, close to a tie, so read the patient-seller price as a range, `
-    +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks, which the data do not settle. `
+    +`${Math.min(alt.m,s.optRho).toFixed(2)}–${Math.max(alt.m,s.optRho).toFixed(2)}× value: which end wins turns on how widely prices scatter at high asks and on the size of the price-gap penalty (a judgment scale), which the data do not settle. `
     :flat===null?""
     :peak?`The objective has another peak, at ${peak.m.toFixed(2)}× value, but to this owner it is worth ${pc(Math.max(0,U(rKeep)-peak.u)/V,2)} of value less than the cap, beyond a tie. `
       +`Near the cap the top is flat: every ask from ${flat.toFixed(2)}× value up comes within 1% of value of the cap. `
@@ -3364,7 +3380,7 @@ function optNote(s,V,rSell,rKeep){
     return {kind:"lower",gain,coin,alt,flat,peak,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
       +`Listing at ${money(V*s.optRho)} gives up ${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds, but it is `
       +`${pp(Math.max(0,rKeep.PC-rSell.PC)).replace("+","")} more likely to close and closes ${days>=1?`about ${dd}`:"slightly"} sooner on average, `
-      +`worth ${money(s.lamT*Math.max(0,rSell.tMean-rKeep.tMean))} at ${money(s.lamT)} a day. `
+      +`worth ${money(s.lamT*Math.max(0,rSell.tMean-rKeep.tMean))} at ${lamTxt} a day. `
       /* gain is the NET change in the objective: the time saved, less the proceeds given up and the smaller value kept
          if the sale fails. It was printed as the value of the time saved, which a reader then netted a second time. */
       +`Net of the proceeds given up${s.theta>0?" and the smaller value kept if the sale fails":""}, that is worth ${money(gain)} to this owner`
@@ -3396,9 +3412,15 @@ function optCardNote(s,best,rhoSell,uRho){
   const nd=Math.round(Math.abs(dT)), dd=nd===1?"a day":nd+" days";
   const proc=Math.abs(dProc)<1?"matches the expected proceeds":dProc<0?`gives up ${money(-dProc)} of expected proceeds`:`adds ${money(dProc)} of expected proceeds`;
   const why=[];   /* the terms in which the utility's programme gains: value kept on failure, and time */
-  if(s.theta>0&&dPC<-1e-4) why.push(`the ${pc(s.theta)} of value retained if the process fails`);
-  if(s.lamT>0&&dT<=-.5) why.push(`the cost of delay of ${money(s.lamT)} a day`);
-  const tail=why.length?` It pays only through ${why.join(" and ")}.`:"";
+  /* the two terms U adds to the proceeds objective, computed rather than read off the sign of dP_C: the retained value
+     (1-P_C) theta V also moves with V, which differs between programmes with different changes (AUDIT_FINDINGS R1-10) */
+  const lamTxt="$"+Math.round(s.lamT).toLocaleString("en-US");
+  const ret=x=>(1-x.PC)*s.theta*x.r.V, terms=[];
+  if(s.theta>0){ const d=ret(bU)-ret(bV); if(Math.abs(d)>=1) terms.push({v:d,t:`the ${pc(s.theta)} of value retained if the process fails`}); }
+  if(s.lamT>0){ const d=-s.lamT*dT; if(Math.abs(d)>=1) terms.push({v:d,t:`the cost of delay of ${lamTxt} a day`}); }
+  const pos=terms.filter(x=>x.v>0).sort((a,b)=>b.v-a.v), neg=terms.filter(x=>x.v<0);
+  why.push(...pos.map(x=>x.t));
+  const tail=why.length?` It pays only through ${why.join(" and ")}`+(neg.length?`, while ${neg.map(x=>x.t).join(" and ")} works against it`:"")+`.`:"";
   const pcTxt=Math.abs(dPC)>=5e-4?`${pp(Math.abs(dPC)).replace("+","")} ${dPC<0?"less":"more"} likely to close`:"";
   /* elapsed time from start to close: execution days plus the mean time to close, the 'Expected days' tile */
   const tTxt=nd>=1?`takes about ${dd} ${dT>0?"longer":"less"} from start to close`:"";
@@ -3461,7 +3483,8 @@ function interventionTable(s0,r0){
        happen and - now that the ask caps the price - scored every quality fix on an
        underpriced listing as worthless and repricing as pure upside. dV (what the
        business supports) is still shown beside it. */
-    const c=it.cost(s0), dV=r1.V-r0.V, dE=r1.EVp-rb.EVp, dP=r1.PC-rb.PC, dT=r1.tMed-rb.tMed;
+    /* time on the MEAN time to close, the basis of the optimiser's 'Expected days' (AUDIT_FINDINGS R1-13) */
+    const c=it.cost(s0), dV=r1.V-r0.V, dE=r1.EVp-rb.EVp, dP=r1.PC-rb.PC, dT=r1.tMean-rb.tMean;
     // implementing takes time BEFORE going to market, so the honest figure is
     // execution days plus the change in the marketing period
     return {...it,c,dV,dE,dP,dT,dTnet:it.days+dT,roi:c>0?(dE-c)/c:null,net:dE-c};
@@ -3516,13 +3539,13 @@ const SENS=[
  {k:"own", n:"Owner independence", h:.125, inv:true, lo:0, hi:.999, unit:"per sd (25 pts) less owner dependence"},
  {k:"mgt", n:"Management depth",   h:.14, lo:0, hi:.999, unit:"per sd (28 pts) of depth"},
  {k:"rec", n:"Recurring revenue",  h:.14, lo:0, hi:1,    unit:"per sd (28 pts)"},
- {k:"cc",  n:"Customer concentration", h:.065, inv:true, lo:.005, hi:.95, unit:"per sd (13 pts) less on the top customer"},
+ {k:"cc",  n:"Less customer concentration", h:.065, inv:true, lo:.005, hi:.95, unit:"per sd (13 pts) less on the top customer"},
  {k:"fin", n:"Financial reporting", h:.14, lo:0, hi:1,   unit:"per sd (28 pts) of quality"},
  {k:"grw", n:"Revenue growth",     h:.065, lo:-.60, hi:1.5, unit:"per sd (13 pts)"},
  {k:"gm",  n:"Gross margin",       h:.065, lo:.02, hi:.97, unit:"per sd (13 pts)"},
  {k:"ret", n:"Customer retention", h:.065, lo:.05, hi:.999,unit:"per sd (13 pts)"},
- {k:"plt", n:"Channel concentration", h:.11, inv:true, lo:.02, hi:.999, unit:"per sd (22 pts) less concentrated"},
- {k:"ask", n:"Asking price",       h:null, inv:true, unit:"per 5% off the ask"},
+ {k:"plt", n:"Less channel concentration", h:.11, inv:true, lo:.02, hi:.999, unit:"per sd (22 pts) less concentrated"},
+ {k:"ask", n:"Asking price, 5% lower", h:null, inv:true, unit:"per 5% off the ask"},
  {k:"buyers", n:"Qualified buyer pool", h:null, unit:"per 25% more buyers contacted"}
 ];
 function sensitivity(s0){
