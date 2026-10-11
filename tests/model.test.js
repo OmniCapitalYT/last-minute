@@ -225,5 +225,62 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const gm=A.gmSalary({ind:"medical",rev:6e6});
   ok(gm>8e4&&gm<1e5,`example medical practice GM salary ${Math.round(gm)} in $80k-$100k`); }
 
+/* 22. time-to-close curve (fit/time_to_close_shape.py): log-logistic pinned to the band median,
+       shape beta by size band (two levels), keyed on Vbase only */
+{ const S=A.MODELS.fitted.ttc_shape, T=A.MODELS.close_and_timing.time_to_close;
+  const CENT=[2.5e5,Math.sqrt(5e5*1e6),Math.sqrt(1e6*2e6),Math.sqrt(2e6*5e6),Math.sqrt(5e6*5e7)];
+  /* table */
+  ok(JSON.stringify(S.bands)===JSON.stringify(T.bands),"ttc_shape bands are the time-to-close bands");
+  ok(["beta","beta_se","n","hist_median_listing","hist_median_listing_se","hist_median_loi","hist_median_loi_se"]
+     .every(k=>Array.isArray(S[k])&&S[k].length===5),"ttc_shape arrays have 5 entries");
+  ok(S.family==="loglogistic"&&S.beta.every(b=>b>1)&&S.beta_se.every(v=>v>0),"log-logistic, beta > 1, beta_se > 0");
+  ok(JSON.stringify(S.beta)===JSON.stringify([2.20,2.64,2.64,2.64,2.64]),`beta is the fitted two-level table: ${S.beta}`);
+  ok(S.beta.every((b,i)=>i===0||b>=S.beta[i-1]),"beta non-decreasing across bands");
+  /* interpolated in ln(value), flat beyond the outer centres, continuous at the edges, no industry */
+  const bt=p=>A.fitTiming(p,"medical").beta, bmin=Math.min(...S.beta), bmax=Math.max(...S.beta);
+  CENT.forEach((c,i)=>ok(Math.abs(bt(c)-S.beta[i])<1e-12,`beta at the ${S.bands[i]} centre`));
+  for(const p of [1,1e3,1e5,2.5e5]) ok(bt(p)===S.beta[0],`beta flat below $250k (${p})`);
+  for(const p of [1.5812e7,3e7,1e9]) ok(Math.abs(bt(p)-S.beta[4])<1e-9,`beta flat above $15.8M (${p})`);
+  for(const e of [5e5,1e6,2e6,5e6]) ok(Math.abs(bt(e*(1+1e-9))-bt(e*(1-1e-9)))<1e-3,`beta continuous at ${e}`);
+  for(const k of Object.keys(A.IND)) ok(A.fitTiming(1.3e6,k).beta===bt(1.3e6),`beta independent of industry (${k})`);
+  ok(bt(3.1623e6)>bt(2.5e5),"steeper with size: beta($3.16M) > beta($250k)");
+  { let pb=-Infinity, mono=true, inR=true;
+    for(let i=0;i<=600;i++){ const b=bt(Math.exp(Math.log(1e4)+(Math.log(1e9)-Math.log(1e4))*i/600));
+      if(b<pb-1e-12) mono=false; if(b<bmin-1e-12||b>bmax+1e-12) inR=false; pb=b; }
+    ok(mono&&inR,"beta non-decreasing in value and inside [min, max] on $10k-$1B"); }
+  /* size order of the curve at a fair price: strict at 90/180 days, small named tolerances at 365/540 */
+  const Fat=(p,t)=>{ const ft=A.fitTiming(p,"medical"); return 1/(1+Math.pow(t/ft.days,-ft.beta)); };
+  for(const [t,tol] of [[90,0],[180,0],[365,.1],[540,1.4]]){
+    let prev=null, rises=0, runMin=Infinity, maxRise=0;
+    for(let i=0;i<=6000;i++){ const p=Math.exp(Math.log(1e5)+(Math.log(3e7)-Math.log(1e5))*i/6000), f=Fat(p,t);
+      if(prev!==null&&f>prev+1e-12) rises++; runMin=Math.min(runMin,f); maxRise=Math.max(maxRise,f-runMin); prev=f; }
+    if(tol===0) ok(rises===0,`F(${t} d) non-increasing in deal value (${rises} rises)`);
+    else ok(100*maxRise<=tol,`F(${t} d) rises at most ${tol} pts with deal value (${(100*maxRise).toFixed(2)})`); }
+  /* calibration guard at the band centres against the 2020-25 IBBA histograms (shares closed, %) */
+  const HIST={90:[17.01,8.06,8.88,5.39,2.85],180:[43.26,32.07,30.68,21.67,17.53],365:[79.82,75.89,73.41,67.89,65.60]};
+  const EXC={180:{"500K-1M":6,"2-5M":11},365:{"2-5M":8,"5-50M":8}};
+  for(const d of [90,180,365]) CENT.forEach((c,i)=>{ const f=100*Fat(c,d), tol=(EXC[d]&&EXC[d][S.bands[i]])||4;
+    ok(Math.abs(f-HIST[d][i])<=tol+.01,`F(${d} d) at the ${S.bands[i]} centre ${f.toFixed(1)}% within ${tol} pts of the histogram ${HIST[d][i]}%`); });
+  /* per business: median exact, closed-form quantile, proper CDF, shape never reads the ask or quality */
+  for(const ind of Object.keys(A.IND)) for(const ern of [6e4,3e5,1e6,2.5e6,1.2e7]) for(const rho of [.8,1,1.7]){
+    const s0=median(ind,ern), V0=A.model({...s0,ask:ern*3}).V, s={...s0,ask:rho*V0}, r=A.model(s), tag=`${ind} ${ern} rho ${rho}`;
+    ok(Math.abs(r.F(r.tMed)-.5)<1e-12&&Math.abs(r.tQ(.5)/r.tMed-1)<1e-9,`median exact: ${tag}`);
+    ok([.1,.25,.75,.9].every(p=>Math.abs(r.F(r.tQ(p))-p)<1e-9),`quantile inverts F: ${tag}`);
+    ok(r.tMed===(r.tMult===undefined?r.ft.days:r.ft.days*r.tMult),`median is the band median: ${tag}`);
+    ok(r.betaT===r.ft.beta&&r.ft.beta===A.fitTiming(r.Vbase,ind).beta&&r.lamE===r.tMed,`shape keyed on Vbase: ${tag}`);
+    ok(r.F(0)===0&&r.F(20*r.tMed)>.99,`F(0) = 0 and F(20 t_med) > 0.99: ${tag}`);
+    let prev=-1, cdf=true; for(let t=0;t<=3000;t+=5){ const f=r.F(t); if(!(isFinite(f)&&f>=prev&&f>=0&&f<=1)) cdf=false; prev=f; }
+    ok(cdf,`F a proper CDF on 0..3000 days: ${tag}`);
+    ok(r.t90===r.F(90)&&r.t180===r.F(180)&&r.t365===r.F(365),`t90/t180/t365 read the drawn curve: ${tag}`);
+    const ra=A.model({...s,ask:s.ask*1.7}), rq=A.model({...s,own:.2,mgt:.9,fin:.2});
+    ok(ra.betaT===r.betaT&&rq.betaT===r.betaT,`shape independent of the ask and quality: ${tag}`);
+    ok(Math.abs(ra.F(ra.tMed)-.5)<1e-12,`median exact after an ask change: ${tag}`);
+    if(r.tMult===undefined) ok([30,90,180,365,540].every(t=>ra.F(t)===r.F(t)&&rq.F(t)===r.F(t)),`curve independent of the ask and quality: ${tag}`); }
+  /* the worked example ($3.49M fitted value): the upper level, quartiles 9^(1/beta) = 2.30x apart */
+  { const ex={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,
+      yrs:6,buyers:65,st:null,franchise:false,ask:3.24e6}, r=A.model(ex);
+    ok(r.betaT===2.64&&Math.abs(r.tQ(.75)/r.tQ(.25)-Math.pow(9,1/2.64))<1e-9,
+       `worked example: beta ${r.betaT}, quartiles ${r.tQ(.25).toFixed(0)}-${r.tQ(.75).toFixed(0)} d`); } }
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

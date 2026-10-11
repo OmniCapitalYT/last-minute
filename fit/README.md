@@ -14,6 +14,7 @@ your machine.
 | `sde_margin` (typical SDE margin by industry and size) | `dl_panel.py`, `hedonic.py`, `margin.py` | DealLedger broker-direct listings, CC0 | `git clone --depth 1 https://github.com/jeffsosville/dealledger` |
 | `quality_weights` (owner dependence, management depth) | `hed_fit.py`, `quality_weights.py` | same listings, those with descriptions; phrase effects converted to per-sd weights with a threshold model, shrunk toward 1 with a N(1, 0.5²) prior | as above |
 | `buyer_mix` (individual / strategic / financial by deal size) | `ibba_buyer_mix.py`; band knots built in `build_models.py` (`buyer_mix_fit.py` is the parametric check) | IBBA / M&A Source Market Pulse reports, 2012–2023; values transcribed in `ibba_buyer_mix.csv` | ibba.org |
+| `ttc_shape` (time-to-close curve shape: log-logistic β, two levels, under $500K and $500K up; also the histograms' own grouped medians, shown in the Data tab) | `time_to_close_shape.py` (writes the patched page and checks to `/tmp/claude-0/fit5/time_to_close_shape/`; the repo page is read, never written) | IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1–2023Q3 and 2025Q4), per-band histograms of months listing → close and LOI → close, 4,533 closed deals (`aggregates_research/clean/ibba_mp_band_histograms_long.csv`; the script recodes three mis-parsed <$500K charts: 2020Q3, 2022Q2, 2022Q4) | ibba.org Market Pulse reports (full PDF editions; the 2023Q4 band charts are images and were not used) |
 
 The app's old May-2021 GM wage table came from `cran/oews2021`, a third-party CRAN repackaging (Sep 2022).
 `oews_refresh.py` reads the official BLS `oesm21in4.zip` (sha256 61d1eb0a77e8be52...) and checks the mirror
@@ -26,6 +27,6 @@ Update it when it changes.
 
 **Tried and not usable:**
 - The listing panel's time-on-market. The median listing appears in one snapshot, and only
-  164 sales were observed.
+  164 sales were observed. (The curve's shape by size band is now fitted from IBBA's histograms instead.)
 - Anchoring of sale price on ask. No reachable dataset has both prices for small private
   deals.

@@ -1804,12 +1804,14 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <svg class="sec-glyph" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#4da3ff" stroke-opacity=".45"/><path d="M10 5v5.4l3.4 2.2" stroke="#9ecbff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
       <h2>Time to close</h2><span class="ref">framework §9</span></div>
       <div class="panel">
-        <p class="lede"><b>The reported median is a published size-band lookup</b> — no source
-          publishes deal-level durations, so there is no hazard model to fit. The Weibull below is drawn
-          only to give the curve a shape; its scale is re-solved so the median lands exactly on the
-          published band median, and its tails carry no evidence.</p>
+        <p class="lede"><b>The median is a published size-band lookup; the spread is fitted.</b> The curve
+          is a log-logistic whose shape comes from IBBA&rsquo;s per-band histograms of months to close
+          (4,533 closed deals over 15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4), with its median pinned to the band median. It describes deals that
+          closed and says nothing about a listing that never does. Its shape depends on deal size, never on
+          the ask: deals under $500K are more spread out than larger ones. Because the published $500K&ndash;$1M median is shorter than the recent histograms show,
+          the curve&rsquo;s long end can rise slightly with size between $250k and $707k.</p>
         <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Cumulative probability of closing over time"></svg>
-        <div class="eq"><div class="lbl">Scale re-solved to the published band median</div>
+        <div class="eq"><div class="lbl">Median pinned to the band median; shape fitted by size band</div>
           <div id="eq_t"></div><div class="sub" id="eq_ts"></div></div>
         <div id="o_real"></div>
       </div>
@@ -2031,6 +2033,16 @@ const MODELS = {"value":{"model":"omni_value_v3","source":"BIZCOMPS","n_fit":189
    See MODELS.fitted.*.source for each one's provenance. */
 MODELS.fitted={"model":"omni_fitted_v4","asof":"2026-10-07","sba_rate":{"prime":6.75,"prime_asof":"2025-12-11","spread_knots":[[11.512925464970229,2.0],[13.527828485512494,2.0],[14.22097566607244,1.75],[15.068273526459642,1.5]],"n":4812,"median_spread":1.75,"source":"SBA FOIA 7(a), change-of-ownership loans approved FY2023 (Oct 2022 - Sep 2023), initial rate minus WSJ prime on the approval date"},"jobs":{"by_industry":{"home":{"naics":"2382","knots":[[10.9005,57528,18624,0.0067],[12.4139,121349,40927,0.0405],[13.4966,165988,50137,0.0975],[14.271,194146,56374,0.1904],[15.0672,221610,63776,0.3089],[15.6212,237124,68448,0.3973],[15.9664,256256,71091,0.4525],[16.3046,270200,74049,0.5054],[16.6522,287696,75152,0.5561],[16.9048,293539,78300,0.5917],[17.1102,300239,79286,0.621],[17.2736,309361,81416,0.6447],[17.4035,321805,81158,0.6627],[17.5855,312016,81613,0.684],[17.8535,333105,84175,0.7191],[18.1898,330862,84037,0.7522],[19.3736,349519,91580,0.8819]],"rpe":263095,"ppe":71804},"medical":{"naics":"6211","knots":[[10.8474,47036,30515,0.0027],[12.5843,145761,59390,0.0246],[13.4739,179552,70165,0.0679],[14.2583,180582,71073,0.1341],[15.06,196548,79575,0.2118],[15.6142,209545,88288,0.269],[15.955,219424,95936,0.3049],[16.2855,232927,102211,0.3393],[16.6178,245917,104886,0.3717],[16.8648,254168,109598,0.3949],[17.0503,265279,113371,0.4133],[17.17,258100,109600,0.4274],[17.3192,268304,115100,0.4397],[17.4535,264352,117032,0.4551],[17.7362,274081,113669,0.4807],[18.0787,292583,116901,0.5086],[19.5446,274209,115371,0.7602]],"rpe":242751,"ppe":101571},"vet":{"naics":"5419","knots":[[10.811,55217,22417,0.0079],[12.4057,130475,41522,0.0462],[13.485,136595,41994,0.1127],[14.2566,142210,45979,0.2356],[15.0277,158143,53030,0.382],[15.5906,187294,63975,0.4639],[15.9263,198683,66208,0.4975],[16.2536,204306,69175,0.5234],[16.6363,209798,73481,0.5464],[16.7935,283000,85848,0.5596],[17.0611,234201,74835,0.5695],[17.2189,217516,82248,0.5785],[17.2973,201700,76249,0.5865],[17.4365,192301,75404,0.5964],[17.5781,234653,81209,0.6136],[17.6101,347448,99438,0.629],[19.0909,205227,71937,0.8164]],"rpe":178593,"ppe":60576},"msp":{"naics":"5415","knots":[[10.7857,56191,30477,0.005],[12.4035,170470,66258,0.0281],[13.4701,216696,79339,0.0578],[14.2753,233463,89006,0.0923],[15.0745,247338,98883,0.1393],[15.6099,254953,104192,0.18],[15.9612,268802,112236,0.2094],[16.2937,261506,113720,0.2422],[16.628,277985,113734,0.2773],[16.8647,284927,114927,0.3034],[17.0675,278618,117496,0.324],[17.2309,277623,113044,0.3417],[17.3646,309148,115882,0.3563],[17.5223,308129,125492,0.3732],[17.7539,299097,120111,0.4056],[18.0134,311516,120852,0.4404],[19.4674,351940,139454,0.7266]],"rpe":308685,"ppe":123066},"prof":{"naics":"5412","knots":[[10.7576,40278,21067,0.0159],[12.4046,96176,37898,0.0875],[13.4546,119141,49706,0.1805],[14.2279,132169,58897,0.2661],[15.0367,137574,67211,0.3451],[15.5755,145771,69707,0.392],[15.8834,148180,71410,0.4186],[16.1928,125050,87590,0.4452],[16.491,162186,77248,0.4704],[16.6746,109877,65271,0.49],[16.8254,180269,82727,0.5046],[17.0346,172387,84597,0.5132],[17.1565,145479,74768,0.5214],[17.1859,133277,62362,0.5321],[17.3777,146213,76100,0.5524],[17.7867,190679,88485,0.5709],[19.4223,245665,99183,0.788]],"rpe":175216,"ppe":75624},"mfg":{"naics":"31-33","knots":[[10.8845,41042,35636,0.0015],[12.4719,92297,31398,0.0097],[13.4884,117432,40490,0.0244],[14.2842,153085,45262,0.0503],[15.072,192028,52079,0.0868],[15.6107,218852,55335,0.1191],[15.9552,238075,57606,0.1429],[16.2874,256739,59205,0.1688],[16.6228,276252,60871,0.1967],[16.8684,285405,60931,0.2187],[17.0596,299662,61313,0.2367],[17.2293,314630,62787,0.2518],[17.3646,327473,62433,0.2651],[17.5286,335451,63624,0.2813],[17.8076,356091,65158,0.3102],[18.1375,390355,66551,0.3417],[20.4997,758572,77154,0.6772]],"rpe":580239,"ppe":69846},"dist":{"naics":"42","knots":[[10.884,50113,25032,0.0017],[12.498,159540,37727,0.0111],[13.4844,257620,46882,0.027],[14.2937,347759,53316,0.0541],[15.0709,465656,59929,0.0936],[15.6083,556312,64942,0.1293],[15.9566,632097,67574,0.1557],[16.2886,685768,70455,0.1851],[16.6275,738552,72378,0.2166],[16.8752,809268,75423,0.241],[17.0691,861521,75921,0.2603],[17.233,930531,78497,0.276],[17.3867,920361,77025,0.29],[17.5399,974334,79044,0.3074],[17.8387,1074654,82096,0.3389],[18.1538,1141426,84367,0.3736],[20.6649,2651748,99045,0.6938]],"rpe":1894334,"ppe":87120},"staff":{"naics":"5613","knots":[[10.6668,16592,38403,0.0008],[12.4823,60947,40591,0.0038],[13.4865,70116,41121,0.0086],[14.3016,66752,39614,0.0183],[15.0954,60957,39504,0.0363],[15.6201,61114,42905,0.0556],[15.9448,64788,40235,0.0709],[16.2996,60873,39658,0.089],[16.6413,62720,41863,0.1101],[16.8815,68566,44545,0.1271],[17.088,61027,38421,0.1417],[17.2167,67627,41402,0.1551],[17.3877,59613,37724,0.1673],[17.544,64467,42806,0.1822],[17.8308,66112,40565,0.2082],[18.1713,67522,42252,0.239],[20.0983,71851,67458,0.6262]],"rpe":69841,"ppe":60759},"land":{"naics":"5617","knots":[[10.7405,42346,16761,0.0144],[12.4251,90827,29876,0.0883],[13.4621,106761,36309,0.1968],[14.2377,114127,39902,0.3201],[15.0459,123453,42773,0.446],[15.6067,127727,44006,0.5228],[15.9484,123413,43014,0.565],[16.2609,125933,43929,0.603],[16.5937,113862,41924,0.6376],[16.8067,119489,41493,0.66],[17.0097,105147,38589,0.6762],[17.167,125939,44504,0.6895],[17.3635,112247,41605,0.701],[17.4226,114662,41899,0.7143],[17.6354,111237,38538,0.7346],[17.9686,93652,38882,0.7571],[19.2263,108034,41216,0.8835]],"rpe":109206,"ppe":38887},"wash":{"naics":"8111","knots":[[10.8041,48055,15380,0.0109],[12.5278,123451,32057,0.0904],[13.4773,155581,41477,0.2398],[14.2216,173637,48381,0.4387],[15.017,197118,54642,0.6124],[15.5777,205861,56981,0.6882],[15.8907,211026,56315,0.7184],[16.1367,217980,59062,0.739],[16.3838,216403,52699,0.7545],[16.5825,214890,54586,0.7637],[16.5813,186561,52006,0.7709],[16.6339,177756,51103,0.7766],[16.7415,213110,61347,0.7813],[16.6733,131000,40057,0.7884],[16.7539,161146,41104,0.8015],[17.0711,154733,39120,0.8168],[17.8786,179571,51326,0.912]],"rpe":167856,"ppe":46098},"auto":{"naics":"8111","knots":[[10.8041,48055,15380,0.0109],[12.5278,123451,32057,0.0904],[13.4773,155581,41477,0.2398],[14.2216,173637,48381,0.4387],[15.017,197118,54642,0.6124],[15.5777,205861,56981,0.6882],[15.8907,211026,56315,0.7184],[16.1367,217980,59062,0.739],[16.3838,216403,52699,0.7545],[16.5825,214890,54586,0.7637],[16.5813,186561,52006,0.7709],[16.6339,177756,51103,0.7766],[16.7415,213110,61347,0.7813],[16.6733,131000,40057,0.7884],[16.7539,161146,41104,0.8015],[17.0711,154733,39120,0.8168],[17.8786,179571,51326,0.912]],"rpe":167856,"ppe":46098},"constr":{"naics":"2389","knots":[[10.9261,69285,19035,0.0072],[12.4099,139339,40947,0.045],[13.4991,190422,51547,0.1043],[14.2837,234710,57740,0.1971],[15.0725,275674,64424,0.3233],[15.6156,304074,70479,0.4232],[15.9615,312385,71705,0.4875],[16.2946,347309,77006,0.5492],[16.6385,374780,78262,0.6091],[16.8935,371965,80253,0.6532],[17.077,379315,78259,0.6873],[17.2312,441385,85101,0.7117],[17.3857,409402,89028,0.7317],[17.5356,454785,85732,0.7541],[17.8108,441451,85928,0.7887],[18.1123,467332,89010,0.8241],[18.7336,394686,81455,0.9185]],"rpe":317144,"ppe":69975},"fit":{"naics":"7139","knots":[[10.7595,30435,12576,0.0077],[12.4723,55850,17315,0.0653],[13.465,67207,20961,0.1602],[14.2528,76274,23271,0.2795],[15.0265,78348,25695,0.4115],[15.574,89099,30961,0.5002],[15.8988,96580,35088,0.5519],[16.2017,98255,36447,0.6017],[16.5012,93248,34027,0.6475],[16.6896,79538,31197,0.6744],[16.7988,78896,27577,0.6933],[16.8249,89078,30307,0.7071],[17.1122,83877,30121,0.7189],[17.092,76006,25692,0.7352],[17.3223,86231,28761,0.7576],[17.4894,71028,25231,0.7809],[18.2562,80540,24378,0.8956]],"rpe":77815,"ppe":25535},"rest":{"naics":"7225","knots":[[10.7994,26495,12663,0.0035],[12.5602,61213,17466,0.0386],[13.4816,70008,20996,0.1205],[14.2382,73802,24655,0.2721],[15.0208,78505,27434,0.4329],[15.5856,83736,28163,0.5155],[15.9307,85758,27362,0.5525],[16.2554,84275,25774,0.5837],[16.6033,82233,23228,0.6123],[16.8182,79342,22862,0.6319],[17.0371,80681,23123,0.6469],[17.1899,79293,23816,0.6587],[17.3344,78627,22777,0.6687],[17.4748,80793,23120,0.6811],[17.7711,78558,22154,0.702],[18.1044,78763,22665,0.725],[19.4141,70872,21673,0.8673]],"rpe":74035,"ppe":23326},"ecom":{"naics":"4541","knots":[[10.7503,47554,14571,0.006],[12.4676,151036,28391,0.0308],[13.4794,243010,36908,0.0643],[14.2736,327722,44112,0.1053],[15.0655,439266,50725,0.1528],[15.6019,483570,53375,0.1882],[15.9375,542572,54884,0.2116],[16.2715,593833,57606,0.2333],[16.5945,572403,59539,0.2556],[16.8365,647955,63329,0.2723],[17.0432,591238,61520,0.2852],[17.1751,618457,66395,0.2961],[17.3294,757986,69651,0.3051],[17.4622,714981,70685,0.315],[17.7706,701831,63276,0.3334],[18.1094,711822,69227,0.3548],[20.7383,1508271,64735,0.6818]],"rpe":1125680,"ppe":59596},"saas":{"naics":"5112","knots":[[10.7463,54274,32395,0.0009],[12.4657,160329,69209,0.0052],[13.4727,227346,90701,0.0119],[14.2695,241217,100541,0.0233],[15.0702,263729,115386,0.041],[15.6074,284794,118992,0.0574],[15.9331,303123,124071,0.0692],[16.291,293928,123883,0.0825],[16.5792,303086,131298,0.0974],[16.8799,269913,122457,0.1107],[17.0787,315779,143678,0.1235],[17.2019,338973,134658,0.1331],[17.3477,339582,144969,0.1407],[17.5293,299748,125771,0.1547],[17.8098,316766,159022,0.1825],[18.1813,334248,126997,0.2139],[20.3147,551672,218430,0.6137]],"rpe":492598,"ppe":197522}},"source":"Census SUSB 2022, US 6-digit NAICS by enterprise receipts size: receipts and payroll per paid employee"},"gm_wage":{"by_industry":{"home":{"naics":"238220","p10":57580.0,"p25":79070.0,"p50":105800.0,"p75":158570.0,"p90":214650.0,"se_sampling":[0.022,0.018,0.016,0.018,0.022],"se_total":[0.086,0.054,0.048,0.046,0.056]},"medical":{"naics":"621100","p10":65400.0,"p25":84900.0,"p50":108390.0,"p75":167480.0,"p90":244670.0,"se_sampling":[0.086,0.07,0.066,0.071,0.089],"se_total":[0.178,0.137,0.126,0.134,0.168]},"vet":{"naics":"541940","p10":50650.0,"p25":65010.0,"p50":80980.0,"p75":106050.0,"p90":166920.0,"se_sampling":[0.045,0.036,0.033,0.037,0.046],"se_total":[0.11,0.077,0.07,0.072,0.089]},"msp":{"naics":"541500","p10":62110.0,"p25":104350.0,"p50":157590.0,"p75":216980.0,"p90":310550.0,"se_sampling":[0.032,0.026,0.024,0.026,0.032],"se_total":[0.095,0.063,0.057,0.056,0.069]},"saas":{"naics":"513200","p10":84950.0,"p25":120800.0,"p50":175820.0,"p75":276560.0,"p90":376140.0,"se_sampling":[0.052,0.042,0.038,0.042,0.052],"se_total":[0.12,0.086,0.079,0.082,0.101]},"prof":{"naics":"541200","p10":53680.0,"p25":80910.0,"p50":127600.0,"p75":204350.0,"p90":303180.0,"se_sampling":[0.039,0.031,0.029,0.031,0.039],"se_total":[0.103,0.071,0.064,0.064,0.08]},"mfg":{"naics":"339900","p10":50910.0,"p25":71210.0,"p50":103920.0,"p75":161160.0,"p90":232650.0,"se_sampling":[0.037,0.03,0.027,0.03,0.037],"se_total":[0.101,0.068,0.062,0.062,0.077]},"dist":{"naics":"423000","p10":59320.0,"p25":79200.0,"p50":113380.0,"p75":170270.0,"p90":264130.0,"se_sampling":[0.011,0.009,0.008,0.009,0.011],"se_total":[0.079,0.047,0.041,0.037,0.044]},"ecom":{"naics":"44-45","p10":55240.0,"p25":79600.0,"p50":118020.0,"p75":192950.0,"p90":288820.0,"se_sampling":[0.159,0.12,0.111,0.098,0.131],"se_total":[0.167,0.122,0.112,0.1,0.133],"bridge":"mean of 454100 (May 2021) relative to Retail 44-45 and 454100 x ECI; p75 183,890-208,500, p90 271,770-316,090 across bridges"},"staff":{"naics":"561320","p10":58440.0,"p25":74650.0,"p50":105020.0,"p75":165640.0,"p90":250450.0,"se_sampling":[0.033,0.026,0.024,0.026,0.033],"se_total":[0.096,0.064,0.058,0.057,0.07]},"land":{"naics":"561730","p10":46420.0,"p25":62210.0,"p50":89560.0,"p75":122860.0,"p90":164150.0,"se_sampling":[0.047,0.038,0.035,0.038,0.048],"se_total":[0.114,0.08,0.073,0.075,0.093]},"wash":{"naics":"811190","p10":43660.0,"p25":51720.0,"p50":63170.0,"p75":81370.0,"p90":110910.0,"se_sampling":[0.021,0.017,0.016,0.017,0.022],"se_total":[0.085,0.053,0.048,0.045,0.055]},"auto":{"naics":"811110","p10":46080.0,"p25":61910.0,"p50":82970.0,"p75":111800.0,"p90":145530.0,"se_sampling":[0.037,0.029,0.027,0.03,0.037],"se_total":[0.1,0.068,0.062,0.062,0.076]},"constr":{"naics":"238900","p10":51340.0,"p25":75720.0,"p50":102700.0,"p75":147270.0,"p90":203360.0,"se_sampling":[0.021,0.016,0.015,0.016,0.021],"se_total":[0.085,0.053,0.047,0.044,0.054]},"fit":{"naics":"713940","p10":37780.0,"p25":47090.0,"p50":63160.0,"p75":93670.0,"p90":131680.0,"se_sampling":[0.046,0.037,0.034,0.037,0.046],"se_total":[0.112,0.079,0.071,0.073,0.091]},"rest":{"naics":"722511","p10":40840.0,"p25":54750.0,"p50":74820.0,"p75":99350.0,"p90":141650.0,"se_sampling":[0.033,0.027,0.025,0.027,0.034],"se_total":[0.097,0.065,0.058,0.058,0.071]}},"base":"OEWS May 2025","wage_growth":1.0343,"wage_growth_to":"2026Q2","wage_growth_se":0.0086,"wage_growth_se_pct":[0.051,0.0188,0.0099,0.0174,0.0231],"wage_growth_se_note":"wage_growth_se: SE of the economy-wide factor (ECI vs average within-industry OEWS growth). wage_growth_se_pct adds percentile-specific drift over the 2.33-yr panel lag. A single industry cell moves about 5% (SD) from one annual OEWS release to the next relative to it, mostly measurement noise.","se_note":"log-point SEs p10..p90. se_sampling: BLS sampling error of the May-2025 value after shrinkage (published PRSE, kappa=1). se_total: SE of the June-2026 value; adds the noise the published SEs miss (fitted on six OEWS vintage pairs: kappa^2 3.1 plus panel-level noise; little persistent drift) and wage_growth_se_pct. Documentation only; gmSalary does not read them.","noise":{"kappa2":3.08,"h":[0.0194,0.0096,0.0084,0.0049,0.0062],"q":[0.0,0.0,0.0,0.0,0.0],"windows":"2021-23, 2021-24, 2021-25, 2023-24, 2023-25, 2024-25"},"wage_growth_alt_all_private":1.0353,"eci_series":"CIU2020000110000I","topcode":null,"source":"BLS OEWS May 2025, SOC 11-1021 General and Operations Managers, national by industry (no top-code), each cell shrunk toward its parent NAICS row by empirical Bayes using the published relative standard errors; e-commerce bridged from the May 2021 NAICS 454100 row (eliminated in NAICS 2022); carried from May 2025 to June 2026 by the ECI wages & salaries index for private-industry management, business and financial occupations. Wages and salaries only (no benefits, payroll taxes or non-production bonuses)."},"sde_margin":{"slope":0.0753,"ref_sde":200000.0,"sd":0.5935,"ln_at_ref":{"auto":-1.4554,"constr":-1.5076,"dist":-1.6209,"ecom":-1.3048,"fit":-1.3082,"home":-1.4082,"land":-1.3706,"medical":-1.2844,"mfg":-1.5437,"msp":-1.2086,"other":-1.4336,"prof":-1.3315,"rest":-1.5152,"saas":-1.2372,"staff":-1.4011,"vet":-1.3448,"wash":-1.2562},"n":{"auto":308,"constr":257,"dist":119,"ecom":101,"fit":135,"home":337,"land":80,"medical":215,"mfg":233,"msp":70,"other":1739,"prof":96,"rest":1110,"saas":132,"staff":48,"vet":15,"wash":60},"sde_range":[10.596634733096073,14.914122846632385],"source":"DealLedger broker-direct listings (CC0), Feb-Oct 2026: robust regression of ln(cash flow / revenue) on ln(cash flow) with industry effects, n=5,055"},"quality_weights":{"own":1.24,"mgt":0.6,"se":{"own":0.3,"mgt":0.24},"raw":{"own":[1.371,0.368],"mgt":[0.482,0.273]},"hedonic":{"n":5714,"owner_operated":[-0.206,0.055],"absentee_or_manager_run":[0.021,0.058],"staff_in_place":[0.076,0.043],"recurring":[0.026,0.055],"growth":[0.044,0.036],"clean_books":[-0.023,0.108],"repeat_customers":[-0.116,0.044]},"prior":"N(1, 0.5^2) on the relative weight","source":"DealLedger listings with descriptions: Huber regression of ln(ask / cash flow) on ln(cash flow), industry and description phrases; broker-clustered bootstrap SEs. Per-sd effects from the threshold model, relative to the equal weight 0.079 per sd."},"buyer_mix":{"knots":[[12.4292,-1.4154,-4.3858],[13.4689,-1.0654,-4.3041],[14.1621,-0.9149,-3.5051],[14.9668,-0.1278,-1.4999],[16.5762,1.4357,1.9025]],"n_complete":[14,15,9,3,6],"n_rows":154,"periods":41,"source":"IBBA / M&A Source Market Pulse 2012-2023: buyer-type shares by deal-size band from the band-quarters whose stated shares cover at least 95% (individual = first-time + serial; financial = PE + other), interpolated in ln(deal value) between band centres"}};
 
+/* Shape of the time-to-close curve (fit/time_to_close_shape.py, 2026-10). IBBA / M&A Source Market Pulse per-band
+   histograms of months listing->close, 15 quarters (2020Q1-2023Q3 and 2025Q4), 4,533 closed deals, interval-censored
+   MLE. Log-logistic: as good as a gamma on held-out quarters, at least as good as a refitted Weibull, better than
+   a lognormal, and closed-form. beta has two levels: under $500K, and one shared value from $500K up (the four
+   upper bands differ by no more than noise and no gradient among them is identified, so they are pooled); it is
+   interpolated in ln(value) between the $250k and $707k centres, like the band medians. beta_se = quarter-bootstrap
+   SE widened for how months are reported (rounded or truncated; what "<1 month" covers). hist_* are the histograms'
+   own grouped medians (display only); hist_*_se are quarter-bootstrap SEs, sampling only (they ignore where deals
+   sit inside a one-month answer). Closed deals only. */
+MODELS.fitted.ttc_shape={"family":"loglogistic","bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],"beta":[2.20,2.64,2.64,2.64,2.64],"beta_se":[0.16,0.13,0.13,0.13,0.13],"n":[2100,867,676,548,342],"n_quarters":15,"hist_median_listing":[6.6,8.1,8.3,9.3,9.9],"hist_median_listing_se":[0.21,0.24,0.24,0.25,0.38],"hist_median_loi":[2.2,3.1,3.2,3.8,3.9],"hist_median_loi_se":[0.03,0.06,0.05,0.15,0.13],"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};
 const VBANDS=[["<500K",0,5e5],["500K-1M",5e5,1e6],["1-2M",1e6,2e6],["2-5M",2e6,5e6],["5-50M",5e6,5e7]];
 const vbandOf=p=>{for(const[n,lo,hi]of VBANDS){if(p>=lo&&p<hi)return n}return p>=5e7?"5-50M":"<500K"};
 /* Map the console's 16 industry keys onto the NAICS-2 sectors the value and
@@ -2321,7 +2333,9 @@ function fitClose(ask,val,channel,size){
 }
 
 /* ---- Model III: time to close (AGGREGATE, IBBA Market Pulse) ----
-   Size-band medians. NOT a hazard model - no deal-level durations exist. */
+   Size-band medians (a lookup) and a curve shape fitted by size band to IBBA's grouped
+   histograms (MODELS.fitted.ttc_shape). No deal-level durations exist, so nothing here
+   has covariates beyond deal size. */
 /* Published figures are band medians. Read off a band they jump at every edge: $1 of
    earnings across $5M of value added 76 days and $73k of expected proceeds. Treat each
    median as the value at its band's geometric centre and interpolate in ln(price),
@@ -2348,6 +2362,7 @@ function fitTiming(price,indKey){
   const pas=bandInterp(price,col(T.price_pct_of_asking));
   const pa=clamp(pas*f,.55,1.12);
   return {months:months,
+          beta:bandInterp(price,MODELS.fitted.ttc_shape.beta),
           loi:bandInterp(price,col(T.median_months_loi_to_close_recent)),
           band:bd,pctAsk:pa,pctAskSize:pas,indFactor:f,
           indN:(PR&&PR.n&&PR.n[indKey])||0,
@@ -2465,9 +2480,11 @@ const RHO_MAX=1.50; // last gap Pepperdine resolves (41-50%); anchoring earns no
    only severe overpricing should kill the deal. */
 /* §9 hazard coefficients */
 const G={size:-.100,em:.10,rec:.124,cc:-.149,own:-.186,mgt:.136,fin:.211,buy:.260,price:-.341,gm:.062,grw:.087,tail:.099,plt:-.074,ret:.062};
+/* LAM0 and KW are the scale and shape of the judgment hazard (out.lamEjudg), which is not drawn; the drawn
+   curve's shape is fitted (MODELS.fitted.ttc_shape). PHI is the seller's share of synergy. */
 const LAM0=250, KW=1.42, PHI=.38;
 const LAM_FLOOR=118;   // no marketed process realistically clears ~90 days
-const PMIN=.05, PMAX=.93;  // irreducible deal risk at both ends   // Weibull scale/shape, seller share of synergy
+const PMIN=.05, PMAX=.93;  // irreducible deal risk at both ends
 
 /* ============================================================
    BUYER ARCHETYPES  §10–12
@@ -2669,10 +2686,12 @@ function model(s){
   const lamE=clamp(LAM0*Math.exp(-etaT/KW),LAM_FLOOR,900);
   const F=t=>1-Math.exp(-Math.pow(t/lamE,KW));
   /* ---- AGGREGATE OVERRIDE (Model III) ----------------------------
-     Pepperdine gives median months to close by deal-size band. No deal-level
-     durations exist anywhere, so there is no hazard model to fit. The Weibull
-     is retained ONLY to draw a smooth curve; its scale is re-solved so the
-     median lands exactly on the published band median.                    */
+     The median is the IBBA band median, interpolated in ln(value). The shape
+     is fitted: a log-logistic whose spread beta comes from IBBA's per-band
+     histograms of months to close (MODELS.fitted.ttc_shape). The odds of
+     having closed by day t are (t/t_med)^beta, so F(t_med)=1/2 exactly with no
+     scale to solve. The curve is pinned to the final out.tMed; beta is keyed
+     on Vbase like the band, never on the ask. Conditional on closing.       */
   /* Size these off the FITTED VALUE, never the ask. The SBA feature is the
      acquisition amount and the Pepperdine bands are transaction size; keying
      them to the ask made an overpriced listing look both safer and slower. */
@@ -2680,10 +2699,13 @@ function model(s){
      business moved into a slower size band and every quality fix added days */
   const FT=fitTiming(out.Vbase,s.ind);
   out.ft=FT;
-  const lamFit=FT.days/Math.pow(Math.log(2),1/KW);
-  const Ffit=t=>1-Math.exp(-Math.pow(t/lamFit,KW));
-  out.etaT=etaT; out.lamEjudg=lamE; out.lamE=lamFit; out.F=Ffit;
+  out.etaT=etaT; out.lamEjudg=lamE;
   out.tMed=FT.days;
+  /* drawn curve: log-logistic pinned to the FINAL median out.tMed (set above), shape beta by size band */
+  const betaT=FT.beta, tMd=out.tMed;
+  const Ffit=t=>t>0?1/(1+Math.pow(t/tMd,-betaT)):0;
+  out.lamE=tMd; out.betaT=betaT; out.F=Ffit;
+  out.tQ=p=>tMd*Math.pow(p/(1-p),1/betaT);   // closed-form quantile, for display
   out.t90=Ffit(90); out.t180=Ffit(180); out.t365=Ffit(365);
 
   /* ---- Model V: post-acquisition survival risk (FITTED, new) ---- */
@@ -3894,9 +3916,10 @@ function render(){
   drawCurve(r);
   /* was h(t|X)=h0(t)e^{beta'X} - a proportional-hazards model with covariates, over a
      curve that conditions on the size band and nothing else */
-  eq("eq_t",`S(t)=e^{-(t/\\lambda_{\\text{band}})^{k}},\\qquad F(t)=1-S(t),\\qquad
+  eq("eq_t",`F(t)=\\frac{1}{1+(t/t_{\\text{med}})^{-\\beta_{\\text{band}}}},\\qquad S(t)=1-F(t),\\qquad
     F(t_{\\text{med}})=\\tfrac12\\;\\text{by construction}`);
-  eq("eq_ts",`\\lambda=\\frac{t_{\\text{med}}}{(\\ln 2)^{1/k}}=\\frac{${tn(r.tMed)}\\text{ d}}{(\\ln 2)^{1/${KW}}}=${r.lamE.toFixed(0)}\\text{ days}`);
+  eq("eq_ts",`\\beta=${r.betaT.toFixed(2)},\\quad t_{\\text{med}}=${tn(r.tMed)}\\text{ d},\\quad
+    t_{25\\%}=${tn(r.tQ(.25))}\\text{ d},\\quad t_{75\\%}=${tn(r.tQ(.75))}\\text{ d}`);
 
   /* ---------- §10–12, §20 buyers ---------- */
   drawStars(r);
@@ -4137,7 +4160,8 @@ function renderData(){
              + MODELS.fitted.sba_rate.spread_knots.length            /* SBA spread by loan size */
              + 2 + Object.keys(MODELS.fitted.sde_margin.ln_at_ref).length  /* margin slope, spread, industry levels */
              + 2                                                       /* two quality weights */
-             + MODELS.fitted.buyer_mix.knots.length*2;                 /* buyer-mix log-ratios by band */
+             + MODELS.fitted.buyer_mix.knots.length*2                  /* buyer-mix log-ratios by band */
+             + new Set(MODELS.fitted.ttc_shape.beta).size;             /* time-to-close shape levels */
   let h="";
 
   /* ── headline tally ─────────────────────────────────────────── */
@@ -4328,16 +4352,33 @@ function renderData(){
 
     <p class="grp-title" style="margin-top:18px">Model III — time to close</p>
     <div class="tw"><table>
-      <thead><tr><th>Deal size</th><th class="n">Listing &rarr; close</th><th class="n">LOI &rarr; close</th><th class="n">Price / ask</th></tr></thead><tbody>
-      ${C.time_to_close.bands.map(b=>`<tr><td>${b}</td>
+      <thead><tr><th>Deal size</th><th class="n">Listing &rarr; close</th><th class="n">LOI &rarr; close</th><th class="n">Curve shape &beta;</th><th class="n">Histogram medians, listing / LOI</th><th class="n">Price / ask</th></tr></thead><tbody>
+      ${C.time_to_close.bands.map((b,i)=>{ const S=MODELS.fitted.ttc_shape; return `<tr><td>${b}</td>
         <td class="n">${C.time_to_close.median_months_listing_to_close_recent[b]} mo</td>
         <td class="n">${C.time_to_close.median_months_loi_to_close_recent[b]} mo</td>
-        <td class="n">${(C.time_to_close.price_pct_of_asking[b]*100).toFixed(0)}%</td></tr>`).join('')}
+        <td class="n">${S.beta[i].toFixed(2)} &plusmn; ${S.beta_se[i].toFixed(2)}</td>
+        <td class="n">${S.hist_median_listing[i].toFixed(1)} / ${S.hist_median_loi[i].toFixed(1)} mo</td>
+        <td class="n">${(C.time_to_close.price_pct_of_asking[b]*100).toFixed(0)}%</td></tr>`; }).join('')}
       </tbody></table></div>
-    <p class="note"><b>This is a lookup, not a hazard model.</b> No source anywhere publishes
-    deal-level durations, so there is nothing to fit a survival curve to. The console draws a smooth
-    Weibull only so the curve has a shape &mdash; its scale is re-solved so the median lands exactly on
-    the published band median above. Read the median; treat the curve's tails as decoration.</p>
+    <p class="note"><b>The median is a lookup; the curve&rsquo;s shape is fitted.</b> IBBA&rsquo;s Market Pulse
+    full reports chart how many months each closed deal took, by size band: 15 quarters (2020Q1&ndash;2023Q3 and 2025Q4), 4,533 closed deals.
+    Fitted to those histograms and scored on held-out quarters, a log-logistic fits as well as a gamma, at least
+    as well as a refitted Weibull (its edge is within noise in the under-$500K and $1&ndash;2M bands), and better than a lognormal. It predicts held-out quarters better than the Weibull
+    curve drawn before (+0.03 nats per deal, better in 12 of 15 quarters). The gamma was set aside only because it has no
+    closed form in the browser. The shape differs between deals under $500K (&beta; 2.20, more spread out) and deals
+    above it (&beta; 2.64). The four bands from $500K to $50M differ by no more than noise (homogeneity p = 0.09&ndash;0.14) and
+    one shared value predicts held-out quarters as well as four, so they share one &beta;: no gradient within
+    $500K&ndash;$50M is identified. &beta; is interpolated in ln(value) between the $250k
+    and $707k band centres, as the medians are. The &plusmn; is the standard error from resampling quarters, widened
+    because brokers may round or truncate months and because &ldquo;under one month&rdquo; is ambiguous. The
+    under-$500K shape is the least certain: its improvement over the old curve depends on how &ldquo;under one
+    month&rdquo; is read. Months are counted from engagement or listing, so for larger deals part of the steeper shape
+    may be preparation time. The median stays on the band figure (IBBA, 2018&ndash;23). The histogram medians beside
+    it come from the 15 quarters above and run about 0.8&ndash;1.3 months longer in the $500K&ndash;$1M and $2&ndash;5M bands. Because the published $500K&ndash;$1M median is shorter than its histogram median, the curve&rsquo;s long end rises
+    slightly with size between $250k and $707k (up to 1.3 pts at 540 days). For $2&ndash;5M deals the
+    curve overstates the share closed by day 180 by about 9 pts (15 before) and by day 365 by about 7 (3
+    before). Everything here describes deals that closed, sampled by the quarter they closed in; the most recent
+    quarters run slightly steeper.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     <p class="note" style="margin-bottom:12px">The industry effects in Model II were fitted on BIZCOMPS.
     BVR&rsquo;s DealStats Value Index measures the same thing on a different database, different vintage.
@@ -4500,7 +4541,7 @@ function renderData(){
             <td style="color:#ff8e7a;padding-left:6px">The nine category sub-scores (the Omni score itself has no weights: it is a percentile).</td></tr>
         <tr><td>Bounds &amp; constants<div class="muted" style="font-size:11.5px">ALPHA, AMAX, PMIN, PMAX, LAM0, KW, PHI, clamps</div></td>
             <td class="n" style="padding-right:18px">11</td>
-            <td style="color:#ff8e7a;padding-left:6px">Price anchoring, competitive premium, curve shape.</td></tr>
+            <td style="color:#ff8e7a;padding-left:6px">Price anchoring, competitive premium (LAM0 and KW feed only the undisplayed judgment hazard).</td></tr>
       </tbody></table></div>
 
     <p class="note" style="margin-top:14px"><b>Read the third column carefully.</b> Fitting the value
@@ -4576,6 +4617,14 @@ function renderData(){
         Unshrunk: ${Fv.quality_weights.raw.own[0].toFixed(2)} and ${Fv.quality_weights.raw.mgt[0].toFixed(2)}. Owner dependence uses the
         owner-operated phrase only: &ldquo;absentee / manager-run&rdquo; (${(Fv.quality_weights.hedonic.absentee_or_manager_run[0]*100>=0?"+":"")}${(Fv.quality_weights.hedonic.absentee_or_manager_run[0]*100).toFixed(0)}%)
         disagrees with it, as listing copy uses it loosely. Phrase flags are noisy, so both effects are understated.</td></tr>
+      <tr><td>Shape of the time-to-close curve (how spread out closings are around the median)</td>
+        <td>Weibull, shape k = ${KW} (judgment), scale re-solved to the band median</td>
+        <td>log-logistic, &beta; ${Fv.ttc_shape.beta[0].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[0].toFixed(2)} under $500K and
+        ${Fv.ttc_shape.beta[4].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[4].toFixed(2)} from $500K up, interpolated in ln(value);
+        the median is still the IBBA band median</td>
+        <td>IBBA / M&amp;A Source Market Pulse per-band histograms of months to close: ${Fv.ttc_shape.n.reduce((a,b)=>a+b,0).toLocaleString()}
+        closed deals over ${Fv.ttc_shape.n_quarters} quarters (2020Q1&ndash;2023Q3 and 2025Q4), interval-censored fit; beats the old
+        curve on held-out quarters (12 of 15). Closed deals only; no gradient above $500K is identified</td></tr>
       </tbody></table></div></div></section>`;
   }
 
@@ -4592,7 +4641,8 @@ function renderData(){
           <td>deal-level asking and sale price pairs</td>
           <td><span class="st free">BIZCOMPS and DealStats record both (paid); Empire Flippers&rsquo; public API and Flippa
           sold listings are blocked from this environment</span></td></tr>
-      <tr><td>Shape of the time-to-close curve (Weibull k = ${KW}); any effect of the ask on time</td>
+      <tr><td>Effect of business quality on time to close, and the Main-Street size of any effect of the ask
+          (the curve&rsquo;s shape by size band is now fitted)</td>
           <td>per-deal listing and closing dates</td>
           <td><span class="st free">a 103-day listing panel was too sparse (164 observed sales); DealStats has
           <code>Days To Sell</code> (paid)</span></td></tr>
@@ -4726,10 +4776,9 @@ Termination has risen every year since the 2020&ndash;21 trough of 24%, reaching
 <li><span class="pv a"><i></i>aggregate</span> <b>Time to close</b> &mdash;
 IBBA / M&amp;A Source Market Pulse, <b>12 quarterly editions 2018&ndash;2023</b>, cross-checked across
 overlapping five-year windows and corroborated by BVR&rsquo;s 228-day all-size median.
-<b>Size-band lookup, not a hazard model</b> &mdash; no deal-level durations exist in any source we hold.
-The curve is drawn by re-solving a Weibull so its median lands on the published band median;
-the <b>shape parameter is still judgment</b>, and Stanford&rsquo;s search-fund distribution suggests it
-should be steeper than the 1.42 used here.</li>
+Median is a size-band lookup; the curve shape is <b>fitted</b> from IBBA&rsquo;s per-band histograms
+of months to close (15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4; 4,533 closed deals; no deal-level durations): a log-logistic with
+&beta; 2.20 under $500K and 2.64 from $500K up (no gradient above $500K is identified).</li>
 
 <li><span class="pv j"><i></i>judgment</span> <b>Omni score, quality-factor deltas, buyer archetypes,
 strategic premium, intervention ROI and the optimizer</b> &mdash; none of these are fitted.

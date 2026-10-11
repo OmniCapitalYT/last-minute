@@ -427,6 +427,7 @@ command.
 | industry SDE margins 7–21% × size curve, sd 0.45 | fitted 20–30% at $200k SDE (shrunk toward the pooled level), slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
 | equal weight on owner dependence, management depth | 1.24 and 0.60 of an equal share, shrunk toward 1 (neither clearly different from 1) | 5,714 listings with descriptions |
 | buyer-type size windows | individual / strategic / financial share by deal value, interpolated between IBBA bands | IBBA buyer mix, 47 complete band-quarters |
+| time-to-close curve: Weibull, judgment shape k = 1.42 | log-logistic pinned to the band median, shape β 2.20 under $500K and 2.64 from $500K up (interpolated in ln value) | IBBA Market Pulse per-band histograms of months to close, 15 quarters, 4,533 closed deals (`fit/time_to_close_shape.py`) |
 
 **What the data could not fit, and why.** The Data tab has a new ledger listing each of these
 with the data that would fit it:
@@ -434,7 +435,13 @@ with the data that would fit it:
   management depth. Recurring revenue, growth and clean books showed no measurable asking
   premium. That neither confirms nor rules them out, so they keep equal weights.
 - **Time-to-close:** the 103-day listing panel saw only 164 sales, too few to fit the
-  curve's shape.
+  curve's shape. *Superseded:* the shape is now fitted from IBBA's per-band histograms (see the
+  table above); only the effect of quality and of the ask on time remain unfitted.
+  **Open follow-up:** refit the time-to-close band medians to the 2020–25 histograms (grouped medians
+  6.6 / 8.1 / 8.3 / 9.3 / 9.9 months; Option B in `fit/time_to_close_shape.py`). It moves the median, so the
+  optimiser's delay cost, the intervention table and the BizBuySell days-on-market self-check must be
+  re-verified. It would remove the one size-order exception: F(540 d) rises by up to 1.3 pts with size
+  between $250k and $707k, because the 2018–23 $500K–1M median is 0.8 months shorter than its histogram.
 - **Anchoring:** fitting the sale price against the ask needs deal-level pairs of asking and
   sale prices. The model's expected price sits 8 to 14 points below IBBA's average above $1M,
   and no anchoring setting closes that gap: the measured value spread is too wide.

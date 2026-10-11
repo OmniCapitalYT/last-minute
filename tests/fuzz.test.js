@@ -69,6 +69,18 @@ for(let i=0;i<N;i++){
     ok(fin(gs)&&gs>=g.p10*W.wage_growth-1&&gs<=g.p90*W.wage_growth+1,"GM salary inside the BLS p10-p90",ctx(s,{gs}));
     ok(gs2>=gs*(1-1e-12),"GM salary non-decreasing in revenue",ctx(s,{gs,gs2})); }
 
+  /* 7c. time-to-close curve: log-logistic pinned to the median, shape by size band (Vbase), never the ask */
+  { const S=A.MODELS.fitted.ttc_shape, bmin=Math.min(...S.beta), bmax=Math.max(...S.beta);
+    ok(Math.abs(r.F(r.tMed)-.5)<1e-12&&Math.abs(r.tQ(.5)/r.tMed-1)<1e-9,"curve median exact",ctx(s,{tMed:r.tMed}));
+    ok([.1,.25,.75,.9].every(p=>Math.abs(r.F(r.tQ(p))-p)<1e-9),"curve quantile inverts F",ctx(s));
+    ok(r.betaT>=bmin-1e-12&&r.betaT<=bmax+1e-12&&r.betaT===A.fitTiming(r.Vbase,s.ind).beta,"curve shape from the size band",ctx(s,{b:r.betaT}));
+    let prev=-1, cdf=r.F(0)===0;
+    for(const t of [1,10,30,60,90,180,270,365,540,730,1095,2000,3000]){ const f=r.F(t); if(!(fin(f)&&f>=prev&&f<=1)) cdf=false; prev=f; }
+    ok(cdf&&r.F(20*r.tMed)>.99,"curve a proper CDF",ctx(s));
+    const ra=A.model({...s,ask:s.ask*1.7});
+    ok(ra.betaT===r.betaT&&Math.abs(ra.F(ra.tMed)-.5)<1e-12,"curve shape independent of the ask",ctx(s));
+    if(r.tMult===undefined) ok(ra.F(180)===r.F(180)&&ra.F(365)===r.F(365),"curve independent of the ask",ctx(s)); }
+
   /* 8. the proceeds optimum beats the entered ask, and does not depend on theta */
   if(i%5===0){ const rs=A.bestRatio(s,0,s.lamT), ro=A.model({...s,ask:V0*rs});
     ok(ro.EVp>=r.EVp*(1-1e-6),"proceeds optimum at least as good as the entered ask",ctx(s,{rs}));
