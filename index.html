@@ -2046,6 +2046,7 @@ MODELS.fitted={"model":"omni_fitted_v4","asof":"2026-10-07","sba_rate":{"prime":
    own grouped medians (display only); hist_*_se are quarter-bootstrap SEs, sampling only (they ignore where deals
    sit inside a one-month answer). Closed deals only. */
 MODELS.fitted.ttc_shape={"family":"loglogistic","bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],"beta":[2.20,2.64,2.64,2.64,2.64],"beta_se":[0.16,0.13,0.13,0.13,0.13],"n":[2100,867,676,548,342],"n_quarters":15,"hist_median_listing":[6.6,8.1,8.3,9.3,9.9],"hist_median_listing_se":[0.21,0.24,0.24,0.25,0.38],"hist_median_loi":[2.2,3.1,3.2,3.8,3.9],"hist_median_loi_se":[0.03,0.06,0.05,0.15,0.13],"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};
+MODELS.fitted.competition={"eng_share":0.184,"eng_share_se":0.027,"eng_share_ci95":[0.13,0.226],"eng_share_spec_range":[0.164,0.201],"eng_share_spec_n":9,"eng_share_pln":{"c":0.21,"se":0.015,"log_sd":0.78,"note":"Poisson-lognormal scale, which fits better; it pairs with its own log-sd, not with nb_r, so it is not a range for eng_share. Never read by the model"},"calibration":"ENG_SHARE turns buyers contacted x engagement into expected offers. It is the scale at which a typical pool reproduces IBBA's offers per closed deal by size band, fitted by maximum likelihood with a zero-truncated negative binomial (dispersion nb_r, fitted jointly). Only the scale is adopted: the model's thin-pool factor keeps the Poisson shape, and nb_r is not read by the model","nb_r":1.07,"nb_r_se":0.55,"nb_r_ci95":[0.4,2.86],"nb_r_spec_range":[0.82,1.9],"nb_thin_pool":{"status":"not adopted (review): its level rests on the zero-offer class, which IBBA never observes, so it is an extrapolation of the mixing family, not identified","thin_half_pool":[0.62,0.82],"thin_quarter_pool":[0.35,0.6],"p_any_offer_typical_under_500k":[0.5,0.57],"pepperdine_base_close_under_500k":0.61,"p_any_offer_note":"0.50 under the NB, 0.57 under the Poisson-lognormal; below the base close rate, which a sale needing an offer rules out"},"thin_shape":"calibrated scale, judgment shape: Poisson chance of at least one offer, relative to a typical pool's, with a smooth cap at 1 (THIN_W); assumes closing does not depend on the number of offers once there is one (the histograms lean toward it does, which would lower the factor) and that offers grow in proportion to buyers contacted (a weak analog leans toward less than proportional, which would raise it)","thin_half_pool":[0.58,0.85],"thin_quarter_pool":[0.31,0.6],"thin_half_pool_at_eng_ci":[0.56,0.89],"thin_cap_w":0.05,"thin_cap_max_lift":0.014,"thin_half_pool_old":[0.65,0.96],"thin_quarter_pool_old":[0.37,0.8],"thin_selection_drop_half":[0.01,0.11],"thin_beta_rise_half":[0.05,0.18],"quasi_dispersion":[1.4,4.7],"n_deals":1523,"n_deals_rounding_consistent":1452,"band_quarters":25,"quarters":"2023Q1-2023Q4, 2025Q4","quarter_clusters":5,"heldout_loglik_per_deal":{"nb":-1.588,"poisson_same_scale":-1.702},"band_centres":[250000,707000,1414000,3162000,15810000],"offers_per_closed_deal_lower_bound":{"<500K":2.0,"500K-1M":2.3,"1M-2M":2.78,"2M-5M":2.83,"5M-50M":3.83},"offers_per_closed_deal_bandfree_fit":{"<500K":2.02,"500K-1M":2.32,"1M-2M":2.86,"2M-5M":2.92,"5M-50M":4.28},"offers_per_closed_deal_bandfree_se":{"<500K":0.1,"500K-1M":0.17,"1M-2M":0.23,"2M-5M":0.19,"5M-50M":1.2},"offers_per_closed_deal_model":{"<500K":1.965,"500K-1M":2.488,"1M-2M":2.802,"2M-5M":3.182,"5M-50M":3.745},"expected_offers_typical_pool":[0.99,2.8],"expected_offers_typical_pool_by_industry":[0.65,3.49],"offers_per_closed_deal_poisson_shape":{"<500K":1.578,"500K-1M":1.954,"1M-2M":2.197,"2M-5M":2.506,"5M-50M":2.992},"avg_offers_bars_2024_2026":{"<500K":1.824,"500K-1M":2.456,"1M-2M":2.656,"2M-5M":3.281,"5M-50M":4.627},"series_disagreement":{"2023Q4_bars_minus_histogram_lower_bound":[-0.38,-0.2,-0.12,-0.48,-0.12],"2025Q4_table_minus_histogram_lower_bound":[0.18,0.42,0.74,-0.84,4.1]},"share_one_offer":{"<500K":0.478,"500K-1M":0.415,"1M-2M":0.34,"2M-5M":0.297,"5M-50M":0.264},"kappa":0.03,"kappa_status":"judgment (not identified)","kappa_ibba_within_band":[-0.01,0.165],"kappa_ci95_ibba":[-0.33,0.31],"kappa_two_way_fe_eiv":[-0.186,0.152],"kappa_crossband_upper":0.33,"kappa_n_band_quarters":40,"comp_h_note":"COMP_H = 3 x ENG_SHARE / 0.34: the old half-saturation of 3 engaged buyers at a 0.34 share, re-expressed in offers, so the premium is unchanged","strategic_premium":{"status":"consistency check only; BUYERS mf, syn and PHI unchanged (judgment)","pepperdine_2016":[0.166,0.019],"pepperdine_2025_secondary":[0.104,0.025],"re_pooled":[0.137,0.031],"model_full_presence":0.107,"theta":[1.155,0.186],"implied_str_adj_2016_only":[1.25,1.2],"implied_str_adj_2025_only":[1.18,1.14]},"addon_over_platform_gf":[1.076,0.086],"score_effect_at_integration":{"median_half_pool":[1,25],"median_half_pool_old":[1,43],"median_half_pool_drop":21,"median_three_quarter_pool":[19,43],"median_three_quarter_pool_old":[27,48],"median_quarter_pool":[1,1],"median_quarter_pool_old":[1,15],"example_25_buyers":[27,2],"example_40_buyers":[40,33],"example_65_buyers":[43,43]},"refit_when":"refit ENG_SHARE (fit/competition_buyers.py) whenever IND buyers, the BUYERS fit functions, peRef or buyerMix change: it is calibrated against this console's own typical pool","source":"IBBA/M&A Source Market Pulse offers-per-closed-deal histograms by deal-size band, zero-truncated negative binomial (fit/competition_buyers.py). Both flagged quarters are kept. 2023Q4 (read from a multi-series line chart) is inconsistent with the same report's average-offers bars in all five bands (its lowest possible means exceed them by 0.12-0.48); 2025Q4 is inconsistent in one band ($2M-5M) and its $5M+ cell has 35% at 10+ (n=26). Dropping 2025Q4 gives eng_share 0.190; dropping 2023Q4 and that cell 0.164; 2023Q1-Q3 only 0.170. Kappa: IBBA realized/ask x average offers, within band. Buyer factors: Pepperdine PCM 2016/2025, GF Data, Stanford 2024, as a consistency check"};
 const VBANDS=[["<500K",0,5e5],["500K-1M",5e5,1e6],["1-2M",1e6,2e6],["2-5M",2e6,5e6],["5-50M",5e6,5e7]];
 const vbandOf=p=>{for(const[n,lo,hi]of VBANDS){if(p>=lo&&p<hi)return n}return p>=5e7?"5-50M":"<500K"};
 /* Map the console's 16 industry keys onto the NAICS-2 sectors the value and
@@ -2585,6 +2586,27 @@ const G={size:-.100,em:.10,rec:.124,cc:-.149,own:-.186,mgt:.136,fin:.211,buy:.26
 /* LAM0 and KW are the scale and shape of the judgment hazard (out.lamEjudg), which is not drawn; the drawn
    curve's shape is fitted (MODELS.fitted.ttc_shape). PHI is the seller's share of synergy. */
 const LAM0=250, KW=1.42, PHI=.38;
+/* Competition (fit/competition_buyers.py). An engaged buyer is one who makes an offer: ENG_SHARE turns buyers
+   contacted x engagement into expected offers, calibrated so that a typical pool reproduces IBBA's offers per
+   closed deal by size band (that moment is identified). Pool size is measured relative to the industry's typical
+   pool, IND buyers (judgment): ENG_SHARE absorbs its level, not the user's ratio to it, and it is calibrated
+   against this console's own typical pool, so refit it whenever IND buyers, the BUYERS fit functions, peRef or
+   buyerMix change. COMP_K stays judgment: IBBA's within-band panel bounds it only to -0.33..+0.31. COMP_H is the
+   old half-saturation of 3 engaged buyers at a 0.34 share, re-expressed in offers, so the premium is unchanged.
+   The fit's negative-binomial thin-pool factor is NOT used: its level rests on the zero-offer class, which is
+   never observed. The Poisson shape stays (calibrated scale, judgment shape). */
+const ENG_SHARE=MODELS.fitted.competition.eng_share;
+const COMP_K=.030, COMP_H=3*ENG_SHARE/.34;
+/* Smooth cap at 1 for the thin-pool ratio: the ratio itself up to 1-THIN_W, exactly 1 from 1 up (a typical
+   pool or deeper), and a quintic (C2) blend between. Monotone, never above 1, and no kink for the sensitivity
+   panel's central difference to straddle; it lifts the ratio by at most 0.014, only within THIN_W of 1. */
+const THIN_W=.05;
+function capOne(x){
+  if(!(x<1)) return 1;
+  if(x<=1-THIN_W) return x;
+  const t=(x-1+THIN_W)/THIN_W;
+  return x+t*t*t*(t*(6*t-15)+10)*(1-x);
+}
 const LAM_FLOOR=118;   // no marketed process realistically clears ~90 days
 const PMIN=.05, PMAX=.93;  // irreducible deal risk at both ends
 
@@ -2852,7 +2874,7 @@ function model(s){
 
   /* ---- §20 competition -------------------------------------- */
   const avgPE=out.buyers.reduce((a,b)=>a+b.PE,0)/out.buyers.length;
-  out.nEng=s.buyers*avgPE*0.34;
+  out.nEng=s.buyers*avgPE*ENG_SHARE;                       // expected offers
   /* The fitted value is a CLOSED sale price, so ordinary competition is already in
      it: the typical deal in BIZCOMPS was marketed to a typical pool. A premium of
      kappa*ln(1+n/3) is positive at every pool size, so it added ~4% to every deal
@@ -2862,20 +2884,26 @@ function model(s){
   /* the typical pool is measured at a MEDIAN business's engagement: scaling it by this
      business's own engagement made better quality deepen a thin pool's discount */
   const peRef=out.buyers.reduce((a,b)=>a+(b.sizeFit>0?clamp(sig(1.35*(b.fit0-.72))*b.sizeFit*0.775,0,.95):0),0)/out.buyers.length;
-  out.nEngRef=(I.buyers||50)*peRef*0.34;
-  out.compK=.030;
-  out.compPrem=clamp(out.compK*Math.log((3+out.nEng)/(3+out.nEngRef)),-.08,.14);
+  out.nEngRef=(I.buyers||50)*peRef*ENG_SHARE;
+  out.compK=COMP_K;
+  /* the same premium as kappa*ln((3+0.34x)/(3+0.34x_ref)): COMP_H and both offer counts are those terms
+     times ENG_SHARE/0.34, which cancels in the ratio */
+  out.compPrem=clamp(out.compK*Math.log((COMP_H+out.nEng)/(COMP_H+out.nEngRef)),-.08,.14);
   out.avgPE=avgPE;
-  /* A sale needs at least one engaged buyer. Pepperdine's base rate describes deals
-     marketed to a typical pool, so a pool thinner than typical scales P_C by the chance
-     of engaging anyone (Poisson) relative to a typical pool's; a deeper pool earns
-     nothing extra here (it earns the competition premium instead). Without this, 5
-     buyers contacted closed as often as 600, and the optimiser dropped outreach exactly
-     where the pool was too thin to produce a buyer. */
+  /* A sale needs at least one offer. Pepperdine's base rate describes deals marketed to a
+     typical pool, so a pool thinner than typical scales P_C by the chance of at least one
+     offer (Poisson) relative to a typical pool's. Calibrated scale, judgment shape: the
+     expected offers are calibrated to IBBA (ENG_SHARE), but the Poisson form, closing not
+     depending on how many offers arrive once there is one, and offers growing in proportion
+     to buyers contacted are assumptions. A deeper pool earns nothing extra here (it earns
+     the competition premium instead); the cap at 1 is judgment and smooth (capOne), so it
+     is exactly 1 at a typical pool or deeper. Without this, 5 buyers contacted closed as
+     often as 600, and the optimiser dropped outreach exactly where the pool was too thin
+     to produce a buyer. */
   /* measured at a median business's engagement, so it depends on the pool size alone:
      using this business's own engagement made P_C depend on quality */
-  out.nPool=s.buyers*peRef*0.34;
-  out.thinF=Math.min(1,(1-Math.exp(-out.nPool))/Math.max(1e-9,1-Math.exp(-out.nEngRef)));
+  out.nPool=s.buyers*peRef*ENG_SHARE;
+  out.thinF=capOne((1-Math.exp(-out.nPool))/Math.max(1e-9,1-Math.exp(-out.nEngRef)));
   if(out.thinF<1){
     out.PC=clamp(out.PC*out.thinF,.02,.95); out.fc.p=out.PC;
     for(const b of out.buyers){ b.PCj=clamp(out.PC*(0.80+0.42*b.PE),.02,.95); b.EV=b.PE*b.PCj*b.Vj; }
@@ -4036,7 +4064,7 @@ function render(){
         <td class="n muted">${money(s.ern)} × ${xx(r.M)}</td><td class="n"><b>${money(r.V)}</b></td></tr>
       <tr><td>Anchoring on an ask of ${r.priceRatio.toFixed(2)}× model value, at the point estimate &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.anchorF>=1?"pos":"neg"}">×${r.anchorF.toFixed(3)}</td><td class="n muted">flat past ${RHO_MAX.toFixed(2)}×</td></tr>
-      <tr><td>Competition: ${r.nEng.toFixed(1)} engaged buyer${Math.abs(r.nEng-1)<.05?"":"s"} against a typical ${r.nEngRef.toFixed(1)} &nbsp;<span class="st free">judgment</span></td>
+      <tr><td>Competition: ${r.nEng.toFixed(1)} expected offer${Math.abs(r.nEng-1)<.05?"":"s"} against a typical ${r.nEngRef.toFixed(1)} &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.compPrem>=0?"pos":"neg"}">×${(1+r.compPrem).toFixed(3)}</td><td class="n muted">—</td></tr>
       <tr><td>Ceiling: the ask, held at ${RHO_MAX.toFixed(1)}× model value${r.askCeil>1?", × "+pc(r.askCeil,1)+" IBBA headroom":""}</td>
         <td class="n ${r.capShare>=.5?"neg":"muted"}">${pc(r.capShare)} of closings</td><td class="n muted">${money(r.ceil)}</td></tr>
@@ -4075,7 +4103,7 @@ function render(){
        f(X)=\\beta_0+\\sum_i \\beta_i x_i\\\\[2pt]
     g(x)&=1\\;(x\\le 0),\\qquad g(x)=\\max\\!\\big(g_{\\min},\\,e^{-(g_1x+g_2x^2)}\\big)\\;(x>0)
     \\end{aligned}`);
-  eq("eq_ps",`g=${(r.fc.gap>=0?"+":"")+r.fc.gap.toFixed(1)}\\%\\Rightarrow P_C=\\underbrace{${tp(r.fc.base,1)}}_{\\text{base rate}}\\times\\big(1-\\underbrace{${r.fc.pen.toFixed(3)}}_{\\text{gap penalty}}\\big)${r.thinF<1?"\\times\\underbrace{"+r.thinF.toFixed(3)+"}_{\\text{thin pool}}":""}=\\boxed{${tp(r.PC,1)}}
+  eq("eq_ps",`g=${(r.fc.gap>=0?"+":"")+r.fc.gap.toFixed(1)}\\%\\Rightarrow P_C=\\underbrace{${tp(r.fc.base,1)}}_{\\text{base rate}}\\times\\big(1-\\underbrace{${r.fc.pen.toFixed(3)}}_{\\text{gap penalty}}\\big)${r.thinF<.9995?"\\times\\underbrace{"+r.thinF.toFixed(3)+"}_{\\text{thin pool}}":""}=\\boxed{${tp(r.PC,1)}}
     \\qquad\\big(P_C^{\\text{judg}}=${tp(r.PCjudg,1)},\\text{ not used}\\big)`);
   eq("eq_nl",`\\begin{aligned}
     f_r(x)&=a\\tanh(x/s) &&\\text{recurring revenue, diminishing above the median}\\\\[1pt]
@@ -4121,8 +4149,8 @@ function render(){
     &\\text{pays most: ${tt(r.top.n)}}\\;\\to\\;${tm(r.top.Vj)}
     \\quad\\big(+${tm(r.stratPrem)},\\;+${tp(r.stratPrem/r.V,1)}\\text{ over the financial baseline}\\big)
     \\end{aligned}`);
-  eq("eq_comp",`\\text{comp}=\\kappa\\ln\\frac{3+n_{\\text{engaged}}}{3+n_{\\text{typical}}}\\in[-0.08,\\,0.14],\\qquad P_{\\text{real}}\\propto(1+\\text{comp})`);
-  eq("eq_comps",`n_{\\text{engaged}}\\approx${r.nEng.toFixed(1)}\\text{ of }${s.buyers}\\text{ contacted, against }${r.nEngRef.toFixed(1)}\\text{ typical}
+  eq("eq_comp",`\\text{comp}=\\kappa\\ln\\frac{${COMP_H.toFixed(2)}+n_{\\text{offers}}}{${COMP_H.toFixed(2)}+n_{\\text{typical}}}\\in[-0.08,\\,0.14],\\qquad P_{\\text{real}}\\propto(1+\\text{comp})`);
+  eq("eq_comps",`n_{\\text{offers}}\\approx${r.nEng.toFixed(1)}\\text{ of }${s.buyers}\\text{ contacted, against }${r.nEngRef.toFixed(1)}\\text{ typical}
     \\;\\Rightarrow\\;${r.compPrem>=0?"+":"-"}${tp(Math.abs(r.compPrem),1)}${r.askBinds?"\\;\\text{(no effect at the median: the ask binds)}":"="+(r.compPrem>=0?"":"-")+tm(Math.abs(r.V*r.anchorF*r.compPrem))+"\\text{ at the point estimate}"}`);
 
   /* ---------- §13 sensitivity ---------- */
@@ -4320,7 +4348,7 @@ function renderData(){
   const V=MODELS.value, R=MODELS.risk, C=MODELS.close_and_timing;
   const nJudg = Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length
     + Object.keys(B).length + Object.keys(NL).length + Object.keys(G).length
-    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11 + 2;
+    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11 + 2 + 1;
   const nFit = 1 + Object.keys(V.coefficients).length + Object.keys(V.industry_effects).length
              + Object.keys(V.industry_effects_naics6||{}).length
              + R.co.log_base.filter(v=>v!=null).length + R.pif.log_base.length    /* hazard baselines */
@@ -4332,7 +4360,8 @@ function renderData(){
              + 2 + Object.keys(MODELS.fitted.sde_margin.ln_at_ref).length  /* margin slope, spread, industry levels */
              + 2                                                       /* two quality weights */
              + MODELS.fitted.buyer_mix.knots.length*2                  /* buyer-mix log-ratios by band */
-             + new Set(MODELS.fitted.ttc_shape.beta).size;             /* time-to-close shape levels */
+             + new Set(MODELS.fitted.ttc_shape.beta).size              /* time-to-close shape levels */
+             + 1;                                                      /* ENG_SHARE: offers per closed deal (IBBA) */
   let h="";
 
   /* ── headline tally ─────────────────────────────────────────── */
@@ -4762,7 +4791,7 @@ function renderData(){
       <colgroup><col style="width:30%"><col style="width:9%"><col></colgroup><thead><tr><th>Block</th><th class="n" style="padding-right:18px">Count</th><th style="padding-left:6px">Reaches which reported number?</th></tr></thead><tbody>
         <tr><td><code>IND</code> peer table<div class="muted" style="font-size:11.5px">${Object.keys(IND).length} industries &times; ${Object.keys(IND[Object.keys(IND)[0]]).length} fields</div></td>
             <td class="n" style="padding-right:18px">${Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length}</td>
-            <td style="padding-left:6px">z-scores, category scores, buyer mix, and through the z-scores the quality position of the value. The industry level of the value comes from the fitted NAICS table.</td></tr>
+            <td style="padding-left:6px">z-scores, category scores, buyer mix, and through the z-scores the quality position of the value. <code>IND</code> buyers is also the typical pool that the thin-pool factor and the competition premium are measured against, so below a typical pool it moves the closing probability, expected proceeds and the Omni score (the fitted offer share absorbs its level, not the user&rsquo;s ratio to it). The industry level of the value comes from the fitted NAICS table.</td></tr>
         <tr><td><code>d{}</code> multiple deltas<div class="muted" style="font-size:11.5px">rec, own, mgt, cc, grw, gm, ret, fin, plt, buy, tail, em, yrs</div></td>
             <td class="n" style="padding-right:18px">13</td>
             <td style="color:#5ee0a8;padding-left:6px">Nothing. Superseded by the fitted equation &mdash; retained only for the explainability panel.</td></tr>
@@ -4782,6 +4811,9 @@ function renderData(){
         <tr><td>Overpricing time multiplier<div class="muted" style="font-size:11.5px">T_ELAST = ${T_ELAST.toFixed(2)}, T_SMOOTH = ${T_SMOOTH}</div></td>
             <td class="n" style="padding-right:18px">2</td>
             <td style="color:#ff8e7a;padding-left:6px">Median time to close above model value (sign from online-marketplace analogs, size judgment), and through it the walk-away ask when a cost of delay is set.</td></tr>
+        <tr><td>Thin-pool cap<div class="muted" style="font-size:11.5px">THIN_W = ${THIN_W.toFixed(2)}</div></td>
+            <td class="n" style="padding-right:18px">1</td>
+            <td style="color:#ff8e7a;padding-left:6px">How smoothly the thin-pool factor reaches 1 just below a typical pool (it is lifted by at most ${MODELS.fitted.competition.thin_cap_max_lift.toFixed(3)} there, and is exactly 1 at a typical pool or deeper), and through it the closing probability.</td></tr>
       </tbody></table></div>
 
     <p class="note" style="margin-top:14px"><b>Read the third column carefully.</b> Fitting the value
@@ -4812,7 +4844,7 @@ function renderData(){
     </div></section>`;
 
   /* ── fitted from public data (v4) ─────────────────────────────── */
-  { const Fv=MODELS.fitted, r0=STATE.r||null;
+  { const Fv=MODELS.fitted, Fc=MODELS.fitted.competition, r0=STATE.r||null;
   h+=`<section class="sec"><div class="sec-head"><h2>Fitted from public data, October 2026</h2>
     <span class="ref">replacements for hand-set numbers</span></div>
     <div class="panel"><p class="lede" style="margin-bottom:14px">Each row below used to be a number someone typed in.
@@ -4908,6 +4940,46 @@ function renderData(){
         Main-Street size is identified; most of the analogs&rsquo; effect may be listings that never sell, which the
         closing-probability penalty already charges. IBBA band-by-quarter cells (0.90, SE 0.70) are ecological and
         reverse-causal, and were not used</td></tr>
+      <tr><td>Buyer pool: expected offers, and how a thin pool lowers the closing probability
+        &nbsp;<span class="st adj">calibrated</span></td>
+        <td>0.34 of engaged-fit buyers counted as engaged (judgment); Poisson chance of engaging anyone, hard cap at 1</td>
+        <td>${Fc.eng_share.toFixed(3)} of engaged-fit buyers make an offer (se ${Fc.eng_share_se.toFixed(3)}; 95% CI
+        ${Fc.eng_share_ci95[0].toFixed(2)}&ndash;${Fc.eng_share_ci95[1].toFixed(2)}; ${Fc.eng_share_spec_range[0].toFixed(2)}&ndash;${Fc.eng_share_spec_range[1].toFixed(2)}
+        across ${Fc.eng_share_spec_n} alternative specifications), so a typical pool expects ${Fc.expected_offers_typical_pool[0].toFixed(1)} offers under
+        $500K rising to ${Fc.expected_offers_typical_pool[1].toFixed(1)} at $5M+ (industry means), which reproduces IBBA&rsquo;s offers per closed deal:
+        ${Fc.offers_per_closed_deal_model["<500K"].toFixed(1)} under $500K to ${Fc.offers_per_closed_deal_model["5M-50M"].toFixed(1)} at $5M+, against
+        histogram means of at least ${Fc.offers_per_closed_deal_lower_bound["<500K"].toFixed(1)} and ${Fc.offers_per_closed_deal_lower_bound["5M-50M"].toFixed(1)}.
+        The thin-pool factor keeps its Poisson shape (<b>calibrated scale, judgment shape</b>): half the typical pool scales the closing
+        probability by ${Fc.thin_half_pool[0].toFixed(2)}&ndash;${Fc.thin_half_pool[1].toFixed(2)} (was ${Fc.thin_half_pool_old[0].toFixed(2)}&ndash;${Fc.thin_half_pool_old[1].toFixed(2)};
+        ${Fc.thin_half_pool_at_eng_ci[0].toFixed(2)}&ndash;${Fc.thin_half_pool_at_eng_ci[1].toFixed(2)} across the offer share&rsquo;s 95% CI), a quarter by
+        ${Fc.thin_quarter_pool[0].toFixed(2)}&ndash;${Fc.thin_quarter_pool[1].toFixed(2)} (was ${Fc.thin_quarter_pool_old[0].toFixed(2)}&ndash;${Fc.thin_quarter_pool_old[1].toFixed(2)}).
+        The cap at 1 is now smooth, so the factor has no kink at a typical pool. The competition premium is unchanged: its half-saturation is
+        re-expressed in offers (${COMP_H.toFixed(2)}), and &kappa; stays ${COMP_K.toFixed(2)}, judgment. Pool size is measured relative to the
+        industry&rsquo;s typical pool (<code>IND</code> buyers, judgment)</td>
+        <td>IBBA Market Pulse offers per closed deal by size band: ${Fc.band_quarters} band-quarter histograms (${Fc.quarters}; ${Fc.quarter_clusters}
+        quarters, so the standard errors rest on few clusters), about ${Fc.n_deals.toLocaleString()} closed deals (the published percentages fit
+        about ${Fc.n_deals_rounding_consistent.toLocaleString()} answering the offers question), zero-truncated negative binomial (r =
+        ${Fc.nb_r.toFixed(2)}, se ${Fc.nb_r_se.toFixed(2)}, weakly identified; used only to calibrate the scale). Held-out quarters: log-likelihood
+        ${Fc.heldout_loglik_per_deal.nb.toFixed(3)} per deal, against ${Fc.heldout_loglik_per_deal.poisson_same_scale.toFixed(3)} for a Poisson at the
+        same scale. The 2023Q4 histogram, read off a line chart, sits above the same report&rsquo;s average-offers bars in all five bands
+        (by 0.12&ndash;0.48), and 2025Q4&rsquo;s $2M&ndash;5M histogram above its own table; both are kept, and dropping them gives
+        0.16&ndash;0.19
+        <div class="muted" style="font-size:11.5px;margin-top:4px">Not adopted: the fit&rsquo;s negative-binomial thin-pool factor
+        (${Fc.nb_thin_pool.thin_half_pool[0].toFixed(2)}&ndash;${Fc.nb_thin_pool.thin_half_pool[1].toFixed(2)} at half the pool). Its level rests on
+        the chance of no offer at all, and listings with no offer never appear in IBBA&rsquo;s histograms, so that is an extrapolation
+        of the mixing family, not an estimate: under $500K it gives a typically marketed listing only a
+        ${Fc.nb_thin_pool.p_any_offer_typical_under_500k[0].toFixed(2)}&ndash;${Fc.nb_thin_pool.p_any_offer_typical_under_500k[1].toFixed(2)} chance of any offer,
+        below Pepperdine&rsquo;s ${Fc.nb_thin_pool.pepperdine_base_close_under_500k.toFixed(2)} base close rate, which a sale needing an offer rules out. The cost of keeping the Poisson
+        shape: the same expected offers imply ${Fc.offers_per_closed_deal_poisson_shape["<500K"].toFixed(1)}&ndash;${Fc.offers_per_closed_deal_poisson_shape["5M-50M"].toFixed(1)}
+        offers per closed deal, below IBBA&rsquo;s. Two further assumptions are not measured (sizes from the fit&rsquo;s negative binomial): if more
+        offers make a close likelier, the factor at half the pool would be ${Fc.thin_selection_drop_half[0].toFixed(2)}&ndash;${Fc.thin_selection_drop_half[1].toFixed(2)}
+        lower, and the histograms lean that way; if offers grow less than in proportion to buyers contacted, ${Fc.thin_beta_rise_half[0].toFixed(2)}&ndash;${Fc.thin_beta_rise_half[1].toFixed(2)}
+        higher, and a Flippa watchers snapshot (online, not transferable) leans that way. The cap at 1 is judgment: a deeper pool earns the
+        competition premium instead. When this was integrated, a median business marketed to half its typical pool scored
+        ${Fc.score_effect_at_integration.median_half_pool[0]}&ndash;${Fc.score_effect_at_integration.median_half_pool[1]} instead of
+        ${Fc.score_effect_at_integration.median_half_pool_old[0]}&ndash;${Fc.score_effect_at_integration.median_half_pool_old[1]} on the Omni score (median drop
+        ${Fc.score_effect_at_integration.median_half_pool_drop} points), because its peers are all marketed to a typical pool; at a typical pool or deeper
+        nothing changed. Later model changes move these numbers.</div></td></tr>
       </tbody></table></div></div></section>`;
   }
 
@@ -4935,12 +5007,32 @@ function renderData(){
           analogs (Flippa, Empire Flippers) fix the sign of the ask&rsquo;s effect but not its Main-Street size, and the
           one broker panel with sale marks (DealLedger, 31 sales in six weeks) is uninformative; DealStats has
           <code>Days To Sell</code> (paid)</span></td></tr>
-      <tr><td>Competition premium (&kappa;), engaged-buyer share, thin-pool closing factor</td>
-          <td>buyer-level outreach rows: contacted, NDA, LOI, bids, closed</td>
-          <td><span class="st free">own records only; no public bidder-count data for private targets</span></td></tr>
+      <tr><td>Competition premium (&kappa; = ${COMP_K.toFixed(2)}) and its half-saturation; the shape of the thin-pool factor and its cap
+          (the offer share that sets its scale is now fitted)</td>
+          <td>deal-level offer counts with ask and sale prices, including listings that drew no offer; buyer-level outreach rows
+          (contacted, offers, closed)</td>
+          <td><span class="st free">IBBA&rsquo;s quarterly band averages bound &kappa; only to
+          ${MODELS.fitted.competition.kappa_ci95_ibba[0]<0?"&minus;":""}${Math.abs(MODELS.fitted.competition.kappa_ci95_ibba[0]).toFixed(2)} to
+          +${MODELS.fitted.competition.kappa_ci95_ibba[1].toFixed(2)} (${MODELS.fitted.competition.kappa_n_band_quarters} band-quarters within size band,
+          corrected for sampling noise; band sizes imputed for 35 of them); with quarter effects the slope is &minus;0.012 per offer (se 0.010).
+          Neither 0 nor 0.03 predicts held-out quarters better. The cross-band pattern caps &kappa; near 0.33 but is confounded with size; Flippa
+          auction bids are not comparable. The chance of no offer is never observed, so the thin-pool factor&rsquo;s shape (Poisson) is judgment;
+          whether more offers make a close likelier (the offer histograms lean that way), whether offers grow in proportion to buyers contacted
+          (a Flippa watchers snapshot leans toward less), and whether a deeper pool raises the closing probability are not measured</span></td></tr>
       <tr><td>Buyer archetypes: fit functions, synergy shares, multiple factors, seller share &phi;</td>
           <td>who bought what, at what premium</td>
-          <td><span class="st free">premiums only exist for $100M+ public targets; the size mix is now fitted</span></td></tr>
+          <td><span class="st free">the size mix is fitted; the multiple factors, synergy shares and &phi; are checked, not fitted. Bankers
+          report strategic buyers paying ${(MODELS.fitted.competition.strategic_premium.pepperdine_2016[0]*100).toFixed(1)}% over financial buyers
+          (Pepperdine 2016, se ${(MODELS.fitted.competition.strategic_premium.pepperdine_2016[1]*100).toFixed(1)}, n=120) and about
+          ${Math.round(MODELS.fitted.competition.strategic_premium.pepperdine_2025_secondary[0]*100)}% (2025, secondary quote); pooled
+          ${(MODELS.fitted.competition.strategic_premium.re_pooled[0]*100).toFixed(1)}% (se ${(MODELS.fitted.competition.strategic_premium.re_pooled[1]*100).toFixed(1)}),
+          against the model&rsquo;s ${(MODELS.fitted.competition.strategic_premium.model_full_presence*100).toFixed(1)}% with both present (consistent
+          within 1 se), so the factors stay: 2025 alone implies the current
+          ${MODELS.fitted.competition.strategic_premium.implied_str_adj_2025_only.map(v=>v.toFixed(2)).join("/")}, 2016 alone
+          ${MODELS.fitted.competition.strategic_premium.implied_str_adj_2016_only.map(v=>v.toFixed(2)).join("/")}. GF Data&rsquo;s add-on/platform
+          ratio ${MODELS.fitted.competition.addon_over_platform_gf[0].toFixed(2)} (se of log ${MODELS.fitted.competition.addon_over_platform_gf[1].toFixed(2)})
+          matches the model&rsquo;s 1.09; search funds pay about PE multiples at equal quality (Stanford 2024). Synergy shares, &phi; and the
+          individual, MBO and family-office factors have no data</span></td></tr>
       <tr><td>Where a firm sits in its industry&rsquo;s general-manager pay distribution (bigger firms ranked higher, by
           Census employment); e-commerce GM wages, bridged from May 2021; a buyer&rsquo;s all-in GM cost (benefits, payroll taxes)</td>
           <td>GM pay by firm or establishment size; e-commerce GM wages under NAICS 2022; employer cost by occupation and size</td>

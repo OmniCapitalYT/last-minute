@@ -118,6 +118,24 @@ for(let i=0;i<N;i++){
     if(s.ask>Vv*1.2){ const rq=A.model({...s,rec:Math.min(1,s.rec+.1),mgt:Math.min(.99,s.mgt+.1)});
       if(rq.Vbase===r.Vbase&&rq.V>=r.V) ok(rq.tMed<=r.tMed+1e-9,"better business never slower at a fixed ask",ctx(s)); } }
 
+  /* 7g. competition (fit/competition_buyers.py): ENG_SHARE sets the expected offers, the thin-pool factor is the
+     Poisson ratio under a smooth cap (0 < thinF <= 1, exactly 1 from the typical pool up, non-decreasing in the pool,
+     no quality input), the premium is the pre-change formula, and more buyers never lower P_C or expected proceeds */
+  { const I=A.IND[s.ind], X=r.nEng/A.ENG_SHARE, Xr=r.nEngRef/A.ENG_SHARE;
+    ok(Math.abs(r.compPrem-Math.min(.14,Math.max(-.08,.030*Math.log((3+X*.34)/(3+Xr*.34)))))<1e-12,"premium equals the pre-change formula",ctx(s,{c:r.compPrem}));
+    ok(r.thinF>0&&r.thinF<=1&&(s.buyers>=I.buyers?r.thinF===1:true),"thinF in (0,1], exactly 1 from a typical pool",ctx(s,{thinF:r.thinF}));
+    const raw=(1-Math.exp(-r.nPool))/Math.max(1e-9,1-Math.exp(-r.nEngRef));
+    ok(r.thinF>=Math.min(1,raw)-1e-15&&r.thinF<=Math.min(1,raw)+.014,"thinF within the cap's lift of the Poisson ratio",ctx(s,{thinF:r.thinF,raw}));
+    const rq=A.model({...s,own:1-s.own,mgt:1-s.mgt,rec:1-s.rec});
+    /* to rounding: peRef sums the buyers in EV order, which quality changes */
+    ok(Math.abs(rq.thinF-r.thinF)<1e-12&&Math.abs(rq.nEngRef/r.nEngRef-1)<1e-12,"thin-pool factor and typical pool read no quality input",ctx(s,{a:r.thinF,b:rq.thinF}));
+    let pv=null, mono=true, ref=true;
+    for(const b of [5,8,12,18,25,35,50,70,100,150,220,330,480,600]){ const rb=A.model({...s,buyers:b});
+      if(pv&&(rb.EVp<pv.EVp*(1-1e-9)||rb.PC<pv.PC-1e-12||rb.thinF<pv.thinF-1e-15)) mono=false;
+      if(Math.abs(rb.nEngRef-r.nEngRef)>1e-12*Math.max(1,r.nEngRef)) ref=false; pv=rb; }
+    ok(mono,"more buyers never lower P_C, thinF or expected proceeds",ctx(s));
+    ok(ref,"typical pool independent of the buyers contacted",ctx(s)); }
+
   /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
      (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises
      the walk-away ask */

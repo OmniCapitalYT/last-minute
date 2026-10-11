@@ -592,3 +592,47 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   rounding zone, price block untouched, better business never slower, optNote branches, coin-toss and range wording,
   the Data-tab numbers pinned); tests/fuzz.test.js 7f and section 8 (proceeds optimum at lamT 0; walk-away ask optimal
   on the delay-inclusive objective); the curve-independence checks became exact-rescaling checks.
+
+## Competition and the buyer pool (ENG_SHARE), October 2026
+
+`fit/competition_buyers.py` (revision 3), integrated in part.
+- **Adopted: the scale.** `ENG_SHARE` = 0.184 (se 0.027, 95% CI 0.13-0.23; 0.164-0.201 across 9 NB specifications)
+  replaces the judgment 0.34 in `out.nEng`, `out.nEngRef` and `out.nPool`. An engaged buyer now means one who makes an
+  offer, and the scale is calibrated so that a typical pool reproduces IBBA's offers per closed deal by size band
+  (25 band-quarter histograms, 2023Q1-Q4 and 2025Q4, about 1,523 closed deals; NB-implied 1.97 / 2.49 / 2.80 / 3.18 / 3.75
+  against histogram means of at least 2.00 / 2.30 / 2.78 / 2.83 / 3.83). Stored in `MODELS.fitted.competition` with its
+  SE, CI, specification range, the band offers tables, the 2023Q4 / 2025Q4 series disagreements and `refit_when`
+  (refit whenever `IND` buyers, the BUYERS fit functions, peRef or buyerMix change).
+- **Premium unchanged.** `COMP_H` = 3 x ENG_SHARE / 0.34 = 1.62 re-expresses the old half-saturation in offers, so
+  `compPrem` equals the old kappa ln((3+0.34x)/(3+0.34x_ref)) to 1e-12. `COMP_K` = 0.03 stays judgment (IBBA's
+  within-band panel bounds it only to -0.33..+0.31; neither 0 nor 0.03 predicts held-out quarters better).
+- **Not adopted: the negative-binomial thin-pool factor** (a blocking review). Its level rests on the zero-offer class,
+  which IBBA never observes (the histograms are of closed deals): under $500K the NB gives a typically marketed listing a
+  0.50 chance of any offer (Poisson-lognormal 0.57), below Pepperdine's 0.61 close rate. The thin-pool factor keeps the
+  Poisson shape, `(1-e^-nPool)/(1-e^-nEngRef)`, now at the calibrated scale ("calibrated scale, judgment shape"). The
+  cost: under the Poisson the same expected offers imply 1.6-3.0 offers per closed deal, below IBBA's. `nb_r` is metadata.
+- **Smooth cap.** The hard `min(1, .)` is replaced by `capOne()`: the ratio itself up to 1 - THIN_W (0.05, judgment),
+  exactly 1 from 1 up, a quintic (C2) blend between. Monotone, never above 1, lifts the ratio by at most 0.014, exactly
+  1 at a typical pool or deeper (so peers in the Omni score and every result at or above a typical pool are unchanged),
+  and no kink for the sensitivity panel's central difference to straddle. A smooth cap equal to 1 at the typical pool
+  within 1e-3 cannot also round the corner symmetrically (`softMinR(raw,1)` is 0.992 there), hence the one-sided blend.
+- **Effect.** Below a typical pool P_C falls further: half the typical pool scales it by 0.58-0.85 (was 0.65-0.96;
+  0.56-0.89 across the ENG_SHARE CI), a quarter by 0.31-0.60 (was 0.37-0.80). Framework example (medical, $1.45M SDE,
+  typical 50): at 25 buyers thinF 0.90 -> 0.77, P_C 0.61 -> 0.52, Omni score 27 -> 2; at 40 buyers 40 -> 33; at
+  50 and 65 unchanged (43). Median businesses (16 industries x SDE $0.2M/$1M/$4M) at half the typical pool score 1-25
+  instead of 1-43 (median drop 21), at three quarters 19-43 instead of 27-48. The score moves more than P_C because peers
+  are all marketed to a typical pool; it rests on the judgment typical pool `IND` buyers (example at 40 buyers: 43 / 33
+  / 27 for a typical pool of 40 / 50 / 60). The 'Qualified buyer pool' sensitivity row is positive everywhere and
+  changes smoothly through the typical pool (dP 0.032 / 0.028 / 0.023 at 48 / 50 / 52 buyers).
+- **Unchanged (judgment):** BUYERS mf / syn and PHI. The Pepperdine 2016 / 2025 strategic-over-financial premium (pooled
+  13.7%, se 3.1) against the model's 10.7% with both present, GF Data's add-on / platform 1.08 against 1.09, and Stanford
+  2024 are stored as a consistency check (`strategic_premium`, `addon_over_platform_gf`) and shown in the Data tab.
+- **Data tab.** New Fitted-from-public-data row (badged calibrated, numbers read live from `MODELS.fitted.competition`,
+  the score effect labelled as at integration); the Still-judgement rows for kappa / thin-pool shape and for the buyer
+  archetypes rewritten; the IND judgement row names the typical pool; nFit +1 (ENG_SHARE), nJudg +1 (THIN_W).
+- **Tests.** tests/model.test.js section 26 (metadata, the model never reads nb_r or the PLN scale, capOne monotone /
+  exact / kink-free, the IBBA calibration at the five band centres, stored ranges and score pins regenerated from the
+  live build, compPrem identical to the old formula, the IND.buyers sensitivity pin, the sensitivity row, BUYERS
+  unchanged with the strategic premium in [0.08, 0.18]); tests/fuzz.test.js 7g (thinF in (0,1], exactly 1 from the
+  typical pool, within the cap's lift of the Poisson ratio, no quality input; P_C, thinF and expected proceeds never
+  fall as buyers rise; premium identical). The judgment-inventory regex now expects `+ 2 + 1`.

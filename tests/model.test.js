@@ -499,7 +499,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.includes('id="o_t_pv"')&&HTML.includes('id="o_tstretch"')&&HTML.includes("aggregate × judgment"),"tile tag and live stretch note present");
   ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&HTML.includes("about 0.07 on the time-given-sale scale and 0.15 on the sale-clock scale"),
      "Data tab states b as a labelled judgment between the two conversions");
-  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
     const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
@@ -578,6 +578,109 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ex.rhoSell=A.bestRatio(ex,0,0); ex.optRho=A.bestRatio(ex,.75,900);
     const n=A.optNote(ex,V,A.model({...ex,ask:V*ex.rhoSell}),A.model({...ex,ask:V*ex.optRho}));
     ok(n.kind==="higher"&&!!n.alt&&/1\.1\d–1\.50× value/.test(n.text),`framework example: patient-seller range shown (${n.text})`); }
+}
+
+/* 26. competition (fit/competition_buyers.py, integrated in part): ENG_SHARE replaces the 0.34 engaged share and is
+   calibrated to IBBA offers per closed deal; the premium is unchanged (COMP_H re-expressed); the thin-pool factor keeps
+   its Poisson shape with a smooth cap at 1 (the fit's negative-binomial factor is not adopted); BUYERS unchanged */
+{ const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const F=A.MODELS.fitted.competition, SRC=HTML.slice(HTML.lastIndexOf("<script>"));
+  const MOD=SRC.slice(0,SRC.indexOf("/* ============ bar helpers")).replace(/MODELS\.fitted\.competition=\{.*\};\n/,"");
+  ok(F.eng_share>=.13&&F.eng_share<=.23&&F.eng_share>=F.eng_share_spec_range[0]&&F.eng_share<=F.eng_share_spec_range[1],"eng_share fitted and inside its NB specification range");
+  ok(F.nb_r>0&&F.nb_r>=F.nb_r_spec_range[0]&&F.nb_r<=F.nb_r_spec_range[1]&&F.kappa>=0&&F.kappa<=.1,"nb_r and kappa metadata in range");
+  ok(["eng_share_se","eng_share_ci95","eng_share_pln","refit_when","source","calibration","nb_thin_pool","strategic_premium","kappa_ci95_ibba","score_effect_at_integration"].every(k=>F[k]!==undefined),"competition metadata fields present");
+  ok(A.ENG_SHARE===F.eng_share&&A.COMP_K===F.kappa&&near(A.COMP_H,3*A.ENG_SHARE/.34,1e-15),"ENG_SHARE read from the fit; COMP_K the judgment 0.03; COMP_H re-expressed");
+  ok(!/nb_r|eng_share_pln|NB_R|pAnyOffer/.test(MOD),"the model reads neither the NB dispersion nor the PLN scale (NB thin-pool factor not adopted)");
+  ok(!/\*\s*0\.34\s*;/.test(MOD)&&(MOD.match(/\*ENG_SHARE;/g)||[]).length===3,"nEng, nEngRef and nPool all use ENG_SHARE");
+  /* the smooth cap */
+  { let mono=true, prev=-1, maxLift=0, kink=0;
+    for(let x=0;x<=1.2+1e-12;x+=1e-4){ const g=A.capOne(x); if(g<prev-1e-15||g>1||g<x-1e-15&&x<=1) mono=false; prev=g; if(x<=1) maxLift=Math.max(maxLift,g-x); }
+    for(const x0 of [1-A.THIN_W,1]){ const h=1e-6, dl=(A.capOne(x0)-A.capOne(x0-h))/h, dr=(A.capOne(x0+h)-A.capOne(x0))/h; kink=Math.max(kink,Math.abs(dl-dr)); }
+    ok(mono,"capOne monotone, never above 1, never below the ratio");
+    ok(A.capOne(1)===1&&A.capOne(1.7)===1&&A.capOne(1-A.THIN_W)===1-A.THIN_W&&A.capOne(.3)===.3,"capOne exactly 1 at and above 1, the ratio itself below 1-THIN_W");
+    ok(kink<1e-4,`capOne has no kink at either end of the blend (${kink})`);
+    ok(near(maxLift,F.thin_cap_max_lift,5e-4)&&F.thin_cap_w===A.THIN_W,`capOne lifts the ratio by at most ${maxLift.toFixed(4)} (stored ${F.thin_cap_max_lift})`); }
+  /* band centres: median businesses at Vbase = 250k .. 15.8M, every industry */
+  const medB=(ind,ern)=>{ const I=A.IND[ind],RF=A.sizeRefs(ern),m=A.typMargin(ind,ern);
+    return {ind,rev:ern/m,ern,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:RF.own,mgt:RF.mgt,fin:RF.fin,yrs:6,buyers:I.buyers,st:null,franchise:false,ask:1e6}; };
+  const atV=(ind,V)=>{ let lo=Math.log(2e3),hi=Math.log(2e8);
+    for(let i=0;i<50;i++){ const m=(lo+hi)/2; if(A.model(medB(ind,Math.exp(m))).Vbase<V) lo=m; else hi=m; }
+    const t=medB(ind,Math.exp((lo+hi)/2)); t.ask=A.REF_RATIO*A.model(t).V; return t; };
+  const BK=["<500K","500K-1M","1M-2M","2M-5M","5M-50M"], R=F.nb_r, inds=Object.keys(A.IND);
+  const ztNB=mu=>mu/(1-Math.pow(R/(R+mu),R));
+  const half=[1,0], quarter=[1,0], mm=(a,v)=>{a[0]=Math.min(a[0],v);a[1]=Math.max(a[1],v);};
+  const byInd={}; let p1ok=true, s1ok=true, cmp=0, thinOK=true;
+  F.band_centres.forEach((V,b)=>{ let zt=0, mu=0, zp=0;
+    for(const ind of inds){ const t=atV(ind,V), r=A.model(t);
+      zt+=ztNB(r.nEngRef); mu+=r.nEngRef; zp+=r.nEngRef/(1-Math.exp(-r.nEngRef)); (byInd[ind]=byInd[ind]||[]).push(ztNB(r.nEngRef));
+      const p=R/(R+r.nEngRef), p0=Math.pow(p,R), pAny=1-p0, share1=R*p0*(1-p)/(1-p0);
+      if(!(pAny>=.36&&pAny<=.82)) p1ok=false; if(!(share1>=.19&&share1<=.65)) s1ok=false;
+      cmp=Math.max(cmp,Math.abs(r.compPrem)); if(r.thinF!==1) thinOK=false;
+      mm(half,A.model({...t,buyers:t.buyers*.5}).thinF); mm(quarter,A.model({...t,buyers:t.buyers*.25}).thinF); }
+    zt/=inds.length; mu/=inds.length; zp/=inds.length; const k=BK[b];
+    ok(Math.abs(zt-F.offers_per_closed_deal_lower_bound[k])<=.40,`CALIBRATION ${k}: NB-implied offers per closed deal ${zt.toFixed(3)} within 0.40 of IBBA's ${F.offers_per_closed_deal_lower_bound[k]}`);
+    ok(Math.abs(zt-F.offers_per_closed_deal_bandfree_fit[k])<=2*F.offers_per_closed_deal_bandfree_se[k],`CALIBRATION ${k}: within 2 se of the band-free fit`);
+    ok(near(zt,F.offers_per_closed_deal_model[k],.01)&&near(zp,F.offers_per_closed_deal_poisson_shape[k],.01),`stored offers per closed deal ${k} match the live build (${zt.toFixed(3)}, Poisson ${zp.toFixed(3)})`);
+    if(b===0) ok(near(mu,F.expected_offers_typical_pool[0],.01),`typical pool under $500K expects ${mu.toFixed(3)} offers`);
+    if(b===4) ok(near(mu,F.expected_offers_typical_pool[1],.01),`typical pool at $5M+ expects ${mu.toFixed(3)} offers`); });
+  ok(inds.every(k=>byInd[k].every((v,j)=>j===0||v>byInd[k][j-1])),"implied offers per closed deal rise with deal size in every industry");
+  ok(p1ok&&s1ok,"at a typical pool the NB chance of any offer is in [0.36,0.82] and the one-offer share in [0.19,0.65] (IBBA 0.26-0.48)");
+  ok(cmp<5e-4&&thinOK,`median business at a typical pool: |compPrem| ${cmp.toExponential(2)} < 5e-4 and thinF exactly 1`);
+  ok(near(half[0],F.thin_half_pool[0],.006)&&near(half[1],F.thin_half_pool[1],.006)&&near(quarter[0],F.thin_quarter_pool[0],.006)&&near(quarter[1],F.thin_quarter_pool[1],.006),
+     `stored thin-pool ranges match the live build: half ${half.map(v=>v.toFixed(3))}, quarter ${quarter.map(v=>v.toFixed(3))}`);
+  ok(half[0]>=.55&&half[1]<=.88&&quarter[0]>=.28&&quarter[1]<=.63,"half the typical pool keeps 0.55-0.88 of P_C, a quarter 0.28-0.63");
+  /* the premium is exactly the pre-change formula; nEngRef reads neither the pool nor quality; thinF reads no quality input */
+  { let sd=7; const rn=()=>{ sd=(sd*16807)%2147483647; return (sd-1)/2147483646; }; let worst=0, refOK=true, qOK=true;
+    for(let i=0;i<60;i++){ const ind=inds[Math.floor(rn()*inds.length)], ern=Math.exp(Math.log(5e4)+rn()*Math.log(400)), t=medB(ind,ern);
+      for(const k of ["rec","ret","gm","own","mgt","fin","plt"]) t[k]=Math.min(.98,Math.max(.02,t[k]+(rn()-.5)*.6));
+      t.buyers=5+Math.floor(rn()*595); const r=A.model(t), X=r.nEng/A.ENG_SHARE, Xr=r.nEngRef/A.ENG_SHARE;
+      const old=Math.min(.14,Math.max(-.08,.030*Math.log((3+X*.34)/(3+Xr*.34)))); worst=Math.max(worst,Math.abs(r.compPrem-old));
+      if(Math.abs(A.model({...t,buyers:t.buyers*2+3}).nEngRef-r.nEngRef)>1e-12) refOK=false;
+      const q1=A.model({...t,own:.1,mgt:.9,rec:.9,fin:.95}), q2=A.model({...t,own:.9,mgt:.1,rec:.1,fin:.1});
+      if(Math.abs(q1.nEngRef-q2.nEngRef)>1e-12||Math.abs(q1.thinF-q2.thinF)>1e-12) qOK=false; }
+    ok(worst<1e-12,`competition premium equals the pre-change formula (max diff ${worst.toExponential(2)})`);
+    ok(refOK&&qOK,"typical pool reads neither the pool nor quality; thinF reads no quality input"); }
+  /* SCORE PINS (regenerate from the live build when P_C, E[price] or the Omni score change) */
+  { const ex={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:25,st:null,franchise:false,ask:3.24e6};
+    const at=(API,b)=>{ const s={...ex,buyers:b}, r=API.model(s); r.inputs=s; return {r,sc:API.omniScore(r)}; };
+    const a25=at(A,25), a40=at(A,40), a65=at(A,65), a50=at(A,50);
+    ok(near(a25.r.thinF,.7695,1e-4)&&near(a25.r.PC,.5209,1e-4)&&Math.abs(a25.sc-2)<=1,`example at 25 buyers: thinF ${a25.r.thinF.toFixed(4)}, PC ${a25.r.PC.toFixed(4)}, score ${a25.sc} (pinned 0.7695, 0.5209, 2)`);
+    ok(Math.abs(a40.sc-33)<=1&&Math.abs(a65.sc-43)<=1&&a65.r.thinF===1&&a50.r.thinF===1,`example at 40 and 65 buyers scores ${a40.sc} and ${a65.sc} (pinned 33, 43); thinF 1 from the typical 50 up`);
+    /* IND.buyers sensitivity: the judgment typical pool the thin-pool factor is measured against */
+    const sens=[40,60].map(tb=>{ const B=A.loadWith([["anchor:3.10, buyers:50,","anchor:3.10, buyers:"+tb+","]]); return [at(B,25).sc,at(B,40).sc]; });
+    ok(Math.abs(sens[0][1]-43)<=1&&Math.abs(sens[1][1]-27)<=1&&Math.abs(sens[0][0]-12)<=1&&Math.abs(sens[1][0]-1)<=1,
+       `IND.buyers sensitivity: example at 40/25 buyers scores ${sens[0][1]}/${sens[0][0]} at a typical pool of 40, ${sens[1][1]}/${sens[1][0]} at 60 (pinned 43/12, 27/1)`);
+    /* median businesses at half and three quarters of the typical pool */
+    const SE=F.score_effect_at_integration, rng={.5:[99,0],.75:[99,0],1:[99,0]};
+    for(const ind of inds) for(const ern of [2e5,1e6,4e6]){ const t=median(ind,ern), V=A.model({...t,ask:1}).V;
+      for(const f of [.5,.75,1]){ const s={...t,ask:A.REF_RATIO*V,buyers:Math.max(1,Math.round(t.buyers*f))}, r=A.model(s); r.inputs=s; const sc=A.omniScore(r);
+        rng[f][0]=Math.min(rng[f][0],sc); rng[f][1]=Math.max(rng[f][1],sc); } }
+    ok(Math.abs(rng[.5][0]-SE.median_half_pool[0])<=2&&Math.abs(rng[.5][1]-SE.median_half_pool[1])<=2&&Math.abs(rng[.75][0]-SE.median_three_quarter_pool[0])<=2&&Math.abs(rng[.75][1]-SE.median_three_quarter_pool[1])<=2,
+       `MEDIAN-BUSINESS PIN: half pool ${rng[.5]}, three quarters ${rng[.75]} (stored ${SE.median_half_pool}, ${SE.median_three_quarter_pool})`);
+    ok(rng[1][0]===50&&rng[1][1]===50,`median businesses at a typical pool score 50 (${rng[1]})`); }
+  /* the sensitivity panel's buyer-pool row: no negative effect anywhere, smooth through the typical pool */
+  { const ex={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,st:null,franchise:false,ask:3.24e6};
+    const row=b=>A.sensitivity({...ex,buyers:b}).find(v=>v.k==="buyers"); let okAll=true; const dps=[];
+    for(const b of [5,10,20,30,40,44,46,48,50,52,54,56,60,65,80,120,300,600]){ const v=row(b); if(!(v.dP>=-1e-12&&v.dE>=-1e-6&&isFinite(v.dE))) okAll=false; if(b>=44&&b<=56) dps.push(v.dP); }
+    ok(okAll,"buyer-pool sensitivity row: more buyers never lower P_C or proceeds");
+    ok(dps.every((v,j)=>j===0||v<=dps[j-1]+1e-12)&&dps.every((v,j)=>j===0||Math.abs(v-dps[j-1])<.012),`buyer-pool row changes smoothly through the typical pool (${dps.map(v=>v.toFixed(4))})`);
+    const t=A.model({...ex,buyers:50}), h=1e-4, f=b=>A.model({...ex,buyers:b}).thinF;
+    ok(Math.abs((f(50)-f(50-h))/h-(f(50+h)-f(50))/h)<1e-3,"thinF has no kink at the typical pool"); }
+  /* BUYERS unchanged (judgment); the strategic-over-financial premium with both present stays inside Pepperdine/GF's range */
+  { const mf={}; for(const b of A.BUYERS) mf[b.k]=b.mf;
+    ok(mf.str===1.18&&mf.adj===1.14&&mf.add===1.12&&mf.pep===1.06&&mf.fo===1.02&&mf.eta===.98&&mf.ind===.90&&mf.mbo===.86&&A.PHI===.38,"buyer multiple factors and PHI unchanged");
+    const syn={}; for(const b of A.BUYERS) syn[b.k]=b.syn; let sum=0,n=0;
+    for(const V of [5e6,8e6,1.5811e7,3e7]) for(const ind of inds){ const t=atV(ind,V), r=A.model(t), x=r.synE/t.ern;
+      const full=k=>mf[k]+Math.min(A.PHI*syn[k]*x,.40);
+      sum+=.5*(full("str")+full("adj"))/(.64*full("pep")+.36*full("add"))-1; n++; }
+    const prem=sum/n;
+    ok(prem>=.08&&prem<=.18&&near(prem,F.strategic_premium.model_full_presence,.01),`strategic-over-financial premium with both present ${prem.toFixed(3)} (stored ${F.strategic_premium.model_full_presence})`); }
+  /* Data tab */
+  ok(HTML.includes("Buyer pool: expected offers, and how a thin pool lowers the closing probability")&&HTML.includes("calibrated scale, judgment shape"),"Data tab: fitted row for the buyer pool");
+  ok(HTML.includes("Not adopted: the fit&rsquo;s negative-binomial thin-pool factor"),"Data tab: the NB thin-pool factor is listed as not adopted");
+  ok(HTML.includes("<code>IND</code> buyers is also the typical pool that the thin-pool factor"),"Data tab: the IND row names the typical pool");
+  ok(/\+ 1;\s+\/\* ENG_SHARE: offers per closed deal \(IBBA\) \*\//.test(HTML)&&/Thin-pool cap<div class="muted"[^>]*>THIN_W/.test(HTML),"Data tab counts ENG_SHARE as fitted and THIN_W as judgment");
+  ok(HTML.includes("Pepperdine 2016, se")&&HTML.includes("GF Data&rsquo;s add-on/platform"),"Data tab: buyer-factor consistency check");
 }
 
 console.log(`${pass} passed, ${fail} failed`);
