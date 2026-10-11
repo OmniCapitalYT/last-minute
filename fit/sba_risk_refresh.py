@@ -1648,7 +1648,7 @@ RISK = {
                           "the table spread; the level shift absorbs the fixed-rate share). The 8-year figure runs %.1f-%.1f%% across specifications "
                           "(calendar-year vs approval-cohort terms, both or neither; payoff prime term; payoffs censored at 2026-03-31; everything "
                           "censored at the last fully reported quarter, 2025-12-31: %.1f%%) and %.1f-%.1f%% across reference periods (charge-off and "
-                          "payoff conditions of 2023-24 only or 2025-26 only); the shipped %.1f%% sits in the upper part of the combined %.1f-%.1f%%. "
+                          "payoff conditions of 2023-24 only or 2025-26 only); the shipped %.1f%% is at the top of the specification range and just below the middle of the combined %.1f-%.1f%%. "
                           "Its parameter SE (%.2f pp) covers neither. The two-year forecast over-predicted (observed/predicted %.2f) and loans "
                           "approved FY2024-26 have so far been charged off at %.1fx the model on %d charge-offs (Poisson p %.2f); the vintage holdout "
                           "under-predicted (%.2f)."
@@ -1754,7 +1754,8 @@ JS_FITRISK = r'''/* ---- Model V: post-acquisition survival risk (FITTED, SBA 7(
    failures and early payoffs and gave 5.7% with no horizon. Reported: within 5 years (fitted on loans
    observed that long), and within 10 years (fitted to 8 years; years 9-10 borrowed from mature 7(a)
    vintages, x tail_factor, a labelled judgment). The note is 85% of the price (as in sbaRate), held inside
-   the 7(a) range. Larger loans are charged off less often and later: the hazard gap closes by year 6 (larger
+   the 7(a) range. Larger loans are charged off less often early on: the hazard gap closes at about 5.4 years and
+   reverses slightly after it (about x1.16 per tenfold loan size in years 6-8) (larger
    SBA acquisition notes are more often 25-year real-estate notes, which may simply take longer to liquidate).
    Out of time, risk differences held at about three quarters of their fitted size, so every loan-level
    effect is shrunk by co.lp_shrink toward the average loan. co.lp_shift is solved so that this function,
