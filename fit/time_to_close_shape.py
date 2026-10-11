@@ -1162,8 +1162,8 @@ f1 = lambda xs: '[' + ','.join('%.1f' % x for x in xs) + ']'
 N_TOT = sum(REC['n'])
 NT = format(N_TOT, ',')
 B_LO, B_HI = min(REC['shape']), max(REC['shape'])
-QLAB = '15 quarters (2020Q1&ndash;2023Q3 and 2025Q4)'
-QLAB2 = '15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4'
+QLAB = '15 quarters (2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4)'
+QLAB2 = '15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4'
 pc = CV[LISTING]['central']['loqo_pairs']
 PROP = pc['pinned_ll_two_level__vs__pinned_weibull_console_k']
 LLW = pc['loglogistic_per_band__vs__weibull_per_band']
@@ -1191,7 +1191,7 @@ SHORT_RNG = '%.1f&ndash;%.1f' % (min(-MEDIANS[BANDS[i]]['console_minus_grouped']
 B_UP = REC['shape'][1]
 
 TABLE = ('/* Shape of the time-to-close curve (fit/time_to_close_shape.py, 2026-10). IBBA / M&A Source Market Pulse per-band\n'
-         '   histograms of months listing->close, 15 quarters (2020Q1-2023Q3 and 2025Q4), %s closed deals, interval-censored\n'
+         '   histograms of months listing->close, 15 quarters (2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4), %s closed deals, interval-censored\n'
          '   MLE. Log-logistic: as good as a gamma on held-out quarters, at least as good as a refitted Weibull, better than\n'
          '   a lognormal, and closed-form. beta has two levels: under $500K, and one shared value from $500K up (the four\n'
          '   upper bands differ by no more than noise and no gradient among them is identified, so they are pooled); it is\n'
@@ -1202,7 +1202,7 @@ TABLE = ('/* Shape of the time-to-close curve (fit/time_to_close_shape.py, 2026-
          'MODELS.fitted.ttc_shape={"family":"loglogistic","bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],'
          '"beta":%s,"beta_se":%s,"n":%s,"n_quarters":%d,'
          '"hist_median_listing":%s,"hist_median_listing_se":%s,"hist_median_loi":%s,"hist_median_loi_se":%s,'
-         '"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};\n'
+         '"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};\n'
          % (NT, f2(REC['shape']), f2(REC['shape_se_total']), json.dumps(REC['n'], separators=(',', ':')), REC['n_quarters'],
             f1(REC['listing_hist_median']), f2(REC['listing_hist_median_se']), f1(REC['loi_hist_median']), f2(REC['loi_hist_median_se'])))
 

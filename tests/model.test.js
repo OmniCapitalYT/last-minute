@@ -78,11 +78,13 @@ for(const ind of Object.keys(A.IND)) for(const ern of [1e5,3e5,1e6,3e6,1e7]){
   for(let i=0;i<60;i++){ const ind=inds[Math.floor(rn()*inds.length)], ern=Math.exp(Math.log(3e4)+rn()*Math.log(500)), mg=.05+rn()*.4;
     const s={ind,ern,rev:ern/mg,grw:-.3+rn()*.8,gm:.1+rn()*.8,rec:rn(),cc:.01+rn()*.8,ret:.1+rn()*.85,plt:.02+rn()*.95,own:.05+rn()*.9,
       mgt:.05+rn()*.9,fin:.1+rn()*.85,yrs:6,buyers:5+Math.floor(rn()*595),st:null,franchise:false};
-    const V=A.model({...s,ask:1}).V, omni=A.omniScore(A.model({...s,ask:V*(.5+rn()*2.5)})), biz=A.omniScore(A.model({...s,ask:V*A.bestRatio(s,0,0)}));
-    if(omni>biz) viol.push(`${ind} ${Math.round(ern)}: ${omni}>${biz}`); }
-  ok(viol.length===0,`business score never below the Omni score (${viol.join("; ")})`);
+    const V=A.model({...s,ask:1}).V, sa={...s,ask:V*(.5+rn()*2.5)}, r=A.model(sa), omni=A.omniScore(r);
+    const biz0=A.omniScore(A.model({...s,ask:V*A.bestRatio(s,0,0)})), biz=A.businessScore(sa,r,A.bestRatio(s,0,0)).score;
+    if(omni>biz0||omni>biz||biz<biz0) viol.push(`${ind} ${Math.round(ern)} (${s.buyers} buyers): omni ${omni}, at the optimal ask ${biz0}, business ${biz}`); }
+  ok(viol.length===0,`business score never below the Omni score, nor below the score at the optimal ask (${viol.join("; ")})`);
   const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
-  ok(/r\.score=omniScore\(r\);/.test(HTML)&&/r\.scoreQ=Math\.max\(omniScore\(rq\),r\.score\);/.test(HTML)&&!/omniScore\([^)]*,\s*"opt"\)/.test(HTML),
+  ok(/r\.score=omniScore\(r\);/.test(HTML)&&/const bs=businessScore\(s,r,s\.rhoSell\)/.test(HTML)&&/r\.scoreQ=bs\.score;/.test(HTML)
+     &&/return \{score:Math\.max\(omniScore\(rq\),omniScore\(r\)\)/.test(HTML)&&!/omniScore\([^)]*,\s*"opt"\)/.test(HTML),
      "render scores both cards on one population (no 'opt' mode), the business score held at or above the Omni score"); }
 
 /* 7. a typical buyer pool earns no competition premium */
@@ -455,7 +457,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(Math.abs(r.VrealFree/(V*r.anchorF*(1+r.compPrem))-1)<.01,`${ind} ${ern}: uncapped median moved`);
     /* 24f. the closing probability does not read the realised-price block; EVp = P_C x E[P|close] */
     const fp=A.fitClose(r.inputs.ask,r.V,undefined,r.Vbase).p;
-    ok(near(r.PC,r.thinF<1?Math.min(.95,Math.max(.02,fp*r.thinF)):fp,1e-9),`${ind} ${ern}: P_C changed`);
+    ok(near(r.PC,r.thinF<1?Math.min(.95,Math.max(0,fp*r.thinF)):fp,1e-9),`${ind} ${ern}: P_C changed`);
     ok(Math.abs(r.EVp-r.PC*r.Vmean)<=1e-9*r.EVp,`${ind} ${ern}: EVp = P_C x E[P|close]`);
   }
   /* 24g. price rises with the ask and its share of the ask falls, from 0.4x to 3x value */
@@ -466,15 +468,15 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(r.Vmean/r.inputs.ask<=pr*(1+1e-9),`${t.ind} rho=${rho.toFixed(2)}: E[P|close]/ask rose with the ask`);
       pv=r.Vmean; pr=r.Vmean/r.inputs.ask; } }
   /* 24h. optimiser: theta = 0 does not move. At theta = .75 (the default) the utility has two near-equal peaks, near
-          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.90 at $900/day, 0.866 with no delay
-          cost) and theta (0.77 at $900/day, 0.763 with no delay cost; pinned in 28), so the
+          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.915 at $900/day, 0.866 with no delay
+          cost) and theta (0.771 at $900/day, 0.763 with no delay cost; pinned in 28), so the
           WINNER is not pinned: it must be one of the two peaks, and the peaks must lie within 1% of value (the page
           then shows the patient-seller price as a range) */
   { const b0=A.bestRatio(EXF,0,900), b75=A.bestRatio(EXF,.75,900);
     ok(b0>=1.08&&b0<=1.13,`bestRatio(EX,0) ${b0.toFixed(3)}`);
     ok((b75>=1.08&&b75<=1.25)||b75>=1.45,`bestRatio(EX,.75) ${b75.toFixed(3)} is neither the interior peak nor the cap`);
     const V=A.model({...EXF,ask:1}).V; let ui=-Infinity, uc=-Infinity;
-    for(let k=0;k<=140;k++){ const m=.80+k*.005, r=A.model({...EXF,ask:V*m}), u=r.EVp+(1-r.PC)*.75*r.V-900*r.tMed;
+    for(let k=0;k<=140;k++){ const m=.80+k*.005, r=A.model({...EXF,ask:V*m}), u=r.EVp+(1-r.PC)*.75*r.V-900*r.tMean;
       if(m<1.35) ui=Math.max(ui,u); else uc=Math.max(uc,u); }
     ok(Math.abs(ui-uc)<.01*V,`theta=.75: the two peaks differ by ${(100*(ui-uc)/V).toFixed(2)}% of value (expected a near-tie)`); }
   /* 24i. the self-audit's fit-consistency row (renderCalib's own profile) reads 'in range' */
@@ -516,7 +518,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&/about 0\.09 on the time-given-sale scale \(about 0\.06&ndash;0\.07 if only the marketing leg\s+were stretched\) and 0\.15 on the sale-clock scale/.test(HTML)
      &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
-  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers)");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1\s+\+ 1;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
     const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
@@ -524,16 +526,17 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* why rhoSell must not take lamT: once time reads the ask, a cost of delay lowers the delay-aware ask */
   { const s=median("rest",1.5e5); ok(A.bestRatio(s,0,4000)<A.bestRatio(s,0,0)-1e-3,"a cost of delay lowers the delay-aware ask"); }
   const EXO={grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false};
-  /* the walk-away asks the Data tab quotes (75% kept): $900/day 1.14, 1.14, 1.15, 1.15; $4,000/day 1.10, 1.13, 1.14, 1.14
-     for earnings $150k/$400k/$1.45M/$5M. If another change moves them, update the Data-tab paragraph. */
-  { const Q={900:["1.14","1.14","1.15","1.15"],4000:["1.10","1.13","1.14","1.14"]};
+  /* the walk-away asks the Data tab quotes (75% kept, delay charged on the mean time to close): $900/day 1.13, 1.14, 1.15,
+     1.15; $4,000/day 1.09, 1.13, 1.14, 1.14 for earnings $150k/$400k/$1.45M/$5M. If another change moves them, update the
+     Data-tab paragraph. */
+  { const Q={900:["1.13","1.14","1.15","1.15"],4000:["1.09","1.13","1.14","1.14"]};
     [1.5e5,4e5,1.45e6,5e6].forEach((ern,i)=>{ const s={...EXO,ind:"medical",ern,rev:ern/0.24};
       for(const lam of [900,4000]){ const b=A.bestRatio(s,.75,lam);
         ok(b.toFixed(2)===Q[lam][i],`Data tab: walk-away ask at $${ern} and $${lam}/day ${b.toFixed(3)} (text says ${Q[lam][i]})`); } }); }
   /* the knife edge the Data tab quotes for the framework example: the cap wins from about 76% kept with no delay cost,
-     77% at $900/day, 79% at $4,000/day */
+     77% at $900/day, 80% at $4,000/day */
   { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6};
-    for(const [lam,pct] of [[0,76],[900,77],[4000,79]]){ let lo=.70,hi=.86;
+    for(const [lam,pct] of [[0,76],[900,77],[4000,80]]){ let lo=.70,hi=.86;
       for(let k=0;k<12;k++){ const m=(lo+hi)/2; A.bestRatio(ex,m,lam)>1.45?hi=m:lo=m; }
       ok(Math.round(50*(lo+hi))===pct,`Data tab: patient-seller cap from ${(50*(lo+hi)).toFixed(1)}% kept at $${lam}/day (text says ${pct}%)`); } }
   /* small deals leave the cap at $900/day at theta .75 */
@@ -545,12 +548,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const noteRef=ss=>{
     const V=A.model({...ss,ask:1}).V, th=ss.theta, lam=ss.lamT, ms=[], xs=[];
     for(let k=0;k<=140;k++){ const m=.80+k*.005; ms.push(m); xs.push(A.model({...ss,ask:V*m})); }
-    const Ut=t=>xs.map(x=>x.EVp+(1-x.PC)*t*x.V-lam*x.tMed), u=Ut(th), L=ms.length-1, jo=Math.round((ss.optRho-.80)/.005);
+    const Ut=t=>xs.map(x=>x.EVp+(1-x.PC)*t*x.V-lam*x.tMean), u=Ut(th), L=ms.length-1, jo=Math.round((ss.optRho-.80)/.005);
     const isMax=(v,j)=>j>0&&v[j]>=v[j-1]&&(j===L||v[j]>=v[j+1]), pk=[];
     for(const t of [th,th-.01,th+.01]) if(t>=0&&t<=1){ const v=t===th?u:Ut(t);
       for(let j=1;j<=L;j++) if(isMax(v,j)){ let lo=u[j]; for(let q=Math.min(j,jo);q<=Math.max(j,jo);q++) lo=Math.min(lo,u[q]);
         pk.push({m:ms[j],u:u[j],here:t===th,depth:(u[j]-lo)/V,d:Math.abs(ms[j]-ss.optRho)}); } }
-    const U=m=>{ const x=A.model({...ss,ask:V*m}); return x.EVp+(1-x.PC)*th*x.V-lam*x.tMed; };
+    const U=m=>{ const x=A.model({...ss,ask:V*m}); return x.EVp+(1-x.PC)*th*x.V-lam*x.tMean; };
     return {V,pk,U,ms,u,uK:U(ss.optRho)};
   };
   const checkNote=(ss,n,tag)=>{
@@ -605,12 +608,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       /* the note under the two listing cards describes the cards actually shown */
       const ss={...s,theta:th,lamT:lam}; ss.rhoSell=A.bestRatio(ss,0,0); ss.optRho=ru;
       const rSell=A.model({...ss,ask:V*ss.rhoSell}), rKeep=A.model({...ss,ask:V*ss.optRho});
-      const n=A.optNote(ss,V,rSell,rKeep), U=x=>x.EVp+(1-x.PC)*th*x.V-lam*x.tMed;
+      const n=A.optNote(ss,V,rSell,rKeep), U=x=>x.EVp+(1-x.PC)*th*x.V-lam*x.tMean;
       ok(U(rKeep)>=U(rSell)-1e-6*Math.abs(U(rSell)),`walk-away card at least as good on the optimiser's objective ${tag}`);
       ok(!/[−-]\$/.test(n.text)&&!/NaN|undefined|Infinity|1 days/.test(n.text),`no negative money, NaN or '1 days' in the note ${tag}: ${n.text}`);
       const same=A.money(V*ss.optRho)===A.money(V*ss.rhoSell);
       if(same) ok(n.kind==="same",`same figure: 'agree' note ${tag}`);
-      else if(ss.optRho<ss.rhoSell) ok(n.kind==="lower"&&n.text.includes(A.money(V*ss.optRho))&&!n.text.includes("higher price")&&rKeep.tMed<=rSell.tMed&&/sooner/.test(n.text),
+      else if(ss.optRho<ss.rhoSell) ok(n.kind==="lower"&&n.text.includes(A.money(V*ss.optRho))&&!n.text.includes("higher price")&&rKeep.tMean<=rSell.tMean&&/sooner/.test(n.text),
         `a lower walk-away ask is described as lower and faster ${tag}: ${n.text}`);
       else ok(n.kind==="higher"&&n.text.includes("higher price"),`a higher walk-away ask is described as higher ${tag}`);
       ok(n.coin===(!same&&U(rKeep)-U(rSell)<Math.abs(U(rSell))*.01)&&(!n.coin||/coin toss/.test(n.text)),`coin-toss wording on the delay-inclusive gain ${tag}`);
@@ -627,11 +630,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(n.kind==="higher"&&!!n.alt&&/1\.1\d–1\.50× value/.test(n.text),`framework example: patient-seller range shown (${n.text})`); }
   /* a walk-away ask at the cap with an objective that climbs all the way there: no range (there is no second peak, and
      1.35x was only where the old scan stopped); the note says how flat the top is instead */
-  { const ex={...EXO,ind:"mfg",rev:333333,ern:8e4,ask:3e5,theta:1,lamT:900}, V=A.model({...ex,ask:1}).V;
+  { const ex={...EXO,ind:"mfg",rev:5e5,ern:1.2e5,ask:4.5e5,theta:1,lamT:900}, V=A.model({...ex,ask:1}).V;
     ex.rhoSell=A.bestRatio(ex,0,0); ex.optRho=A.bestRatio(ex,1,900);
     const n=A.optNote(ex,V,A.model({...ex,ask:V*ex.rhoSell}),A.model({...ex,ask:V*ex.optRho}));
     ok(ex.optRho>A.RHO_MAX-.02&&!n.alt&&!/as a range/.test(n.text)&&n.flat>1.2&&n.flat<1.28&&/every ask from 1\.2\d× value up comes within 1% of value of the cap/.test(n.text),
-       `manufacturing $80k, 100% kept: no false range, flat top from ${n.flat} (${n.text})`);
+       `manufacturing $120k, 100% kept: no false range, flat top from ${n.flat} (${n.text})`);
     /* and the converse: at 90% kept the framework example's asks of 1.40-1.50x are within 1%, but there is no second peak */
     const e9={...EXO,ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,theta:.9,lamT:900}, V9=A.model({...e9,ask:1}).V;
     e9.rhoSell=A.bestRatio(e9,0,0); e9.optRho=A.bestRatio(e9,.9,900);
@@ -641,17 +644,17 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     return {t,o:t.optRho,n:A.optNote(t,V,A.model({...t,ask:V*t.rhoSell}),A.model({...t,ask:V*t.optRho}))}; };
   /* a walk-away flip between ~1.22x and ~1.45x on one 1% step of theta, NEITHER end at the cap (the second peak is not
      assumed to be the cap): the range covers both peaks on both sides of the flip */
-  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.93,.94],1200],
-                             [{ind:"home",rev:326000,ern:55000,grw:.66,gm:.77,rec:.59,cc:.07,ret:.70,plt:.24,own:.95,mgt:.36,fin:.14,yrs:6,buyers:440},[.92,.93],900]]){
+  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.91,.92],750],
+                             [{ind:"home",rev:326000,ern:55000,grw:.66,gm:.77,rec:.59,cc:.07,ret:.70,plt:.24,own:.95,mgt:.36,fin:.14,yrs:6,buyers:440},[.94,.95],700]]){
     const out=ths.map(th=>noteAt(s0,th,lam));
     ok(Math.abs(out[1].o-out[0].o)>.2&&out.every(({o,n})=>o<A.RHO_MAX-.02&&n.alt&&Math.min(o,n.alt.m)<1.25&&Math.max(o,n.alt.m)>1.44&&/as a range/.test(n.text)),
        `walk-away flip ${out.map(v=>v.o.toFixed(3)).join(" -> ")} below the cap: the range on both sides`);
     for(const v of out) checkNote(v.t,v.n,`(flip at theta ${v.t.theta})`); }
   /* at the cap with an interior peak more than 1% below it, the note names that peak instead of claiming none, and the
-     flat-top ask is rounded up (framework example at 85% kept; auto repair $900k/$200k at 90%) */
-  { const f=noteAt({...EXO,ind:"medical",rev:6e6,ern:1.45e6},.85,900), a=noteAt({...EXO,ind:"auto",rev:9e5,ern:2e5},.9,900);
-    for(const [v,pm,lo,hi,fl] of [[f,1.22,1.3,1.35,1.37],[a,1.24,1.08,1.13,1.32]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
-      const U=m=>{ const x=A.model({...v.t,ask:V*m}); return x.EVp+(1-x.PC)*v.t.theta*x.V-v.t.lamT*x.tMed; }, gap=n.peak?(U(v.o)-n.peak.u)/V*100:NaN;
+     flat-top ask is rounded up (framework example at 85% kept; auto repair $1.2M/$300k at 90%) */
+  { const f=noteAt({...EXO,ind:"medical",rev:6e6,ern:1.45e6},.85,900), a=noteAt({...EXO,ind:"auto",rev:1.2e6,ern:3e5},.9,900);
+    for(const [v,pm,lo,hi,fl] of [[f,1.22,1.25,1.33,1.37],[a,1.24,1.15,1.22,1.33]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
+      const U=m=>{ const x=A.model({...v.t,ask:V*m}); return x.EVp+(1-x.PC)*v.t.theta*x.V-v.t.lamT*x.tMean; }, gap=n.peak?(U(v.o)-n.peak.u)/V*100:NaN;
       ok(v.o>A.RHO_MAX-.02&&!n.alt&&n.peak&&Math.abs(n.peak.m-pm)<.015&&gap>lo&&gap<hi&&!/no second peak|rises all the way/.test(n.text)
          &&n.text.includes(`another peak, at ${n.peak.m.toFixed(2)}× value, but to this owner it is worth ${gap.toFixed(2)}% of value less than the cap, beyond a tie`)
          &&n.flat===fl&&U(v.o)-U(fl)<=.01*V&&U(v.o)-U(fl-.01)>.01*V,`${v.t.ind} at ${v.t.theta}: other peak at ${n.peak?n.peak.m.toFixed(3):"none"} ${gap.toFixed(3)}% below, flat from ${n.flat} (${n.text})`);
@@ -827,13 +830,13 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
 /* 28. review fixes (Oct 2026) */
 { const EXF={ind:"medical",rev:6e6,ern:1.45e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,ask:3.24e6};
   /* 28a. the figures bestRatio's comment quotes: interior-peak margin over the cap (share of value) and the flips */
-  const margin=(API,th,lam)=>{ const V=API.model({...EXF,ask:1}).V, U=m=>{ const r=API.model({...EXF,ask:V*m}); return r.EVp+(1-r.PC)*th*r.V-lam*r.tMed; };
+  const margin=(API,th,lam)=>{ const V=API.model({...EXF,ask:1}).V, U=m=>{ const r=API.model({...EXF,ask:V*m}); return r.EVp+(1-r.PC)*th*r.V-lam*r.tMean; };
     let b=-Infinity; for(let m=1.0;m<=1.40+1e-9;m+=.002) b=Math.max(b,U(m)); return (b-U(A.RHO_MAX))/V; };
   const m9=margin(A,.75,900), m0=margin(A,.75,0);
-  ok(Math.abs(m9-.0042)<.0003&&Math.abs(m0-.0027)<.0003,`interior peak wins by ${(m9*100).toFixed(2)}% of value at $900/day, ${(m0*100).toFixed(2)}% with no delay cost (comment: 0.42%, 0.27%)`);
-  ok(margin(A,.765,900)>0&&margin(A,.775,900)<0&&margin(A,.760,0)>0&&margin(A,.766,0)<0,"theta flip near 0.77 at $900/day and 0.763 with no delay cost");
+  ok(Math.abs(m9-.0046)<.0003&&Math.abs(m0-.0027)<.0003,`interior peak wins by ${(m9*100).toFixed(2)}% of value at $900/day, ${(m0*100).toFixed(2)}% with no delay cost (comment: 0.46%, 0.27%)`);
+  ok(margin(A,.768,900)>0&&margin(A,.774,900)<0&&margin(A,.760,0)>0&&margin(A,.766,0)<0,"theta flip near 0.771 at $900/day and 0.763 with no delay cost");
   const S=f=>A.loadWith([["const FAN_S=0.80;","const FAN_S="+f+";"]]);
-  ok(margin(S(.895),.75,900)>0&&margin(S(.912),.75,900)<0&&margin(S(.860),.75,0)>0&&margin(S(.872),.75,0)<0,"FAN_S flip near 0.90 at $900/day and 0.866 with no delay cost");
+  ok(margin(S(.905),.75,900)>0&&margin(S(.925),.75,900)<0&&margin(S(.860),.75,0)>0&&margin(S(.872),.75,0)<0,"FAN_S flip near 0.915 at $900/day and 0.866 with no delay cost");
   /* 28b. the share of closings at the ceiling is continuous: no 1/48 steps on a 0.05% change in the ask */
   { let worst=0, prev=null; for(let a=2e6;a<9e6;a*=1.0005){ const c=A.model({...EXF,ask:a}).capShare; if(prev!==null) worst=Math.max(worst,Math.abs(c-prev)); prev=c; }
     ok(worst<.002,`capShare moves at most ${worst.toFixed(5)} per 0.05% of ask (was 1/48 = 0.0208)`);
@@ -868,6 +871,79 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* 28e. the price tile names the ceiling, not "the ask" */
   { const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
     ok(HTML.includes("pc(r.capShare)+' at the ask ceiling'")&&!HTML.includes("pc(r.capShare)+' at the ask':''"),"o_val says 'at the ask ceiling'"); }
+}
+
+/* 29. the 25 confirmed logic-audit defects (AUDIT_FINDINGS.md), one pin each */
+{ const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,
+            buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  const prep=o=>{ const s={...FX,...o}, V=A.model({...s,ask:1}).V; s.rhoSell=A.bestRatio(s,0,0); s.optRho=A.bestRatio(s,s.theta,s.lamT); return {s,V}; };
+  /* #6/#13/#19: the delay cost is charged on the MEAN time to close, everywhere the utility is computed */
+  ok(/lamT\*r\.tMean;\};/.test(HTML)&&/const U=x=>x\.EVp\+\(1-x\.PC\)\*s\.theta\*x\.V-s\.lamT\*x\.tMean;/.test(HTML)
+     &&/recV\.U=r\.EVp\+\(1-r\.PC\)\*theta\*r\.V-lamT\*\(r\.tMean\+days\)-c;/.test(HTML)&&/lamT\*\(ru\.tMean\+days\)-c\}/.test(HTML)
+     &&!/lamT\*\(?\w+\.tMed\b/.test(HTML),"#6: bestRatio, optNote and optimize charge lambda x E[T]");
+  { const {s,V}=prep({}), r=A.model(s), b=A.optimize(s,r,s.budget,s.lamT,s.theta);
+    ok(b.U.t===b.U.r.tMean&&b.V.t===b.V.r.tMean&&near(b.U.U,b.U.proceeds+(1-b.U.PC)*s.theta*b.U.r.V-s.lamT*(b.U.r.tMean+b.U.days)-b.U.c,1e-6),"#6: optimiser records carry E[T] and U uses it");
+    ok(/E\[T\]=t_\{\\\\text\{med\}\}\\\\,\\\\frac\{\\\\pi\/\\\\beta\}\{\\\\sin\(\\\\pi\/\\\\beta\)\}/.test(HTML)&&HTML.includes(">Expected days<")&&!HTML.includes(">Total days<"),"#6: E[T] typeset in eq_t; the card tile is 'Expected days'"); }
+  /* #9: the business score takes the pool out like the ask: a median business at half the typical pool still scores 50,
+     and the framework example keeps its business score however few buyers are contacted below the typical pool */
+  for(const ind of ["medical","rest","saas","home"]) for(const ern of [1.5e5,1.45e6]){
+    const t=median(ind,ern), typ=A.IND[ind].buyers||50, s={...t,buyers:Math.max(5,Math.round(typ/2))}, V=A.model({...s,ask:1}).V, r=A.model({...s,ask:V*A.REF_RATIO});
+    ok(A.businessScore(s,r,A.bestRatio(s,0,0)).score===50,`#9: median ${ind} ${ern} at half the typical pool keeps business score 50`); }
+  { const sc=b=>{ const s={...FX,buyers:b}, r=A.model(s); return A.businessScore(s,r,A.bestRatio(s,0,0)).score; }, s65=sc(65);
+    ok([10,20,30,40,50].every(b=>sc(b)===s65),`#9: framework example business score ${s65} at 10-65 buyers`); }
+  /* #3/#12/#17: the reprice equalises the gap, not P_C; the table shows dP_C and says why it moves */
+  { const go=b=>{ const {s}=prep({buyers:b}), r=A.model(s); return A.interventionTable(s,r).find(x=>x.k==="outreach").dP; };
+    const d25=go(25), d65=go(65);
+    ok(d25>.10&&Math.abs(d65)<1e-12,`#3: outreach moves P_C ${(d25*100).toFixed(1)} pts at 25 buyers, 0 at 65`);
+    ok(HTML.includes('<th class="n">ΔP<sub>C</sub></th>')&&HTML.includes("the closing probability still moves with the buyer pool")
+       &&!HTML.includes("and with it the closing probability, is the same in every row")&&HTML.includes("is not zero by construction"),"#3: dP_C column restored, footnote and caption corrected"); }
+  /* #11/#15: the second card's subtitle at the defaults: the same changes repriced, never 'less elapsed time and spend' */
+  { const {s}=prep({}), r=A.model(s), b=A.optimize(s,r,s.budget,s.lamT,s.theta), uRho=b.U.keys.includes("reprice")?s.optRho:s.rhoSell, n=A.optCardNote(s,b,s.rhoSell,uRho);
+    ok(n.kind==="reprice"&&n.text.startsWith(`The same changes, repriced to ${uRho.toFixed(2)}× instead of ${s.rhoSell.toFixed(2)}×`)
+       &&/less likely to close for a higher price if it closes/.test(n.text)&&/takes about (a day|\d+ days) longer from start to close/.test(n.text)&&!/less elapsed time|spends/.test(n.text)
+       &&n.text.includes("value retained if the process fails"),`#11: default card subtitle (${n.text})`);
+    ok(HTML.includes("optCardNote(s,best,rhoSell,uRho).text")&&!HTML.includes("in exchange for ${dProc<0"),"#11: the card uses optCardNote"); }
+  /* #14/#18: the lower note prints the time value and the net separately */
+  { const {s,V}=prep({theta:0,lamT:4000,rev:8e5,ern:1.5e5,ask:4.5e5}), rS=A.model({...s,ask:V*s.rhoSell}), rK=A.model({...s,ask:V*s.optRho}), n=A.optNote(s,V,rS,rK);
+    const tv=s.lamT*(rS.tMean-rK.tMean);
+    ok(n.kind==="lower"&&n.text.includes(`worth ${A.money(tv)} at ${A.money(4000)} a day`)&&n.text.includes(`Net of the proceeds given up, that is worth ${A.money(n.gain)} to this owner`)
+       &&tv>n.gain,`#14: lower note: time value ${A.money(tv)}, net ${A.money(n.gain)} (${n.text})`); }
+  /* #5/#25: no 2% floor; the equation carries the tail, the size-interpolated base and the thin-pool factor */
+  { const V=A.model({...FX,ask:1}).V, p=[28,30,50,100].map(m=>A.model({...FX,ask:V*m}));
+    ok(p[0].PC>p[1].PC&&p[1].PC>p[2].PC&&p[2].PC>p[3].PC&&p[1].PC<.02&&p[1].EVp>p[2].EVp,`#5: P_C keeps falling past 28x (${p.map(x=>x.PC.toExponential(2)).join(", ")})`);
+    ok(HTML.includes("1-${(1-PEN_MAX).toFixed(2)}\\\\,e^{-k(g-100)}")&&HTML.includes("\\\\tau(n)&=\\\\operatorname{cap}_1")&&HTML.includes("b(V)&=${tp(bB,1)}")
+       &&!HTML.includes("pinned at its floor")&&!/clamp\(base\*\(1-pen\),\.02/.test(HTML),"#5/#25: eq_p typesets tail, base and thin pool; floor gone"); }
+  /* #16: the P_C badge and captions name the thin-pool factor */
+  ok(HTML.includes('id="o_pc_pv"')&&/pv\.innerHTML="<i><\/i>"\+\(j\?"aggregate × judgment":"aggregate"\)/.test(HTML)&&!HTML.includes("conditions on deal size and asking gap only")
+     &&!HTML.includes("conditioning on deal size and price\ngap alone"),"#16: P_C badge and captions mention the thin pool");
+  /* #1/#2: quality row says 'among peers'; the price rows name the realised-price fan */
+  ok(HTML.includes("percentile among peers, placed inside the measured")&&!HTML.includes("percentile of the measured spread")
+     &&!HTML.includes("across the measured spread of value")&&HTML.includes("across the realised-price fan"),"#1/#2: multiple-table labels");
+  /* #4: the Data tab no longer claims quality-independence at a fixed dollar ask, which is false */
+  { const a=A.model({...FX,own:.95,ask:4.5e6}), b=A.model({...FX,own:.10,ask:4.5e6});
+    ok(b.PC>a.PC&&HTML.includes("At the same ask relative to its model value, the closing probability does not depend on")&&!HTML.includes("wildly different owner dependence receive the same number"),"#4: Data tab P_C claim"); }
+  /* #7: the curve's accessible name is conditional on closing */
+  ok(!HTML.includes('aria-label="Cumulative probability of closing over time"')&&HTML.includes('$("tcurve").setAttribute("aria-label"'),"#7: tcurve aria-label");
+  /* #8: every fitted state effect can be selected */
+  { const m=HTML.match(/const STNAMES=(\{[^}]*\});/), S=JSON.parse(m[1]), E=Object.keys(A.MODELS.risk.state_effects);
+    ok(E.every(k=>k in S)&&Object.keys(S).every(k=>E.includes(k)),`#8: STNAMES covers all ${E.length} state effects`); }
+  /* #10: model value is not a financial-buyer baseline */
+  ok(!HTML.includes("over the financial baseline")&&!HTML.includes("above this line is strategic premium")&&HTML.includes("over model value}")
+     &&!HTML.includes("relative to the financial-buyer baseline\n"),"#10: buyer labels");
+  /* #20: the SDE margin range is read live (20-30% at $200k SDE) */
+  { const m=Object.keys(A.IND).map(k=>A.typMargin(k,2e5)); ok(!HTML.includes("18&ndash;35%")&&Math.round(Math.min(...m)*100)===20&&Math.round(Math.max(...m)*100)===30,"#20: margin range live, 20-30%"); }
+  /* #21: one aggregate count for the tally and the badge; the tail factor counted as judgment */
+  ok((HTML.match(/\$\{nAgg\}/g)||[]).length===2&&!HTML.includes("17 parameters</span>")&&/\+ 2   \/\* the size x age interaction/.test(HTML)
+     &&/\+ 1;   \/\* the SBA tail factor/.test(HTML)&&HTML.includes("<tr><td>SBA tail factor<div"),"#21: tallies agree");
+  /* #22: the centring row at a business actually at its peer medians reads in range */
+  { const I=A.IND.prof, R=A.sizeRefs(158950), p={ind:"prof",rev:158950/A.typMargin("prof",158950),ern:158950,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,
+      own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)}, V=A.model({...p,ask:1}).V, d=A.model({...p,ask:V}).dsum;
+    ok(Math.abs(d)<.03&&HTML.includes("mMed.dsum.toFixed(3)"),`#22: judgment stack at the peer medians ${d.toFixed(4)}`); }
+  /* #23: the 15 quarters named correctly */
+  ok(!/2020Q1(&ndash;|-|–)2023Q3/.test(HTML)&&A.MODELS.fitted.ttc_shape.source.includes("2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4"),"#23: quarter labels");
+  /* #24: the value equation states its units */
+  ok(HTML.includes("\\\\ln\\\\hat P_{\\\\$000}")&&HTML.includes("ln(price, $000)"),"#24: eq_v in thousands");
 }
 
 console.log(`${pass} passed, ${fail} failed`);

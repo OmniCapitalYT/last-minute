@@ -1739,8 +1739,8 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
         </div>
         <div class="hero-stats">
             <div class="big"><div class="k">Price if it closes <span class="pv j" title="The fitted value's measured spread, narrowed to the share that remains once a business is listed (calibrated), moved by anchoring and competition (both judgment), and capped at the ask"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
-            <div class="big"><div class="k">Chance of closing <span class="pv a"><i></i>aggregate</span></div><div class="n" id="o_pc">—</div></div>
-            <div class="big"><div class="k">Expected proceeds <span class="pv j" title="Aggregate closing probability times a realised price that anchoring (judgment) moves"><i></i>judgment</span></div><div class="n sm" id="o_ev">—</div></div>
+            <div class="big"><div class="k">Chance of closing <span class="pv a" id="o_pc_pv" title="Pepperdine base rate, interpolated by deal size, times the price-gap penalty"><i></i>aggregate</span></div><div class="n" id="o_pc">—</div></div>
+            <div class="big"><div class="k">Expected proceeds <span class="pv j" title="Closing probability (deal size, price gap and, below a typical buyer pool, the buyers contacted) times a realised price that anchoring (judgment) moves"><i></i>judgment</span></div><div class="n sm" id="o_ev">—</div></div>
             <div class="big"><div class="k">Model value <span class="pv f" title="BIZCOMPS fitted value, positioned inside its measured spread by the quality inputs (that placement is judgment)"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
             <div class="big"><div class="k">Expected multiple <span class="pv f" title="Fitted multiple times the quality position (judgment)"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
             <div class="big"><div class="k">Survival risk <span class="pv f"><i></i>fitted</span></div><div class="n sm" id="o_risk">—</div></div>
@@ -1787,7 +1787,8 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <h2>Probability of closing</h2><span class="ref">framework §5–7</span></div>
       <div class="panel">
         <p class="lede"><b>The reported probability is a published base rate times a price-gap
-          penalty</b> — it conditions on deal size and asking gap only. The contribution chart below is
+          penalty</b>, scaled down for a buyer pool thinner than typical — it conditions on deal size, the asking gap
+          and the number of buyers contacted, never on business quality. The contribution chart below is
           the <i>judgement</i> logistic that this replaced: it is kept because the direction of each
           variable is defensible and it shows what the model would weigh if the coefficients had ever
           been estimated. It does not move the number above.</p>
@@ -1806,12 +1807,12 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <div class="panel">
         <p class="lede"><b>The median is a published size-band lookup; the spread is fitted.</b> The curve
           is a log-logistic whose shape comes from IBBA&rsquo;s per-band histograms of months to close
-          (4,533 closed deals over 15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4), with its median pinned to the band median. It describes deals that
+          (4,533 closed deals over 15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), with its median pinned to the band median. It describes deals that
           closed and says nothing about a listing that never does. Its shape depends on deal size, never on
           the ask: deals under $500K are more spread out than larger ones. Because the published $500K&ndash;$1M median is shorter than the recent histograms show,
           the curve&rsquo;s long end can rise slightly with size between $250k and $707k. For an ask above
           model value the median, and the curve with it, is stretched by a <b>judgment</b> multiplier: overpricing costs time.</p>
-        <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Cumulative probability of closing over time"></svg>
+        <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Share of closing deals closed by each day, conditional on closing"></svg>
         <p class="note" id="o_tstretch" style="margin:4px 0 0"></p>
         <div class="eq"><div class="lbl">Median pinned to the band median, stretched above model value; shape fitted by size band</div>
           <div id="eq_t"></div><div class="sub" id="eq_ts"></div></div>
@@ -1824,9 +1825,10 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <svg class="sec-glyph" viewBox="0 0 20 20"><circle cx="4.5" cy="6" r="1.7" fill="#9ecbff"/><circle cx="14.5" cy="4.5" r="2.4" fill="#4da3ff"/><circle cx="10" cy="14" r="1.3" fill="#bcc7db"/><circle cx="16.5" cy="13.5" r="1" fill="#4da3ff" fill-opacity=".7"/><path d="M4.5 6l10-1.5L10 14z" stroke="#4da3ff" stroke-opacity=".28" fill="none"/></svg>
       <h2>Buyer universe</h2><span class="ref">framework §10–12, §20</span></div>
       <div class="panel">
-        <p class="lede">Every buyer archetype is placed by how well it fits this company and what it could
-          justify paying. Size is the chance that buyer engages; brightness is the chance it closes.</p>
-        <svg id="starmap" viewBox="0 0 980 470" role="img" aria-label="Map of buyer archetypes by strategic fit and expected value"></svg>
+        <p class="lede">Every buyer archetype is placed by how well it fits this company and the price it
+          would pay: its multiple on this business plus the share of its synergy the seller captures.
+          Size is the chance that buyer engages; brightness is the chance it closes.</p>
+        <svg id="starmap" viewBox="0 0 980 470" role="img" aria-label="Map of buyer archetypes by strategic fit and the price each would pay, against model value"></svg>
         <div class="tw"><table id="buytbl"></table></div>
         <div class="eq"><div class="lbl">Buyer-specific value and synergy</div>
           <div id="eq_b"></div><div class="sub" id="eq_bs"></div></div>
@@ -1886,7 +1888,9 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
         <div class="tw" style="margin-top:16px"><table id="intbl"></table></div>
         <p class="note">ΔValue is the change in what the business supports. ΔE[proceeds], ΔP<sub>C</sub>
           and ROI are measured on top of a free reprice to the model-supported range, because at an
-          unchanged ask the ask itself caps the price and the improvement is not collected.</p>
+          unchanged ask the ask itself caps the price and the improvement is not collected. ΔP<sub>C</sub>
+          is not zero by construction: the reprice equalises the price gap, but the closing probability
+          also reads the buyer pool and the deal size.</p>
         <div class="eq"><div class="lbl">Return on an individual intervention</div>
           <div id="eq_r"></div><div class="sub" id="eq_rs"></div></div>
       </div>
@@ -2037,7 +2041,7 @@ const MODELS = {"value":{"model":"omni_value_v3","source":"BIZCOMPS","n_fit":189
 MODELS.fitted={"model":"omni_fitted_v4","asof":"2026-10-07","sba_rate":{"prime":7.0,"prime_asof":"2026-09-17","prime_source":"Fed H.15 bank prime loan rate (RIFSPBLP_N.B), observed through 2026-10-02","spread_knots":[[11.5129,2.5],[12.6115,2.5],[13.3047,2.0],[13.9978,2.0],[14.7318,2.0],[15.3196,1.42]],"spread_knots_se":[0.05,0.05,0.188,0.05,0.05,0.076],"spread_knots_boot_se":[0.014,0.014,0.053,0.002,0.015,0.068],"spread_base":"prime in effect on the first business day of the approval month (13 CFR 120.214(c))","n":9218,"n_cancelled":770,"n_undisbursed":999,"median_spread":2.0,"fixed_rate_knots":[[11.5129,1.0],[12.6115,0.77],[13.3047,0.45],[13.9978,0.45],[14.7318,0.45],[15.3196,0.25]],"fixed_rate_n":1362,"source":"SBA FOIA 7(a) as of 2026-06-30, change-of-ownership variable-rate term loans approved FY2025-26 (Oct 2024 - Jun 2026), including 770 cancelled and 999 approved but not yet disbursed: median of initial rate minus the prime in effect on the first business day of the approval month (Fed H.15; the base SBA rules peg variable 7(a) rates to, 13 CFR 120.214(c)), by ln(loan), made non-increasing. Knot uncertainty 0.05-0.19 pp (the largest of the bootstrap SE, the range across samples - disbursed only, FY2025 only, FY2026 only, FY2018-26 - and 0.05 pp, because rates heap at quarter points)"},"jobs":{"by_industry":{"home":{"naics":"2382","knots":[[10.9005,57528,18624,0.0067],[12.4139,121349,40927,0.0405],[13.4966,165988,50137,0.0975],[14.271,194146,56374,0.1904],[15.0672,221610,63776,0.3089],[15.6212,237124,68448,0.3973],[15.9664,256256,71091,0.4525],[16.3046,270200,74049,0.5054],[16.6522,287696,75152,0.5561],[16.9048,293539,78300,0.5917],[17.1102,300239,79286,0.621],[17.2736,309361,81416,0.6447],[17.4035,321805,81158,0.6627],[17.5855,312016,81613,0.684],[17.8535,333105,84175,0.7191],[18.1898,330862,84037,0.7522],[19.3736,349519,91580,0.8819]],"rpe":263095,"ppe":71804},"medical":{"naics":"6211","knots":[[10.8474,47036,30515,0.0027],[12.5843,145761,59390,0.0246],[13.4739,179552,70165,0.0679],[14.2583,180582,71073,0.1341],[15.06,196548,79575,0.2118],[15.6142,209545,88288,0.269],[15.955,219424,95936,0.3049],[16.2855,232927,102211,0.3393],[16.6178,245917,104886,0.3717],[16.8648,254168,109598,0.3949],[17.0503,265279,113371,0.4133],[17.17,258100,109600,0.4274],[17.3192,268304,115100,0.4397],[17.4535,264352,117032,0.4551],[17.7362,274081,113669,0.4807],[18.0787,292583,116901,0.5086],[19.5446,274209,115371,0.7602]],"rpe":242751,"ppe":101571},"vet":{"naics":"5419","knots":[[10.811,55217,22417,0.0079],[12.4057,130475,41522,0.0462],[13.485,136595,41994,0.1127],[14.2566,142210,45979,0.2356],[15.0277,158143,53030,0.382],[15.5906,187294,63975,0.4639],[15.9263,198683,66208,0.4975],[16.2536,204306,69175,0.5234],[16.6363,209798,73481,0.5464],[16.7935,283000,85848,0.5596],[17.0611,234201,74835,0.5695],[17.2189,217516,82248,0.5785],[17.2973,201700,76249,0.5865],[17.4365,192301,75404,0.5964],[17.5781,234653,81209,0.6136],[17.6101,347448,99438,0.629],[19.0909,205227,71937,0.8164]],"rpe":178593,"ppe":60576},"msp":{"naics":"5415","knots":[[10.7857,56191,30477,0.005],[12.4035,170470,66258,0.0281],[13.4701,216696,79339,0.0578],[14.2753,233463,89006,0.0923],[15.0745,247338,98883,0.1393],[15.6099,254953,104192,0.18],[15.9612,268802,112236,0.2094],[16.2937,261506,113720,0.2422],[16.628,277985,113734,0.2773],[16.8647,284927,114927,0.3034],[17.0675,278618,117496,0.324],[17.2309,277623,113044,0.3417],[17.3646,309148,115882,0.3563],[17.5223,308129,125492,0.3732],[17.7539,299097,120111,0.4056],[18.0134,311516,120852,0.4404],[19.4674,351940,139454,0.7266]],"rpe":308685,"ppe":123066},"prof":{"naics":"5412","knots":[[10.7576,40278,21067,0.0159],[12.4046,96176,37898,0.0875],[13.4546,119141,49706,0.1805],[14.2279,132169,58897,0.2661],[15.0367,137574,67211,0.3451],[15.5755,145771,69707,0.392],[15.8834,148180,71410,0.4186],[16.1928,125050,87590,0.4452],[16.491,162186,77248,0.4704],[16.6746,109877,65271,0.49],[16.8254,180269,82727,0.5046],[17.0346,172387,84597,0.5132],[17.1565,145479,74768,0.5214],[17.1859,133277,62362,0.5321],[17.3777,146213,76100,0.5524],[17.7867,190679,88485,0.5709],[19.4223,245665,99183,0.788]],"rpe":175216,"ppe":75624},"mfg":{"naics":"31-33","knots":[[10.8845,41042,35636,0.0015],[12.4719,92297,31398,0.0097],[13.4884,117432,40490,0.0244],[14.2842,153085,45262,0.0503],[15.072,192028,52079,0.0868],[15.6107,218852,55335,0.1191],[15.9552,238075,57606,0.1429],[16.2874,256739,59205,0.1688],[16.6228,276252,60871,0.1967],[16.8684,285405,60931,0.2187],[17.0596,299662,61313,0.2367],[17.2293,314630,62787,0.2518],[17.3646,327473,62433,0.2651],[17.5286,335451,63624,0.2813],[17.8076,356091,65158,0.3102],[18.1375,390355,66551,0.3417],[20.4997,758572,77154,0.6772]],"rpe":580239,"ppe":69846},"dist":{"naics":"42","knots":[[10.884,50113,25032,0.0017],[12.498,159540,37727,0.0111],[13.4844,257620,46882,0.027],[14.2937,347759,53316,0.0541],[15.0709,465656,59929,0.0936],[15.6083,556312,64942,0.1293],[15.9566,632097,67574,0.1557],[16.2886,685768,70455,0.1851],[16.6275,738552,72378,0.2166],[16.8752,809268,75423,0.241],[17.0691,861521,75921,0.2603],[17.233,930531,78497,0.276],[17.3867,920361,77025,0.29],[17.5399,974334,79044,0.3074],[17.8387,1074654,82096,0.3389],[18.1538,1141426,84367,0.3736],[20.6649,2651748,99045,0.6938]],"rpe":1894334,"ppe":87120},"staff":{"naics":"5613","knots":[[10.6668,16592,38403,0.0008],[12.4823,60947,40591,0.0038],[13.4865,70116,41121,0.0086],[14.3016,66752,39614,0.0183],[15.0954,60957,39504,0.0363],[15.6201,61114,42905,0.0556],[15.9448,64788,40235,0.0709],[16.2996,60873,39658,0.089],[16.6413,62720,41863,0.1101],[16.8815,68566,44545,0.1271],[17.088,61027,38421,0.1417],[17.2167,67627,41402,0.1551],[17.3877,59613,37724,0.1673],[17.544,64467,42806,0.1822],[17.8308,66112,40565,0.2082],[18.1713,67522,42252,0.239],[20.0983,71851,67458,0.6262]],"rpe":69841,"ppe":60759},"land":{"naics":"5617","knots":[[10.7405,42346,16761,0.0144],[12.4251,90827,29876,0.0883],[13.4621,106761,36309,0.1968],[14.2377,114127,39902,0.3201],[15.0459,123453,42773,0.446],[15.6067,127727,44006,0.5228],[15.9484,123413,43014,0.565],[16.2609,125933,43929,0.603],[16.5937,113862,41924,0.6376],[16.8067,119489,41493,0.66],[17.0097,105147,38589,0.6762],[17.167,125939,44504,0.6895],[17.3635,112247,41605,0.701],[17.4226,114662,41899,0.7143],[17.6354,111237,38538,0.7346],[17.9686,93652,38882,0.7571],[19.2263,108034,41216,0.8835]],"rpe":109206,"ppe":38887},"wash":{"naics":"8111","knots":[[10.8041,48055,15380,0.0109],[12.5278,123451,32057,0.0904],[13.4773,155581,41477,0.2398],[14.2216,173637,48381,0.4387],[15.017,197118,54642,0.6124],[15.5777,205861,56981,0.6882],[15.8907,211026,56315,0.7184],[16.1367,217980,59062,0.739],[16.3838,216403,52699,0.7545],[16.5825,214890,54586,0.7637],[16.5813,186561,52006,0.7709],[16.6339,177756,51103,0.7766],[16.7415,213110,61347,0.7813],[16.6733,131000,40057,0.7884],[16.7539,161146,41104,0.8015],[17.0711,154733,39120,0.8168],[17.8786,179571,51326,0.912]],"rpe":167856,"ppe":46098},"auto":{"naics":"8111","knots":[[10.8041,48055,15380,0.0109],[12.5278,123451,32057,0.0904],[13.4773,155581,41477,0.2398],[14.2216,173637,48381,0.4387],[15.017,197118,54642,0.6124],[15.5777,205861,56981,0.6882],[15.8907,211026,56315,0.7184],[16.1367,217980,59062,0.739],[16.3838,216403,52699,0.7545],[16.5825,214890,54586,0.7637],[16.5813,186561,52006,0.7709],[16.6339,177756,51103,0.7766],[16.7415,213110,61347,0.7813],[16.6733,131000,40057,0.7884],[16.7539,161146,41104,0.8015],[17.0711,154733,39120,0.8168],[17.8786,179571,51326,0.912]],"rpe":167856,"ppe":46098},"constr":{"naics":"2389","knots":[[10.9261,69285,19035,0.0072],[12.4099,139339,40947,0.045],[13.4991,190422,51547,0.1043],[14.2837,234710,57740,0.1971],[15.0725,275674,64424,0.3233],[15.6156,304074,70479,0.4232],[15.9615,312385,71705,0.4875],[16.2946,347309,77006,0.5492],[16.6385,374780,78262,0.6091],[16.8935,371965,80253,0.6532],[17.077,379315,78259,0.6873],[17.2312,441385,85101,0.7117],[17.3857,409402,89028,0.7317],[17.5356,454785,85732,0.7541],[17.8108,441451,85928,0.7887],[18.1123,467332,89010,0.8241],[18.7336,394686,81455,0.9185]],"rpe":317144,"ppe":69975},"fit":{"naics":"7139","knots":[[10.7595,30435,12576,0.0077],[12.4723,55850,17315,0.0653],[13.465,67207,20961,0.1602],[14.2528,76274,23271,0.2795],[15.0265,78348,25695,0.4115],[15.574,89099,30961,0.5002],[15.8988,96580,35088,0.5519],[16.2017,98255,36447,0.6017],[16.5012,93248,34027,0.6475],[16.6896,79538,31197,0.6744],[16.7988,78896,27577,0.6933],[16.8249,89078,30307,0.7071],[17.1122,83877,30121,0.7189],[17.092,76006,25692,0.7352],[17.3223,86231,28761,0.7576],[17.4894,71028,25231,0.7809],[18.2562,80540,24378,0.8956]],"rpe":77815,"ppe":25535},"rest":{"naics":"7225","knots":[[10.7994,26495,12663,0.0035],[12.5602,61213,17466,0.0386],[13.4816,70008,20996,0.1205],[14.2382,73802,24655,0.2721],[15.0208,78505,27434,0.4329],[15.5856,83736,28163,0.5155],[15.9307,85758,27362,0.5525],[16.2554,84275,25774,0.5837],[16.6033,82233,23228,0.6123],[16.8182,79342,22862,0.6319],[17.0371,80681,23123,0.6469],[17.1899,79293,23816,0.6587],[17.3344,78627,22777,0.6687],[17.4748,80793,23120,0.6811],[17.7711,78558,22154,0.702],[18.1044,78763,22665,0.725],[19.4141,70872,21673,0.8673]],"rpe":74035,"ppe":23326},"ecom":{"naics":"4541","knots":[[10.7503,47554,14571,0.006],[12.4676,151036,28391,0.0308],[13.4794,243010,36908,0.0643],[14.2736,327722,44112,0.1053],[15.0655,439266,50725,0.1528],[15.6019,483570,53375,0.1882],[15.9375,542572,54884,0.2116],[16.2715,593833,57606,0.2333],[16.5945,572403,59539,0.2556],[16.8365,647955,63329,0.2723],[17.0432,591238,61520,0.2852],[17.1751,618457,66395,0.2961],[17.3294,757986,69651,0.3051],[17.4622,714981,70685,0.315],[17.7706,701831,63276,0.3334],[18.1094,711822,69227,0.3548],[20.7383,1508271,64735,0.6818]],"rpe":1125680,"ppe":59596},"saas":{"naics":"5112","knots":[[10.7463,54274,32395,0.0009],[12.4657,160329,69209,0.0052],[13.4727,227346,90701,0.0119],[14.2695,241217,100541,0.0233],[15.0702,263729,115386,0.041],[15.6074,284794,118992,0.0574],[15.9331,303123,124071,0.0692],[16.291,293928,123883,0.0825],[16.5792,303086,131298,0.0974],[16.8799,269913,122457,0.1107],[17.0787,315779,143678,0.1235],[17.2019,338973,134658,0.1331],[17.3477,339582,144969,0.1407],[17.5293,299748,125771,0.1547],[17.8098,316766,159022,0.1825],[18.1813,334248,126997,0.2139],[20.3147,551672,218430,0.6137]],"rpe":492598,"ppe":197522}},"source":"Census SUSB 2022, US 6-digit NAICS by enterprise receipts size: receipts and payroll per paid employee"},"gm_wage":{"by_industry":{"home":{"naics":"238220","p10":57580.0,"p25":79070.0,"p50":105800.0,"p75":158570.0,"p90":214650.0,"se_sampling":[0.022,0.018,0.016,0.018,0.022],"se_total":[0.086,0.054,0.048,0.046,0.056]},"medical":{"naics":"621100","p10":65400.0,"p25":84900.0,"p50":108390.0,"p75":167480.0,"p90":244670.0,"se_sampling":[0.086,0.07,0.066,0.071,0.089],"se_total":[0.178,0.137,0.126,0.134,0.168]},"vet":{"naics":"541940","p10":50650.0,"p25":65010.0,"p50":80980.0,"p75":106050.0,"p90":166920.0,"se_sampling":[0.045,0.036,0.033,0.037,0.046],"se_total":[0.11,0.077,0.07,0.072,0.089]},"msp":{"naics":"541500","p10":62110.0,"p25":104350.0,"p50":157590.0,"p75":216980.0,"p90":310550.0,"se_sampling":[0.032,0.026,0.024,0.026,0.032],"se_total":[0.095,0.063,0.057,0.056,0.069]},"saas":{"naics":"513200","p10":84950.0,"p25":120800.0,"p50":175820.0,"p75":276560.0,"p90":376140.0,"se_sampling":[0.052,0.042,0.038,0.042,0.052],"se_total":[0.12,0.086,0.079,0.082,0.101]},"prof":{"naics":"541200","p10":53680.0,"p25":80910.0,"p50":127600.0,"p75":204350.0,"p90":303180.0,"se_sampling":[0.039,0.031,0.029,0.031,0.039],"se_total":[0.103,0.071,0.064,0.064,0.08]},"mfg":{"naics":"339900","p10":50910.0,"p25":71210.0,"p50":103920.0,"p75":161160.0,"p90":232650.0,"se_sampling":[0.037,0.03,0.027,0.03,0.037],"se_total":[0.101,0.068,0.062,0.062,0.077]},"dist":{"naics":"423000","p10":59320.0,"p25":79200.0,"p50":113380.0,"p75":170270.0,"p90":264130.0,"se_sampling":[0.011,0.009,0.008,0.009,0.011],"se_total":[0.079,0.047,0.041,0.037,0.044]},"ecom":{"naics":"44-45","p10":55240.0,"p25":79600.0,"p50":118020.0,"p75":192950.0,"p90":288820.0,"se_sampling":[0.159,0.12,0.111,0.098,0.131],"se_total":[0.167,0.122,0.112,0.1,0.133],"bridge":"mean of 454100 (May 2021) relative to Retail 44-45 and 454100 x ECI; p75 183,890-208,500, p90 271,770-316,090 across bridges"},"staff":{"naics":"561320","p10":58440.0,"p25":74650.0,"p50":105020.0,"p75":165640.0,"p90":250450.0,"se_sampling":[0.033,0.026,0.024,0.026,0.033],"se_total":[0.096,0.064,0.058,0.057,0.07]},"land":{"naics":"561730","p10":46420.0,"p25":62210.0,"p50":89560.0,"p75":122860.0,"p90":164150.0,"se_sampling":[0.047,0.038,0.035,0.038,0.048],"se_total":[0.114,0.08,0.073,0.075,0.093]},"wash":{"naics":"811190","p10":43660.0,"p25":51720.0,"p50":63170.0,"p75":81370.0,"p90":110910.0,"se_sampling":[0.021,0.017,0.016,0.017,0.022],"se_total":[0.085,0.053,0.048,0.045,0.055]},"auto":{"naics":"811110","p10":46080.0,"p25":61910.0,"p50":82970.0,"p75":111800.0,"p90":145530.0,"se_sampling":[0.037,0.029,0.027,0.03,0.037],"se_total":[0.1,0.068,0.062,0.062,0.076]},"constr":{"naics":"238900","p10":51340.0,"p25":75720.0,"p50":102700.0,"p75":147270.0,"p90":203360.0,"se_sampling":[0.021,0.016,0.015,0.016,0.021],"se_total":[0.085,0.053,0.047,0.044,0.054]},"fit":{"naics":"713940","p10":37780.0,"p25":47090.0,"p50":63160.0,"p75":93670.0,"p90":131680.0,"se_sampling":[0.046,0.037,0.034,0.037,0.046],"se_total":[0.112,0.079,0.071,0.073,0.091]},"rest":{"naics":"722511","p10":40840.0,"p25":54750.0,"p50":74820.0,"p75":99350.0,"p90":141650.0,"se_sampling":[0.033,0.027,0.025,0.027,0.034],"se_total":[0.097,0.065,0.058,0.058,0.071]}},"base":"OEWS May 2025","wage_growth":1.0343,"wage_growth_to":"2026Q2","wage_growth_se":0.0086,"wage_growth_se_pct":[0.051,0.0188,0.0099,0.0174,0.0231],"wage_growth_se_note":"wage_growth_se: SE of the economy-wide factor (ECI vs average within-industry OEWS growth). wage_growth_se_pct adds percentile-specific drift over the 2.33-yr panel lag. A single industry cell moves about 5% (SD) from one annual OEWS release to the next relative to it, mostly measurement noise.","se_note":"log-point SEs p10..p90. se_sampling: BLS sampling error of the May-2025 value after shrinkage (published PRSE, kappa=1). se_total: SE of the June-2026 value; adds the noise the published SEs miss (fitted on six OEWS vintage pairs: kappa^2 3.1 plus panel-level noise; little persistent drift) and wage_growth_se_pct. Documentation only; gmSalary does not read them.","noise":{"kappa2":3.08,"h":[0.0194,0.0096,0.0084,0.0049,0.0062],"q":[0.0,0.0,0.0,0.0,0.0],"windows":"2021-23, 2021-24, 2021-25, 2023-24, 2023-25, 2024-25"},"wage_growth_alt_all_private":1.0353,"eci_series":"CIU2020000110000I","topcode":null,"source":"BLS OEWS May 2025, SOC 11-1021 General and Operations Managers, national by industry (no top-code), each cell shrunk toward its parent NAICS row by empirical Bayes using the published relative standard errors; e-commerce bridged from the May 2021 NAICS 454100 row (eliminated in NAICS 2022); carried from May 2025 to June 2026 by the ECI wages & salaries index for private-industry management, business and financial occupations. Wages and salaries only (no benefits, payroll taxes or non-production bonuses)."},"sde_margin":{"slope":0.0753,"ref_sde":200000.0,"sd":0.5935,"ln_at_ref":{"auto":-1.4554,"constr":-1.5076,"dist":-1.6209,"ecom":-1.3048,"fit":-1.3082,"home":-1.4082,"land":-1.3706,"medical":-1.2844,"mfg":-1.5437,"msp":-1.2086,"other":-1.4336,"prof":-1.3315,"rest":-1.5152,"saas":-1.2372,"staff":-1.4011,"vet":-1.3448,"wash":-1.2562},"n":{"auto":308,"constr":257,"dist":119,"ecom":101,"fit":135,"home":337,"land":80,"medical":215,"mfg":233,"msp":70,"other":1739,"prof":96,"rest":1110,"saas":132,"staff":48,"vet":15,"wash":60},"sde_range":[10.596634733096073,14.914122846632385],"source":"DealLedger broker-direct listings (CC0), Feb-Oct 2026: robust regression of ln(cash flow / revenue) on ln(cash flow) with industry effects, n=5,055"},"quality_weights":{"own":1.24,"mgt":0.6,"se":{"own":0.3,"mgt":0.24},"raw":{"own":[1.371,0.368],"mgt":[0.482,0.273]},"hedonic":{"n":5714,"owner_operated":[-0.206,0.055],"absentee_or_manager_run":[0.021,0.058],"staff_in_place":[0.076,0.043],"recurring":[0.026,0.055],"growth":[0.044,0.036],"clean_books":[-0.023,0.108],"repeat_customers":[-0.116,0.044]},"prior":"N(1, 0.5^2) on the relative weight","source":"DealLedger listings with descriptions: Huber regression of ln(ask / cash flow) on ln(cash flow), industry and description phrases; broker-clustered bootstrap SEs. Per-sd effects from the threshold model, relative to the equal weight 0.079 per sd.","fitted":["own","mgt"],"weak":["mgt"],"weak_note":"management depth adds nothing out of sample in broker listings and its ratio to the other measured dimensions is not distinguishable from 1 (fit/quality_weights_v2.py); settled weight, not re-decided","judgment":["rec","grw","gm","ret","fin","cc","plt"],"checked":{"source":"fit/quality_weights_v2.py","ef_n":2644,"ef_12m_n":1552,"flippa_n":627,"flippa_auctions":208,"grw":{"ef_12m":[0.94,0.18],"ef_12m_own_sd":[0.6,0.12],"ef_window":[0.51,0.11],"ef_ttm_rebased":[2.59,0.19],"ef_console_units":[0.09,0.02],"ef_2014_17":[0.08,0.21],"ef_2024_26":[1.13,0.3],"ef_quintiles":{"effect":[0,0.072,0.139,0.17,0.132],"se":[0,0.024,0.019,0.019,0.019],"note":"ln sale multiple (listed earnings basis) by fifth of growth, slowest first, relative to the slowest fifth; the two slowest fifths are shrinking businesses"},"ef_report_increasing_vs_stable":{"window":[-0.017,0.02],"ttm":[0.17,0.033],"cells":23},"ef_report_decreasing_vs_stable":{"window":[-0.106,0.029],"ttm":[-0.171,0.036],"cells":22},"ef_all_specs_positive":true,"dl":[0.35,0.29],"flippa":[0.12,0.57],"pooled":[0.61,0.25],"ratio":[1.32,0.27,3.55],"ef_range":[0.09,2.59],"oos":true},"rec":{"ef":[0.17,0.24],"ef_ask":[0.42,0.16],"ef_sale_minus_ask":[-0.25,0.17],"dl":[0.18,0.39],"flippa":[1.91,0.76],"flippa_auctions":[-1.92,2.13],"flippa_asks":[2.17,0.84],"flippa_strict":[0.91,0.78],"pooled":[0.39,0.28],"ratio":[0.77,-0.37,2.47],"posterior_range":[0.36,0.73],"oos":false},"mgt":{"ratio":[0.99,-0.11,3.13],"oos":false},"common_level":[0.49,0.13],"q":[9.6,8,0.29]}},"buyer_mix":{"knots":[[12.4292,-1.4154,-4.3858],[13.4689,-1.0654,-4.3041],[14.1621,-0.9149,-3.5051],[14.9668,-0.1278,-1.4999],[16.5762,1.4357,1.9025]],"n_complete":[14,15,9,3,6],"n_rows":154,"periods":41,"source":"IBBA / M&A Source Market Pulse 2012-2023: buyer-type shares by deal-size band from the band-quarters whose stated shares cover at least 95% (individual = first-time + serial; financial = PE + other), interpolated in ln(deal value) between band centres"}};
 
 /* Shape of the time-to-close curve (fit/time_to_close_shape.py, 2026-10). IBBA / M&A Source Market Pulse per-band
-   histograms of months listing->close, 15 quarters (2020Q1-2023Q3 and 2025Q4), 4,533 closed deals, interval-censored
+   histograms of months listing->close, 15 quarters (2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4), 4,533 closed deals, interval-censored
    MLE. Log-logistic: as good as a gamma on held-out quarters, at least as good as a refitted Weibull, better than
    a lognormal, and closed-form. beta has two levels: under $500K, and one shared value from $500K up (the four
    upper bands differ by no more than noise and no gradient among them is identified, so they are pooled); it is
@@ -2045,7 +2049,7 @@ MODELS.fitted={"model":"omni_fitted_v4","asof":"2026-10-07","sba_rate":{"prime":
    SE widened for how months are reported (rounded or truncated; what "<1 month" covers). hist_* are the histograms'
    own grouped medians (display only); hist_*_se are quarter-bootstrap SEs, sampling only (they ignore where deals
    sit inside a one-month answer). Closed deals only. */
-MODELS.fitted.ttc_shape={"family":"loglogistic","bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],"beta":[2.20,2.64,2.64,2.64,2.64],"beta_se":[0.16,0.13,0.13,0.13,0.13],"n":[2100,867,676,548,342],"n_quarters":15,"hist_median_listing":[6.6,8.1,8.3,9.3,9.9],"hist_median_listing_se":[0.21,0.24,0.24,0.25,0.38],"hist_median_loi":[2.2,3.1,3.2,3.8,3.9],"hist_median_loi_se":[0.03,0.06,0.05,0.15,0.13],"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};
+MODELS.fitted.ttc_shape={"family":"loglogistic","bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],"beta":[2.20,2.64,2.64,2.64,2.64],"beta_se":[0.16,0.13,0.13,0.13,0.13],"n":[2100,867,676,548,342],"n_quarters":15,"hist_median_listing":[6.6,8.1,8.3,9.3,9.9],"hist_median_listing_se":[0.21,0.24,0.24,0.25,0.38],"hist_median_loi":[2.2,3.1,3.2,3.8,3.9],"hist_median_loi_se":[0.03,0.06,0.05,0.15,0.13],"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};
 MODELS.fitted.competition={"eng_share":0.184,"eng_share_se":0.027,"eng_share_ci95":[0.13,0.226],"eng_share_spec_range":[0.164,0.201],"eng_share_spec_n":9,"eng_share_pln":{"c":0.21,"se":0.015,"log_sd":0.78,"note":"Poisson-lognormal scale, which fits better; it pairs with its own log-sd, not with nb_r, so it is not a range for eng_share. Never read by the model"},"calibration":"ENG_SHARE turns buyers contacted x engagement into expected offers. It is the scale at which a typical pool reproduces IBBA's offers per closed deal by size band, fitted by maximum likelihood with a zero-truncated negative binomial (dispersion nb_r, fitted jointly). Only the scale is adopted: the model's thin-pool factor keeps the Poisson shape, and nb_r is not read by the model","nb_r":1.07,"nb_r_se":0.55,"nb_r_ci95":[0.4,2.86],"nb_r_spec_range":[0.82,1.9],"nb_thin_pool":{"status":"not adopted (review): its level rests on the zero-offer class, which IBBA never observes, so it is an extrapolation of the mixing family, not identified","thin_half_pool":[0.62,0.82],"thin_quarter_pool":[0.35,0.6],"p_any_offer_typical_under_500k":[0.5,0.57],"pepperdine_base_close_under_500k":0.61,"p_any_offer_note":"0.50 under the NB, 0.57 under the Poisson-lognormal; below the base close rate, which a sale needing an offer rules out"},"thin_shape":"calibrated scale, judgment shape: Poisson chance of at least one offer, relative to a typical pool's, with a smooth cap at 1 (THIN_W); assumes closing does not depend on the number of offers once there is one (the histograms lean toward it does, which would lower the factor) and that offers grow in proportion to buyers contacted (a weak analog leans toward less than proportional, which would raise it)","thin_half_pool":[0.58,0.85],"thin_quarter_pool":[0.31,0.6],"thin_half_pool_at_eng_ci":[0.56,0.89],"thin_cap_w":0.05,"thin_cap_max_lift":0.014,"thin_half_pool_old":[0.65,0.96],"thin_quarter_pool_old":[0.37,0.8],"thin_selection_drop_half":[0.01,0.11],"thin_beta_rise_half":[0.05,0.18],"quasi_dispersion":[1.4,4.7],"n_deals":1523,"n_deals_rounding_consistent":1452,"band_quarters":25,"quarters":"2023Q1-2023Q4, 2025Q4","quarter_clusters":5,"heldout_loglik_per_deal":{"nb":-1.588,"poisson_same_scale":-1.702},"band_centres":[250000,707000,1414000,3162000,15810000],"offers_per_closed_deal_lower_bound":{"<500K":2.0,"500K-1M":2.3,"1M-2M":2.78,"2M-5M":2.83,"5M-50M":3.83},"offers_per_closed_deal_bandfree_fit":{"<500K":2.02,"500K-1M":2.32,"1M-2M":2.86,"2M-5M":2.92,"5M-50M":4.28},"offers_per_closed_deal_bandfree_se":{"<500K":0.1,"500K-1M":0.17,"1M-2M":0.23,"2M-5M":0.19,"5M-50M":1.2},"offers_per_closed_deal_model":{"<500K":1.965,"500K-1M":2.488,"1M-2M":2.802,"2M-5M":3.182,"5M-50M":3.745},"expected_offers_typical_pool":[0.99,2.8],"expected_offers_typical_pool_by_industry":[0.65,3.49],"offers_per_closed_deal_poisson_shape":{"<500K":1.578,"500K-1M":1.954,"1M-2M":2.197,"2M-5M":2.506,"5M-50M":2.992},"avg_offers_bars_2024_2026":{"<500K":1.824,"500K-1M":2.456,"1M-2M":2.656,"2M-5M":3.281,"5M-50M":4.627},"series_disagreement":{"2023Q4_bars_minus_histogram_lower_bound":[-0.38,-0.2,-0.12,-0.48,-0.12],"2025Q4_table_minus_histogram_lower_bound":[0.18,0.42,0.74,-0.84,4.1]},"share_one_offer":{"<500K":0.478,"500K-1M":0.415,"1M-2M":0.34,"2M-5M":0.297,"5M-50M":0.264},"kappa":0.03,"kappa_status":"judgment (not identified)","kappa_ibba_within_band":[-0.01,0.165],"kappa_ci95_ibba":[-0.33,0.31],"kappa_two_way_fe_eiv":[-0.186,0.152],"kappa_crossband_upper":0.33,"kappa_n_band_quarters":40,"comp_h_note":"COMP_H = 3 x ENG_SHARE / 0.34: the old half-saturation of 3 engaged buyers at a 0.34 share, re-expressed in offers, so the premium is unchanged","strategic_premium":{"status":"consistency check only; BUYERS mf, syn and PHI unchanged (judgment)","pepperdine_2016":[0.166,0.019],"pepperdine_2025_secondary":[0.104,0.025],"re_pooled":[0.137,0.031],"model_full_presence":0.107,"theta":[1.155,0.186],"implied_str_adj_2016_only":[1.25,1.2],"implied_str_adj_2025_only":[1.18,1.14]},"addon_over_platform_gf":[1.076,0.086],"score_effect_at_integration":{"median_half_pool":[1,25],"median_half_pool_old":[1,43],"median_half_pool_drop":21,"median_three_quarter_pool":[19,43],"median_three_quarter_pool_old":[27,48],"median_quarter_pool":[1,1],"median_quarter_pool_old":[1,15],"example_25_buyers":[27,2],"example_40_buyers":[40,33],"example_65_buyers":[43,43]},"refit_when":"refit ENG_SHARE (fit/competition_buyers.py) whenever IND buyers, the BUYERS fit functions, peRef or buyerMix change: it is calibrated against this console's own typical pool","source":"IBBA/M&A Source Market Pulse offers-per-closed-deal histograms by deal-size band, zero-truncated negative binomial (fit/competition_buyers.py). Both flagged quarters are kept. 2023Q4 (read from a multi-series line chart) is inconsistent with the same report's average-offers bars in all five bands (its lowest possible means exceed them by 0.12-0.48); 2025Q4 is inconsistent in one band ($2M-5M) and its $5M+ cell has 35% at 10+ (n=26). Dropping 2025Q4 gives eng_share 0.190; dropping 2023Q4 and that cell 0.164; 2023Q1-Q3 only 0.170. Kappa: IBBA realized/ask x average offers, within band. Buyer factors: Pepperdine PCM 2016/2025, GF Data, Stanford 2024, as a consistency check"};
 const VBANDS=[["<500K",0,5e5],["500K-1M",5e5,1e6],["1-2M",1e6,2e6],["2-5M",2e6,5e6],["5-50M",5e6,5e7]];
 const vbandOf=p=>{for(const[n,lo,hi]of VBANDS){if(p>=lo&&p<hi)return n}return p>=5e7?"5-50M":"<500K"};
@@ -2289,7 +2293,8 @@ function fitRisk(price,naicsKey,rate,jobs,franchise,st){
 }
 
 /* ---- Model I: probability of closing (AGGREGATE, Pepperdine) ----
-   Base rate x price-gap penalty. Conditions on deal size and gap ONLY.
+   Base rate (interpolated by deal size) x price-gap penalty; model() then scales it by the thin-pool factor
+   below a typical buyer pool. Conditions on deal size, gap and pool ONLY.
    It does NOT condition on business quality: Pepperdine publishes rates,
    not deal rows, so no per-deal logistic can be fitted from it.          */
 /* The penalty used to be six hand-set steps. At a 10% gap a $1 change in the ask
@@ -2397,7 +2402,9 @@ function fitClose(ask,val,channel,size){
     const KZ=(C.kill_zone&&C.kill_zone.range_pct)||[11,30];
     kill=gap>=KZ[0]&&gap<=KZ[1];
   }
-  return {p:clamp(base*(1-pen),.02,.95),base:base,basePooled:basePooled,gap:gap,pen:pen,kill:kill,chanShare:u,
+  /* no floor: a 2% floor froze the probability, proceeds and score again from about 28x value, the flat
+     region the gap tail exists to remove. The tail decays toward a certain loss, so P_C does too. */
+  return {p:clamp(base*(1-pen),0,.95),base:base,basePooled:basePooled,gap:gap,pen:pen,kill:kill,chanShare:u,
           reasons:C.failure_reasons,gapDist:C.valuation_gap_distribution};
 }
 
@@ -2620,7 +2627,8 @@ const PMIN=.05, PMAX=.93;  // irreducible deal risk at both ends
 /* ============================================================
    BUYER ARCHETYPES  §10–12
    syn  : share of the full synergy pool this buyer can realise
-   mf   : multiple factor relative to the financial-buyer baseline
+   mf   : multiple factor relative to model value (the BIZCOMPS closed-sale value, where most buyers are
+          individuals; financial archetypes sit above 1 too, so it is not a financial-buyer baseline)
    lo/hi: earnings window, used only by the search fund and the MBO; every other archetype's
           presence by deal size comes from IBBA's fitted buyer-type mix (buyerMix)
    ============================================================ */
@@ -2807,7 +2815,7 @@ function model(s){
      Pepperdine publishes termination RATES, not deal rows, so the 15-feature
      logistic above cannot be fitted. It is kept for the contribution panel,
      but the reported probability is base rate x price-gap penalty, which
-     conditions on deal size and gap ONLY - never on business quality.     */
+     conditions on deal size and gap (and, below, the buyer pool) ONLY - never on business quality. */
   const FC=fitClose(s.ask,out.V,s.chan,out.Vbase);
   out.fc=FC; out.PCjudg=PC; out.PC=FC.p;
   out.eta=eta; out.contrib=contrib; out.fRec=fRec; out.fCc=fCc; out.fUnder=fUnder; out.Pq=Pq; out.gate=gate;
@@ -2843,6 +2851,12 @@ function model(s){
   const Ffit=t=>t>0?1/(1+Math.pow(t/tMd,-betaT)):0;
   out.lamE=tMd; out.betaT=betaT; out.F=Ffit;
   out.tQ=p=>tMd*Math.pow(p/(1-p),1/betaT);   // closed-form quantile, for display
+  /* the MEAN time to close, which a cost charged per day of delay must use: lambda*E[T], not lambda*t_med.
+     The log-logistic is right-skewed, so the mean sits 28% (beta 2.64, $500K up) to 44% (beta 2.20, under
+     $500K) above the median. Finite because beta > 1 (the fitted shapes are 2.20-2.64). The fitted curve
+     matches the histograms' mass beyond their last edge (24.5 months); how that mass spreads further out
+     is the log-logistic's extrapolation: about 36 of the 296 expected days for a $150K-SDE business. */
+  out.tMean=tMd*(Math.PI/betaT)/Math.sin(Math.PI/betaT);
   out.t90=Ffit(90); out.t180=Ffit(180); out.t365=Ffit(365);
 
   /* ---- Model V: post-acquisition survival risk (FITTED, SBA 7(a) hazard; jobs passed, not used) ---- */
@@ -2874,7 +2888,7 @@ function model(s){
        40% of value - above anything the lower-middle market publishes. */
     const S=Math.min(b.syn*synE*out.M*sizeFit, .40*s.ern*out.M/PHI);
     const Vj=s.ern*out.M*(1+(b.mf-1)*sizeFit) + PHI*S;
-    const PCj=clamp(out.PC*(0.80+0.42*PE),.02,.95);
+    const PCj=clamp(out.PC*(0.80+0.42*PE),0,.95);
     return {...b,sizeFit,PE,S,Vj,PCj,EV:PE*PCj*Vj,fit:clamp(raw*sizeFit,0,1.15),fit0};
   }).sort((a,b)=>b.EV-a.EV);
   out.best=out.buyers[0];                                   // who to pursue first
@@ -2916,8 +2930,8 @@ function model(s){
   out.nPool=s.buyers*peRef*ENG_SHARE;
   out.thinF=capOne((1-Math.exp(-out.nPool))/Math.max(1e-9,1-Math.exp(-out.nEngRef)));
   if(out.thinF<1){
-    out.PC=clamp(out.PC*out.thinF,.02,.95); out.fc.p=out.PC;
-    for(const b of out.buyers){ b.PCj=clamp(out.PC*(0.80+0.42*b.PE),.02,.95); b.EV=b.PE*b.PCj*b.Vj; }
+    out.PC=clamp(out.PC*out.thinF,0,.95); out.fc.p=out.PC;
+    for(const b of out.buyers){ b.PCj=clamp(out.PC*(0.80+0.42*b.PE),0,.95); b.EV=b.PE*b.PCj*b.Vj; }
     out.buyers.sort((a,b)=>b.EV-a.EV); out.best=out.buyers[0];
   }
 
@@ -3164,6 +3178,20 @@ function omniScore(r){
      verdict, and so does 100 */
   return Math.max(1,Math.min(99,Math.round(100*n/R.xs.length)));
 }
+/* The business score measures the business alone, so it takes the seller's process decisions out: the ask
+   (priced at the proceeds optimum) AND the buyer pool, held at least at the industry's typical pool. The number of
+   buyers contacted is a marketing decision like the ask (the optimiser sells outreach as an intervention), and
+   every reference peer is priced at the typical pool; keeping a thin pool here scored a 79th-percentile business
+   'bottom decile' at 10 buyers. A pool deeper than typical is kept, so the business score still never falls below
+   the Omni score: the thin-pool factor and the competition premium never fall as buyers rise.
+   rA is the business at its own pool and the optimal ask, so the caption can split what the Omni score loses
+   between the ask (r against rA) and the pool (rA against rq). */
+function businessScore(s,r,rhoSell){
+  const typ=(IND[s.ind]||IND.prof).buyers||50, askOpt=r.V*rhoSell, rA=model({...s,ask:askOpt});
+  let rq=rA, rhoB=rhoSell;
+  if(s.buyers<typ){ const sB={...s,buyers:typ}; rhoB=bestRatio(sB,0,0); rq=model({...sB,ask:r.V*rhoB}); }
+  return {score:Math.max(omniScore(rq),omniScore(r)),rq,rA,askOpt,rhoB,typ,thin:s.buyers<typ};
+}
 
 /* ============================================================
    §15–18  INTERVENTIONS AND THE BUDGET OPTIMIZER
@@ -3226,9 +3254,10 @@ const FIELD_RANGE={own:[.02,.99],mgt:[.02,.99],fin:[.02,1],rec:[0,1],ret:[.05,.9
    price-elastic the closing probability is and on what a retained business is
    worth to the owner: ~1.1x when a failed sale is a total loss. For an owner content to
    keep it (theta = .75) the utility has two near-equal peaks, an interior one near 1.15x
-   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.42% of value
-   (framework example; 0.27% with no delay cost); the cap wins for FAN_S above about 0.90 (about 0.866
-   with no delay cost) or theta from about 0.77 (0.763 with no delay cost). That knife-edge is set by how
+   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.46% of value
+   (framework example; 0.27% with no delay cost); the cap wins for FAN_S above about 0.915 (about 0.866
+   with no delay cost) or theta from about 0.771 (0.763 with no delay cost). The delay cost is charged on
+   the MEAN time to close (out.tMean), as a per-day cost's expectation must be. That knife-edge is set by how
    widely prices scatter at asks of 1.4-1.5x, where FAN_S (calibrated near 1.07x) is
    extrapolated; the whole fan, or selection on closing, keep the cap. The render shows
    both ends as a range when they are within 1% of value (AUDIT.md, Oct 2026). Solved once
@@ -3237,7 +3266,7 @@ const FIELD_RANGE={own:[.02,.99],mgt:[.02,.99],fin:[.02,1],rec:[0,1],ret:[.05,.9
 function bestRatio(s0,theta,lamT){
   const V=model({...s0,ask:1}).V;
   const U=m=>{const r=model({...s0,ask:V*m});
-              return r.EVp+(1-r.PC)*theta*r.V-lamT*r.tMed;};
+              return r.EVp+(1-r.PC)*theta*r.V-lamT*r.tMean;};   // delay charged on the MEAN time, lambda*E[T]
   let best={u:-Infinity,m:1.05};
   const STEP=0.02;
   /* searched up to RHO_MAX, not past it: beyond the last gap Pepperdine resolves the
@@ -3282,9 +3311,9 @@ function bestRatio(s0,theta,lamT){
    says "no second peak" only when there is none (a shoulder whose dip is under 0.01% of value is not
    a peak), and otherwise names the other peak and how far below the cap it is. */
 function optNote(s,V,rSell,rKeep){
-  const U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed;
+  const U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMean;
   const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<Math.abs(U(rSell))*.01;
-  const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMed-rKeep.tMed)), dd=days===1?"a day":`${days} days`;
+  const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMean-rKeep.tMean)), dd=days===1?"a day":`${days} days`;
   const lam=s.lamT>0?` and a cost of delay of ${money(s.lamT)} a day`:"";
   let alt=null, flat=null, peak=null;
   if(s.theta>0){
@@ -3294,7 +3323,7 @@ function optNote(s,V,rSell,rKeep){
     const us=xs.map(U), top=ms.length-1, isMax=(v,i)=>i>0&&v[i]>=v[i-1]&&(i===top||v[i]>=v[i+1]);
     /* the share kept is entered in 1% steps: a peak that exists one step either side is as real as one here (it is
        where the walk-away ask jumps to when a peak appears or vanishes), so it is a candidate too, valued at this share */
-    const nb=[s.theta-.01,s.theta+.01].filter(th=>th>=0&&th<=1).map(th=>xs.map(x=>x.EVp+(1-x.PC)*th*x.V-s.lamT*x.tMed));
+    const nb=[s.theta-.01,s.theta+.01].filter(th=>th>=0&&th<=1).map(th=>xs.map(x=>x.EVp+(1-x.PC)*th*x.V-s.lamT*x.tMean));
     /* the walk-away ask's own peak is the grid point bestRatio refined around (its coarse winner, within a step of
        s.optRho); any other local maximum on the grid is a separate peak, with a dip between the two */
     let own=0; for(let i=1;i<=top;i++) if(us[i]>us[own]) own=i;
@@ -3334,21 +3363,56 @@ function optNote(s,V,rSell,rKeep){
   if(s.optRho<s.rhoSell)
     return {kind:"lower",gain,coin,alt,flat,peak,text:`The cost of delay pulls the second figure below the proceeds-maximising price. `
       +`Listing at ${money(V*s.optRho)} gives up ${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds, but it is `
-      +`${pp(Math.max(0,rKeep.PC-rSell.PC)).replace("+","")} more likely to close and closes ${days>=1?`about ${dd}`:"slightly"} sooner, `
-      +`which at ${money(s.lamT)} a day is worth ${money(gain)} to this owner`
+      +`${pp(Math.max(0,rKeep.PC-rSell.PC)).replace("+","")} more likely to close and closes ${days>=1?`about ${dd}`:"slightly"} sooner on average, `
+      +`worth ${money(s.lamT*Math.max(0,rSell.tMean-rKeep.tMean))} at ${money(s.lamT)} a day. `
+      /* gain is the NET change in the objective: the time saved, less the proceeds given up and the smaller value kept
+         if the sale fails. It was printed as the value of the time saved, which a reader then netted a second time. */
+      +`Net of the proceeds given up${s.theta>0?" and the smaller value kept if the sale fails":""}, that is worth ${money(gain)} to this owner`
       +(coin?`, so the two are close to a coin toss. `:`. `)
       +range
       +`An owner who does not count the wait should use the left-hand number.`};
   return {kind:"higher",gain,coin,alt,flat,peak,text:`The gap between these is the real decision. The higher price gives up `
     +`${pp(Math.max(0,rSell.PC-rKeep.PC)).replace("+","")} of closing probability and `
     +`${money(Math.max(0,rSell.EVp-rKeep.EVp))} of expected proceeds for a bigger cheque if it does close`
-    +(days>=1?`, takes about ${dd} longer to close,`:``)+` and only `
+    +(days>=1?`, takes about ${dd} longer to close on average,`:``)+` and only `
     +`pays off if the owner genuinely can walk away: it assumes a failed process still leaves them `
     +`${pc(s.theta)} of the value. `
     +(coin?`Even then it is worth only ${money(gain)} more to this owner${s.lamT>0?" after the cost of delay":""}, so the two are close to a coin toss. `:"")
     +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as "test the market", not as a measured optimum. `:"")
     +range
     +`A seller who must exit should use the left-hand number.`};
+}
+/* The subtitle under the optimiser's second card, written from what actually differs between the two programmes.
+   The common case is the SAME changes repriced to a different ratio: the same spend, and a higher ask lengthens
+   the time to close, so the old 'a different programme ... in exchange for less elapsed time and spend' was false
+   at the console's own defaults. Each difference is named only if it moves, in the direction it moves, and the
+   reason the utility prefers the programme is read off the two terms the proceeds objective leaves out. */
+function optCardNote(s,best,rhoSell,uRho){
+  const bV=best.V, bU=best.U, ks=k=>JSON.stringify(k.slice().sort());
+  const sameKeys=ks(bV.keys)===ks(bU.keys), rep=bU.keys.includes("reprice");
+  if(sameKeys&&(!rep||uRho.toFixed(2)===rhoSell.toFixed(2)))
+    return {kind:"same",text:"Both objectives select the same programme at this budget, delay cost and retained value."};
+  const dProc=bU.proceeds-bV.proceeds, dPC=bU.PC-bV.PC, dC=bU.c-bV.c, dT=(bU.t+bU.days)-(bV.t+bV.days);
+  const nd=Math.round(Math.abs(dT)), dd=nd===1?"a day":nd+" days";
+  const proc=Math.abs(dProc)<1?"matches the expected proceeds":dProc<0?`gives up ${money(-dProc)} of expected proceeds`:`adds ${money(dProc)} of expected proceeds`;
+  const why=[];   /* the terms in which the utility's programme gains: value kept on failure, and time */
+  if(s.theta>0&&dPC<-1e-4) why.push(`the ${pc(s.theta)} of value retained if the process fails`);
+  if(s.lamT>0&&dT<=-.5) why.push(`the cost of delay of ${money(s.lamT)} a day`);
+  const tail=why.length?` It pays only through ${why.join(" and ")}.`:"";
+  const pcTxt=Math.abs(dPC)>=5e-4?`${pp(Math.abs(dPC)).replace("+","")} ${dPC<0?"less":"more"} likely to close`:"";
+  /* elapsed time from start to close: execution days plus the mean time to close, the 'Expected days' tile */
+  const tTxt=nd>=1?`takes about ${dd} ${dT>0?"longer":"less"} from start to close`:"";
+  if(sameKeys){
+    const hi=uRho>rhoSell;
+    return {kind:"reprice",text:`The same changes, repriced to ${uRho.toFixed(2)}× instead of ${rhoSell.toFixed(2)}×: it ${proc}`
+      +(pcTxt?` and is ${pcTxt}`:"")+` for a ${hi?"higher":"lower"} price if it closes`+(tTxt?`, and ${tTxt}`:"")+`.`+tail};
+  }
+  const diff=[];
+  if(Math.abs(dC)>=1) diff.push(`spends ${money(Math.abs(dC),0)} ${dC<0?"less":"more"}`);
+  if(pcTxt) diff.push(`is ${pcTxt}`);
+  if(tTxt) diff.push(tTxt);
+  const list=diff.length>1?diff.slice(0,-1).join(", ")+" and "+diff[diff.length-1]:diff.join("");
+  return {kind:"different",text:`A different programme: it ${proc}`+(list?`, ${list}`:"")+`.`+tail};
 }
 function applyAll(s0,r0,keys,rho){
   const mul={},add={},ceilAt={},floorAt={};
@@ -3428,13 +3492,14 @@ function optimize(s0,r0,budget,lamT,theta){
     const hasR=keys.includes("reprice");
     /* proceeds objective: reprice to the proceeds-optimal ratio */
     const r=model(applyAll(s0,r0,keys,s0.rhoSell));
-    const recV={keys,c,days,V:r.Vreal,proceeds:r.EVp,net:r.EVp-c,PC:r.PC,t:r.tMed,r};
-    recV.U=r.EVp+(1-r.PC)*theta*r.V-lamT*(r.tMed+days)-c;
+    /* t is the MEAN time to close: the delay cost is charged per day, so its expectation is lambda*(E[T]+T_exec) */
+    const recV={keys,c,days,V:r.Vreal,proceeds:r.EVp,net:r.EVp-c,PC:r.PC,t:r.tMean,tMed:r.tMed,r};
+    recV.U=r.EVp+(1-r.PC)*theta*r.V-lamT*(r.tMean+days)-c;
     if(!best.V||recV.net>best.V.net) best.V=recV;
     /* utility objective: reprice to the utility-optimal ratio (same state if no reprice) */
     const ru=hasR?model(applyAll(s0,r0,keys,s0.optRho)):r;
-    const recU=ru===r?recV:{keys,c,days,V:ru.Vreal,proceeds:ru.EVp,net:ru.EVp-c,PC:ru.PC,t:ru.tMed,r:ru,
-      U:ru.EVp+(1-ru.PC)*theta*ru.V-lamT*(ru.tMed+days)-c};
+    const recU=ru===r?recV:{keys,c,days,V:ru.Vreal,proceeds:ru.EVp,net:ru.EVp-c,PC:ru.PC,t:ru.tMean,tMed:ru.tMed,r:ru,
+      U:ru.EVp+(1-ru.PC)*theta*ru.V-lamT*(ru.tMean+days)-c};
     if(!best.U||recU.U>best.U.U)     best.U=recU;
   }
   return best;
@@ -3647,6 +3712,9 @@ function drawCurve(r){
   g+=`<line x1="${L}" y1="${py(0)}" x2="${W-R}" y2="${py(0)}" stroke="rgba(77,163,255,.3)"/>`;
   g+=`<text x="${L}" y="16" fill="#8793a8" font-size="11" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">share of the deals that close, closed by day t (${pc(r.PC)} of listings close)</text>`;
   $("tcurve").innerHTML=g;
+  /* the curve is conditional on closing: F(t) is the share of the deals that close which have closed by day t */
+  $("tcurve").setAttribute("aria-label",`Share of closing deals closed by each day, conditional on closing (median ${Math.round(r.tMed)} days); `
+    +`${pc(r.PC)} of listings like this one close at all`);
   /* What the seller actually ends up with, which is three numbers the console has
      been holding and not showing: the share of the ask a deal in this industry and
      size band closes at, the share of that arriving as cash on the day, and how the
@@ -3734,14 +3802,14 @@ function drawStars(r){
   g+=`<text x="${L+IW/2}" y="${H-Bm+40}" text-anchor="middle" fill="#7d8aa3" font-size="10.5"
        font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Strategic fit →</text>`;
   g+=`<text transform="translate(16,${T+IH/2}) rotate(-90)" text-anchor="middle" fill="#7d8aa3"
-       font-size="10.5" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Value to buyer →</text>`;
+       font-size="10.5" font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">Price this buyer would pay →</text>`;
 
-  /* ---- the financial-buyer reference line: everything above it is a premium ---- */
+  /* ---- the model-value reference line: everything above it is a premium over model value ---- */
   const refY=py(r.V);
   g+=`<rect x="${L}" y="${T}" width="${IW}" height="${Math.max(0,refY-T)}" fill="url(#sfade)"/>`;
   g+=`<line x1="${L}" y1="${refY}" x2="${W-R}" y2="${refY}" stroke="#ffc640" stroke-opacity=".5" stroke-dasharray="5 4"/>
       <text x="${L+6}" y="${refY-8}" text-anchor="start" fill="#ffc640" font-size="10.4"
-        font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">model value ${money(r.V)} \u2014 above this line is strategic premium</text>`;
+        font-family="Schibsted Grotesk,Helvetica Neue,Helvetica,Arial,sans-serif">model value ${money(r.V)} \u2014 above this line is a premium over model value</text>`;
 
   /* ---- connector spokes from the reference point ---- */
   const cx=px(0),cy=refY;
@@ -3968,36 +4036,39 @@ function render(){
   drawOrbit(r);
   $("o_score").textContent=r.score;
   /* Two scores, because two very different things pull the percentile down: a weak
-     business, and a good business priced away from what it supports. The business
-     score prices the same profile at the ask that maximises its expected proceeds,
-     so it measures the business alone; the Omni score uses the ask as entered. Both
-     rank against the same peers (priced at their own optimum, refDistAt), so the gap
-     between them is what the pricing decision costs - which is why the business score
-     can never be the lower of the two, and the same ask gives the same score on both.
-     The max() only covers an ask outside the optimiser's scan that happens to earn more. */
+     business, and a good business marketed away from what it supports. The business
+     score prices the same profile at the ask that maximises its expected proceeds and
+     at least a typical buyer pool (businessScore), so it measures the business alone;
+     the Omni score uses the ask and the pool as entered. Both rank against the same
+     peers (priced at their own optimum and the typical pool, refDistAt), so the gap
+     between them is what the ask and the pool cost - which is why the business score
+     can never be the lower of the two, and the same ask and pool give the same score
+     on both. The max() only covers an ask outside the optimiser's scan that happens to
+     earn more. */
   (function(){
-    const rho=s.rhoSell, askOpt=r.V*rho;
-    const rq=model({...s,ask:askOpt});
-    r.scoreQ=Math.max(omniScore(rq),r.score); r.askOpt=askOpt;
+    const bs=businessScore(s,r,s.rhoSell), askOpt=bs.askOpt, rA=bs.rA, rq=bs.rq;
+    r.scoreQ=bs.score; r.askOpt=askOpt; r.biz=bs;
     $("o_score_biz").textContent=r.scoreQ;
-    $("o_score_biz_n").textContent="at the optimal ask of "+money(askOpt);
-    $("o_score_n").textContent="at your ask of "+money(s.ask);
-    const drag=r.scoreQ-r.score;
+    $("o_score_biz_n").textContent=bs.thin?"at the optimal ask of "+money(r.V*bs.rhoB)+" and a typical "+bs.typ+" buyers"
+      :"at the optimal ask of "+money(askOpt);
+    $("o_score_n").textContent="at your ask of "+money(s.ask)+(bs.thin?" and "+s.buyers+" buyers":"");
+    /* the points the Omni score loses, split between the ask (at this pool) and the pool (at the optimal ask) */
+    const sA=Math.max(r.score,Math.min(r.scoreQ,omniScore(rA))), askPts=sA-r.score, poolPts=r.scoreQ-sA;
+    const pts=k=>k>=1?` and ${k} point${k===1?"":"s"}`:"";
     /* bands read off the business score, which measures quality at a well-chosen ask
-       against peers of the same size; the closing probability does not depend on
-       quality, so the low bands talk about price, not about a failed process */
+       and pool against peers of the same size, so they talk about the business only */
     const band=v=>v>=90?"a top-decile exit profile for its size":v>=62?"above most peers of its size"
               :v>=38?"in the middle of its peer group":v>=10?"below most peers of its size, and the gaps will be priced in"
               :"in the bottom decile for its size: buyers will price the gaps hard";
     /* "close to optimal" is decided on what the ask costs in expected proceeds, not on
        score points: both scores pin at 99 for a strong business however it is priced */
-    const loss=1-r.EVp/Math.max(rq.EVp,1), dir=s.ask>=askOpt?"above":"below";
-    const off=Math.abs((s.ask/askOpt-1)*100);
-    $("o_cap").textContent = loss<.02
-      ? `The business is ${band(r.scoreQ)}, and the ask is close to optimal: within ${Math.max(0,loss*100).toFixed(1)}% of the best expected proceeds.`
-      : `The business is ${band(r.scoreQ)}. The ask costs ${(loss*100).toFixed(0)}% of expected proceeds`
-        + (drag>=1?` and ${drag} point${drag===1?"":"s"}`:"")
-        + `: ${money(s.ask)} is ${off.toFixed(0)}% ${dir} the optimal ask of ${money(askOpt)}.`;
+    const loss=1-r.EVp/Math.max(rA.EVp,1), dir=s.ask>=askOpt?"above":"below";
+    const off=Math.abs((s.ask/askOpt-1)*100), poolLoss=bs.thin?1-rA.EVp/Math.max(rq.EVp,1):0;
+    $("o_cap").textContent = (loss<.02
+      ? `The business is ${band(r.scoreQ)}, and the ask is close to optimal: within ${Math.max(0,loss*100).toFixed(1)}% of the best expected proceeds at this pool.`
+      : `The business is ${band(r.scoreQ)}. The ask costs ${(loss*100).toFixed(0)}% of expected proceeds${pts(askPts)}`
+        + `: ${money(s.ask)} is ${off.toFixed(0)}% ${dir} the optimal ask of ${money(askOpt)}.`)
+      + (poolLoss>=.005?` Contacting ${s.buyers} buyers against a typical ${bs.typ} costs a further ${(poolLoss*100).toFixed(0)}% of expected proceeds${pts(poolPts)}.`:"");
   })();
   /* the 80% range, not 30-70: when most closings land at the ceiling the middle of the
      distribution is one point, and the mean (pulled down by the lower tail) sat outside it */
@@ -4008,6 +4079,11 @@ function render(){
           +(r.ceil<.99*s.ask?' of '+money(r.ceil):''):''))
       +'</span>'; }
   $("o_pc").textContent=pc(r.PC);
+  { const pv=$("o_pc_pv"), j=r.thinF<.9995;   /* below a typical pool the probability carries the thin-pool factor */
+    if(pv){ pv.className="pv "+(j?"j":"a"); pv.innerHTML="<i></i>"+(j?"aggregate × judgment":"aggregate");
+      pv.title=j?`Pepperdine base rate (by deal size) × the price-gap penalty × ${r.thinF.toFixed(3)} for a thin pool: ${s.buyers} buyers `
+        +`contacted against a typical ${(IND[s.ind]||IND.prof).buyers||50} (calibrated scale, judgment shape)`
+        :"Pepperdine base rate, interpolated by deal size, times the price-gap penalty"; } }
   $("o_ev").innerHTML=money(r.EVp)
     +(r.cashShare<1?'<span class="sub2">'+money(r.EVcash)+' cash at close</span>':"");
   $("o_msv").textContent=money(r.V);
@@ -4134,7 +4210,7 @@ function render(){
       <tr><td><b>Fitted multiple</b> &nbsp;<span class="st pub">BIZCOMPS</span></td>
         <td class="n muted">regression, not the stack above</td>
         <td class="n"><b>${xx(r.fv.mult)}</b></td></tr>
-      <tr><td>Quality position: ${ordn(Math.min(99,Math.max(1,Math.round(r.qPct*100))))} percentile of the measured spread &nbsp;<span class="st free">judgment</span></td>
+      <tr><td>Quality position: ${ordn(Math.min(99,Math.max(1,Math.round(r.qPct*100))))} percentile among peers, placed inside the measured ${MODELS.value.quality_band.lo.toFixed(2)}–${MODELS.value.quality_band.hi.toFixed(2)}× band &nbsp;<span class="st free">judgment</span></td>
         <td class="n ${r.qFactor>=1?"pos":"neg"}">×${r.qFactor.toFixed(3)}</td><td class="n">${xx(r.M)}</td></tr>
       <tr><td><b>Model-supported value</b> &nbsp;E[V|X]</td>
         <td class="n muted">${money(s.ern)} × ${xx(r.M)}</td><td class="n"><b>${money(r.V)}</b></td></tr>
@@ -4144,17 +4220,19 @@ function render(){
         <td class="n ${r.compPrem>=0?"pos":"neg"}">×${(1+r.compPrem).toFixed(3)}</td><td class="n muted">—</td></tr>
       <tr><td>Ceiling: the ask, held at ${RHO_MAX.toFixed(1)}× model value${r.askCeil>1?", × "+pc(r.askCeil,1)+" IBBA headroom":""}</td>
         <td class="n ${r.capShare>=.5?"neg":"muted"}">${pc(r.capShare)} of closings</td><td class="n muted">${money(r.ceil)}</td></tr>
-      <tr><td><b>Median price if it closes</b></td><td class="n muted">across the measured spread of value</td>
+      <tr><td><b>Median price if it closes</b></td><td class="n muted">across the realised-price fan (${FAN_S.toFixed(2)} of the measured spread)</td>
         <td class="n"><b>${money(r.Vreal)}</b></td></tr>
-      <tr><td><b>Expected price if it closes</b></td><td class="n muted">mean across the measured spread of value</td>
+      <tr><td><b>Expected price if it closes</b></td><td class="n muted">mean across the realised-price fan</td>
         <td class="n"><b>${money(r.Vmean)}</b></td></tr>`;
   /* This panel used to typeset the judgment stack, m_size*f_ind*(1+sum delta), above
      a boxed figure that came from the fitted equation - the formula on screen was
      not the one producing the number under it. */
   {const co=MODELS.value.coefficients;
-  eq("eq_v",`\\begin{aligned}\\ln\\hat P&=${MODELS.value.intercept.toFixed(4)}+${co.ln_sde.toFixed(4)}\\ln\\text{SDE}+${co.hinge_sde.toFixed(4)}\\,h(\\text{SDE})
-    +${co.ln_gross.toFixed(4)}\\ln\\text{rev}\\\\&\\quad+${co.margin_c.toFixed(4)}\\,m+${co.yr_c.toFixed(4)}(y-2015)+${co.ind_eff.toFixed(4)}\\,e_i\\\\[3pt]
-    E[V\\mid X]&=\\hat P\\cdot c(\\ln\\hat P)\\cdot q\\end{aligned}`);}
+  /* every dollar figure in the fitted equation is in THOUSANDS (MODELS.value.target): the SDE and revenue
+     coefficients sum to 0.78, not 1, so the intercept depends on the unit and the bare equation in dollars gave $0.73M */
+  eq("eq_v",`\\begin{aligned}\\ln\\hat P_{\\$000}&=${MODELS.value.intercept.toFixed(4)}+${co.ln_sde.toFixed(4)}\\ln\\tfrac{\\text{SDE}}{\\$1\\text{k}}+${co.hinge_sde.toFixed(4)}\\,h(\\text{SDE})
+    +${co.ln_gross.toFixed(4)}\\ln\\tfrac{\\text{rev}}{\\$1\\text{k}}\\\\&\\quad+${co.margin_c.toFixed(4)}\\,m+${co.yr_c.toFixed(4)}(y-2015)+${co.ind_eff.toFixed(4)}\\,e_i\\\\[3pt]
+    E[V\\mid X]&=\\$1\\text{k}\\cdot\\hat P_{\\$000}\\cdot c(\\ln\\hat P)\\cdot q\\end{aligned}`);}
   eq("eq_vs",`E[V\\mid X]=${tm(r.fv.rawPoint)}\\times\\underbrace{${r.fv.calib.toFixed(3)}}_{\\text{median calib.}}
     \\times\\underbrace{${r.qFactor.toFixed(3)}}_{\\text{quality position}}=\\boxed{${tm(r.V)}}
     =${tm(s.ern)}\\times${r.M.toFixed(2)}`);
@@ -4171,15 +4249,22 @@ function render(){
   /* ---------- §5–7 closing ---------- */
   divBars($("pcbars"),Object.keys(r.contrib).map(k=>({n:k,v:r.contrib[k]}))
     .sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)),v=>(v>=0?"+":"−")+Math.abs(v).toFixed(3));
+  /* the formula that produces the number beneath it: the size-interpolated base, the piecewise penalty with its
+     tail past a 100% gap (it tends to 1, so there is no cap at 0.45 and no floor), and the thin-pool factor */
+  { const CP=MODELS.close_and_timing.close_probability, bB=CP.broker_listing_base_recent||CP.broker_listing_base,
+      bI=CP.intermediated_base_recent||CP.intermediated_base;
   eq("eq_p",`\\begin{aligned}
-    P_C&=b_{\\text{recent}}\\cdot\\Big(1-${PEN_MAX}\\,F_{\\text{gap}}(g)\\Big),\\qquad
+    P_C&=\\min\\!\\Big(0.95,\\;b(V)\\cdot\\big(1-\\pi(g)\\big)\\cdot\\tau(n)\\Big),\\qquad
       g=\\frac{\\text{ask}-E[V\\mid X]}{E[V\\mid X]}\\;\\;\\text{(reported)}\\\\[4pt]
+    b(V)&=${tp(bB,1)}+(${tp(bI,1)}-${tp(bB,1)})\\,u,\\qquad u=\\operatorname{clamp}\\!\\Big(\\tfrac{\\ln(V_{\\text{base}}/\\$1\\text{M})}{\\ln 5},0,1\\Big)\\\\[4pt]
+    \\pi(g)&=\\begin{cases}0 & g\\le 0\\\\ ${PEN_MAX}\\,F_{\\text{gap}}(g) & 0<g\\le 100\\%\\\\ 1-${(1-PEN_MAX).toFixed(2)}\\,e^{-k(g-100)},\\;k=${GAP_TAIL_K.toFixed(4)} & g>100\\%\\end{cases}\\\\[4pt]
+    \\tau(n)&=\\operatorname{cap}_1\\!\\Big(\\frac{1-e^{-n_{\\text{pool}}}}{1-e^{-n_{\\text{typical}}}}\\Big)\\quad\\text{(thin pool: 1 at a typical pool or deeper)}\\\\[4pt]
     P_C^{\\text{judg}}&=\\underbrace{\\Big[p_{\\min}+\\tfrac{p_{\\max}-p_{\\min}}{1+e^{-f(X)}}\\Big]}_{\\text{quality}}
        \\;\\cdot\\;\\underbrace{g(x_{\\text{price}})}_{\\text{price gate}},\\qquad
        f(X)=\\beta_0+\\sum_i \\beta_i x_i\\\\[2pt]
     g(x)&=1\\;(x\\le 0),\\qquad g(x)=\\max\\!\\big(g_{\\min},\\,e^{-(g_1x+g_2x^2)}\\big)\\;(x>0)
-    \\end{aligned}`);
-  eq("eq_ps",`g=${(r.fc.gap>=0?"+":"")+r.fc.gap.toFixed(1)}\\%\\Rightarrow P_C=\\underbrace{${tp(r.fc.base,1)}}_{\\text{base rate}}\\times\\big(1-\\underbrace{${r.fc.pen.toFixed(3)}}_{\\text{gap penalty}}\\big)${r.thinF<.9995?"\\times\\underbrace{"+r.thinF.toFixed(3)+"}_{\\text{thin pool}}":""}=\\boxed{${tp(r.PC,1)}}
+    \\end{aligned}`); }
+  eq("eq_ps",`g=${(r.fc.gap>=0?"+":"")+r.fc.gap.toFixed(1)}\\%\\Rightarrow P_C=\\underbrace{${tp(r.fc.base,1)}}_{\\text{base rate, }u=${r.fc.chanShare.toFixed(2)}}\\times\\big(1-\\underbrace{${r.fc.pen.toFixed(3)}}_{\\text{gap penalty}}\\big)${r.thinF<.9995?"\\times\\underbrace{"+r.thinF.toFixed(3)+"}_{\\text{thin pool}}":""}=\\boxed{${tp(r.PC,1)}}
     \\qquad\\big(P_C^{\\text{judg}}=${tp(r.PCjudg,1)},\\text{ not used}\\big)`);
   eq("eq_nl",`\\begin{aligned}
     f_r(x)&=a\\tanh(x/s) &&\\text{recurring revenue, diminishing above the median}\\\\[1pt]
@@ -4201,15 +4286,16 @@ function render(){
   /* was h(t|X)=h0(t)e^{beta'X} - a proportional-hazards model with covariates, over a
      curve that conditions on the size band and nothing else */
   eq("eq_t",`F(t)=\\frac{1}{1+(t/t_{\\text{med}})^{-\\beta_{\\text{band}}}},\\qquad S(t)=1-F(t),\\qquad
-    F(t_{\\text{med}})=\\tfrac12\\;\\text{by construction}`);
+    F(t_{\\text{med}})=\\tfrac12\\;\\text{by construction},\\qquad E[T]=t_{\\text{med}}\\,\\frac{\\pi/\\beta}{\\sin(\\pi/\\beta)}`);
   eq("eq_ts",`\\begin{gathered}t_{\\text{med}}=t_{\\text{band}}\\,e^{${T_ELAST.toFixed(2)}\\,h}=${tn(r.ft.days)}\\times${r.tMult.toFixed(3)}=${tn(r.tMed)}\\text{ d}\\\\[3pt]
-    \\beta=${r.betaT.toFixed(2)},\\quad t_{25\\%}=${tn(r.tQ(.25))}\\text{ d},\\quad t_{75\\%}=${tn(r.tQ(.75))}\\text{ d}\\end{gathered}`);
+    \\beta=${r.betaT.toFixed(2)},\\quad t_{25\\%}=${tn(r.tQ(.25))}\\text{ d},\\quad t_{75\\%}=${tn(r.tQ(.75))}\\text{ d}\\\\[3pt]
+    E[T]=${tn(r.tMed)}\\times${(r.tMean/r.tMed).toFixed(3)}=${tn(r.tMean)}\\text{ d, the mean the cost of delay is charged on}\\end{gathered}`);
 
   /* ---------- §10–12, §20 buyers ---------- */
   drawStars(r);
   $("buytbl").innerHTML=
     `<tr><th>Buyer type</th><th class="n">Engages</th><th class="n">Closes if engaged</th>
-      <th class="n">Synergy captured</th><th class="n">Value to buyer</th><th class="n">Expected value</th></tr>`
+      <th class="n">Synergy captured</th><th class="n">Price it would pay</th><th class="n">Expected value</th></tr>`
     +r.buyers.map(b=>`<tr${b.sizeFit>=.05?"":' class="muted" title="Rarely buys at this deal size"'}><td>${b.n}${b===r.best?' <span class="tag pick">pursue first</span>':''}${b===r.top?' <span class="tag">pays most</span>':''}${b.sizeFit>=.05?"":' <span class="muted">· rarely at this size</span>'}</td>
       <td class="n">${pc(b.PE)}</td><td class="n">${pc(b.PCj)}</td>
       <td class="n ${b.S>0?"pos":"muted"}">${b.S>0?money(b.S):"—"}</td>
@@ -4223,7 +4309,7 @@ function render(){
   eq("eq_bs",`\\begin{aligned}
     &\\text{pursue first: ${tt(r.best.n)}}\\;\\big(EV=${tm(r.best.EV)}\\big)\\\\[2pt]
     &\\text{pays most: ${tt(r.top.n)}}\\;\\to\\;${tm(r.top.Vj)}
-    \\quad\\big(+${tm(r.stratPrem)},\\;+${tp(r.stratPrem/r.V,1)}\\text{ over the financial baseline}\\big)
+    \\quad\\big(+${tm(r.stratPrem)},\\;+${tp(r.stratPrem/r.V,1)}\\text{ over model value}\\big)
     \\end{aligned}`);
   eq("eq_comp",`\\text{comp}=\\kappa\\ln\\frac{${COMP_H.toFixed(2)}+n_{\\text{offers}}}{${COMP_H.toFixed(2)}+n_{\\text{typical}}}\\in[-0.08,\\,0.14],\\qquad P_{\\text{real}}\\propto(1+\\text{comp})`);
   eq("eq_comps",`n_{\\text{offers}}\\approx${r.nEng.toFixed(1)}\\text{ of }${s.buyers}\\text{ contacted, against }${r.nEngRef.toFixed(1)}\\text{ typical}
@@ -4258,8 +4344,9 @@ function render(){
       el.innerHTML='<b>Closing probability is flat here.</b> The ask sits at or under model value, '
         +'where the gap penalty is zero, so these responses come entirely through the price achieved.';
     } else if(sn.every(o=>Math.abs(o.dP)<1e-9)){
-      el.innerHTML='<b>Closing probability is pinned at its floor.</b> At '+over.toFixed(0)+'% over model value '
-        +'the price-gap penalty is already at its maximum, so no lever moves it until the ask comes down.';
+      el.innerHTML='<b>Closing probability is effectively zero here.</b> At '+over.toFixed(0)+'% over model value '
+        +'the price-gap penalty is within a hair of 1 (past a 100% gap it decays toward a certain loss), so no lever '
+        +'moves it measurably until the ask comes down.';
     } else el.innerHTML='';
   })();
   eq("eq_d",`\\begin{gathered}\\frac{\\partial y}{\\partial x_i}\\approx\\frac{y(x_i+h)-y(x_i-h)}{2h},
@@ -4312,13 +4399,17 @@ function render(){
   eq("eq_gs",`=${tm(rAll.V)}-${tm(r.V)}=\\boxed{${tm(gap)}}`);
   $("intbl").innerHTML=
     `<tr><th>Intervention</th><th class="n">Cost</th><th class="n">ΔValue</th><th class="n">ΔE[proceeds]</th>
-      <th class="n">Net days</th><th class="n">ROI</th></tr>`
+      <th class="n">ΔP<sub>C</sub></th><th class="n">Net days</th><th class="n">ROI</th></tr>`
     +it.map(o=>`<tr><td>${o.n}</td><td class="n">${o.c?money(o.c,0):'<span class="muted">no capital</span>'}</td>
       <td class="n ${Math.abs(o.dV)<r.V*1e-4?"muted":o.dV>=0?"pos":"neg"}">${Math.abs(o.dV)<r.V*1e-4?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2)}</td>
       <td class="n ${o.dE>=0?"pos":"neg"}">${o.dE>=0?"+":"−"}${money(Math.abs(o.dE),2)}</td>
+      <td class="n ${Math.abs(o.dP)<5e-4?"muted":o.dP>=0?"pos":"neg"}">${Math.abs(o.dP)<5e-4?"—":pp(o.dP)}</td>
       <td class="n ${o.dTnet<=0?"pos":"warn"}">${o.dTnet>=0?"+":"−"}${Math.abs(o.dTnet).toFixed(0)}</td>
       <td class="n ${o.roi===null?"muted":o.roi>0?"pos":"neg"}">${o.roi===null?"—":(o.roi<0?"−":"")+Math.abs(o.roi*100).toFixed(0)+"%"}</td></tr>`).join("")
-    +`<tr><td colspan="6" class="muted" style="font-size:11.8px">Each change is measured on top of a reprice to ${s.rhoSell.toFixed(2)}× its new value, so the price gap, and with it the closing probability, is the same in every row; repricing itself is measured against today.</td></tr>`;
+    /* repricing equalises the price GAP in every row, but not the closing probability: it still moves with the
+       buyer pool (the thin-pool factor, so outreach below a typical pool) and with deal size (the base rate is
+       interpolated on the fitted value, so earnings changes) */
+    +`<tr><td colspan="7" class="muted" style="font-size:11.8px">Each change is measured on top of a reprice to ${s.rhoSell.toFixed(2)}× its new value, so the price gap is the same in every row; the closing probability still moves with the buyer pool (outreach below a typical pool) and with deal size (changes to earnings). Repricing itself is measured against today.</td></tr>`;
   eq("eq_r",`MV_i=\\frac{\\partial V}{\\partial a_i},\\qquad
     ROI(a)=\\frac{E[\\text{proceeds}\\mid X+\\Delta X(a),\\text{repriced}]-E[\\text{proceeds}\\mid X,\\text{repriced}]-C(a)}{C(a)}`);
   const bi=it.find(o=>o.c>0);
@@ -4354,19 +4445,14 @@ function render(){
         <div class="big"><div class="k">Expected proceeds</div><div class="n sm">${money(sel.proceeds)}</div></div>
         <div class="big"><div class="k">Median price if it closes</div><div class="n sm">${money(sel.V)}</div></div>
         <div class="big"><div class="k">Closes</div><div class="n sm">${pc(sel.PC)}</div></div>
-        <div class="big"><div class="k">Total days</div><div class="n sm">${Math.round(sel.t+sel.days)}</div></div>
+        <div class="big" title="Execution days plus the MEAN time to close, which the cost of delay is charged on"><div class="k">Expected days</div><div class="n sm">${Math.round(sel.t+sel.days)}</div></div>
       </div><p class="note" style="margin-top:2px">${sub}</p></div>`;
   };
   const uRho=best.U.keys.includes("reprice")?s.optRho:rhoSell;
-  const sameSet=JSON.stringify(best.V.keys.slice().sort())===JSON.stringify(best.U.keys.slice().sort())
-    &&(!best.U.keys.includes("reprice")||uRho.toFixed(2)===rhoSell.toFixed(2));
-  const dProc=best.U.proceeds-best.V.proceeds;
   $("optout").innerHTML=
     card("Maximizing expected proceeds",best.V,
       `Lifts expected proceeds ${money(best.V.proceeds-r.EVp)} over today's ${money(r.EVp)}, before the ${money(best.V.c,0)} spent.`,"var(--signal)",rhoSell)
-   +card("Maximizing the seller's overall outcome",best.U,
-      sameSet?`Both objectives select the same programme at this budget, delay cost and retained value.`
-      :`A different programme: it ${dProc<0?"gives up "+money(-dProc)+" of expected proceeds":"adds "+money(dProc)+" of expected proceeds at a higher cost"} in exchange for ${dProc<0?"less elapsed time and spend, or ":""}the ${pc(s.theta)} of value retained if the process fails.`,"var(--mint)",uRho);
+   +card("Maximizing the seller's overall outcome",best.U,optCardNote(s,best,rhoSell,uRho).text,"var(--mint)",uRho);
   eq("eq_o",`\\max_{a}\\;\\Big(P_C(a)\\,E[P_{\\text{real}}(a)]-C(a)\\Big)\\quad\\text{s.t.}\\quad C(a)\\le B,
     \\qquad \\mathcal{L}=P_C(a)\\,E[P_{\\text{real}}(a)]-C(a)-\\lambda\\big(C(a)-B\\big)`);
   eq("eq_os",`B=${tm(s.budget,0)}:\\;\\text{searched }2^{${INTERV.length}}=${tn(1<<INTERV.length)}
@@ -4427,12 +4513,16 @@ function renderData(){
   const QWC=(MODELS.fitted.quality_weights||{}).checked||null;
   const nJudg = Object.keys(IND).length*Object.keys(IND[Object.keys(IND)[0]]).length
     + Object.keys(B).length + Object.keys(NL).length + Object.keys(G).length
-    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11 + 2 + 1;
+    + BUYERS.length*4 + INTERV.length*3 + 13 + 9 + 11 + 2 + 1
+    + 1;   /* the SBA tail factor (years 9-10 borrowed from mature 7(a) loans): labelled judgment in Model V */
+  /* published market aggregates: the 14 Pepperdine, IBBA and BizBuySell figures the Aggregate section lists, plus
+     the prime rate, Census and BLS series. One constant for the headline tally and the section badge. */
+  const nAgg = 14 + 3;
   const nFit = 1 + Object.keys(V.coefficients).length + Object.keys(V.industry_effects).length
              + Object.keys(V.industry_effects_naics6||{}).length
              + R.co.log_base.filter(v=>v!=null).length + R.pif.log_base.length    /* hazard baselines */
              + Object.keys(R.co.coef).length + Object.keys(R.co.age_coef).length + Object.keys(R.pif.coef).length
-             + 3   /* covariates, size x age, shrink and level shift, tail factor */
+             + 2   /* the size x age interaction, and the shrink and level shift (the tail factor is judgment: nJudg) */
              + Object.keys(R.co.sector).length + Object.keys(R.naics6_effects).length
              + Object.keys(R.state_effects||{}).length
              + MODELS.fitted.sba_rate.spread_knots.length            /* SBA spread by loan size */
@@ -4449,7 +4539,7 @@ function renderData(){
   h+=`<div class="tally">
     <div><div class="n" style="color:#5ee0a8">${nFit}</div>
       <div class="k">estimated from transaction outcomes</div></div>
-    <div><div class="n" style="color:#ffc640">14</div>
+    <div><div class="n" style="color:#ffc640">${nAgg}</div>
       <div class="k">read from published market aggregates</div></div>
     <div><div class="n" style="color:#ff8e7a">${nJudg}</div>
       <div class="k">still chosen by judgement</div></div>
@@ -4514,16 +4604,17 @@ function renderData(){
     Multiples were trimmed to 0.2&times;&ndash;15&times; SDE to drop non-credible records.</p>
     <div class="eqbox" style="font-family:var(--mono);font-size:12.5px;background:var(--deep);
       border:1px solid var(--line);border-radius:3px;padding:12px 14px;margin-bottom:12px;overflow-x:auto">
-      ln(price) = ${V.intercept.toFixed(4)}
-      + ${V.coefficients.ln_sde.toFixed(4)}&middot;ln(SDE)
+      ln(price, $000) = ${V.intercept.toFixed(4)}
+      + ${V.coefficients.ln_sde.toFixed(4)}&middot;ln(SDE, $000)
       + ${V.coefficients.hinge_sde.toFixed(4)}&middot;hinge(SDE)
-      + ${V.coefficients.ln_gross.toFixed(4)}&middot;ln(revenue)
+      + ${V.coefficients.ln_gross.toFixed(4)}&middot;ln(revenue, $000)
       + ${V.coefficients.margin_c.toFixed(4)}&middot;margin
       + ${V.coefficients.yr_c.toFixed(4)}&middot;(year&minus;2015)
       + ${V.coefficients.ind_eff.toFixed(4)}&middot;industry
 
       hinge(SDE) = ln(SDE/${(V.size_hinge.knot_sde_thousands/1000).toFixed(2)}M), floored at 0,
                    then slope ${V.size_hinge.slope_beyond_cap} above ${(V.size_hinge.cap_sde_thousands/1000).toFixed(0)}M
+      (all dollar amounts in thousands: the scale coefficients do not sum to 1, so the intercept depends on the unit)
     </div>
     <p class="note" style="margin-bottom:12px"><b>The hinge is new, and it fixes a defect.</b>
     In v1 the two scale terms summed to 1.005 &mdash; homogeneous of degree one, which forces the
@@ -4621,14 +4712,15 @@ function renderData(){
 
   /* ── AGGREGATE ──────────────────────────────────────────────── */
   h+=`<section class="sec"><div class="sec-head">
-    <h2>Aggregate <span class="pv a" style="vertical-align:middle"><i></i>17 parameters</span></h2>
+    <h2>Aggregate <span class="pv a" style="vertical-align:middle"><i></i>${nAgg} parameters</span></h2>
     <span class="ref">closing probability &amp; time to close</span></div>
 
     <div class="panel">
     <p class="lede" style="margin-bottom:14px">Pepperdine surveys intermediaries about their book each
     year and publishes rates. <b>It does not publish deal rows.</b> Every number here is therefore a
     group average, and the console conditions on the only two things the tables are cut by:
-    deal size and the gap between ask and value.</p>
+    deal size and the gap between ask and value. Below a typical buyer pool it also scales the probability by
+    the chance of at least one offer (calibrated scale, judgment shape: see Competition).</p>
     <p class="note" style="margin-bottom:14px">Three more published aggregates feed the survival risk and the
     general-manager intervention: the prime rate (${MODELS.fitted.sba_rate.prime.toFixed(2)}%, Fed H.15) for the survival risk; Census receipts,
     payroll and employment by industry and firm size, and BLS wage percentiles for general managers by industry
@@ -4674,7 +4766,7 @@ function renderData(){
         <td class="n">${(C.time_to_close.price_pct_of_asking[b]*100).toFixed(0)}%</td></tr>`; }).join('')}
       </tbody></table></div>
     <p class="note"><b>The median is a lookup; the curve&rsquo;s shape is fitted.</b> IBBA&rsquo;s Market Pulse
-    full reports chart how many months each closed deal took, by size band: 15 quarters (2020Q1&ndash;2023Q3 and 2025Q4), 4,533 closed deals.
+    full reports chart how many months each closed deal took, by size band: 15 quarters (2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), 4,533 closed deals.
     Fitted to those histograms and scored on held-out quarters, a log-logistic fits as well as a gamma, at least
     as well as a refitted Weibull (its edge is within noise in the under-$500K and $1&ndash;2M bands), and better than a lognormal. It predicts held-out quarters better than the Weibull
     curve drawn before (+0.03 nats per deal, better in 12 of 15 quarters). The gamma was set aside only because it has no
@@ -4714,13 +4806,14 @@ function renderData(){
       t=[1,1.2,1.5,2].map(m=>Math.round(model({...ex,ask:Vx*m}).tMed));
       return `For the framework example (model value ${money(Vx)}) the median is ${t[0]} days at value, ${t[1]} at
       1.2&times;, ${t[2]} at 1.5&times; and ${t[3]} at 2&times;.`; })()} It moves the time to close, the
-    curve and the shares closed by 90, 180 and 365 days, and through the cost of delay the walk-away ask; the closing
+    curve and the shares closed by 90, 180 and 365 days, and through the cost of delay (charged per day on the MEAN time
+    to close, which the log-logistic puts 28% above the median from $500K of value and 44% above it below) the walk-away ask; the closing
     probability, the price, the expected proceeds, the proceeds-maximising ask and both scores do not read it. With
-    75% of value kept and $900 a day of delay cost the walk-away ask is 1.14&times;, 1.14&times;, 1.15&times; and
+    75% of value kept and $900 a day of delay cost the walk-away ask is 1.13&times;, 1.14&times;, 1.15&times; and
     1.15&times; for earnings of $150k, $400k, $1.45M and $5M (1.15&times; at every size with b = 0), and
-    1.10&times;, 1.13&times;, 1.14&times; and 1.14&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
+    1.09&times;, 1.13&times;, 1.14&times; and 1.14&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
     near 1.15&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
-    cap wins from about 77% kept at $900 a day, 76% with no delay cost and 79% at $4,000) and in the realised-price
+    cap wins from about 77% kept at $900 a day, 76% with no delay cost and 80% at $4,000) and in the realised-price
     fan, not a measurement of b; the console shows both ends as a range when they are within 1% of value.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     <p class="note" style="margin-bottom:12px">The industry effects in Model II were fitted on BIZCOMPS.
@@ -4925,6 +5018,9 @@ function renderData(){
         <tr><td>Thin-pool cap<div class="muted" style="font-size:11.5px">THIN_W = ${THIN_W.toFixed(2)}</div></td>
             <td class="n" style="padding-right:18px">1</td>
             <td style="color:#ff8e7a;padding-left:6px">How smoothly the thin-pool factor reaches 1 just below a typical pool (it is lifted by at most ${MODELS.fitted.competition.thin_cap_max_lift.toFixed(3)} there, and is exactly 1 at a typical pool or deeper), and through it the closing probability.</td></tr>
+        <tr><td>SBA tail factor<div class="muted" style="font-size:11.5px">&times;${MODELS.risk.tail_factor.toFixed(2)}, SE ${MODELS.risk.tail_factor_se.toFixed(2)}</div></td>
+            <td class="n" style="padding-right:18px">1</td>
+            <td style="color:#ff8e7a;padding-left:6px">Survival risk: years 9&ndash;10 of the charge-off curve, borrowed from mature 7(a) loans and matched to acquisition-loan size by judgment.</td></tr>
       </tbody></table></div>
 
     <p class="note" style="margin-top:14px"><b>Read the third column carefully.</b> Fitting the value
@@ -4995,7 +5091,7 @@ function renderData(){
         by firm size; ranking bigger firms&rsquo; GMs higher is a <b>judgment</b> (for a $6M physicians&rsquo; practice, other
         plausible rankings give $68,000 to $149,000 instead of $90,000).</td></tr>
       <tr><td>Typical SDE margin by industry and size, and its spread</td><td>hand-set 7&ndash;21%, &times;1.0&ndash;1.45 size curve, sd 0.45</td>
-        <td>fitted medians 18&ndash;35% at $200k SDE, +${Fv.sde_margin.slope.toFixed(3)} per log of SDE, sd ${Fv.sde_margin.sd.toFixed(2)}</td>
+        <td>fitted medians ${(()=>{ const m=Object.keys(IND).map(k=>typMargin(k,2e5)); return Math.round(Math.min(...m)*100)+"&ndash;"+Math.round(Math.max(...m)*100); })()}% at $200k SDE (shrunk toward the pooled level), +${Fv.sde_margin.slope.toFixed(3)} per log of SDE, sd ${Fv.sde_margin.sd.toFixed(2)}</td>
         <td>${Object.values(Fv.sde_margin.n).reduce((a,b)=>a+b,0).toLocaleString()} broker listings with revenue and cash flow (DealLedger, CC0)</td></tr>
       <tr><td>Which buyer types are present at this deal size</td><td>a hand-set earnings window per archetype</td>
         <td>individual / strategic / financial shares by deal value (search funds keep their window, which matches Stanford&rsquo;s 2024 median deal)</td>
@@ -5022,7 +5118,7 @@ function renderData(){
         ${Fv.ttc_shape.beta[4].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[4].toFixed(2)} from $500K up, interpolated in ln(value);
         the median is still the IBBA band median</td>
         <td>IBBA / M&amp;A Source Market Pulse per-band histograms of months to close: ${Fv.ttc_shape.n.reduce((a,b)=>a+b,0).toLocaleString()}
-        closed deals over ${Fv.ttc_shape.n_quarters} quarters (2020Q1&ndash;2023Q3 and 2025Q4), interval-censored fit; beats the old
+        closed deals over ${Fv.ttc_shape.n_quarters} quarters (2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), interval-censored fit; beats the old
         curve on held-out quarters (12 of 15). Closed deals only; no gradient above $500K is identified</td></tr>
       <tr><td>Realised-price fan: share of the value spread kept once a business is listed (FAN_S; drives the price-if-it-closes scenarios)
         &nbsp;<span class="st adj">calibrated</span></td>
@@ -5206,13 +5302,16 @@ function renderCalib(){
     return{ind:k,rev:rev||ern/typMargin(k,ern),ern,ask:0,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,
     ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)};};
   const at=(k,e,r,ask)=>{const s=prof(k,e,r);const V=model({...s,ask:1}).V;return model({...s,ask:ask||V});};
+  /* the centring row needs a business AT its peer medians, margin included: the BizBuySell median revenue puts
+     this SDE 0.23 sd below the fitted margin norm, so that profile read 'off' for a reason unrelated to the label */
+  const mMed=at("prof",158950);
   const ms=at("prof",158950,703000), lmm=model({...prof("mfg",1.5e6),chan:"intermediary",ask:model({...prof("mfg",1.5e6),ask:1}).V}), ulmm=at("mfg",3.5e6);
   const msMkt=at("prof",158950,703000,350000/0.94);
   /* fit-consistency check: the typical first-ask premium M_TYP (see its definition) */
   const msTyp=at("prof",158950,703000,model({...prof("prof",158950,703000),ask:1}).V*M_TYP), eTyp=msTyp.Vmean/msTyp.inputs.ask;
   const rows=[
-   ["Judgment-stack net adjustment for a business at its peer medians",ms.dsum.toFixed(3),"0.000 ± 0.03",
-    "the band anchor already describes the median",Math.abs(ms.dsum)<.03],
+   ["Judgment-stack net adjustment for a business at its peer medians",mMed.dsum.toFixed(3),"0.000 ± 0.03",
+    "the band anchor already describes the median",Math.abs(mMed.dsum)<.03],
    ["Reported (fitted) multiple at the BizBuySell median profile ($159k SDE)",xx(ms.M),"2.0× ± 0.25",
     "IBBA under-$500K band median",Math.abs(ms.M-2.0)<.25],
    ["Realized price at the observed market ask",money(msMkt.Vreal,2),"$350k ± $30k",
@@ -5271,9 +5370,11 @@ buying an existing business is measurably safer than starting one. Charge-offs c
 <li><span class="pv a"><i></i>aggregate</span> <b>Probability of closing</b> &mdash;
 Pepperdine PCM intermediary surveys 2011&ndash;2026. Base close rate
 <b>${(MODELS.close_and_timing.close_probability.broker_listing_base_recent*100).toFixed(1)}%</b> for broker listings,
-${(MODELS.close_and_timing.close_probability.intermediated_base_recent*100).toFixed(1)}% intermediated (recent years), times a price-gap penalty.
-<b>This does not condition on business quality.</b> Two businesses with identical financials and
-wildly different owner dependence receive the same number, because Pepperdine publishes rates, not deal rows.</li>
+${(MODELS.close_and_timing.close_probability.intermediated_base_recent*100).toFixed(1)}% intermediated (recent years), interpolated
+in ln(value) from $1M to $5M of deal size, times a price-gap penalty, and below a typical buyer pool times the
+thin-pool factor. <b>At the same ask relative to its model value, the closing probability does not depend on
+quality</b>, because Pepperdine publishes rates, not deal rows. At the same dollar ask, a better business has a
+smaller price gap and so closes more often.</li>
 
 <li><span class="pv a"><i></i>aggregate</span> <b>Valuation gap</b> &mdash;
 <b>${(MODELS.close_and_timing.close_probability.kill_zone.share_of_price_failures*100).toFixed(0)}%</b>
@@ -5285,7 +5386,7 @@ Termination has risen every year since the 2020&ndash;21 trough of 24%, reaching
 IBBA / M&amp;A Source Market Pulse, <b>12 quarterly editions 2018&ndash;2023</b>, cross-checked across
 overlapping five-year windows and corroborated by BVR&rsquo;s 228-day all-size median.
 Median is a size-band lookup; the curve shape is <b>fitted</b> from IBBA&rsquo;s per-band histograms
-of months to close (15 quarters, 2020Q1&ndash;2023Q3 and 2025Q4; 4,533 closed deals; no deal-level durations): a log-logistic with
+of months to close (15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4; 4,533 closed deals; no deal-level durations): a log-logistic with
 &beta; 2.20 under $500K and 2.64 from $500K up (no gradient above $500K is identified).
 Above model value the band median is stretched by a <b>judgment</b> multiplier (Model III, <i>Overpricing costs time</i>):
 online-marketplace analogs give its sign, not its size.</li>
@@ -5311,7 +5412,8 @@ seller-walk attribution, and before/after intervention records are likewise unav
 $("foot").innerHTML=`The Omni Method v2.0. Value and survival risk are fitted to
 ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} SBA
 acquisition loans; closing probability and timing are market aggregates conditioning on deal size and price
-gap alone; the score, buyer model and optimizer remain judgment. Badges on every output say which.
+gap, with labelled judgment factors for a buyer pool thinner than typical and for time above value; the score,
+buyer model and optimizer remain judgment. Badges on every output say which.
 Report ranges, not points &mdash; median absolute error on value is ${(MODELS.value.median_abs_pct_error*100).toFixed(1)}%.
 Nothing here is investment, legal or tax advice.`;
 
@@ -5935,7 +6037,7 @@ document.querySelectorAll("input,select").forEach(el=>{
   [300, 1100].forEach(function(d){ setTimeout(boot,d); });
 })();
 
-const STNAMES={"AL":"Alabama","AR":"Arkansas","AZ":"Arizona","CA":"California","CO":"Colorado","CT":"Connecticut","FL":"Florida","GA":"Georgia","IA":"Iowa","ID":"Idaho","IL":"Illinois","IN":"Indiana","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","MA":"Massachusetts","MD":"Maryland","ME":"Maine","MI":"Michigan","MN":"Minnesota","MO":"Missouri","MS":"Mississippi","MT":"Montana","NC":"North Carolina","NE":"Nebraska","NH":"New Hampshire","NJ":"New Jersey","NV":"Nevada","NY":"New York","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","SC":"South Carolina","TN":"Tennessee","TX":"Texas","UT":"Utah","VA":"Virginia","WA":"Washington","WI":"Wisconsin"};
+const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"Guam","HI":"Hawaii","ND":"North Dakota","NM":"New Mexico","PR":"Puerto Rico","RI":"Rhode Island","SD":"South Dakota","VI":"U.S. Virgin Islands","VT":"Vermont","WV":"West Virginia","WY":"Wyoming","AL":"Alabama","AR":"Arkansas","AZ":"Arizona","CA":"California","CO":"Colorado","CT":"Connecticut","FL":"Florida","GA":"Georgia","IA":"Iowa","ID":"Idaho","IL":"Illinois","IN":"Indiana","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","MA":"Massachusetts","MD":"Maryland","ME":"Maine","MI":"Michigan","MN":"Minnesota","MO":"Missouri","MS":"Mississippi","MT":"Montana","NC":"North Carolina","NE":"Nebraska","NH":"New Hampshire","NJ":"New Jersey","NV":"Nevada","NY":"New York","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","SC":"South Carolina","TN":"Tennessee","TX":"Texas","UT":"Utah","VA":"Virginia","WA":"Washington","WI":"Wisconsin"};
 /* State effects are Poisson-gamma empirical-Bayes multipliers on the charge-off hazard
    (observed over expected charge-offs, shrunk toward 1), so a thin state collapses to the
    national number rather than inventing a signal. */

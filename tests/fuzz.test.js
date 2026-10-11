@@ -29,7 +29,7 @@ for(let i=0;i<N;i++){
   const rho=logU(.3,3), s={...s0,ask:V0*rho}, r=A.model(s);
 
   /* 1. everything finite and in range */
-  ok([r.V,r.Vreal,r.Vmean,r.EVp,r.PC,r.tMed,r.risk.p,r.cashShare,r.M].every(fin),"finite",ctx(s));
+  ok([r.V,r.Vreal,r.Vmean,r.EVp,r.PC,r.tMed,r.tMean,r.risk.p,r.cashShare,r.M].every(fin),"finite",ctx(s));
   ok(r.PC>=0&&r.PC<=1&&r.risk.p>=0&&r.risk.p<=1&&r.cashShare>0&&r.cashShare<=1,"probabilities in [0,1]",ctx(s));
   ok(r.V>0&&r.Vreal>0&&r.EVp>0,"positive values",ctx(s));
   /* 2. value does not depend on the ask */
@@ -66,7 +66,7 @@ for(let i=0;i<N;i++){
   /* 7. continuity: a 0.1% change in earnings, revenue or ask moves no output by more than 1% */
   for(const k of ["ern","rev","ask"]){ const r2=A.model({...s,[k]:s[k]*1.001});
     if(k==="ern"&&r2.inputs.ern>s.rev*.92) continue;
-    for(const o of ["V","Vreal","Vmean","EVp","PC","tMed","cashShare"])
+    for(const o of ["V","Vreal","Vmean","EVp","PC","tMed","tMean","cashShare"])
       ok(Math.abs(r2[o]/r[o]-1)<.01,`continuous: ${o} in ${k}`,ctx(s,{k,o,a:r[o],b:r2[o]})); }
 
   /* 7b. GM salary (the hire-a-GM cost): inside the industry's p10-p90 band, never falling with revenue */
@@ -103,7 +103,7 @@ for(let i=0;i<N;i++){
      (P_C = fitClose x thin-pool factor), the expected price rises with the ask while its share of the ask falls,
      and the narrowed fan keeps the uncapped centre at V x A(rho) x (1+comp) */
   { const fp=A.fitClose(s.ask,r.V,s.chan,r.Vbase).p;
-    ok(Math.abs(r.PC-(r.thinF<1?Math.min(.95,Math.max(.02,fp*r.thinF)):fp))<1e-9,"P_C independent of the price block",ctx(s,{PC:r.PC,fp}));
+    ok(Math.abs(r.PC-(r.thinF<1?Math.min(.95,Math.max(0,fp*r.thinF)):fp))<1e-9,"P_C independent of the price block",ctx(s,{PC:r.PC,fp}));
     ok(r.fanS===.80&&Math.abs(r.VrealFree/(r.V*r.anchorF*(1+r.compPrem))-1)<.01,"narrowed fan keeps the centre",ctx(s));
     const rh=A.model({...s,ask:s.ask*1.05});
     ok(rh.Vmean>=r.Vmean*(1-1e-9),"E[P|close] non-decreasing in the ask",ctx(s,{a:r.Vmean,b:rh.Vmean}));
@@ -150,6 +150,75 @@ for(let i=0;i<N;i++){
     const rg=A.model({...s,grw:s.grw+.013});
     ok(Math.abs((rg.qz-r.qz)-(rg.z.grw-r.z.grw)*A.QW.w.grw/A.QW.norm)<1e-12,"growth moves qz by w/norm per unit of z",ctx(s,{d:rg.qz-r.qz})); }
 
+  /* 7i. mean time to close (the delay cost's expectation, AUDIT_FINDINGS #6/#13/#19): the closed-form log-logistic
+     mean, above the median by a factor that depends only on the size band's shape (never on the ask or quality),
+     non-decreasing in the ask; on a subsample it matches the integral of S(t) */
+  { const k=(Math.PI/r.betaT)/Math.sin(Math.PI/r.betaT);
+    ok(r.betaT>1&&Math.abs(r.tMean/(r.tMed*k)-1)<1e-12&&r.tMean>r.tMed,"tMean = t_med (pi/beta)/sin(pi/beta) > t_med",ctx(s,{tMean:r.tMean,tMed:r.tMed}));
+    const ra=A.model({...s,ask:s.ask*1.3}), rq=A.model({...s,own:1-s.own,fin:1-s.fin});
+    ok(Math.abs(ra.tMean/ra.tMed-r.tMean/r.tMed)<1e-12,"mean/median ratio independent of the ask",ctx(s));
+    if(rq.Vbase===r.Vbase) ok(Math.abs(rq.tMean/rq.tMed-r.tMean/r.tMed)<1e-12,"mean/median ratio reads no quality input",ctx(s));
+    ok(ra.tMean>=r.tMean*(1-1e-12),"higher ask never lowers the mean time to close",ctx(s,{a:r.tMean,b:ra.tMean}));
+    if(i%25===0){ let S=0; const h=r.tMed/400; for(let t=h/2;t<r.tMed*4e4;t+=h*Math.max(1,t/r.tMed)) S+=(1-r.F(t))*h*Math.max(1,t/r.tMed);
+      ok(Math.abs(S/r.tMean-1)<.01,"tMean matches the integral of S(t)",ctx(s,{S,tMean:r.tMean})); } }
+
+  /* 7j. closing probability: never rises with the ask, and keeps falling far above value (no 2% floor freezing the
+     probability, proceeds and score from about 28x value, AUDIT_FINDINGS #5); P_C x E[P|close] = expected proceeds at
+     every ask; each buyer's closing probability is the deal's, scaled, and its expected value is P_E x P_C x V */
+  { let prev=null, mono=true, cons=true;
+    for(const m of [.5,1,1.1,1.5,2,3,5,10,30,100]){ const x=A.model({...s,ask:V0*m});
+      if(prev&&x.PC>prev.PC+1e-15) mono=false; if(Math.abs(x.EVp-x.PC*x.Vmean)>1e-9*Math.max(1,x.EVp)) cons=false; prev=x; }
+    ok(mono,"P_C non-increasing in the ask",ctx(s)); ok(cons,"EVp = P_C x E[P|close] at every ask",ctx(s));
+    const r30=A.model({...s,ask:V0*30}), r60=A.model({...s,ask:V0*60});
+    ok(r30.PC===0||r60.PC<r30.PC,"no floor: P_C still falls between 30x and 60x value",ctx(s,{a:r30.PC,b:r60.PC}));
+    ok(r.buyers.every(b=>b.PCj>=0&&b.PCj<=.95&&Math.abs(b.EV-b.PE*b.PCj*b.Vj)<1e-9*Math.max(1,b.EV)),"buyer EV = P_E x P_C,j x V_j",ctx(s)); }
+
+  /* 7k. SBA note rate (fit/sba_risk_refresh.py): prime plus a spread that never rises with the loan size, inside the
+     fitted knots, continuous; the charge-off risk never falls as the rate rises and is continuous in earnings */
+  { const F=A.MODELS.fitted.sba_rate, sp=F.spread_knots.map(k=>k[1]), rt=A.sbaRate(r.V), rt2=A.sbaRate(r.V*1.5);
+    ok(rt>=F.prime+Math.min(...sp)-1e-12&&rt<=F.prime+Math.max(...sp)+1e-12,"SBA rate inside prime + fitted spreads",ctx(s,{rt}));
+    ok(rt2<=rt+1e-12,"SBA rate non-increasing in the loan size",ctx(s,{rt,rt2}));
+    ok(Math.abs(A.sbaRate(r.V*1.001)-rt)<.01,"SBA rate continuous",ctx(s));
+    const pa=A.model({...s,rate:9}).risk.p, pb=A.model({...s,rate:11}).risk.p;
+    ok(pb>=pa*(1-1e-12),"risk non-decreasing in the note rate",ctx(s,{pa,pb}));
+    if(s.ern*1.001<=s.rev*.92){ const p2=A.model({...s,ern:s.ern*1.001}).risk.p; ok(Math.abs(p2/r.risk.p-1)<.01,"risk continuous in earnings",ctx(s,{a:r.risk.p,b:p2})); } }
+
+  /* 7l. intervention table (AUDIT_FINDINGS #3/#12/#17): the reprice equalises the gap but not P_C. Outreach never
+     lowers P_C, raises it below a typical pool (thin-pool factor), and leaves it exactly unchanged from a typical pool */
+  if(i%5===0){ const rr=r, ss={...s,rhoSell:A.bestRatio(s,0,0)}, it=A.interventionTable(ss,rr), o=it.find(x=>x.k==="outreach");
+    if(o){ const typ=A.IND[s.ind].buyers||50, base=A.model(A.applyAll(ss,rr,["reprice"]));
+      ok(o.dP>=-1e-12,"outreach never lowers P_C",ctx(s,{dP:o.dP}));
+      if(s.buyers>=typ) ok(Math.abs(o.dP)<1e-12,"outreach leaves P_C unchanged from a typical pool",ctx(s,{dP:o.dP}));
+      else if(base.PC>1e-9&&base.thinF<.98) ok(o.dP>0,"outreach raises P_C below a typical pool",ctx(s,{dP:o.dP,thinF:base.thinF})); } }
+
+  /* 7m. business score (AUDIT_FINDINGS #9): priced at the optimal ask AND at least a typical pool, so it never reads
+     how many buyers were contacted below the typical pool, never falls as the pool deepens, and stays at or above both
+     the Omni score and the score at the optimal ask on this pool */
+  if(i%10===0){ const typ=A.IND[s.ind].buyers||50, rs=A.bestRatio(s,0,0), bs=A.businessScore(s,r,rs);
+    const sA=A.omniScore(A.model({...s,ask:V0*rs}));
+    ok(bs.score>=sc&&bs.score>=sA,"business score at or above the Omni score and the score at the optimal ask",ctx(s,{biz:bs.score,sc,sA}));
+    if(s.buyers<typ){ const t={...s,buyers:Math.max(5,Math.floor(s.buyers/2))}, rt=A.model(t), bt=A.businessScore(t,rt,A.bestRatio(t,0,0));
+      ok(Math.abs(bt.rq.EVp/bs.rq.EVp-1)<1e-12,"business score reads no pool below the typical one",ctx(s,{a:bs.rq.EVp,b:bt.rq.EVp}));
+      ok(bt.score<=bs.score,"business score never falls as the pool deepens",ctx(s,{a:bt.score,b:bs.score})); } }
+
+  /* 7n. the two optimiser texts describe the numbers they sit beside (AUDIT_FINDINGS #11/#14/#15/#18). optNote's lower
+     branch prints the time value and the net separately, and the net decomposes into them; the second card's subtitle
+     names only differences that move, in the direction they move */
+  if(i%10===0&&s.lamT>0){ const t={...s,rhoSell:A.bestRatio(s,0,0)}; t.optRho=A.bestRatio(s,s.theta,s.lamT);
+    const rS=A.model({...t,ask:V0*t.rhoSell}), rK=A.model({...t,ask:V0*t.optRho}), n=A.optNote(t,V0,rS,rK);
+    if(n.kind==="lower"){ const tv=s.lamT*Math.max(0,rS.tMean-rK.tMean), U=x=>x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMean;
+      ok(n.text.includes("worth "+A.money(tv)+" at ")&&n.text.includes("that is worth "+A.money(n.gain)),"lower note prints the time value and the net",ctx(s,{text:n.text}));
+      ok(Math.abs((U(rK)-U(rS))-(tv-(rS.EVp-rK.EVp)-s.theta*V0*(rK.PC-rS.PC)))<1e-6*V0,"net = time value - proceeds given up - value kept lost",ctx(s)); } }
+  if(i%50===0){ const t={...s,rhoSell:A.bestRatio(s,0,0)}; t.optRho=A.bestRatio(s,s.theta,s.lamT);
+    const rr=A.model(t), best=A.optimize(t,rr,t.budget,t.lamT,t.theta), uRho=best.U.keys.includes("reprice")?t.optRho:t.rhoSell;
+    const c=A.optCardNote(t,best,t.rhoSell,uRho), dC=best.U.c-best.V.c, dT=(best.U.t+best.U.days)-(best.V.t+best.V.days);
+    const sameK=JSON.stringify(best.V.keys.slice().sort())===JSON.stringify(best.U.keys.slice().sort());
+    ok(!/NaN|undefined|Infinity|[−-]\$/.test(c.text),"card subtitle has no NaN or negative money",ctx(s,{text:c.text}));
+    ok((c.kind==="same")===(sameK&&(!best.U.keys.includes("reprice")||uRho.toFixed(2)===t.rhoSell.toFixed(2))),"card subtitle 'same' exactly when the programmes match",ctx(s,{text:c.text}));
+    ok(!(/spends \S+ less/.test(c.text)&&dC>=0)&&!(/spends \S+ more/.test(c.text)&&dC<=0),"card subtitle spend direction",ctx(s,{text:c.text,dC}));
+    ok(!(/less from start to close/.test(c.text)&&dT>0)&&!(/longer from start to close/.test(c.text)&&dT<0),"card subtitle time direction",ctx(s,{text:c.text,dT}));
+    ok(!/less elapsed time and spend/.test(c.text),"card subtitle never asserts less time and spend unchecked",ctx(s)); }
+
   /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
      (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises
      the walk-away ask */
@@ -158,7 +227,7 @@ for(let i=0;i<N;i++){
     ok(Math.abs(A.bestRatio({...s,theta:.9},0,0)-rs)<1e-9,"proceeds optimum independent of theta",ctx(s));
     const ru=A.bestRatio(s,s.theta,s.lamT);
     ok(ru<=A.RHO_MAX+1e-9&&rs<=A.RHO_MAX+1e-9,"recommended asks stay where the closing data reach",ctx(s,{rs,ru}));
-    if(s.lamT>0){ const u0=A.bestRatio(s,s.theta,0), U=m=>{ const x=A.model({...s,ask:V0*m}); return x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMed; };
+    if(s.lamT>0){ const u0=A.bestRatio(s,s.theta,0), U=m=>{ const x=A.model({...s,ask:V0*m}); return x.EVp+(1-x.PC)*s.theta*x.V-s.lamT*x.tMean; };
       ok(U(ru)>=U(u0)-1e-6*Math.abs(U(u0)),"walk-away ask optimal on the delay-inclusive objective",ctx(s,{ru,u0})); } }
 
   /* 9. the walk-away ask can jump between two peaks of its objective as the share kept moves one 1% step (the slider's

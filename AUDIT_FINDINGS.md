@@ -12,6 +12,30 @@ Several findings were raised independently by different auditors and describe th
 
 The rest stand alone: #1, #2, #4, #7, #8, #9, #10, #20, #21, #22, #23, #24.
 
+## Resolution
+
+All 25 were fixed in one batch, in the commit that adds this section. Each has a pin in `tests/model.test.js` (section 29), and the new behaviour has invariants in `tests/fuzz.test.js` (7i-7n).
+
+| # | Fix |
+|---|---|
+| 6, 13, 19 | The delay cost is now charged on the mean time to close, E[T] = t_med·(π/β)/sin(π/β) (`out.tMean`), in `bestRatio`, `optNote` and `optimize`. That is 28% above the median from $500K of value and 44% below it. `eq_t`/`eq_ts` show E[T]. The card tile is now "Expected days". The walk-away figures in the Data tab and the `bestRatio` comment are re-pinned: $900/day gives 1.13, 1.14, 1.15, 1.15; $4,000/day gives 1.09, 1.13, 1.14, 1.14; the cap wins from 77% / 76% / 80%; the interior margin is 0.46%; the FAN_S flip is about 0.915; the theta flip is about 0.771. |
+| 9 | `businessScore()` prices the business at its optimal ask and at least the typical buyer pool. The caption splits what the Omni score loses into the ask's share and the pool's share. |
+| 5, 25 | The 2% floor on P_C is removed, so P_C keeps decaying with the gap tail. `eq_p` now typesets the size-interpolated base, the piecewise penalty with its tail, and the thin-pool factor. The sensitivity note no longer says "pinned at its floor". |
+| 16 | The P_C badge switches to "aggregate × judgment" below a typical pool, with a title naming the factor. The section lede, the Data-tab Model I lede, the footer and the expected-proceeds tooltip now mention the pool. |
+| 3, 12, 17 | The ΔP_C column is restored. The footnote and caption now say the reprice equalises the gap, not P_C. |
+| 11, 15 | The second card's subtitle comes from `optCardNote()`. It says "the same changes, repriced" when only the ratio differs, and names only the differences that move, in the direction they move. |
+| 14, 18 | The lower-ask note prints the time value and the net gain separately. |
+| 1, 2 | The quality row reads "percentile among peers, placed inside the measured p25–p75 band". The price rows name the realised-price fan. |
+| 4 | The Data tab says P_C is quality-independent at the same ask relative to value, not at the same dollar ask. It also mentions the size base and the thin pool. |
+| 7 | The time curve's `aria-label` says the curve is conditional on closing, and also gives P_C. |
+| 8 | All 54 fitted states and territories are selectable. |
+| 10 | The buyer chart, `eq_bs`, the table header and the `BUYERS` comment label the premium as over model value, not over a financial baseline. |
+| 20 | The SDE margin range is read live: 20–30% at $200k SDE. |
+| 21 | One `nAgg` count serves both the tally and the section badge. The SBA tail factor has moved from the fitted count to the judgment count, with its own inventory row. |
+| 22 | The centring row of the self-audit uses a business at its peer medians, with revenue = SDE / fitted margin. It now reads in range. |
+| 23 | The quarters are labelled "2020Q1–2021Q4, 2022Q2–2023Q3 and 2025Q4" everywhere, including `ttc_shape.source`, the fit script and the README. |
+| 24 | `eq_v` and the Data-tab equation state that all amounts are in thousands of dollars. |
+
 ## Index
 
 | # | Severity | Key | Title |
