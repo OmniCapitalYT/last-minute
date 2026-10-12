@@ -1178,6 +1178,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const src=String(A.model), i=src.indexOf("const d={"), dsrc=src.slice(i,src.indexOf("let sum=0",i));
     const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
     ok(numLits(dsrc)===52&&HTML.includes("${nDelta}</td>"),"R4-7: delta stack counted (68)"); }
+  /* R4-8 (hand-run numbers pass): the binding-ask note names the measure it ranks by, so it cannot read as contradicting
+     eq_ds's 'largest lever' (ranked by value) */
+  ok(HTML.includes("the quality lever that moves expected proceeds most (")&&!HTML.includes("the largest quality response (")
+     &&HTML.includes("top=qs.slice().sort((a,b)=>Math.abs(b.dE)-Math.abs(a.dE))[0]"),"R4-8: sensitivity note names its ranking measure");
 }
 
 console.log(`${pass} passed, ${fail} failed`);

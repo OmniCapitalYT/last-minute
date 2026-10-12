@@ -1275,3 +1275,11 @@ Round 4 ran four new auditors on a7346a7: a review of the round-3 fixes, the val
 **Verification (by hand).** By the page's own numLits rule the d{} object holds 52 literals, plus 6 concentration cut points, 5 industry-weighting constants and 5 stack bounds: 68, counted as 13. The block is inert (Nothing), so no figure moves, but the ledger count and the headline tally were wrong.
 
 **Fix (as proposed).** Count the d{} block from model()'s own source, as R3-4 did for nCat, nConf and nPeer. For example, nDelta = numLits(slice('const c1=clamp','let sum=0')) plus the stack bounds slice and the fInd slice. Use nDelta in both the ledger row and nJudg in place of the literal 13, and name the stack bounds and fInd constants in the row's sub-label.
+
+### R4-8. The binding-ask note and eq_ds name different "largest" levers without saying they rank by different measures
+
+- **Found by:** the hand-run numbers pass. This reran the round-3 numbers checker (`driver.js`, `check.js`, `check2.js`) against f3c3f87 over 33 states: the 10 round-3 states, 13 more from round 3, and 10 new ones (small fitness, $40M distribution in CA, franchised car wash, ask 1.2× and 3×, 5 and 500 buyers, a $2M budget at 90% kept, no delay cost, and a $1.25M budget). About 14,240 checks passed. The only mismatches were checker artefacts: `eq_as` now prints ρ as ask/V, and capped-loan states omit the average-loan comparison by design (R1-6). The arithmetic notes were all within display rounding. The one exception is this item.
+- **Severity:** low.
+- **Where:** index.html render(), `#sensflat` ('the largest quality response (…) passes through only about …'), against `eq_ds` ('largest lever: …').
+- **Why it is wrong.** For restaurants in Texas the note named financial reporting as "the largest quality response" and `eq_ds` named owner independence as "the largest lever". The note ranks by expected proceeds and the equation ranks by model value, but the note did not say so, so the two read as contradicting each other.
+- **Fix.** The note now reads "the quality lever that moves expected proceeds most (…)".

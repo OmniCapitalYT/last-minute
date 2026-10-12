@@ -4441,7 +4441,7 @@ function render(){
     if(r.askBinds&&share<.25){
       el.innerHTML='<b>The ask is the binding constraint.</b> At '+money(s.ask)+', '+where+', '+pc(r.capShare)
         +' of closings land at the ask, so improving the business raises what it supports far more than what this listing '
-        +'collects: the largest quality response ('+top.n.toLowerCase()+') passes through '+(share<.005?'almost none (under 1%)':'only about '+pc(share))
+        +'collects: the quality lever that moves expected proceeds most ('+top.n.toLowerCase()+') passes through '+(share<.005?'almost none (under 1%)':'only about '+pc(share))
         +' of its effect on value. Repricing is the lever: a 5% lower ask changes expected proceeds by '+money(askRow.dE,2)+'.';
     } else if(sn.every(o=>Math.abs(o.dP)<1e-9)&&over<=0){
       el.innerHTML='<b>Closing probability is flat here.</b> The ask sits at or under model value, '
