@@ -1113,9 +1113,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
   const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
   const V0=A.model({...FX,ask:1}).V;
-  /* R3-1: no provenance label files timing as an aggregate; the masthead total is the two fitted samples */
-  ok(!HTML.includes("<dt>Close and timing</dt>")&&HTML.includes("<dt>Value, risk, timing</dt>")&&HTML.includes("<dt>Closing odds</dt>")
-     &&HTML.includes("<dd>"+(A.MODELS.value.n_fit+A.MODELS.risk.n_fit).toLocaleString("en-US")+"</dd>"),"R3-1: masthead provenance");
+  /* R3-1: no provenance label files timing as an aggregate. The masthead status row that carried these labels and a typed
+     transaction total was removed at the owner's request, so nothing on the page may bring back the old label or the
+     typed total */
+  ok(!HTML.includes("<dt>Close and timing</dt>")&&!HTML.includes('class="mast-status"')
+     &&!HTML.includes("<dd>"+(A.MODELS.value.n_fit+A.MODELS.risk.n_fit).toLocaleString("en-US")+"</dd>"),"R3-1: masthead provenance (status row removed)");
   /* R3-2: the prime moves no figure, is not said to set a shown rate, and is not counted */
   ok(!HTML.includes("sets the SBA note rate shown beside the survival risk")&&HTML.includes("SBA spread over prime by loan size (the survival risk reads only the spread)")
      &&/\+ \(C\.dvi_consideration\?4:0\)\s+\/\*[^*]*\*\/\s+\+ 2;/.test(HTML),"R3-2: prime wording and count");
