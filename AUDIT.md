@@ -8,7 +8,9 @@ metrics, what changed, and what was deliberately left alone.
 Run the checks:
 
 ```
-node tests/model.test.js       # 1,751 model invariants, no browser needed
+node tests/model.test.js       # model checks and pinned figures, no browser needed (7,423 at commit 0f1fa9b)
+node tests/fuzz.test.js 1500   # property invariants on 1,500 seeded random businesses
+node tests/browser.inputs.js   # typed inputs, validation, tabs and the Data tab in a real browser (needs Playwright)
 node tests/browser.sweep.js    # every select and slider at 1440px and 390px (needs Playwright)
 ```
 
