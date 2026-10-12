@@ -6769,7 +6769,39 @@ function focal(){
       var dg=dv.getContext("2d"), gr=dg.createLinearGradient(0,0,0,.42*r);
       gr.addColorStop(0,"rgba("+col+",0)"); gr.addColorStop(.5,"rgba("+col+",1)"); gr.addColorStop(1,"rgba("+col+",0)");
       dg.fillStyle=gr; bowStrip(dg,0,DW,0,.42*r,.18*r,48); return dv; });
-    return {body:spr.body,bands:cv,shade:spr.shade,r:spr.r,S:spr.S};
+    return {body:spr.body,bands:cv,shade:litLimb(spr,Math.atan2(-1,-1.4)+Math.PI),r:spr.r,S:spr.S};
+  }
+  /* the focal orb's own light, painted once onto a copy of its shade layer, so the shared
+     sphereSprite output stays as it was. drawPlanet turns the shade layer by lightAng+PI, so
+     this pass turns back by the same angle and draws in screen orientation. A terminator
+     darkens the body away from the upper right (clear of the reading's central half), and a
+     Fresnel rim lights the lower-left limb, the side the comet arc's bright head sweeps
+     through. Widths are fractions of the radius: the sprite scales with the planet. */
+  var LIMB=[105,235];
+  function litLimb(spr,rot){
+    try{
+      var S=spr.S, R=spr.r, cv=document.createElement("canvas"); cv.width=cv.height=S;
+      var g=cv.getContext("2d"); g.drawImage(spr.shade,0,0);
+      var tc=document.createElement("canvas"); tc.width=tc.height=S;
+      var t=tc.getContext("2d"); t.translate(S/2,S/2); t.rotate(-rot);
+      var tm=t.createRadialGradient(.45*R,-.35*R,.55*R,.45*R,-.35*R,1.02*R);
+      tm.addColorStop(0,"rgba(3,6,20,0)"); tm.addColorStop(1,"rgba(3,6,20,.35)");
+      t.fillStyle=tm; t.beginPath(); t.arc(0,0,R,0,TAU); t.fill();
+      t.globalCompositeOperation="destination-out";
+      var hole=t.createRadialGradient(0,0,.45*R,0,0,.8*R);
+      hole.addColorStop(0,"rgba(0,0,0,1)"); hole.addColorStop(1,"rgba(0,0,0,0)");
+      t.fillStyle=hole; t.fillRect(-R,-R,2*R,2*R);
+      g.drawImage(tc,0,0);
+      g.translate(S/2,S/2); g.rotate(-rot);
+      var a0=LIMB[0]*Math.PI/180, a1=LIMB[1]*Math.PI/180, rr=R*.988;
+      var rim=g.createLinearGradient(rr*Math.cos(a0),rr*Math.sin(a0),rr*Math.cos(a1),rr*Math.sin(a1));
+      rim.addColorStop(0,"rgba(216,236,255,0)"); rim.addColorStop(.5,"rgba(216,236,255,.72)"); rim.addColorStop(1,"rgba(184,164,255,0)");
+      g.globalCompositeOperation="lighter"; g.strokeStyle=rim; g.lineWidth=R*.027; g.lineCap="round";
+      g.beginPath(); g.arc(0,0,rr,a0,a1); g.stroke();
+      g.shadowBlur=R*.123; g.shadowColor="rgba(158,203,255,.6)"; g.globalAlpha=.32;
+      g.beginPath(); g.arc(0,0,rr,a0,a1); g.stroke();
+      return cv;
+    }catch(e){ return spr.shade; }
   }
   window.FOCAL_KICK=start;
   function frame(t){
@@ -7906,7 +7938,7 @@ html{scroll-padding-top:72px}
 #view-console #starmap .sm-axis{stroke:rgba(158,203,255,.2)}
 #view-console #starmap .sm-spoke{stroke:#9ecbff;stroke-opacity:.07;transition:stroke-opacity .2s ease}
 #view-console #starmap .bstar:hover .sm-spoke{stroke-opacity:.4}
-#view-console #starmap .bstar.best circle:last-child{fill:url(#smCore)}
+#view-console #starmap .bstar.best>circle:last-child{fill:url(#bstar-core)}
 #view-console #starmap .sm-lead{stroke:#9ecbff;stroke-opacity:.5;stroke-width:.9;stroke-dasharray:1.5 2.5;stroke-linecap:round}
 #view-console #starmap .sm-mv tspan,#view-console #starmap text.sm-mv{fill:#d8ecff}
 #view-console .sm-cap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;margin:12px 0 24px}
@@ -8023,8 +8055,42 @@ html.v8-reveal #view-console .sec #cats .cat-fill{transition:transform .8s cubic
 html.v8-reveal #view-console .sec:not(.landed) .v8bars .bar-fill,
 html.v8-reveal #view-console .sec:not(.landed) #cats .cat-fill{transform:scaleX(0)}
 
+/* ---- UI round 2 ---- */
+/* the time curve draws itself once, the first time Time to close lands, then its head arrives
+   at 540 d (classes are set only with the reveal hook, and only before the section lands;
+   timing inside the VL 8 one-shot range, so it has finished about a second after landing) */
+html.v8-reveal #view-console .sec:not(.landed) #tcurve .tc-draw{stroke-dasharray:1;stroke-dashoffset:1}
+html.v8-reveal #view-console .sec.landed #tcurve .tc-draw{stroke-dasharray:1;stroke-dashoffset:1;
+  animation:tc-draw .9s cubic-bezier(.22,1,.36,1) .15s forwards}
+@keyframes tc-draw{to{stroke-dashoffset:0}}
+html.v8-reveal #view-console .sec:not(.landed) #tcurve .tc-arrive{opacity:0}
+html.v8-reveal #view-console .sec.landed #tcurve .tc-arrive{transform-box:fill-box;transform-origin:center;
+  animation:tc-arrive .5s cubic-bezier(.16,1,.3,1) .6s backwards}
+@keyframes tc-arrive{from{opacity:0;transform:scale(.3)}}
+/* a beacon on the buyer to pursue first: the lane's one new infinite animation */
+#view-console #starmap .beacon{fill:none;transform-box:fill-box;transform-origin:center;animation:bstar-ping 3.2s ease-out infinite}
+@keyframes bstar-ping{0%{transform:scale(.4);opacity:.9}100%{transform:scale(2.2);opacity:0}}
+/* the zero meridian of a diverging chart: a crisp starlight line over a soft band in the
+   section's hue, both behind the bars, fading out above and below, static. Wide charts draw
+   it once through the plot; narrow ones on each track, clear of the labels above them. */
+#view-console .v8bars[data-mode=div] .bar-grid i.z{background:linear-gradient(rgba(216,236,255,0),rgba(216,236,255,.55) 8% 92%,rgba(216,236,255,0))}
+#view-console .v8bars[data-mode=div] .bar-grid i.z::before,
+#view-console .v8bars[data-mode=div] .bar-mid::before{content:"";position:absolute;z-index:-1;top:0;bottom:0;left:50%;width:12px;margin-left:-6px;
+  pointer-events:none;background:linear-gradient(90deg,transparent,rgb(var(--hue,158 203 255)/.14),transparent);
+  -webkit-mask-image:linear-gradient(transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 88%,transparent)}
+#view-console .v8bars[data-mode=div] .bar-mid{z-index:0;background:none}
+#view-console .v8bars[data-mode=div] .bar-mid::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(rgba(216,236,255,0),rgba(216,236,255,.55) 30% 70%,rgba(216,236,255,0))}
+@container v8bars (min-width:560px){ #view-console .v8bars[data-mode=div] .bar-mid::before{content:none} }
+/* the legacy logistic keeps no glow (VL §7.10): its zero is the line alone */
+#view-console #pcbars.v8bars[data-mode=div] .bar-grid i.z{background:linear-gradient(rgba(216,236,255,0),rgba(216,236,255,.45) 8% 92%,rgba(216,236,255,0))}
+#view-console #pcbars.v8bars[data-mode=div] .bar-grid i.z::before,#view-console #pcbars.v8bars[data-mode=div] .bar-mid::before{content:none}
+
 @media (prefers-reduced-motion:reduce){
   #view-console .v8loop-dot{animation:none!important;offset-distance:0%!important}
+  #view-console #tcurve .tc-draw{animation:none!important;stroke-dasharray:none!important;stroke-dashoffset:0!important}
+  #view-console #tcurve .tc-arrive{animation:none!important;opacity:1!important;transform:none!important}
+  #view-console #starmap .beacon{animation:none!important;opacity:.35}
   #view-console .v8bars .bar-fill,#view-console #cats .cat-fill{transition:none!important;transform:none!important}
   #view-console #starmap .sm-spoke,#view-console .v8bars .bar-n,#view-console .v8bars .bar-track{transition:none!important}
 }
@@ -9320,6 +9386,16 @@ function capBefore(el,id){
   var c=D.getElementById(id); if(c) return c;
   c=D.createElement("p"); c.id=id; c.className="chart-cap"; el.parentNode.insertBefore(c,el); return c;
 }
+/* true while the curve has not yet drawn itself: only with the reveal hook (so never under
+   reduced motion), and only until a render finds the section landed */
+var tcPlayed=false;
+function drawOnce(svg){
+  if(tcPlayed) return false;
+  if(!D.documentElement.classList.contains("v8-reveal")){ tcPlayed=true; return false; }
+  var sec=svg.closest?svg.closest(".sec"):null;
+  if(!sec||sec.classList.contains("landed")){ tcPlayed=true; return false; }
+  return true;
+}
 function curveSVG(r){
   var svg=D.getElementById("tcurve"); if(!svg||!r||typeof r.F!=="function") return;
   var Wd=boxW(svg,760), nar=Wd<NARROW, TMAX=540;
@@ -9331,8 +9407,9 @@ function curveSVG(r){
   svg.setAttribute("viewBox","0 0 "+Wd+" "+H);
   var defs='<linearGradient id="tcArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d4fd8" stop-opacity=".35"/>'
     +'<stop offset=".6" stop-color="#5a46c8" stop-opacity=".1"/><stop offset="1" stop-color="#4d3aa8" stop-opacity="0"/></linearGradient>'
-    +'<linearGradient id="tcLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9c86ff"/>'
-    +'<stop offset=".55" stop-color="#9ecbff"/><stop offset="1" stop-color="#7ff0dc"/></linearGradient>'
+    +'<linearGradient id="tcLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9c86ff" stop-opacity=".35"/>'
+    +'<stop offset=".11" stop-color="#9c94ff"/><stop offset=".55" stop-color="#9ecbff"/><stop offset="1" stop-color="#7ff0dc"/></linearGradient>'
+    +'<radialGradient id="tcEnd"><stop offset="0" stop-color="#6ff2dc" stop-opacity=".55"/><stop offset="1" stop-color="#6ff2dc" stop-opacity="0"/></radialGradient>'
     +'<filter id="tcGlow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="4" result="b"/>'
     +'<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
     +'<radialGradient id="tcHead"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#ffffff"/>'
@@ -9363,7 +9440,12 @@ function curveSVG(r){
     if(big) g+='<circle cx="'+sx+'" cy="'+sy+'" r="3.4" fill="#b8a4ff" fill-opacity=".13"/>';
     g+='<circle cx="'+sx+'" cy="'+sy+'" r="'+(big?1.2:.7)+'" fill="#e6edff" fill-opacity="'+op.toFixed(2)+'"/>'; }
   g+='<line class="tc-grid base" x1="'+L+'" x2="'+f1(L+IW)+'" y1="'+f1(py(0))+'" y2="'+f1(py(0))+'"/>';
-  g+='<path d="'+d+'" fill="none" stroke="url(#tcLine)" stroke-width="'+(nar?2.3:2.6)+'" stroke-linecap="round" filter="url(#tcGlow)"/>';
+  /* the curve draws itself once, the first time its section lands (never on a later render),
+     and arrives at 540 d as a comet head in its own end colour */
+  var once=drawOnce(svg), ex=f1(px(TMAX)), ey=f1(py(r.F(TMAX)));
+  g+='<path d="'+d+'"'+(once?' pathLength="1" class="tc-draw"':'')+' fill="none" stroke="url(#tcLine)" stroke-width="'+(nar?2.3:2.6)+'" stroke-linecap="round" filter="url(#tcGlow)"/>';
+  g+='<g class="tc-end'+(once?' tc-arrive':'')+'" aria-hidden="true"><circle cx="'+ex+'" cy="'+ey+'" r="9" fill="url(#tcEnd)"/>'
+    +'<circle cx="'+ex+'" cy="'+ey+'" r="2.6" fill="#e9fbff"/></g>';
   /* reference points: the value above the point, its day beneath the value */
   var used=[];
   [90,180,365].forEach(function(t){ var v=r.F(t), x=px(t), y=py(v), lab=pc(v), sub=t+THIN+"d";
@@ -9432,8 +9514,9 @@ function starSVG(r,grow){
   var refY=py(r.V), zone=Math.max(0,refY-T);
   var defs='<radialGradient id="smHalo"><stop offset="0" stop-color="#d6e6ff" stop-opacity=".85"/>'
     +'<stop offset=".28" stop-color="#8fb2ff" stop-opacity=".38"/><stop offset="1" stop-color="#6d7dff" stop-opacity="0"/></radialGradient>'
-    +'<radialGradient id="smCore" cx=".42" cy=".38"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#e3efff"/>'
-    +'<stop offset="1" stop-color="#9ecbff"/></radialGradient>'
+    /* one stellar core for every star: size and brightness (fill-opacity) still carry the data */
+    +'<radialGradient id="bstar-core"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#d8ecff"/>'
+    +'<stop offset="1" stop-color="rgb(184,164,255)"/></radialGradient>'
     +'<filter id="smGlow" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="3" result="b"/>'
     +'<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
     +'<filter id="smBlur" x="-2%" y="-600%" width="104%" height="1300%"><feGaussianBlur stdDeviation="3"/></filter>'
@@ -9489,8 +9572,11 @@ function starSVG(r,grow){
         defs+='<linearGradient id="smSp'+k+'" gradientUnits="userSpaceOnUse" x1="'+f1(x1)+'" y1="'+f1(y1)+'" x2="'+f1(x2)+'" y2="'+f1(y2)+'">'
           +'<stop offset="0" stop-color="#d8ecff" stop-opacity="0"/><stop offset=".5" stop-color="#d8ecff" stop-opacity=".6"/>'
           +'<stop offset="1" stop-color="#d8ecff" stop-opacity="0"/></linearGradient>';
-        sg+='<line x1="'+f1(x1)+'" y1="'+f1(y1)+'" x2="'+f1(x2)+'" y2="'+f1(y2)+'" stroke="url(#smSp'+k+')" stroke-width="1"/>'; }); }
-    sg+='<circle cx="'+f1(o.x)+'" cy="'+f1(o.y)+'" r="'+f1(o.core)+'" fill="url(#smCore)" fill-opacity="'+Math.min(1,op+.2).toFixed(2)+'"'
+        sg+='<line x1="'+f1(x1)+'" y1="'+f1(y1)+'" x2="'+f1(x2)+'" y2="'+f1(y2)+'" stroke="url(#smSp'+k+')" stroke-width="1"/>'; });
+      /* a beacon on the buyer to pursue first: one ring pinging outward, kept off every label */
+      sg+='<g mask="url(#smBcn)" aria-hidden="true"><circle class="beacon" cx="'+f1(o.x)+'" cy="'+f1(o.y)+'" r="14" fill="none"'
+        +' stroke="rgba(216,236,255,.5)" vector-effect="non-scaling-stroke"/></g>'; }
+    sg+='<circle cx="'+f1(o.x)+'" cy="'+f1(o.y)+'" r="'+f1(o.core)+'" fill="url(#bstar-core)" fill-opacity="'+Math.min(1,op+.2).toFixed(2)+'"'
       +' stroke="#d8ecff" stroke-opacity="'+(.32+.6*b.PE).toFixed(2)+'" stroke-width="1"'+(best?' filter="url(#smGlow)"':'')+'/></g>'; });
   /* ---- labels: beside each star, clear of every other label and every star ---- */
   var items=[], lab="";
@@ -9570,6 +9656,8 @@ function starSVG(r,grow){
       +tx(x,c.y+FN*.86+FS+3,sub,{a:ta,s:FS,f:best?"#9ecbff":"#a3aec3",c:"sm-s"});
   });
   var boxes=bestRun[0].filter(Boolean);
+  defs+='<mask id="smBcn" maskUnits="userSpaceOnUse" x="0" y="0" width="'+Wd+'" height="'+H+'"><rect width="'+Wd+'" height="'+H+'" fill="#fff"/>'
+    +boxes.map(function(c){ return '<rect x="'+f1(c.x-5)+'" y="'+f1(c.y-4)+'" width="'+f1(c.w+10)+'" height="'+f1(c.h+8)+'" rx="5" fill="#000"/>'; }).join("")+'</mask>';
   g=g.replace("%SPECKS%",specks.filter(function(k){ return !boxes.some(function(c){ return k[0]>c.x-3&&k[0]<c.x+c.w+3&&k[1]>c.y-3&&k[1]<c.y+c.h+3; }); })
     .map(function(k){ return '<circle cx="'+f1(k[0])+'" cy="'+f1(k[1])+'" r="'+k[2]+'" fill="#dfe8ff" fill-opacity="'+k[3].toFixed(2)+'"/>'; }).join(""));
   if(!nar) lab+='<line x1="'+(L-5)+'" x2="'+L+'" y1="'+f1(refY)+'" y2="'+f1(refY)+'" stroke="#d8ecff" stroke-opacity=".8"/>'
@@ -9587,11 +9675,12 @@ function starCaption(svg,nar){
   var star=function(pe){ var rad=nar?3.2+8*pe:5+12*pe, h=rad*1.75, S=Math.ceil(h*2+2), c=S/2;
     return '<span class="sm-key"><svg width="'+S+'" height="'+S+'" viewBox="0 0 '+S+' '+S+'" aria-hidden="true">'
       +'<circle cx="'+c+'" cy="'+c+'" r="'+f1(h)+'" fill="url(#smKeyH)" opacity=".75"/>'
-      +'<circle cx="'+c+'" cy="'+c+'" r="'+f1(rad*.42)+'" fill="#f4f8ff" fill-opacity=".9" stroke="#d8ecff" stroke-opacity=".6"/></svg>'
+      +'<circle cx="'+c+'" cy="'+c+'" r="'+f1(rad*.42)+'" fill="url(#smKeyC)" fill-opacity=".9" stroke="#d8ecff" stroke-opacity=".6"/></svg>'
       +Math.round(pe*100)+'%</span>'; };
   cap.innerHTML='<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><radialGradient id="smKeyH">'
     +'<stop offset="0" stop-color="#d6e6ff" stop-opacity=".85"/><stop offset=".28" stop-color="#8fb2ff" stop-opacity=".38"/>'
-    +'<stop offset="1" stop-color="#6d7dff" stop-opacity="0"/></radialGradient></defs></svg>'
+    +'<stop offset="1" stop-color="#6d7dff" stop-opacity="0"/></radialGradient><radialGradient id="smKeyC"><stop offset="0" stop-color="#ffffff"/>'
+    +'<stop offset=".45" stop-color="#d8ecff"/><stop offset="1" stop-color="rgb(184,164,255)"/></radialGradient></defs></svg>'
     +'<span class="sm-cap-i"><span>Mark size: engagement · brightness: close rate</span><span class="sm-keys">'+star(.2)+star(.5)+star(.8)+'</span></span>'
     +'<span class="sm-cap-i"><svg class="sm-dash" width="26" height="8" viewBox="0 0 26 8" aria-hidden="true">'
     +'<line x1="0" y1="4" x2="26" y2="4" stroke="#d8ecff" stroke-opacity=".8" stroke-dasharray="5 4"/></svg>'
@@ -9635,14 +9724,14 @@ function loopSVG(){
     +'<ellipse cx="'+f1(cx)+'" cy="'+f1(cy)+'" rx="'+f1(rx*.62)+'" ry="'+f1(ry*.95)+'" fill="url(#lpSun)"/>'
     +'<circle cx="'+f1(cx)+'" cy="'+f1(cy)+'" r="1.4" fill="#efe9ff" fill-opacity=".75"/>'
     +'<path d="'+orbit+'" fill="none" stroke="rgba(158,203,255,.3)" stroke-width="1"/>'
-    /* the return arc, Transaction back to Data, is the "More Data" leg */
+    /* the return arc, Transaction back to Data, is the "More data" leg (sentence case, like every label) */
     +'<path d="M '+f1(tb[0])+' '+f1(tb[1])+' A '+f1(rx)+' '+f1(ry)+' 0 0 1 '+f1(dl[0])+' '+f1(dl[1])+'" fill="none" stroke="url(#lpRet)" stroke-opacity=".8" stroke-width="1.6"/>';
   /* direction: a small chevron midway along each leg, pointing the way the loop turns */
   [1.25,1.75,.25,.75].forEach(function(k){ var a=Math.PI*k, p=P(a), ang=Math.atan2(ry*Math.cos(a),-rx*Math.sin(a))*180/Math.PI, ret=k===.75;
     s+='<path d="M -3.5 -4 L 1.5 0 L -3.5 4" transform="translate('+f1(p[0])+' '+f1(p[1])+') rotate('+f1(ang)+')" fill="none"'
       +' stroke="'+(ret?"#ff9fd6":"#9ecbff")+'" stroke-opacity="'+(ret?.95:.6)+'" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>'; });
   var mp=P(Math.PI*.75);
-  s+='<text x="'+f1(nar?mp[0]+12:mp[0]-10)+'" y="'+f1(nar?mp[1]-8:mp[1]+18)+'" text-anchor="'+(nar?"start":"end")+'" font-size="'+(fs-.5)+'" font-weight="500" fill="#ffc2e6">More Data</text>';
+  s+='<text x="'+f1(nar?mp[0]+12:mp[0]-10)+'" y="'+f1(nar?mp[1]-8:mp[1]+18)+'" text-anchor="'+(nar?"start":"end")+'" font-size="'+(fs-.5)+'" font-weight="500" fill="#ffc2e6">More data</text>';
   N.forEach(function(o,i){ var p=P(o.a), r0=nar?5:6, lx, ly, an;
     s+='<circle cx="'+f1(p[0])+'" cy="'+f1(p[1])+'" r="'+(r0+5)+'" fill="rgb('+o.g+')" fill-opacity=".1"/>'
       +'<circle cx="'+f1(p[0])+'" cy="'+f1(p[1])+'" r="'+(r0+2)+'" fill="none" stroke="rgb('+o.g+')" stroke-opacity=".45" stroke-width="2"/>'
