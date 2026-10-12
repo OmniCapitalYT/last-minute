@@ -1168,7 +1168,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        &&HTML.includes("Only the category sub-scores and the confidence figure: the quality position does not read them."),"R4-2: peer scales split by reach (19 + 3)"); }
   /* R4-3: the staffing row states the measured relation, not 'several times fewer' */
   ok(!HTML.includes("several times fewer than the firm's Census employees")&&!HTML.includes("runs from about a third of SBA's figure to several times it")
-     &&HTML.includes("at each industry's typical margin and within the $${(R.loan_range[1]/1e6).toFixed(0)}M 7(a) limit the head count runs from about a fifth of SBA's figure to about six times it, more at lower margins, and past the limit SBA's band median stays at")
+     &&HTML.includes("so the head count can be a fraction of SBA's figure for a small firm or many times it for a low-margin or lower-quality one, and past the $${(R.loan_range[1]/1e6).toFixed(0)}M 7(a) limit SBA's band median stays at")
      &&!A.MODELS.risk.staffing.note.includes("several times it"),"R4-3/R5-6: staffing wording");
   /* over the console's whole size range (revenue $100k-$200M, each industry at its typical margin), split at the 7(a) limit */
   { const R=A.MODELS.risk, med=R.staffing.sba_jobs_median_by_loan_band, un=[], ca=[];
@@ -1176,8 +1176,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       for(let k=0;k<30;k++) ern=rev*A.typMargin(ind,ern);
       const r=A.model({...FX,ind,rev,ern:Math.min(ern,rev*.85),ask:1e6}), m=med[r.risk.empBandKey]; if(!m) continue;
       (R.loan_share*r.V>R.loan_range[1]?ca:un).push(r.jobs/m); }
-    ok(Math.min(...un)>.15&&Math.min(...un)<.3&&Math.max(...un)>4.5&&Math.max(...un)<7.5&&Math.max(...ca)>50&&Math.max(...Object.values(med))===14,
-       `R4-3/R5-6: Census/SBA ratio ${Math.min(...un).toFixed(2)}-${Math.max(...un).toFixed(2)} within the limit, up to ${Math.max(...ca).toFixed(0)} past it`); }
+    /* R7-1: 'a fraction ... for a small firm', 'many times it' for a low-margin or lower-quality one (a typical-margin restaurant at
+       the worse quality ends, inside the limit), and growing past the limit */
+    const wq=A.model({...FX,ind:"rest",rev:12.48e6,ern:12.48e6*A.typMargin("rest",3.36e6),rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95});
+    un.push(wq.jobs/med[wq.risk.empBandKey]);
+    ok(Math.min(...un)>.15&&Math.min(...un)<.3&&R.loan_share*wq.V<=R.loan_range[1]&&wq.jobs/med[wq.risk.empBandKey]>9&&Math.max(...ca)>50&&Math.max(...Object.values(med))===14&&R.loan_share===.85,
+       `R4-3/R5-6/R7-1: Census/SBA ratio ${Math.min(...un).toFixed(2)}-${Math.max(...un).toFixed(2)} within the limit, up to ${Math.max(...ca).toFixed(0)} past it`); }
   /* R4-4: the ledger note is computed from the rows; round 5 adds the IND anchors and PMIN, PMAX, LAM0, KW (124 inert of 432) */
   ok(HTML.includes("const inert=nDelta+Object.keys(IND).length+Object.keys(B).length+Object.keys(NL).length+2+Object.keys(G).length+2;")&&!HTML.includes("made most of this table inert")
      &&HTML.includes("Superseded by the fitted time-to-close curve."),"R4-4/R5-1: ledger note from the counts");
@@ -1254,7 +1258,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        `R6-1: fitted ${a.fv.mult.toFixed(2)} at both ends; quality position x${a.qFactor.toFixed(2)}-x${b.qFactor.toFixed(2)}`); }
   /* R6-2: the staffing range is stated at the typical margin it was measured at, and is larger at lower margins */
   { const R=A.MODELS.risk, med=R.staffing.sba_jobs_median_by_loan_band, r=A.model({...FX,ind:"staff",rev:1e7,ern:1e6}), m=med[r.risk.empBandKey];
-    ok(HTML.includes("at each industry's typical margin and within the")&&R.staffing.note.includes("at each industry's typical margin")&&R.staffing.note.includes("more at lower margins")
+    ok(HTML.includes("many times it for a low-margin or lower-quality one")&&R.staffing.note.includes("many times it for a low-margin or lower-quality one")&&!R.staffing.note.includes("about six times")
        &&R.loan_share*r.V<=R.loan_range[1]&&r.jobs/m>8,`R6-2: a $10M staffing firm at a 10% margin, inside the limit: ${r.jobs}/${m} = ${(r.jobs/m).toFixed(1)}x`); }
   /* R6-3: eq_comp's general form is the capped price, as in eq_a; the substituted line says which side of the ceiling each figure is */
   { const line=HTML.split("\n").find(l=>l.includes('eq("eq_comp",'))||"", i=HTML.indexOf('eq("eq_comps",'), sub=HTML.slice(i,i+700);

@@ -752,7 +752,7 @@ These were hand-typed and had gone stale:
 
 **Round 4**
 - `TermInMonths` is not the time to charge-off (within 3 months for 2.5% of charged-off loans), so the page no longer says SBA overwrites it with that.
-- The Census head count runs from about a fifth of SBA's jobs count to about six times it for loans within the $5M 7(a) limit, at each industry's typical margin; it is more at lower margins (a $10M staffing firm at a 10% margin is 11×), and keeps growing with revenue past the limit, where SBA's band median stays at 14. It is not "several times fewer" (R4-3, R5-6, R6-2).
+- The Census head count runs from about a fifth of SBA's jobs count for a small firm to many times it for a low-margin or lower-quality one (a $10M staffing firm at a 10% margin is 11×; a typical-margin restaurant at the worse quality ends is 10.6×), and keeps growing with revenue past the $5M limit, where SBA's band median stays at 14. The page states the mechanism rather than a bounded range, because every bound tried failed along another input (R4-3, R5-6, R6-2, R7-1). It is not "several times fewer".
 - The GM salary's firm-size rank is labelled judgment.
 - The budget box shows two decimals in millions.
 - The binding-ask note names the measure it ranks by.
@@ -766,7 +766,7 @@ These were hand-typed and had gone stale:
 
 **Round 6** (all three in text the round-5 fixes wrote)
 - The quality-sweep sentence credits the swing to the judgment quality position, not to the fitted multiple, which the sliders do not move (R6-1).
-- The staffing range is stated at each industry's typical margin, and is larger at lower margins (R6-2).
+- The staffing range is stated at each industry's typical margin, and is larger at lower margins (R6-2; round 7 replaced the range with the mechanism, R7-1).
 - eq_comp's general form is the capped price P(W), as in eq_a; the substituted line says which figure is before the ceiling and which after it (R6-3).
 
 **Competition**
