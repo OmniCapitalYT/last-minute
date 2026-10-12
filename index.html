@@ -6693,7 +6693,10 @@ function orrery(){
     var r=c.getBoundingClientRect(), W=r.width, H=r.height; if(W<10) return;
     var g=fit(c,W,H); g.clearRect(0,0,W,H);
     vx+=(mouse.nx*.35-vx)*.04; vy+=(mouse.ny*.18-vy)*.04;
-    var P=camera(yaw0+t*.03+vx,.42+vy,9,Math.min(W,H)*.105,W*.5,H*.52);
+    /* HB4 (UI round 2): a phone's sky is wide and short; the system scales to the width it has
+       there instead of to the short side (desktop and tablet keep min(W,H) exactly) */
+    var wide=W>H*1.4, M=wide?Math.min(W*.83,H*1.75):Math.min(W,H);
+    var P=camera(yaw0+t*.03+vx,.42+vy,9,M*.105,W*.5,wide?M*.39:H*.52);
     var sun=P(0,0,0);
     /* orbits: back arcs, then belt and bodies by depth, then front arcs */
     function orbit(a,front){
@@ -6715,10 +6718,10 @@ function orrery(){
       g.globalAlpha=.25+.45*q.f; g.fillRect(q.x,q.y,bb.s*q.f,bb.s*q.f); } g.globalAlpha=1; }
     beltPass(false);
     for(var b2=0;b2<bodies.length;b2++){ var B=bodies[b2];
-      if(B.sun){ var s=Math.min(W,H)*.62*(1+.03*Math.sin(t*.8));
+      if(B.sun){ var s=M*.62*(1+.03*Math.sin(t*.8));
         g.globalCompositeOperation="lighter"; g.drawImage(SPR.sun,sun.x-s/2,sun.y-s/2,s,s);
         g.globalCompositeOperation="source-over"; continue; }
-      var rad=B.pl.sz*Math.min(W,H)*.105*B.q.f*2.1, ang=Math.atan2(sun.y-B.q.y,sun.x-B.q.x);
+      var rad=B.pl.sz*M*.105*B.q.f*2.1, ang=Math.atan2(sun.y-B.q.y,sun.x-B.q.x);
       if(B.pl.ring) ring(g,P,B,rad,false,t);
       drawPlanet(g,SPR[B.pl.spr],B.q.x,B.q.y,rad,ang);
       if(B.pl.ring) ring(g,P,B,rad,true,t);
@@ -7742,6 +7745,11 @@ html .masthead h1{filter:drop-shadow(0 0 32px rgba(146,120,255,.22))!important}
   .hero-under .qband .qnote{grid-column:2;grid-row:2/5;margin-top:var(--sp-2)}
   .hero-under .qband details.more{grid-column:2;grid-row:5}
 }
+/* r2-layout-7: on wide screens the readout ends over its own track, and the note top-aligns with the label */
+@media(min-width:1081px){
+  .hero-under .qband .qhd{grid-column:1}
+  .hero-under .qband .qnote{grid-column:2;grid-row:1/5;margin-top:0}
+}
 @container (min-width:248px) and (max-width:299px){
   .scores{--dial:100px}
   .sc .score-wrap{width:100px;height:100px}
@@ -7811,7 +7819,7 @@ html .masthead h1{filter:drop-shadow(0 0 32px rgba(146,120,255,.22))!important}
   filter:drop-shadow(0 0 16px rgb(var(--h-ice) / .30))!important}
 .hero-stats .big .n .kfig{display:inline-block}
 .hero-stats .big .n#o_bb{font-size:var(--fs-fig-m)!important;line-height:1.2!important;color:var(--ink)!important;text-wrap:balance}
-.hero-stats .big .n .unit{font-size:.62em;font-weight:500;color:var(--ink2)}
+.hero-stats .big .n .unit{font-size:var(--fs-ui,13px);font-weight:500;color:var(--ink2)}
 .hero-stats .big .n .sub2,.hero-stats .big .n .muted{display:block;margin-top:6px;font:400 var(--fs-cap)/1.45 var(--sans)!important;
   letter-spacing:0!important;color:var(--ink3)!important;text-wrap:pretty}
 .hero-stats .big .n details.more{margin-top:2px}
@@ -7835,13 +7843,18 @@ html .masthead h1{filter:drop-shadow(0 0 32px rgba(146,120,255,.22))!important}
 /* ========================================================== MASTHEAD, PHONE */
 @media(max-width:560px){
   .masthead{padding:var(--sp-5) 0!important;min-height:0}
-  .orrery3d{aspect-ratio:auto!important;height:clamp(200px,56vw,240px);margin:0 0 var(--sp-2)!important}
+  /* HB4: the system is drawn to the phone's width (orrery code), so the sky it needs is shorter */
+  .orrery3d{aspect-ratio:auto!important;height:clamp(176px,50vw,200px);margin:0 0 var(--sp-2)!important}
   .mast-eyebrow{margin-bottom:var(--sp-3)!important}
   .mast-sub{margin-top:var(--sp-4)!important}
-  .mast-status{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 var(--sp-4)!important;margin-top:var(--sp-5)!important}
+  /* r2-layout-10: each status takes the width it needs, so "Market aggregate" holds one line,
+     and the tier dot sits inside its value, out of the 16px gutter */
+  .mast-status{display:grid!important;grid-template-columns:repeat(3,auto);justify-content:space-between;gap:0 var(--sp-2)!important;margin-top:var(--sp-5)!important}
   .mast-status dt{font-size:var(--fs-cap);line-height:var(--lh-cap);margin-bottom:2px}
-  .mast-status dd{font-size:15px;line-height:1.3}
-  .mast-status dd .dot{left:-11px;width:6px;height:6px;margin-top:-3px}
+  .mast-status dd{font-size:15px;line-height:1.3;gap:6px}
+  .mast-status dd .dot{position:static;width:6px;height:6px;margin:0;flex:none}
+  /* below 375px three abreast would wrap a label; the third status takes a row of its own */
+  @media(max-width:374px){ .mast-status{grid-template-columns:repeat(2,auto);justify-content:start;gap:var(--sp-3) var(--sp-5)!important} }
   .nav{margin:-22px 0 var(--sp-5)}
 }
 
@@ -7900,6 +7913,95 @@ html[data-stage="9"] .v8-wash.w-d,html[data-stage="10"] .v8-wash.w-d{opacity:1}
 
 /* UI round 2 (r2-2): the sticky tab bar must not cover a control that keyboard focus scrolls into view (WCAG 2.2 SC 2.4.11) */
 html{scroll-padding-top:72px}
+
+/* ═════════════════════════════════════════════════════════ UI ROUND 2 (full)
+   r2-layout-1: on a phone the "scroll" chip lives in a strip of its own under a wide
+   table, never on its header row. The strip is permanent, so nothing shifts when the
+   fade classes toggle; the mask's second layer follows the chip down. */
+@media(max-width:700px){
+  .tw:has(>table.wide){padding-bottom:28px}
+  .tw.fade-r:not(.v8-seen)::after{top:auto;bottom:4px;right:8px}
+  .tw.fade-r:not(.v8-seen){-webkit-mask-position:0 0,right 6px bottom 2px;mask-position:0 0,right 6px bottom 2px}
+}
+
+/* HB1 (r2-type-16): every section title in its own starlight, white at the top of each line and
+   warming into the section's hue at its foot. The gradient runs down each word (Console, where
+   the split-word reveal wraps words) or each line (Data), so every line reads the same. The
+   palest stop is white and the deepest a light tint, so contrast stays above 6:1 on the panel.
+   Badges and counts keep their own colours. */
+@supports (-webkit-background-clip:text) or (background-clip:text){
+  .sec-head h2 .split-word{background:linear-gradient(180deg,#fff 30%,rgb(var(--hue,158 203 255) / .95) 140%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  #view-data .sec-head h2{background:linear-gradient(180deg,#fff 30%,rgb(var(--hue,158 203 255) / .95) 140%) 0 0 repeat-y;
+    background-size:100% 100%;background-size:100% 1lh;-webkit-background-clip:text;background-clip:text;color:transparent}
+}
+@media (forced-colors:active){
+  .sec-head h2 .split-word,#view-data .sec-head h2{color:CanvasText;background:none}
+}
+
+/* HB3 (r2-brilliance-6, -21): the tab bar is smoked glass with a lit rim; once it docks at the
+   top it casts a shadow (opacity only), and one comet travels to the chosen tab (transform only).
+   The sentinel, the .stuck class and the comet come from v8-hero-js. */
+.nav{background:rgba(9,13,30,.80);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
+  border-color:rgba(158,203,255,.10)}
+.nav::before{content:"";position:absolute;inset:-1px;border-radius:calc(var(--r-nav,14px) + 1px);padding:1px;pointer-events:none;
+  background:linear-gradient(120deg,rgba(216,236,255,.42),rgba(158,203,255,.10) 40%,rgba(184,164,255,.22));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.nav::after{content:"";position:absolute;inset:-1px;border-radius:calc(var(--r-nav,14px) + 1px);pointer-events:none;
+  box-shadow:0 14px 34px -16px rgba(0,0,0,.9),0 10px 28px -18px rgba(77,163,255,.45);opacity:0;transition:opacity .3s ease}
+.nav.stuck::after{opacity:1}
+/* out of flow, so the nav's collapsing -22px margin is untouched; its static position is the nav's natural top */
+.nav-sentinel{position:absolute;display:block;width:1px;height:1px;margin-top:-22px;pointer-events:none;visibility:hidden}
+/* the active tab hands its own underline and head to the travelling comet */
+.nav.has-ind .tab.on::after{opacity:0}
+.nav.has-ind .tab.on::before{transform:scale(0)}
+.nav-ind{position:absolute;left:0;bottom:9px;width:100px;height:2px;border-radius:2px;pointer-events:none;transform-origin:0 50%;
+  transform:translateX(var(--tx,20px)) scaleX(var(--k,.5));
+  background:linear-gradient(90deg,transparent,rgba(216,236,255,.85) 70%,#fff);box-shadow:0 0 8px rgba(158,203,255,.7)}
+.nav-ind-h{position:absolute;left:0;bottom:8px;width:4px;height:4px;border-radius:50%;pointer-events:none;background:#fff;
+  transform:translateX(calc(var(--hx,70px) - 2px));box-shadow:0 0 6px 1px rgba(216,236,255,.9),0 0 14px 2px rgba(158,203,255,.55)}
+.nav.ind-ready .nav-ind,.nav.ind-ready .nav-ind-h{transition:transform .5s cubic-bezier(.22,1,.36,1)}
+@media (forced-colors:active){ .nav::before,.nav::after,.nav-ind,.nav-ind-h{display:none} .nav.has-ind .tab.on::after{opacity:1} }
+
+/* HB2 (r2-brilliance-3): masthead "first light". A static starlight bloom, then, once the title has
+   risen in, one band of light reads through it line by line (the ink is sliced, so the band runs
+   along the lines in reading order) and leaves: an ice leading edge, a white core, a violet tail,
+   all light tints (above 9:1 on the sky); one shot, gated on the reveal hook, so reduced motion never sees it. */
+html body .masthead h1{filter:drop-shadow(0 0 28px rgba(158,203,255,.20)) drop-shadow(0 0 2px rgba(216,236,255,.25))!important}
+.masthead h1 .h1-ink{
+  background-image:linear-gradient(100deg,rgba(158,203,255,0) 43%,rgba(158,203,255,.95) 47%,#fff 50%,rgba(184,164,255,.95) 53%,rgba(184,164,255,0) 57%),
+    linear-gradient(100deg,#fff 0%,#eef4ff 40%,#e3ecff 74%,#cfc2ff 84%,#b8a4ff 100%);
+  background-size:300% 100%,100% 100%;background-repeat:no-repeat;background-position:0% 0,0 0}
+html.v8-reveal.arrived .masthead h1 .h1-ink{animation:h1-light 1.6s cubic-bezier(.45,0,.2,1) 1.35s 1 both}
+@keyframes h1-light{from{background-position:100% 0,0 0}to{background-position:0% 0,0 0}}
+@media (forced-colors:active){ .masthead h1 .h1-ink{color:CanvasText;background:none} }
+
+/* HB5 (r2-brilliance-10, -22): interaction light. A soft halo joins every focus outline (the
+   outline stays, for accessibility and forced colours), and an open disclosure's marker glows
+   in its section's hue on both tabs. */
+:root{--focus-halo:0 0 0 5px rgba(158,203,255,.12),0 0 22px rgba(158,203,255,.38)}
+:is(.tab,.btn,select,summary,.lede-more,a,button):focus-visible{box-shadow:var(--focus-halo);transition:box-shadow .18s ease}
+details.more[open]>summary::before,:is(#view-console,#view-data) details.more[open]>summary::before{
+  box-shadow:0 0 0 1px rgb(var(--hue,158 203 255) / .6),0 0 10px rgb(var(--hue,158 203 255) / .45)}
+
+/* r2-type-7h: a " · " that would open a line is hidden and the line breaks there instead
+   (v8-hero-js marks it; the text itself is unchanged). !important: the retired observation
+   brackets' rule (.brk{display:none!important}) would otherwise hide it without the break. */
+.sep.brk{display:block!important;height:0;overflow:hidden}
+
+/* HB6 (r2-brilliance-16): a KPI tile under the pointer or focus lights a star trail along its top
+   edge (transform only; it sits on the edge, never over a figure) */
+.hero-stats .big::before{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(216,236,255,.85) 20%,rgba(158,203,255,.4) 80%,transparent);
+  box-shadow:0 0 6px rgba(158,203,255,.45);transform:scaleX(0);transform-origin:left;transition:transform .45s cubic-bezier(.22,1,.36,1)}
+.hero-stats .big:is(:hover,:focus-within)::before{transform:scaleX(1)}
+@media (forced-colors:active){ .hero-stats .big::before{display:none} }
+
+/* reduced motion: the round-2 additions stand still */
+@media(prefers-reduced-motion:reduce){
+  .nav::after,.nav-ind,.nav-ind-h,.masthead h1 .h1-ink,.hero-stats .big::before,
+  :is(.tab,.btn,select,summary,.lede-more,a,button):focus-visible{animation:none!important;transition:none!important}
+}
 </style>
 <!-- ======== end v8-hero ======== -->
 <!-- (separator) -->
@@ -9242,6 +9344,75 @@ function boot(){
   addEventListener('resize',again); again();
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+
+/* ==== UI round 2 (full), hero lane. Decoration only: no model figure is read or written,
+        no animation loop, no scroll listener (observers and class toggles only). ==== */
+(function(){
+"use strict";
+
+/* ---- HB3: the tab bar docks (a sentinel and an IntersectionObserver set .stuck) and one comet
+        travels to the chosen tab. It moves on the click (capture on the nav, so the warp's own
+        handler is untouched) and settles on whichever tab holds .on. ---- */
+function navDock(){
+  var nav=document.querySelector('nav.nav'); if(!nav||nav.__v8nav) return; nav.__v8nav=1;
+  if('IntersectionObserver' in window){
+    var s=document.createElement('i'); s.className='nav-sentinel'; s.setAttribute('aria-hidden','true');
+    nav.parentNode.insertBefore(s,nav);
+    new IntersectionObserver(function(es){ var e=es[es.length-1], top=e.rootBounds?e.rootBounds.top:9;
+      var st=!e.isIntersecting&&e.boundingClientRect.top<top;
+      if(nav.classList.contains('stuck')!==st) nav.classList.toggle('stuck',st); },{rootMargin:'-9px 0px 0px 0px'}).observe(s);
+  }
+  var ind=document.createElement('span'), head=document.createElement('span');
+  ind.className='nav-ind'; head.className='nav-ind-h';
+  ind.setAttribute('aria-hidden','true'); head.setAttribute('aria-hidden','true');
+  nav.appendChild(ind); nav.appendChild(head); nav.classList.add('has-ind');
+  function place(t){ t=t||nav.querySelector('.tab.on'); if(!t||!t.offsetWidth) return;
+    var x=t.offsetLeft+16, w=Math.max(8,t.offsetWidth-34);
+    nav.style.setProperty('--tx',x+'px'); nav.style.setProperty('--k',(w/100).toFixed(4)); nav.style.setProperty('--hx',(x+w)+'px'); }
+  /* a click aims the comet at its tab at once; it settles when that tab takes .on (the warp
+     swaps views at its flash), and a newer click re-aims it */
+  var last=nav.querySelector('.tab.on'), pend=null;
+  function aim(){ place(pend||nav.querySelector('.tab.on')); }
+  aim();
+  /* the first placement does not travel */
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ nav.classList.add('ind-ready'); }); });
+  nav.addEventListener('click',function(e){ var t=e.target&&e.target.closest&&e.target.closest('.tab'); if(!t) return;
+    pend=t===nav.querySelector('.tab.on')?null:t; aim(); },true);
+  new MutationObserver(function(){ var on=nav.querySelector('.tab.on'); if(on!==last){ last=on; pend=null; aim(); } })
+    .observe(nav,{subtree:true,attributes:true,attributeFilter:['class']});
+  var rt=0; addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(aim,150); });
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(aim);
+}
+
+/* ---- r2-type-7h: the shared separator helper (identical in every lane that uses it; the first
+        copy to run defines it), applied to the KPI sub-lines after each render and on resize ---- */
+(function(){ if(window.__v8sep) return;
+  window.__v8sep=function(el){ if(!el) return;
+    if(!el.querySelector('.sep')){            /* wrap once per render */
+      var h=el.innerHTML; if(h.indexOf(' · ')<0) return;
+      el.innerHTML=h.split(' · ').join('<span class="sep"> · </span>');   /* textContent unchanged */
+    }
+    var s=el.querySelectorAll('.sep'); s.forEach(function(x){x.classList.remove('brk')});
+    s.forEach(function(x){ var a=x.previousSibling, b=x.nextSibling, r=x.getBoundingClientRect();
+      var ra=a&&a.nodeType===3?(function(){var g=document.createRange();g.selectNodeContents(a);var q=g.getClientRects();return q[q.length-1];})():(a&&a.getBoundingClientRect?a.getBoundingClientRect():null);
+      var rb=b&&b.nodeType===3?(function(){var g=document.createRange();g.selectNodeContents(b);return g.getClientRects()[0];})():(b&&b.getBoundingClientRect?b.getBoundingClientRect():null);
+      if((ra&&ra.top<r.top-2)||(rb&&rb.top>r.top+2)) x.classList.add('brk'); });
+  };
+})();
+function kpiSeps(){ document.querySelectorAll('.hero-stats .big .sub2').forEach(function(el){ try{ window.__v8sep(el); }catch(e){} }); }
+function sepHook(){
+  if(typeof window.render==='function'&&!window.render.__v8sep){
+    var r0=window.render; window.render=function(){ var out=r0.apply(this,arguments); kpiSeps(); return out; };
+    window.render.__v8sep=1;
+  }
+  kpiSeps();
+  var t=0; addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(kpiSeps,150); },{passive:true});
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(kpiSeps);
+}
+
+function boot2(){ navDock(); sepHook(); }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot2); else boot2();
 })();
 </script>
 <!-- ======== end v8-hero-js ======== -->
