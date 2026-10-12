@@ -1640,6 +1640,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
 
   <!-- ============ INPUT RAIL ============ -->
   <div class="panel rail">
+    <div class="rail-in">
     <div class="grp">
       <p class="grp-title">Company</p>
       <div class="f"><label for="i_ind">Industry</label>
@@ -1711,6 +1712,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
         <input type="range" id="i_th" min="0" max="100" step="1" value="75"></div>
     </div>
     <button class="btn" id="reset">Reset to the framework example</button>
+    </div>
   </div>
 
   <!-- ============ OUTPUT COLUMN ============ -->
@@ -1811,7 +1813,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           is a log-logistic whose median and shape both come from IBBA&rsquo;s per-band histograms of months to close
           (4,533 closed deals over 15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4). It describes deals that
           closed and says nothing about a listing that never does. Both depend on deal size, never on
-          the ask: larger deals take longer, and deals under $500K are more spread out than larger ones. Because of that wider spread,
+          the ask: larger deals take longer, and deals under $500k are more spread out than larger ones. Because of that wider spread,
           the share closed after about 18 months can still rise slightly with size between $250k and $707k, by under one point. For an ask above
           model value the median, and the curve with it, is stretched by a <b>judgment</b> multiplier: overpricing costs time.</p>
         <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Share of closing deals closed by each day, conditional on closing"></svg>
@@ -1859,11 +1861,11 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           the step they name rather than a derivative: expected proceeds peak at the best ask and bend at a
           typical pool, where a symmetric difference would average two different slopes.</p>
         <div class="split">
-          <div><p class="grp-title">What the business supports &nbsp;∂V/∂xᵢ</p><div id="sensV"></div>
+          <div><p class="grp-title">What the business supports &nbsp;∂V/∂xᵢ</p><div id="sensV"></div></div>
+          <div><p class="grp-title">What the seller can expect &nbsp;∂E[proceeds]/∂xᵢ</p><div id="sensP"></div>
             <p class="note">Asking price moves the realised price through anchoring, up to the ask
             itself, while moving the closing probability the other way. The two pull against each other,
-            which is what gives expected proceeds an interior optimum.</p></div>
-          <div><p class="grp-title">What the seller can expect &nbsp;∂E[proceeds]/∂xᵢ</p><div id="sensP"></div>
+            which is what gives expected proceeds an interior optimum.</p>
             <p class="note" id="sensflat"></p></div>
         </div>
         <p id="sensnote" style="margin:-4px 0 14px;font-size:12px;line-height:1.55"></p>
@@ -1881,8 +1883,9 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           premium, so overlapping fixes do not double-count. Cost scales with company size.</p>
         <div class="split">
           <div>
-            <div class="k" style="font-size:12.6px;color:var(--dim)">Value gap if every value-adding change is made</div>
+            <div class="k gap-k">Value gap if every value-adding change is made</div>
             <div class="gap-figure"><span class="n" id="o_gap">—</span><span class="u" id="o_gapu"></span></div>
+            <div class="gap-traj" id="gap_traj" aria-hidden="true"></div>
             <div class="note" id="o_gapnote"></div>
           </div>
           <div>
@@ -1891,6 +1894,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           </div>
         </div>
         <div class="tw" style="margin-top:16px"><table id="intbl"></table></div>
+        <p class="note" id="intnote"></p>
         <p class="note">ΔValue is the change in what the business supports. ΔE[proceeds], ΔP<sub>C</sub>
           and ROI are measured on top of a free reprice to the model-supported range, because at an
           unchanged ask the ask itself caps the price and the improvement is not collected. ΔP<sub>C</sub>
@@ -1909,16 +1913,17 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <div class="panel">
         <p class="lede">Exhaustive search over every combination of interventions that fits the budget.
           The two objectives can disagree — maximizing price is not always the same as maximizing the seller's overall outcome.</p>
-        <div class="panel" style="margin-bottom:18px;background:rgba(77,163,255,.06)">
-          <div class="big-row" style="margin:0">
-            <div class="big wide"><div class="k">If you need to sell — maximize expected proceeds</div>
+        <div class="decide" id="decide">
+          <svg class="decide-arc" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 40C16 4 84 4 100 40"/></svg>
+          <div class="big-row">
+            <div class="big wide body sell"><i class="orb" aria-hidden="true"></i><div class="k">If you need to sell — maximize expected proceeds</div>
               <div class="n" id="o_list">—</div>
-              <div class="k" id="o_listp" style="margin-top:3px"></div></div>
-            <div class="big wide"><div class="k">If you can walk away — maximize overall outcome</div>
-              <div class="n" id="o_list2" style="color:var(--mint)">—</div>
-              <div class="k" id="o_listp2" style="margin-top:3px"></div></div>
+              <div class="k" id="o_listp"></div></div>
+            <div class="big wide body walk"><i class="orb" aria-hidden="true"></i><div class="k">If you can walk away — maximize overall outcome</div>
+              <div class="n" id="o_list2">—</div>
+              <div class="k" id="o_listp2"></div></div>
           </div>
-          <p class="note" id="o_listnote" style="margin-bottom:0"></p>
+          <p class="note" id="o_listnote"></p>
         </div>
         <div class="split" id="optout"></div>
         <div class="eq"><div class="lbl">Constrained value maximization and its Lagrangian</div>
@@ -1968,7 +1973,6 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       </div>
     </section>
 
-    <footer id="foot"></footer>
   </div>
 </div>
 </div>
@@ -1977,6 +1981,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
   <p class="lede" style="margin:6px 0 20px;max-width:86ch">Every number the console produces carries one of three badges. <b style="color:#5ee0a8">Fitted</b> means a regression was run against observed transaction outcomes and the error is measured. <b style="color:#ffc640">Aggregate</b> means a published summary statistic was read off, so the number is real but can only respond to what the publisher tabulated. <b style="color:#ff8e7a">Judgement</b> means a person picked it and no data constrains it. These tables are generated from the live model constants, so they cannot drift out of step with what the console actually runs.</p>
   <div id="dataviews"></div>
 </div>
+<footer id="foot"></footer>
 <div class="horizon" aria-hidden="true">
   <span class="sunrise"></span><span class="planet"></span>
 </div>
@@ -4293,37 +4298,41 @@ function render(){
     em:"EBITDA margin",yrs:"Years of clean history"};
   const rows=Object.keys(dn).map(k=>({k,n:dn[k],d:r.d[k],turns:r.base*r.d[k]}))
     .sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
+  /* figures only in the two right-hand columns: what a row means is a muted line under its
+     label (.tsub), so on a phone the figures stay in view. .lg marks the old judgment stack,
+     .sum the rows that are results. */
+  const tsub=t=>`<span class="tsub">${t}</span>`;
   $("multbl").innerHTML=
     `<tr><th>Component</th><th class="n">Effect on multiple</th><th class="n">Turns</th></tr>
-     <tr><td>Size-band anchor at ${money(s.ern)} of earnings</td><td class="n muted">baseline</td>
+     <tr class="lg"><td>Size-band anchor at ${money(s.ern)} of earnings${tsub("baseline")}</td><td class="n muted">—</td>
          <td class="n">${r.anchor.toFixed(2)}×</td></tr>
-     <tr><td>Industry factor — ${r.ind.n}</td><td class="n muted">×${r.fInd.toFixed(3)}</td>
+     <tr class="lg"><td>Industry factor — ${r.ind.n}</td><td class="n muted">×${r.fInd.toFixed(3)}</td>
          <td class="n">${r.base.toFixed(2)}×</td></tr>`
-    +rows.map(o=>`<tr><td>${o.n}</td>
+    +rows.map(o=>`<tr class="lg"><td>${o.n}</td>
         <td class="n ${o.d>=0?"pos":"neg"}">${o.d>=0?"+":"−"}${Math.abs(o.d*100).toFixed(1)}%</td>
         <td class="n ${o.d>=0?"pos":"neg"}">${o.turns>=0?"+":"−"}${Math.abs(o.turns).toFixed(2)}×</td></tr>`).join("")
-    +(Math.abs(r.dsumRaw-r.dsum)>1e-9||Math.abs(r.Mraw-r.Mjudg)>1e-9?`<tr><td>Bounds on the stack</td>
-        <td class="n muted">net held to −55%…+85%; multiple held to max(0.90×, 0.42× base)–1.85× base</td>
-        <td class="n muted">${r.dsumRaw>=0?"+":"−"}${Math.abs(r.dsumRaw*100).toFixed(1)}% → ${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}%${Math.abs(r.Mraw-r.Mjudg)>1e-9?`; ${xx(r.Mraw)} → ${xx(r.Mjudg)}`:""}</td></tr>`:"")
-    +`<tr><td>Judgement multiple &nbsp;<span class="st free">not used</span></td>
-        <td class="n">${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}% net</td>
+    +(Math.abs(r.dsumRaw-r.dsum)>1e-9||Math.abs(r.Mraw-r.Mjudg)>1e-9?`<tr class="lg"><td>Bounds on the stack${tsub("net held to −55%…+85%; multiple held to max(0.90×, 0.42× base)–1.85× base")}</td>
+        <td class="n muted wrap">${r.dsumRaw>=0?"+":"−"}${Math.abs(r.dsumRaw*100).toFixed(1)}% → ${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}%</td>
+        <td class="n muted wrap">${Math.abs(r.Mraw-r.Mjudg)>1e-9?`${xx(r.Mraw)} → ${xx(r.Mjudg)}`:"—"}</td></tr>`:"")
+    +`<tr class="lg"><td>Judgement multiple <span class="st free">not used</span></td>
+        <td class="n">${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}%<span class="u"> net</span></td>
         <td class="n muted">${xx(r.Mjudg)}</td></tr>
-      <tr><td><b>Fitted multiple</b> &nbsp;<span class="st pub">BIZCOMPS</span></td>
-        <td class="n muted">regression, not the stack above</td>
+      <tr class="sum"><td><b>Fitted multiple</b> <span class="st pub">BIZCOMPS</span>${tsub("regression, not the stack above")}</td>
+        <td class="n muted">—</td>
         <td class="n"><b>${xx(r.fv.mult)}</b></td></tr>
-      <tr><td>Quality position: ${ordn(Math.min(99,Math.max(1,Math.round(r.qPct*100))))} percentile among peers, placed inside the measured ${MODELS.value.quality_band.lo.toFixed(2)}–${MODELS.value.quality_band.hi.toFixed(2)}× band &nbsp;<span class="st free">judgment</span></td>
+      <tr><td>Quality position: ${ordn(Math.min(99,Math.max(1,Math.round(r.qPct*100))))} percentile among peers, placed inside the measured ${MODELS.value.quality_band.lo.toFixed(2)}–${MODELS.value.quality_band.hi.toFixed(2)}× band <span class="st free">judgment</span></td>
         <td class="n ${r.qFactor>=1?"pos":"neg"}">×${r.qFactor.toFixed(3)}</td><td class="n">${xx(r.M)}</td></tr>
-      <tr><td><b>Model-supported value</b> &nbsp;E[V|X]</td>
-        <td class="n muted">${money(s.ern)} × ${xx(r.M)}</td><td class="n"><b>${money(r.V)}</b></td></tr>
-      <tr><td>Anchoring on an ask of ${r.priceRatio.toFixed(2)}× model value, at the point estimate &nbsp;<span class="st free">judgment</span></td>
-        <td class="n ${r.anchorF>=1?"pos":"neg"}">×${r.anchorF.toFixed(3)}</td><td class="n muted">flat past ${RHO_MAX.toFixed(2)}×</td></tr>
-      <tr><td>Competition: ${r.nEng.toFixed(1)} expected offer${Math.abs(r.nEng-1)<.05?"":"s"} against a typical ${r.nEngRef.toFixed(1)} &nbsp;<span class="st free">judgment</span></td>
+      <tr class="sum"><td><b>Model-supported value</b> <span class="sym">E[V|X]</span>${tsub(`${money(s.ern)} × ${xx(r.M)}`)}</td>
+        <td class="n muted">—</td><td class="n"><b>${money(r.V)}</b></td></tr>
+      <tr><td>Anchoring on an ask of ${r.priceRatio.toFixed(2)}× model value, at the point estimate <span class="st free">judgment</span>${tsub(`flat past ${RHO_MAX.toFixed(2)}×`)}</td>
+        <td class="n ${r.anchorF>=1?"pos":"neg"}">×${r.anchorF.toFixed(3)}</td><td class="n muted">—</td></tr>
+      <tr><td>Competition: ${r.nEng.toFixed(1)} expected offer${Math.abs(r.nEng-1)<.05?"":"s"} against a typical ${r.nEngRef.toFixed(1)} <span class="st free">judgment</span></td>
         <td class="n ${r.compPrem>=0?"pos":"neg"}">×${(1+r.compPrem).toFixed(3)}</td><td class="n muted">—</td></tr>
-      <tr><td>Ceiling: the ask, held at ${RHO_MAX.toFixed(1)}× model value${r.askCeil>1?", × "+pc(r.askCeil,1)+" IBBA headroom":""}</td>
-        <td class="n ${r.capShare>=.5?"neg":"muted"}">${pc(r.capShare)} of closings</td><td class="n muted">${money(r.ceil)}</td></tr>
-      <tr><td><b>Median price if it closes</b></td><td class="n muted">across the realised-price fan (${FAN_S.toFixed(2)} of the measured spread)</td>
+      <tr><td>Ceiling: the ask, held at ${RHO_MAX.toFixed(1)}× model value${r.askCeil>1?", × "+pc(r.askCeil,1)+" IBBA headroom":""}${tsub(`${pc(r.capShare)} of closings`)}</td>
+        <td class="n muted">—</td><td class="n muted">${money(r.ceil)}</td></tr>
+      <tr class="sum"><td><b>Median price if it closes</b>${tsub(`across the realised-price fan (${FAN_S.toFixed(2)} of the measured spread)`)}</td><td class="n muted">—</td>
         <td class="n"><b>${money(r.Vreal)}</b></td></tr>
-      <tr><td><b>Expected price if it closes</b></td><td class="n muted">mean across the realised-price fan</td>
+      <tr class="sum"><td><b>Expected price if it closes</b>${tsub("mean across the realised-price fan")}</td><td class="n muted">—</td>
         <td class="n"><b>${money(r.Vmean)}</b></td></tr>`;
   /* This panel used to typeset the judgment stack, m_size*f_ind*(1+sum delta), above
      a boxed figure that came from the fitted equation - the formula on screen was
@@ -4529,11 +4538,11 @@ function render(){
       <td class="n ${o.dE>=0?"pos":"neg"}">${o.dE>=0?"+":"−"}${money(Math.abs(o.dE),2)}</td>
       <td class="n ${Math.abs(o.dP)<5e-4?"muted":o.dP>=0?"pos":"neg"}">${Math.abs(o.dP)<5e-4?"—":pp(o.dP)}</td>
       <td class="n ${o.dTnet<=0?"pos":"warn"}">${o.dTnet>=0?"+":"−"}${Math.abs(o.dTnet).toFixed(0)}</td>
-      <td class="n ${o.roi===null?"muted":o.roi>0?"pos":"neg"}">${o.roi===null?"—":(o.roi<0?"−":"")+Math.abs(o.roi*100).toFixed(0)+"%"}</td></tr>`).join("")
-    /* repricing equalises the price GAP in every row, but not the closing probability: it still moves with the
-       buyer pool (the thin-pool factor, so outreach below a typical pool) and with deal size (the base rate is
-       interpolated on the fitted value, so earnings changes) */
-    +`<tr><td colspan="7" class="muted" style="font-size:11.8px">Each change is measured on top of a reprice to ${s.rhoSell.toFixed(2)}× its new value, so the price gap is the same in every row; the closing probability still moves with the buyer pool (outreach below a typical pool) and with deal size (changes to earnings). Repricing itself is measured against today.</td></tr>`;
+      <td class="n ${o.roi===null?"muted":o.roi>0?"pos":"neg"}">${o.roi===null?"—":(o.roi<0?"−":"")+Math.abs(o.roi*100).toFixed(0)+"%"}</td></tr>`).join("");
+  /* repricing equalises the price GAP in every row, but not the closing probability: it still moves with the
+     buyer pool (the thin-pool factor, so outreach below a typical pool) and with deal size (the base rate is
+     interpolated on the fitted value, so earnings changes). Prose, so it sits under the table, not inside its scroller. */
+  $("intnote").innerHTML=`Each change is measured on top of a reprice to ${s.rhoSell.toFixed(2)}× its new value, so the price gap is the same in every row; the closing probability still moves with the buyer pool (outreach below a typical pool) and with deal size (changes to earnings). Repricing itself is measured against today.`;
   eq("eq_r",`MV_i=\\frac{\\partial V}{\\partial a_i},\\qquad
     ROI(a)=\\frac{E[\\text{proceeds}\\mid X+\\Delta X(a),\\text{repriced}]-E[\\text{proceeds}\\mid X,\\text{repriced}]-C(a)}{C(a)}`);
   const bi=it.find(o=>o.c>0);
@@ -4560,17 +4569,18 @@ function render(){
   const card=(t,sel,sub,accent,rho)=>{
     const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:INTERV.find(i=>i.k===k).n)
       :["Do nothing — no combination clears its cost"];
-    return `<div><p class="grp-title" style="color:${accent}">${t}</p>
+    /* card titles share one style; the accent is carried by the orb of the matching decision above */
+    return `<div class="opt" data-accent="${accent}"><p class="grp-title">${t}</p>
       <table><tr><th>Selected</th><th class="n">Cost</th></tr>
       ${names.map((n,i)=>`<tr><td>${n}</td><td class="n">${sel.keys[i]?money(INTERV.find(x=>x.k===sel.keys[i]).cost(s),0):"—"}</td></tr>`).join("")}
-      <tr><td><b>Total committed</b></td><td class="n"><b>${money(sel.c,0)}</b> of ${money(s.budget,0)}</td></tr>
+      <tr class="sum"><td><b>Total committed</b></td><td class="n"><b>${money(sel.c,0)}</b> of ${money(s.budget,0)}</td></tr>
       </table>
-      <div class="big-row" style="margin-top:14px">
+      <div class="big-row">
         <div class="big"><div class="k">Expected proceeds</div><div class="n sm">${money(sel.proceeds)}</div></div>
         <div class="big"><div class="k">Median price if it closes</div><div class="n sm">${money(sel.V)}</div></div>
         <div class="big"><div class="k">Closes</div><div class="n sm">${pc(sel.PC)}</div></div>
         <div class="big" title="Execution days plus the MEAN time to close, which the cost of delay is charged on"><div class="k">Expected days</div><div class="n sm">${Math.round(sel.t+sel.days)}</div></div>
-      </div><p class="note" style="margin-top:2px">${sub}</p></div>`;
+      </div><p class="note">${sub}</p></div>`;
   };
   const uRho=best.U.keys.includes("reprice")?s.optRho:rhoSell;
   $("optout").innerHTML=
@@ -4599,7 +4609,8 @@ function render(){
       <div class="cat-n"><b>${r.catMean.toFixed(0)}</b></div></div>`;
 
   /* ---------- §23–24 scenarios and confidence ---------- */
-  const sc=r.scen, rg=(a,b)=>Math.abs(b-a)<.005*Math.abs(b)?money(b)+(r.capShare>.3&&Math.abs(b-r.ceil)<.005*r.ceil?" (the ask ceiling)":""):money(a)+"–"+money(b);
+  /* the parenthetical is a caption under the figure, not part of it (.cap): the text is unchanged */
+  const sc=r.scen, rg=(a,b)=>Math.abs(b-a)<.005*Math.abs(b)?money(b)+(r.capShare>.3&&Math.abs(b-r.ceil)<.005*r.ceil?'<span class="cap"> (the ask ceiling)</span>':""):money(a)+"–"+money(b);
   /* the bands are quantiles of the price GIVEN a close; the no-sale outcome sits outside them, so it is named beside
      them: overpricing can lift the bear band while the chance of no sale rises (AUDIT_FINDINGS R1-2) */
   $("scen_t").textContent=`Price if it closes · ${pc(1-r.PC)} chance of no sale`;
@@ -5682,7 +5693,7 @@ The p10&ndash;p90 span runs ${MODELS.value.prediction_intervals.p10.toFixed(2)}&
 <li><span class="pv f"><i></i>fitted</span> <b>Post-acquisition survival risk</b> &mdash;
 competing-risk hazard on <b>${MODELS.risk.n_fit.toLocaleString()}</b> SBA 7(a) acquisition loans; open loans are censored and payoff
 is a competing exit. Reported as the chance the loan is charged off within ${MODELS.risk.term_months/12} years (the term) and within
-${MODELS.risk.horizon_months/12}, if ${MODELS.risk.conditions} conditions hold. Out-of-sample AUC <b>${MODELS.risk.cv_auc}</b> at 5 years, Brier ${MODELS.risk.cv_brier};
+${MODELS.risk.horizon_months/12}, if ${String(MODELS.risk.conditions).replace("-","&ndash;")} conditions hold. Out-of-sample AUC <b>${MODELS.risk.cv_auc}</b> at 5 years, Brier ${MODELS.risk.cv_brier};
 loan-level effects shrunk &times;${MODELS.risk.co.lp_shrink.toFixed(2)} to match how they held up out of time.
 <b>${(MODELS.risk.aj_pooled.cif60*100).toFixed(1)}%</b> of acquisition loans are charged off within 5 years against
 ${(MODELS.risk.like_for_like.startup_or_new.cif60*100).toFixed(1)}% of startup and new-business loans over the same span &mdash;
@@ -5709,8 +5720,8 @@ ${(()=>{ const TS=MODELS.close_and_timing.close_probability.ib_termination_serie
 <li><span class="pv f"><i></i>fitted</span> <b>Time to close</b> &mdash;
 IBBA / M&amp;A Source Market Pulse. The band medians and the curve shape are both <b>fitted</b> to IBBA&rsquo;s per-band histograms
 of months to close (15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4; 4,533 closed deals; no deal-level durations): a log-logistic with
-medians from ${MODELS.fitted.ttc_medians.listing[0].toFixed(1)} months under $500K to ${MODELS.fitted.ttc_medians.listing[4].toFixed(1)} for $5&ndash;50M, and
-&beta; 2.20 under $500K and 2.64 from $500K up (no shape gradient above $500K is identified). The fitted medians replace IBBA&rsquo;s
+medians from ${MODELS.fitted.ttc_medians.listing[0].toFixed(1)} months under $500k to ${MODELS.fitted.ttc_medians.listing[4].toFixed(1)} for $5&ndash;50M, and
+&beta; 2.20 under $500k and 2.64 from $500k up (no shape gradient above $500k is identified). The fitted medians replace IBBA&rsquo;s
 published band medians (12 quarterly editions, 2018&ndash;2023), which predict held-out quarters worse; BVR&rsquo;s 228-day all-size
 median corroborates the level.
 Above model value the band median is stretched by a <b>judgment</b> multiplier (Model III, <i>Overpricing costs time</i>):
@@ -5735,7 +5746,7 @@ source &mdash; it needs your own outreach records. Deal-level failure rows, buye
 seller-walk attribution, and before/after intervention records are likewise unavailable for purchase.</li>
 </ul>`;
 
-$("foot").innerHTML=`The Omni Method v2.0. Value and survival risk are fitted to
+$("foot").innerHTML=`<svg class="foot-mark" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><ellipse cx="7" cy="7" rx="6" ry="2.6" transform="rotate(-24 7 7)"/><circle class="o" cx="7" cy="7" r="2"/><circle class="s" cx="12.1" cy="4.8" r="1.1"/></svg>The Omni Method <span class="ver">v2.0</span>. Value and survival risk are fitted to
 ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} SBA
 acquisition loans, and time to close to IBBA&rsquo;s per-band histograms of closed deals; closing probability is a
 market aggregate conditioning on deal size and price gap, with labelled judgment for a buyer pool thinner than typical
@@ -6229,13 +6240,17 @@ document.querySelectorAll("input,select").forEach(el=>{
 })();
 
 
-/* mark equations that actually overflow, so only those get the fade */
+/* mark equations that actually overflow, so only those get the fade. The first div in a
+   card is its caption, which never overflows: test each typeset display instead */
 (function(){
   function mark(){
     document.querySelectorAll('.eq').forEach(function(eq){
-      var d=eq.querySelector('div');
-      if(!d) return;
-      eq.classList.toggle('scrolls', d.scrollWidth > d.clientWidth+3);
+      var any=false;
+      eq.querySelectorAll('[id]').forEach(function(d){
+        var k=d.querySelector('.katex-display')||d;
+        if(d.classList.contains('scrolls')||(d.clientWidth&&k.scrollWidth>d.clientWidth+3)) any=true;
+      });
+      eq.classList.toggle('scrolls', any);
     });
   }
   [400,1200,2200].forEach(function(t){ setTimeout(mark,t); });
@@ -6383,7 +6398,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     var p0=fitRisk(r.V,s.ind,r.rate,r.jobs,!!s.franchise,null).p;
     for(var i=0;i<sel.options.length;i++){ var o=sel.options[i], k=o.value; if(!k) continue;
       var d=(fitRisk(r.V,s.ind,r.rate,r.jobs,!!s.franchise,k).p-p0)*100;
-      var txt=STNAMES[k]+"  ("+(d>=0?"+":"\u2212")+Math.abs(d).toFixed(2)+" pts charge-off risk, 10 yr)";
+      /* the sign is chosen after rounding, so a state that moves nothing reads 0.00, not a signed zero */
+      var a=Math.abs(d).toFixed(2), sg=a==="0.00"?"":(d>=0?"+":"\u2212");
+      var txt=STNAMES[k]+"  ("+sg+a+" pts charge-off risk, 10 yr)";
       if(o.textContent!==txt) o.textContent=txt; }
   };
   /* change handlers come from the generic input/select loop above; wiring them here
@@ -7330,6 +7347,408 @@ li>.pv{display:inline-flex!important;align-items:center;gap:5px;line-height:1!im
 <!-- (separator) -->
 <style id="v8-console">
 /* v8-console: console tables, equations, text, tokens, optimizer, value gap */
+/* Scoped to #view-console and to ids in the console lane. Every hero token is read
+   with its literal value as the fallback, so this renders the same before or after
+   the hero lane merges. Section hue: --hue / --hue2 (ice / violet when absent). */
+
+/* ===== 1. text roles ================================================== */
+#view-console .sec .lede b{font-weight:600;color:var(--ink,#eef2fb)}
+#view-console .sec .note,#view-console #o_real .rzf,#view-console #srcs li,#foot{
+  font:400 13px/1.6 var(--sans);color:var(--ink3,#8590a8);max-width:68ch;text-wrap:pretty}
+#view-console .sec .note{margin:12px 0 0}
+#view-console .sec .note+.note{margin-top:12px}
+#view-console #o_tstretch{margin:12px 0 0!important}
+#view-console #o_tstretch:empty,#view-console #sensnote:empty,#view-console #intnote:empty{display:none}
+#view-console #sensnote{margin:16px 0 0!important;font:400 13px/1.6 var(--sans)!important;color:var(--ink3,#8590a8);max-width:68ch}
+#view-console #sensnote .muted{color:inherit}
+/* card titles: one style, a hairline in the section hue under each */
+#view-console .sec .grp-title,#view-console #o_real .rzh{font:600 13px/1.35 var(--sans)!important;color:#c9d3ec!important;
+  margin:0 0 16px;padding:0 0 8px;border:0;text-wrap:balance;
+  background:linear-gradient(90deg,rgb(var(--hue,158 203 255)/.42),rgb(var(--hue,158 203 255)/0) 92%) left bottom/100% 1px no-repeat}
+/* label of a figure */
+#view-console .gap-k,#view-console #optout .big .k,#view-console #scen .lab,#view-console #decide .big>.k:not([id]),#view-console .kf-l{
+  font:500 11.5px/1.4 var(--sans)!important;color:var(--ink2,#b9c3d8)!important;opacity:1!important;min-height:0!important}
+
+/* ===== 2. key-figure strips: the section's result reads first ======== */
+#view-console .kf{position:relative;display:flex;flex-wrap:wrap;align-items:flex-end;align-items:last baseline;gap:20px 40px;margin:0 0 28px;padding:0 0 22px}
+#view-console .kf[hidden]{display:none}
+#view-console .kf::after{content:"";position:absolute;left:0;bottom:0;width:min(280px,72%);height:1px;
+  background:linear-gradient(90deg,rgb(var(--hue,158 203 255)/0),rgb(var(--hue,158 203 255)/.6))}
+#view-console .kf::before{content:"";position:absolute;left:min(280px,72%);bottom:-3px;width:7px;height:7px;margin-left:-4px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0 1px,rgb(var(--hue,158 203 255)/.9) 1.6px,transparent 3.5px);box-shadow:0 0 6px rgb(var(--hue,158 203 255)/.6)}
+#view-console .kf-main{min-width:0}
+#view-console .kf-l{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:0 0 6px}
+#view-console .kf-l .pv{margin:0!important;overflow:visible!important}
+#view-console .kf-l .pv i{box-shadow:0 0 6px currentColor}
+#view-console .kf-l .pv.f i{color:#5ee0a8}
+#view-console .kf-l .pv.a i{color:#ffc640}
+#view-console .kf-l .pv.j i{color:#ff8e7a}
+#view-console .kf-n{display:inline-block;font:600 var(--fs-fig-xl,36px)/1.05 var(--fig);font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#fff 15%,#d8ecff 85%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 16px rgb(var(--hue,158 203 255)/.32))}
+#view-console .kf-n.name{font-size:var(--fs-fig-l,28px);line-height:1.15}
+#view-console .kf-row{display:flex;align-items:center;gap:14px}
+#view-console .kf-planet{flex:none;width:10px;height:10px;border-radius:50%;
+  background:radial-gradient(circle at 35% 32%,#fff 0,rgb(var(--hue,158 203 255)) 52%,rgb(var(--hue,158 203 255)/.35) 100%);
+  box-shadow:0 0 12px rgb(var(--hue,158 203 255)/.85),0 0 2px #fff}
+#view-console .kf-sat{display:flex;flex-wrap:wrap;gap:16px 36px;padding-bottom:4px}
+#view-console .kf-sat>div{position:relative;padding-left:16px}
+#view-console .kf-sat>div::before{content:"";position:absolute;left:0;top:4px;width:7px;height:7px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0 1px,rgb(var(--hue,158 203 255)/.9) 1.6px,transparent 3.5px);box-shadow:0 0 6px rgb(var(--hue,158 203 255)/.6)}
+#view-console .kf-sat .kf-l{margin:0 0 2px}
+#view-console .kf-s{font:600 var(--fs-fig-m,20px)/1.2 var(--fig);font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb)}
+#view-console .kf-ring{flex:none;align-self:center;width:72px;height:72px;overflow:visible}
+#view-console .kf-ring .t{fill:none;stroke:rgba(158,203,255,.12);stroke-width:3}
+#view-console .kf-ring .a{fill:none;stroke-width:3;stroke-linecap:round}
+#view-console .kf-ring .m{fill:#fff}
+#view-console .kf-quote{display:block;padding-bottom:0}
+#view-console .kf-quote::before,#view-console .kf-quote::after{display:none}
+#view-console .kf-q{margin:0;max-width:52ch;padding:6px 0 6px 16px;font:600 var(--fs-fig-m,20px)/1.4 var(--display);color:var(--ink,#eef2fb);text-wrap:balance;
+  border-left:2px solid transparent;border-image:linear-gradient(rgb(var(--hue,158 203 255)),rgb(var(--hue,158 203 255)/0)) 1}
+#view-console #sensflat.lead-moved>b:first-child{display:none}
+@media(max-width:560px){
+  #view-console .kf{gap:16px 28px;margin-bottom:24px}
+  #view-console .kf-n{font-size:28px}
+  #view-console .kf-n.name{font-size:22px}
+  #view-console .kf-sat{gap:12px 24px}
+  #view-console .kf-ring{width:60px;height:60px}
+  #view-console .kf-q{font-size:18px}
+}
+@media(forced-colors:active){
+  #view-console .kf-n,#view-console .gap-figure .n,#view-console #decide .big .n{color:CanvasText!important;background:none!important;filter:none!important}
+}
+
+/* ===== 3. tables (VL 7.8): figures right, prose left, results marked == */
+#view-console .tw>#multbl,#view-console .tw>#buytbl,#view-console .tw>#intbl,#view-console #optout table{
+  display:table;overflow:visible;max-width:none;min-width:0;width:100%}
+#view-console .tw:has(>#multbl),#view-console .tw:has(>#buytbl),#view-console .tw:has(>#intbl){-webkit-mask-image:none;mask-image:none;container-type:inline-size}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table){font-size:13px;line-height:1.5}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) th{font:600 11.5px/1.4 var(--sans)!important;color:var(--ink2,#b9c3d8);
+  padding-top:0;padding-bottom:10px;vertical-align:bottom;border-bottom:1px solid rgba(160,180,230,.18)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) td{padding-top:12px;padding-bottom:12px;vertical-align:baseline;
+  border-bottom:1px solid var(--hair,rgba(160,180,230,.14))}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) td.n:not(.pos):not(.neg):not(.muted){color:var(--ink,#eef2fb)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) td.muted,#view-console :is(#multbl,#buytbl,#intbl) td .muted{color:var(--ink3,#8590a8)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) :is(td,th):first-child{padding-left:12px;position:relative}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) tr:last-child td{border-bottom:0}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) tbody tr:hover{box-shadow:none;background:rgba(158,203,255,.035)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) td:first-child{box-shadow:none!important}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) tr.sum{background:linear-gradient(90deg,rgb(var(--hue,158 203 255)/.07),rgb(var(--hue,158 203 255)/0) 70%)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) tr.sum td{border-bottom-color:rgba(158,203,255,.2)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) tr.sum td:first-child::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;
+  border-radius:2px;background:linear-gradient(#9ecbff,#b8a4ff);box-shadow:0 0 8px rgba(158,203,255,.6)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) tr.sum b{font-weight:600;color:var(--ink,#eef2fb)}
+#view-console :is(#multbl,#buytbl,#intbl,#optout table) .cl{display:none}
+#view-console :is(#buytbl,#intbl) td::before{content:none!important}
+/* status words as chips (VL 7.1) */
+#view-console #multbl td .st,#view-console #buytbl td .tag{display:inline-flex!important;align-items:center;gap:6px;white-space:nowrap;vertical-align:1px;
+  margin:0 0 0 6px!important;padding:2px 9px!important;border-radius:999px!important;font:500 11.5px/1.4 var(--sans)!important;
+  border:1px solid rgba(160,180,230,.18)!important;background:rgba(12,18,40,.85)!important;color:var(--ink3,#8590a8)!important}
+#view-console #buytbl td .tag.pick{border-color:rgba(158,203,255,.45)!important;background:rgba(77,163,255,.12)!important;color:#d8ecff!important}
+#view-console #buytbl td .tag.pick::before{content:"";width:6px;height:6px;border-radius:50%;background:#9ecbff;box-shadow:0 0 6px rgba(158,203,255,.7)}
+#view-console #buytbl .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#view-console #buytbl .tags .tag{margin:0!important}
+#view-console #buytbl td .rare{display:block;margin-top:2px;font-size:11.5px}
+/* #multbl: the old judgment stack (.lg) set back, the results (.sum) forward */
+#view-console #multbl .tsub{display:block;margin-top:2px;font:400 11.5px/1.45 var(--sans);color:var(--ink3,#8590a8)}
+#view-console #multbl .sym{margin-left:6px;color:var(--ink3,#8590a8);font-weight:400}
+#view-console #multbl td .u{font:400 11.5px var(--sans);color:var(--ink3,#8590a8)}
+#view-console #multbl tr.lg td:first-child{color:var(--ink2,#b9c3d8);border-left:1px dashed rgba(158,203,255,.24)}
+#view-console #multbl td.n.wrap{white-space:normal}
+/* #buytbl and #intbl: figures in ink; colour only on signed deltas */
+#view-console #buytbl td.pos{color:var(--ink,#eef2fb)}
+#view-console #buytbl td.pos .fv::before{content:"+"}
+#view-console #intbl td.warn,#view-console #intbl td[data-th="Net days"]{color:var(--ink,#eef2fb)}
+#view-console #buytbl td.n br+.muted{display:inline-block;margin-top:2px}
+@container (min-width:760px){
+  #view-console #intbl td:first-child{min-width:330px}
+  #view-console #intbl td.n,#view-console #intbl th.n{padding-left:12px!important}
+}
+@container (max-width:520px){
+  #view-console .tw>#multbl{table-layout:fixed}
+  #view-console #multbl tr:first-child th:nth-child(2){width:76px}
+  #view-console #multbl tr:first-child th:nth-child(3){width:64px}
+  #view-console #multbl :is(td,th).n{padding-left:8px!important;white-space:normal}
+  #view-console #multbl th{white-space:normal}
+}
+@container (max-width:440px){ #view-console #buytbl td .cl{min-height:2.8em} }
+/* narrow columns (phones, and the rail-beside-outputs widths): each buyer and each
+   intervention becomes a card with all its figures in view. Keyed to the table's own width. */
+@container (max-width:640px){
+  #view-console .tw>#buytbl,#view-console .tw>#intbl{display:block;min-width:0}
+  #view-console :is(#buytbl,#intbl)>tbody{display:block}
+  #view-console :is(#buytbl,#intbl) tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 12px;padding:16px 0 18px 12px;
+    border-bottom:1px solid var(--hair,rgba(160,180,230,.14));position:relative}
+  #view-console :is(#buytbl,#intbl) tr:first-child{display:none}
+  #view-console :is(#buytbl,#intbl) tr:last-child{border-bottom:0}
+  #view-console :is(#buytbl,#intbl) td{display:block;padding:0!important;border:0!important;text-align:left;white-space:normal;min-width:0}
+  #view-console :is(#buytbl,#intbl) td:first-child{grid-column:1/-1;font-weight:600;color:var(--ink,#eef2fb);font-size:14px;line-height:1.45}
+  #view-console :is(#buytbl,#intbl) td.n{font-size:15px;line-height:1.3}
+  #view-console :is(#buytbl,#intbl) td .cl{display:block;margin:0 0 3px;font:500 11.5px/1.4 var(--sans);color:var(--ink3,#8590a8);white-space:normal}
+  #view-console :is(#buytbl,#intbl) td .cl sub{line-height:0}
+  #view-console :is(#buytbl,#intbl) td .muted[style]{font-size:11.5px!important}
+}
+
+/* ===== 4. equations: one left edge per card, prose in the interface face */
+#view-console .eq .katex-display,
+#view-console .eq .katex-display>.katex{text-align:left}
+#view-console .eq .kx-p{font-family:var(--sans);font-size:.86em;color:var(--ink2,#b9c3d8)}
+#view-console .eq .kx-p.mtight{font-size:max(11px,1em)}
+#view-console .eq .kx-p .sizing{font-size:inherit}
+#view-console .eq.scrolls>div{-webkit-mask-image:none;mask-image:none}
+#view-console .eq-key{margin:6px 0 0;font:400 13px/1.55 var(--sans);color:var(--ink3,#8590a8);text-wrap:balance}
+#view-console .eq-key i{font-family:KaTeX_Math,var(--sans);font-style:italic;font-size:1.06em;color:var(--ink2,#b9c3d8)}
+@media(max-width:560px){
+  #view-console .eq .katex,#view-console .eq .sub .katex{font-size:.88em}
+  #view-console .eq .kx-p{font-size:.92em}
+}
+/* the Method constraints sit side by side; the feedback loop takes a full row */
+@media(min-width:900px){
+  #view-console .panel:has(#eq_la){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;align-content:start}
+  #view-console .panel:has(#eq_la)>.grp-title{grid-column:1/-1}
+  #view-console .panel:has(#eq_la)>.eq{margin:0 0 16px!important}
+  #view-console .panel:has(#eq_la)>.eq:last-child{margin-bottom:0!important}
+  #view-console .panel:has(#eq_la)>.eq:has(#eq_loop){grid-column:1/-1}
+}
+/* one constellation divider between a table and its equation cards (G9) */
+#view-console .v8-rule{display:block;height:9px;margin:28px 0 4px;border:0;pointer-events:none;background:
+  radial-gradient(circle at 18% 50%,#eaf3ff 0 1px,rgb(var(--hue,158 203 255)/.7) 1.6px,transparent 3.5px),
+  radial-gradient(circle at 50% 50%,#eaf3ff 0 1.2px,rgb(var(--hue,158 203 255)/.8) 1.8px,transparent 4px),
+  radial-gradient(circle at 82% 50%,#eaf3ff 0 1px,rgb(var(--hue,158 203 255)/.7) 1.6px,transparent 3.5px),
+  linear-gradient(90deg,transparent,rgb(var(--hue,158 203 255)/.28) 12% 88%,transparent) center/100% 1px no-repeat}
+
+/* ===== 5. disclosures (VL 7.5) and phone ledes ======================== */
+#view-console details.more{margin:4px 0 0}
+#view-console details.more>summary{list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;
+  font:500 13px/1.4 var(--sans);color:var(--ink2,#b9c3d8);border-radius:6px;transition:color .2s ease}
+#view-console details.more>summary::-webkit-details-marker{display:none}
+#view-console details.more>summary::before,#view-console .lede-more::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;
+  border:1px solid rgb(var(--hue,158 203 255)/.7);background:radial-gradient(circle at 50% 0%,#fff 0 1.2px,transparent 1.8px);transition:transform .25s ease}
+#view-console details.more[open]>summary::before{transform:rotate(90deg)}
+#view-console details.more>summary:hover,#view-console .lede-more:hover{color:var(--ink,#eef2fb)}
+#view-console details.more>summary:focus-visible,#view-console .lede-more:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
+#view-console .more-body{display:block;font:400 13px/1.6 var(--sans);color:var(--ink3,#8590a8);max-width:68ch;margin:2px 0 4px;text-wrap:pretty}
+#view-console .lede-more{display:none}
+#view-console .lede-more[hidden]{display:none!important}
+@media(max-width:560px){
+  #view-console .sec .lede.clamp:not(.open){display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  #view-console .lede.clamp:not(.open)+.lede-more{display:inline-flex;align-items:center;gap:8px;min-height:40px;margin:-20px 0 20px;padding:0 4px 0 0;
+    border:0;background:none;cursor:pointer;font:500 13px/1.4 var(--sans);color:var(--ink2,#b9c3d8);border-radius:6px}
+}
+
+/* ===== 6. the input rail: an instrument panel ========================== */
+#view-console .panel.rail{padding:0!important}
+#view-console .rail-in{padding:clamp(24px,2.2vw,32px) clamp(24px,2.2vw,32px) 36px}
+@media(min-width:1081px){
+  #view-console .panel.rail{display:flex;flex-direction:column;overflow:hidden}
+  #view-console .rail-in{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-padding:28px 0 40px;
+    -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 20px,#000 calc(100% - 28px),transparent 100%);
+            mask-image:linear-gradient(to bottom,transparent 0,#000 20px,#000 calc(100% - 28px),transparent 100%);
+    scrollbar-width:thin;scrollbar-color:rgb(var(--h-violet,184 164 255)/.35) transparent}
+  #view-console .rail-in::-webkit-scrollbar{width:6px}
+  #view-console .rail-in::-webkit-scrollbar-track{background:transparent}
+  #view-console .rail-in::-webkit-scrollbar-thumb{background:rgb(var(--h-violet,184 164 255)/.35);border:0;border-radius:3px}
+}
+@media(max-width:560px){ #view-console .rail-in{padding:24px 24px 28px} }
+#view-console .rail .grp{margin:0}
+#view-console .rail .grp+.grp::before{content:"";display:block;height:9px;margin:4px 0 24px;background:
+  radial-gradient(circle at 18% 50%,#f1edff 0 1px,rgb(var(--h-violet,184 164 255)/.7) 1.6px,transparent 3.5px),
+  radial-gradient(circle at 50% 50%,#f1edff 0 1.2px,rgb(var(--h-violet,184 164 255)/.8) 1.8px,transparent 4px),
+  radial-gradient(circle at 82% 50%,#f1edff 0 1px,rgb(var(--h-violet,184 164 255)/.7) 1.6px,transparent 3.5px),
+  linear-gradient(90deg,transparent,rgb(var(--h-violet,184 164 255)/.28) 12% 88%,transparent) center/100% 1px no-repeat}
+#view-console .rail .grp-title{font:600 13px/1.35 var(--sans)!important;color:#c9d3ec!important;margin:0 0 16px;padding:0 0 8px;border:0;
+  background:linear-gradient(90deg,rgb(var(--h-violet,184 164 255)/.5),rgb(var(--h-violet,184 164 255)/0) 92%) left bottom/100% 1px no-repeat}
+#view-console .rail .f{margin:0 0 16px}
+#view-console .rail .f>label{display:block;margin:0 0 6px;font:400 13px/1.4 var(--sans);color:var(--ink2,#b9c3d8)}
+#view-console .rail .f .lab{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;column-gap:12px;margin:0 0 2px}
+#view-console .rail .f .lab label{margin:0;font:400 13px/1.4 var(--sans);color:var(--ink2,#b9c3d8);text-wrap:balance}
+#view-console .rail .f input.v{field-sizing:content;width:auto;min-width:64px;max-width:150px;margin:0;padding:2px 0;border:0;border-radius:6px;
+  background:transparent;text-align:right;font:600 var(--fs-fig-s,15px)/1.3 var(--fig);font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb);
+  box-shadow:none;transition:box-shadow .2s ease,background-color .2s ease}
+#view-console .rail .f input.v:hover{background:rgba(22,30,62,.7);box-shadow:0 0 0 5px rgba(22,30,62,.7),0 0 0 6px rgba(158,203,255,.22)}
+#view-console .rail .f input.v:focus{outline:2px solid #d8ecff;outline-offset:5px;background:rgba(22,30,62,.9);box-shadow:0 0 0 5px rgba(22,30,62,.9)}
+#view-console .rail .f input.v.bad{box-shadow:0 0 0 5px rgba(60,22,34,.55),0 0 0 6px rgba(255,150,150,.8)}
+#view-console .rail .f .vx{margin:2px 0 0;font:400 11.5px/1.4 var(--sans);color:var(--ink3,#8590a8);text-align:right}
+#view-console .rail input[type=range]{display:block;height:24px;margin:0}
+#view-console .rail input[type=range]:focus-visible{outline:1px dashed rgba(158,203,255,.45);outline-offset:4px;border-radius:8px}
+#view-console .rail input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(216,236,255,.55),0 0 18px rgba(184,164,255,.8)!important}
+#view-console .rail input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 4px rgba(216,236,255,.55),0 0 18px rgba(184,164,255,.8)!important}
+#view-console .rail select{min-height:40px;padding:8px 34px 8px 12px;border-radius:var(--r-control,10px);border:1px solid rgba(158,203,255,.18);
+  background-color:rgba(12,18,40,.6);color:var(--ink,#eef2fb);font:400 13.5px/1.3 var(--sans);
+  background-image:linear-gradient(45deg,transparent 50%,#b8a4ff 50%),linear-gradient(135deg,#b8a4ff 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+  transition:border-color .2s ease,box-shadow .2s ease}
+#view-console .rail select:hover{border-color:rgba(184,164,255,.45);box-shadow:0 0 12px rgba(184,164,255,.22)}
+#view-console .rail select:focus{outline:none;border-color:rgba(184,164,255,.55);box-shadow:0 0 0 3px rgba(184,164,255,.16)}
+#view-console .rail select:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
+#view-console .rail .f.fchk{display:block;margin:-4px 0 12px}
+#view-console .rail .f.fchk label{display:inline-flex;align-items:center;gap:12px;min-height:40px;margin:0;cursor:pointer;
+  font:400 13.5px/1.3 var(--sans);color:var(--ink2,#b9c3d8)}
+#view-console .rail #i_fr{-webkit-appearance:none;appearance:none;flex:none;display:inline-grid;place-content:center;width:18px;height:18px;margin:0;
+  border-radius:5px;border:1px solid rgba(158,203,255,.35);background:rgba(12,18,40,.6);cursor:pointer;accent-color:auto;
+  transition:background .2s ease,border-color .2s ease,box-shadow .2s ease}
+#view-console .rail #i_fr::after{content:"";width:5px;height:9px;margin-top:-2px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) scale(0);
+  transition:transform .2s ease}
+#view-console .rail #i_fr:hover{border-color:rgba(184,164,255,.6)}
+#view-console .rail #i_fr:checked{background:linear-gradient(135deg,#c9b9ff,#8a74ff);border-color:#d6caff;box-shadow:0 0 10px rgba(184,164,255,.7)}
+#view-console .rail #i_fr:checked::after{transform:rotate(45deg) scale(1)}
+#view-console .rail #i_fr:focus-visible{outline:2px solid #d8ecff;outline-offset:3px}
+#view-console .rail #reset{display:block;width:100%;min-height:40px;margin:8px 0 0;padding:10px 14px;border-radius:var(--r-control,10px);
+  border:1px solid rgba(158,203,255,.28);background:linear-gradient(135deg,rgba(77,163,255,.16),rgba(184,164,255,.12));
+  color:var(--ink,#eef2fb);font:600 13px/1.3 var(--sans);transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
+#view-console .rail #reset:hover{border-color:rgba(184,164,255,.55);box-shadow:0 0 16px rgba(184,164,255,.3);
+  background:linear-gradient(135deg,rgba(77,163,255,.22),rgba(184,164,255,.18))}
+#view-console .rail #reset:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
+@media(max-width:820px){
+  #view-console .rail .f input.v{min-height:40px}
+  #view-console .rail input[type=range]{height:40px}
+  #view-console .rail #reset{min-height:44px}
+}
+/* phones and tablets: the answers first, then the inputs that move them */
+@media(max-width:1080px){
+  #view-console .console{row-gap:0}
+  #view-console .console>div:last-child{display:contents}
+  #view-console .console>div:last-child>.panel.flush{order:-1}
+  #view-console .console>.panel.rail{order:0;margin-top:clamp(32px,6vw,48px)}
+  #view-console .console>div:last-child>:not(.panel.flush){order:1}
+}
+
+/* ===== 7. value gap: the payoff as a trajectory ======================== */
+#view-console .gap-k{margin:0 0 6px}
+#view-console .gap-figure{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin:0}
+#view-console .gap-figure .n{font:600 var(--fs-fig-xl,36px)/1.05 var(--fig)!important;font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#fff 15%,#d8ecff 85%);-webkit-background-clip:text;background-clip:text;color:transparent!important;
+  filter:drop-shadow(0 0 16px rgb(var(--hue,158 203 255)/.32))}
+#view-console .gap-figure .u{font:400 13px/1.5 var(--sans);color:var(--ink2,#b9c3d8)}
+#view-console .gap-figure.has-traj .u{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#view-console .gap-traj{max-width:320px;margin:10px 0 2px}
+#view-console .gap-traj svg{display:block;width:100%;height:auto;overflow:visible}
+#view-console .gap-traj .arc{fill:none;stroke:rgba(216,236,255,.45);stroke-width:1.2;stroke-dasharray:2 5;stroke-linecap:round}
+#view-console .gap-traj .p0{fill:#9ecbff}
+#view-console .gap-traj .p0h{fill:rgba(158,203,255,.35)}
+#view-console .gap-traj .p1{fill:url(#v8c-gp)}
+#view-console .gap-traj .halo{fill:rgb(var(--hue,158 203 255)/.65)}
+#view-console .gap-traj text{font:500 11.5px var(--sans);fill:var(--ink2,#b9c3d8);paint-order:stroke;stroke:#070d1c;stroke-width:3px;stroke-linejoin:round}
+#view-console #o_gapnote{margin-top:14px}
+@media(max-width:560px){ #view-console .gap-figure .n{font-size:28px} }
+
+/* ===== 8. the optimizer: the decision as a binary star ================= */
+#view-console #decide{position:relative;margin:0 0 36px;padding:40px 0 0}
+#view-console #decide .big-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 32px;margin:0!important}
+#view-console #decide .body{position:relative;min-width:0;padding-left:22px}
+#view-console #decide .orb{position:absolute;left:0;top:3px;width:10px;height:10px;border-radius:50%}
+#view-console #decide .sell .orb{background:radial-gradient(circle at 35% 32%,#fff 0,#e3dcff 24%,#b8a4ff 58%,#5b44c4 100%);box-shadow:0 0 14px rgba(184,164,255,.9)}
+#view-console #decide .walk .orb{background:radial-gradient(circle at 35% 32%,#fff 0,#d9fff8 24%,#6ff2dc 58%,#13806f 100%);box-shadow:0 0 14px rgba(111,242,220,.8)}
+#view-console #decide .big>.k:not([id]){margin:0 0 8px!important}
+#view-console #decide .big .n{font:600 32px/1.1 var(--fig)!important;font-variant-numeric:tabular-nums;color:transparent!important;
+  background:linear-gradient(180deg,#fff 15%,#d8ecff 85%);-webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 0 16px rgba(184,164,255,.32))!important}
+#view-console #decide .walk .n{filter:drop-shadow(0 0 16px rgba(111,242,220,.26))!important}
+#view-console #o_listp,#view-console #o_listp2{margin:8px 0 0!important;font:400 13px/1.5 var(--sans)!important;color:var(--ink3,#8590a8)!important;opacity:1!important}
+#view-console #decide .decide-arc{position:absolute;left:5px;top:0;width:calc(50% + 16px);height:44px;overflow:visible;pointer-events:none}
+#view-console #decide .decide-arc path{fill:none;stroke:rgba(216,236,255,.35);stroke-width:1;stroke-dasharray:2 6;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#view-console #o_listnote{margin:24px 0 0;color:var(--ink2,#b9c3d8)}
+#view-console #o_listnote+details.more{margin-top:2px}
+#view-console #optout{gap:32px;margin:0 0 4px}
+#view-console #optout .opt>.grp-title{display:flex;align-items:center;gap:10px}
+#view-console #optout .opt>.grp-title::before{content:"";flex:none;width:8px;height:8px;border-radius:50%}
+#view-console #optout .opt:nth-child(1)>.grp-title::before{background:radial-gradient(circle at 35% 32%,#fff,#b8a4ff 60%,#5b44c4);box-shadow:0 0 10px rgba(184,164,255,.8)}
+#view-console #optout .opt:nth-child(2)>.grp-title::before{background:radial-gradient(circle at 35% 32%,#fff,#6ff2dc 60%,#13806f);box-shadow:0 0 10px rgba(111,242,220,.7)}
+#view-console #optout .big-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 24px;margin:20px 0 0!important}
+#view-console #optout .big{min-width:0}
+#view-console #optout .big .k{margin:0 0 4px!important}
+#view-console #optout .big .n.sm{font:600 var(--fs-fig-m,20px)/1.2 var(--fig)!important;font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb)!important;letter-spacing:normal}
+#view-console #optout .note{margin-top:16px}
+@media(max-width:700px){
+  #view-console #decide{padding-top:0}
+  #view-console #decide .big-row{grid-template-columns:minmax(0,1fr)}
+  #view-console #decide .decide-arc{display:none}
+  #view-console #decide .sell::after{content:"";position:absolute;left:4.5px;top:15px;width:1px;height:calc(100% + 12px);
+    background:repeating-linear-gradient(to bottom,rgba(216,236,255,.4) 0 2px,transparent 2px 8px)}
+}
+@media(max-width:560px){ #view-console #decide .big .n{font-size:28px!important} }
+
+/* ===== 9. scenarios: three cells, each in its own light ================= */
+#view-console #scen{border:1px solid var(--hair,rgba(160,180,230,.14));border-radius:var(--r-card,14px);overflow:hidden;background:rgba(6,10,26,.35)}
+#view-console #scen>div{position:relative;padding:26px 22px 22px;border-right:1px solid var(--hair,rgba(160,180,230,.14))}
+#view-console #scen>div:last-child{border-right:0}
+#view-console #scen>div::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;filter:drop-shadow(0 0 5px var(--sc))}
+#view-console #scen>div::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(90% 60% at 50% 0%,var(--scw),transparent 72%)}
+#view-console #scen>div>*{position:relative;z-index:1}
+#view-console #scen>div:nth-child(1){--sc:#ffb4ab;--scw:rgba(255,180,171,.06)}
+#view-console #scen>div:nth-child(2){--sc:#d8ecff;--scw:rgba(216,236,255,.06)}
+#view-console #scen>div:nth-child(3){--sc:#9ecbff;--scw:rgba(158,203,255,.06)}
+#view-console #scen>div:nth-child(1)::before{background:repeating-linear-gradient(90deg,#ffb4ab 0 3px,transparent 3px 7px)}
+#view-console #scen>div:nth-child(2)::before{background:#d8ecff}
+#view-console #scen>div:nth-child(3)::before{background:repeating-linear-gradient(90deg,#9ecbff 0 1px,transparent 1px 4px)}
+#view-console #scen .lab{margin:0 0 6px}
+#view-console #scen .rng{font:600 var(--fs-fig-m,20px)/1.25 var(--fig)!important;font-variant-numeric:tabular-nums;letter-spacing:normal}
+#view-console #scen .cap{display:block;margin-top:2px;font:400 12px/1.4 var(--sans);color:var(--ink3,#8590a8)}
+#view-console #scen .sbar{display:block;position:relative;height:4px;margin:14px 0 2px;border-radius:2px;background:rgba(160,180,230,.1)}
+#view-console #scen .sbar::after{content:"";position:absolute;top:0;bottom:0;left:var(--a,0%);width:calc(var(--z,100%) - var(--a,0%));min-width:4px;
+  border-radius:2px;background:var(--sc);box-shadow:0 0 8px var(--sc)}
+#view-console #scen .sbar.pt::after{top:-1px;bottom:auto;width:6px;height:6px;min-width:0;margin-left:-3px;border-radius:50%}
+#view-console #scen .pct{margin-top:8px;font:500 11.5px/1.4 var(--sans)!important;color:var(--ink3,#8590a8)}
+#view-console #scen .why{margin-top:10px;font:400 13px/1.55 var(--sans);color:var(--ink3,#8590a8)}
+@media(min-width:701px){ #view-console #scen.capped .rng{min-height:calc(1.25em + 19px)} }
+@media(max-width:700px){
+  #view-console #scen>div{border-right:0;border-bottom:1px solid var(--hair,rgba(160,180,230,.14));padding:22px 18px 18px}
+  #view-console #scen>div:last-child{border-bottom:0}
+}
+
+/* ===== 10. the realisation card and the method plate ==================== */
+#view-console #o_real .rz{margin-top:24px;padding:20px 24px 16px;border:1px solid var(--hair,rgba(160,180,230,.14));border-radius:var(--r-card,14px);background:rgba(6,10,26,.45)}
+#view-console #o_real .rz{position:relative}
+#view-console #o_real .rz::before{content:"";position:absolute;left:8%;right:8%;top:-1px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgb(var(--hue,158 203 255)/.6) 30% 70%,transparent);box-shadow:0 0 12px rgb(var(--hue,158 203 255)/.35)}
+#view-console #o_real .rzrow{padding:10px 0;border-bottom:1px solid var(--hair,rgba(160,180,230,.14))}
+#view-console #o_real .rzk{font:400 13.5px/1.45 var(--sans);color:var(--ink,#eef2fb)}
+#view-console #o_real .rzv{font:600 var(--fs-fig-s,15px)/1.3 var(--fig)!important;font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb)}
+#view-console #o_real .rzn{font:400 11.5px/1.5 var(--sans);color:var(--ink3,#8590a8)}
+#view-console #o_real .rzf{margin:14px 0 0}
+@media(max-width:560px){
+  #view-console #o_real .rz{padding:20px 0 0;border:0;border-radius:0;background:linear-gradient(90deg,transparent,rgba(160,180,230,.18) 12% 88%,transparent) top/100% 1px no-repeat}
+  #view-console #o_real .rz::before{display:none}
+}
+/* the rail's .f{margin-bottom} reaches the Fitted key box too: it ended 18px short of its neighbours */
+#view-console #srcs .pvkey>.pvk.f{margin:0}
+#view-console #srcs ul{list-style:none;padding:0;margin:20px 0 0}
+#view-console #srcs li{position:relative;margin:0 0 12px;padding-left:18px}
+#view-console #srcs li>.pv:first-child{margin:0 6px 0 0!important;position:static!important;overflow:visible!important}
+#view-console #srcs li>.pv:first-child i{position:absolute;left:1px;top:7.4px;box-shadow:0 0 6px currentColor}
+#view-console #srcs li>.pv.f:first-child i{color:#5ee0a8}
+#view-console #srcs li>.pv.a:first-child i{color:#ffc640}
+#view-console #srcs li>.pv.j:first-child i{color:#ff8e7a}
+#view-console #srcs li:not(:has(>.pv))::before{content:"";position:absolute;left:1px;top:7.4px;width:6px;height:6px;border-radius:50%;
+  background:#9ecbff;box-shadow:0 0 6px rgba(158,203,255,.55)}
+#view-console #srcs li b{color:var(--ink2,#b9c3d8);font-weight:600}
+#view-console #srcs li b.fig{font-family:var(--fig);font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb)}
+
+/* ===== 11. the colophon, on both tabs =================================== */
+#foot{position:relative;z-index:2;display:block;box-sizing:border-box;max-width:calc(68ch + 48px);margin:clamp(64px,10vh,128px) 0 0;
+  padding:20px 24px;border:0;border-radius:var(--r-card,14px);background:linear-gradient(180deg,rgba(8,12,28,.9),rgba(8,12,28,.72))}
+#foot::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(160,180,230,.18) 12% 88%,transparent)}
+#foot .foot-mark{display:inline-block;width:14px;height:14px;margin:0 8px 0 0;vertical-align:-2px;overflow:visible}
+#foot .foot-mark ellipse{fill:none;stroke:rgba(158,203,255,.6);stroke-width:1}
+#foot .foot-mark .o{fill:rgba(158,203,255,.85)}
+#foot .foot-mark .s{fill:#fff;filter:drop-shadow(0 0 2px #9ecbff)}
+#foot .ver{font-family:var(--fig);font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink2,#b9c3d8)}
+@media(min-width:1081px){ .wrap:has(>#view-console:not([hidden])) #foot{margin-left:calc(352px + var(--gapc,40px))} }
+@media(max-width:560px){ #foot{padding:16px} }
+
+/* ===== 12. motion: one-shot reveals on the shared hook, two slow loops ==== */
+#view-console .kf{transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1)}
+html.v8-reveal #view-console .sec:not(.landed) .kf{opacity:0;transform:translateY(12px)}
+#view-console .gap-traj .halo{animation:v8c-breathe 9s ease-in-out infinite}
+#view-console #decide .orb{animation:v8c-breathe 11s ease-in-out infinite}
+#view-console #decide .walk .orb{animation-delay:-5.5s}
+@keyframes v8c-breathe{0%,100%{opacity:.6}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  #view-console .kf,#view-console .gap-traj .halo,#view-console #decide .orb,#view-console details.more>summary::before,
+  #view-console .lede-more::before,#view-console .rail #i_fr,#view-console .rail #i_fr::after,#view-console .rail select,
+  #view-console .rail #reset,#view-console .rail .f input.v{animation:none!important;transition:none!important}
+  html.v8-reveal #view-console .sec:not(.landed) .kf{opacity:1;transform:none}
+}
 </style>
 <!-- ======== end v8-console ======== -->
 <!-- (separator) -->
@@ -7792,6 +8211,495 @@ window.OMNI_V4=function(){ if(prevV4) prevV4(); aurora(); };
 <!-- (separator) -->
 <script id="v8-console-js">
 /* v8-console-js: console tables, equations, text, tokens, optimizer, value gap */
+(function(){
+"use strict";
+var doc=document, R=String.raw;
+function $id(i){ return doc.getElementById(i); }
+function el(tag,cls,html){ var e=doc.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* =====================================================================
+   1. EQUATIONS
+   The model script typesets every equation through eq() and fits it with
+   eqFit(); both sit above the bar-helpers line, so they are wrapped here,
+   not edited. The TeX that render() builds is never changed in meaning:
+   this only re-flows it. Below 640px of card a long display is restacked
+   one term or one result per line (the same terms, the same figures), and
+   eqFit never shrinks the mathematics below 11px.
+   ===================================================================== */
+var NARROW_W=640;
+var NW=new Map();                       /* equation id -> card narrower than NARROW_W */
+var mqNarrow=window.matchMedia?matchMedia("(max-width:760px)"):{matches:false};
+function narrow(id){ return NW.has(id)?NW.get(id):mqNarrow.matches; }
+
+/* whitespace is not significant in math mode; normalising it makes the
+   separators below exact (no \text{} run in these equations holds a newline) */
+function norm(t){ return String(t).replace(/\s*\n\s*/g," ").replace(/,\s+(?=\\)/g,","); }
+function cut(t,sep){ var i=t.indexOf(sep); return i<0?null:[t.slice(0,i),t.slice(i+sep.length)]; }
+function cutLast(t,sep){ var i=t.lastIndexOf(sep); return i<0?null:[t.slice(0,i),t.slice(i+sep.length)]; }
+function inner(t,env){ var b="\\begin{"+env+"}", e="\\end{"+env+"}"; t=t.trim();
+  return t.indexOf(b)===0&&t.slice(-e.length)===e?t.slice(b.length,t.length-e.length).trim():null; }
+/* a left-aligned stack: groups of lines, a little air between groups */
+function stack(groups){
+  return "\\begin{aligned}"+groups.filter(function(g){return g&&g.length;}).map(function(g){
+    return g.map(function(x){ return "&"+x.trim(); }).join("\\\\[1pt]"); }).join("\\\\[6pt]")+"\\end{aligned}"; }
+/* the first "=" of a term becomes the alignment point */
+function amp(x){ x=x.trim(); var i=x.indexOf("="); return i<0?"&"+x:x.slice(0,i)+"&="+x.slice(i+1); }
+function aligned(rows){ return "\\begin{aligned}"+rows.join("\\\\[1pt]")+"\\end{aligned}"; }
+/* a \text{} run split at its first occurrence of sep: "\text{a, b}" -> ["\text{a,}", "\text{b}"] */
+function splitText(run,sep){ var i=run.indexOf(sep); if(i<0) return null;
+  return [run.slice(0,i+sep.trimEnd().length)+"}", "\\text{"+run.slice(i+sep.length)]; }
+
+/* multi-line systems read as one block: gathered (each line centred on its own)
+   becomes aligned with every line starting at the same left edge */
+function ungather(t){ var b=inner(t,"gathered"); if(b===null) return t;
+  return "\\begin{aligned}&"+b.replace(/\\\\(\[[^\]]*\])?\s*/g,function(m,g){ return "\\\\"+(g||"")+"&"; })+"\\end{aligned}"; }
+
+var MISS={};  /* narrow layouts that did not match their equation (kept as a diagnostic) */
+var NAR={};   /* id -> function(normalised tex) -> narrow tex, or null to keep the original */
+NAR.eq_zs=function(t){ var p=cut(t,R`\;\Rightarrow\;`); if(!p) return null;
+  var a=p[0].trim(), h=cut(a,R`\;(\text{held at }`), g=h?[h[0],R`\quad(\text{held at }`+h[1]]:[a];
+  g.push(R`\Rightarrow\;`+p[1].trim()); return stack([g]); };
+NAR.eq_v=function(t){
+  var u=t.replace(/\+(-?\d+\.\d+\\,h\(\\text\{SDE\}\))/,R`\\&\quad+$1`).replace(/\+(-?\d+\.\d+\\,e_i)/,R`\\&\quad+$1`);
+  return u===t?null:u; };
+NAR.eq_vs=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(/\\\\\[4pt\]&/); if(rows.length!==2) return null;
+  var r1=rows[0].replace(/^&/,"").split(R`,\quad`); if(r1.length!==4) return null;
+  var g1=[], h=cut(r1[0],R`\;\big(`);
+  if(h){ var k=h[1].indexOf("; slope ");
+    if(k>=0) g1.push(h[0]+R`\;\big(`+h[1].slice(0,k+1)+"}", R`\quad\text{`+h[1].slice(k+2)+",");
+    else g1.push(h[0], R`\quad\big(`+h[1]+","); }
+  else g1.push(r1[0]+",");
+  g1.push(r1[1]+R`,\quad `+r1[2]+",", r1[3]);
+  var r2=rows[1], a=cut(r2,R` \times\underbrace{`); if(!a) return null;
+  var c=cut(a[1],"}} ="); if(!c) return null;
+  return stack([g1,[a[0], R`\quad\times\underbrace{`+c[0]+"}}", R`\quad=`+c[1]]]); };
+NAR.eq_a=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[3pt]`); if(rows.length!==3) return null;
+  var r1=rows[0].trim().split(R`,\quad`); if(r1.length!==3) return null;
+  var p=cut(rows[1].trim(),R`\Big),\quad W=`); if(!p) return null;
+  var q=cut(p[0],R`,\;\bar a\,c_{`); if(!q) return null;
+  var e=cut(rows[2].trim(),R`\quad\text{`); if(!e) return null;
+  return stack([[r1[0].replace("&=","="), r1[1], r1[2]],
+    [q[0].replace("&=","=")+",", R`\qquad\bar a\,c_{`+q[1]+R`\Big)`, "W="+p[1]],
+    [e[0].replace("&=","="), R`\quad\text{`+e[1]]]); };
+NAR.eq_as=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[3pt]`); if(rows.length!==3) return null;
+  var a=rows[0].trim().replace(/^&/,"").split(R`,\;`); if(a.length!==6) return null;
+  var ar=cut(a[4],R`\Rightarrow `); if(!ar) return null;
+  var m=rows[1].trim().replace(/^&/,"").split(R`,\;`); if(m.length!==3) return null;
+  var x=rows[2].trim().replace(/^&/,""), xi=x.indexOf("=",x.indexOf("=")+1); if(xi<0) return null;
+  return stack([[a[0]+R`,\;`+a[1]+",", a[2]+R`,\;`+a[3]+R`,\;`+ar[0], R`\Rightarrow `+ar[1]+",", a[5]],
+    [m[0]+",", R`\quad `+m[1]+",", R`\quad `+m[2]],
+    [x.slice(0,xi), R`\quad`+x.slice(xi)]]); };
+NAR.eq_p=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(/\\\\\[\dpt\]/).map(function(x){return x.trim();}); if(rows.length!==6) return null;
+  var out=[];
+  rows.forEach(function(r,i){
+    if(i===2){ var k=cut(r,R`,\;k=`); if(k){ var kk=cut(k[1]," & g>"); if(kk){ out.push(k[0]+" & g>"+kk[1]); out.push(R`&\quad k=`+kk[0]); return; } } out.push(r); return; }
+    if(i===3){ var th=cut(r,R`\quad\text{`); if(th){ out.push(th[0]); out.push(R`&\quad\text{`+th[1]); return; } }
+    var s=r.split(R`,\qquad`); out.push(s[0]); for(var j=1;j<s.length;j++) out.push(amp(s[j]));
+  });
+  return aligned(out); };
+NAR.eq_ps=function(t){
+  var a=cut(t,R`\Rightarrow P_C=`); if(!a) return null;
+  var j=cut(a[1],R` \qquad\big(P_C^`); if(!j) return null;
+  var bx=cut(j[0],R`=\boxed{`); if(!bx) return null;
+  var th=cut(bx[0],R`\big)\times\underbrace{`), g=[a[0]];
+  if(th){ g.push(R`\Rightarrow P_C=`+th[0]+R`\big)`, R`\quad\times\underbrace{`+th[1]); }
+  else g.push(R`\Rightarrow P_C=`+bx[0]);
+  g.push(R`\quad=\boxed{`+bx[1]);
+  return stack([g,[R`\big(P_C^`+j[1]]]); };
+NAR.eq_nl=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[1pt]`); if(rows.length!==6) return null;
+  var gs=[];
+  for(var i=0;i<rows.length;i++){ var p=cut(rows[i].trim()," &&"); if(!p) return null;
+    gs.push([p[0].replace("&=","="), R`\quad`+p[1].trim()]); }
+  return stack(gs); };
+NAR.eq_nls=function(t){ var s=t.split(R`,\quad`); if(s.length!==6) return null;
+  return aligned([amp(s[0])+","+"&"+amp(s[1])+",", amp(s[2])+","+"&"+amp(s[3])+",", amp(s[4])+","+"&"+amp(s[5])]); };
+NAR.eq_t=function(t){ var s=t.split(R`,\qquad`); if(s.length!==4) return null;
+  return aligned(s.map(function(x,i){ return amp(x)+(i<3?",":""); })); };
+NAR.eq_ts=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[3pt]&`); if(rows.length!==3) return null;
+  var r1=rows[0].replace(/^&/,""), i1=r1.indexOf("=",r1.indexOf("=")+1); if(i1<0) return null;
+  var r2=rows[1].split(R`,\quad`); if(r2.length!==3) return null;
+  var r3=cut(rows[2],R`\text{, `); if(!r3) return null;
+  return stack([[r1.slice(0,i1), R`\quad`+r1.slice(i1)],[r2[0]+R`,\quad `+r2[1]+",", r2[2]],
+    [r3[0]+R`\text{,}`, R`\quad\text{`+r3[1]]]); };
+NAR.eq_b=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[2pt]`); if(rows.length!==2) return null;
+  var r1=rows[0].trim().split(R`,\qquad`); if(r1.length!==3) return null;
+  var r2=cut(rows[1].trim(),R`\quad\text{`); if(!r2) return null;
+  return aligned([r1[0]+",", amp(r1[1])+",", amp(r1[2]), r2[0].trim(), R`&\text{`+r2[1]]); };
+NAR.eq_bs=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[2pt]`).map(function(x){ return x.trim().replace(/^&/,""); }); if(rows.length<2||rows.length>3) return null;
+  var p=cut(rows[0],R`\;\big(`); if(!p) return null;
+  var m=cut(rows[1],R`\;\to\;`); if(!m) return null;
+  var mm=cut(m[1],R` \quad\big(`); if(!mm) return null;
+  var gs=[[p[0], R`\quad\big(`+p[1]],[m[0], R`\quad\to\;`+mm[0], R`\quad\big(`+mm[1]]];
+  if(rows[2]){ var c=cut(rows[2],R`at }`); if(!c) return null; gs.push([c[0]+"at }", R`\quad `+c[1]]); }
+  return stack(gs); };
+NAR.eq_comp=function(t){ var s=t.split(R`,\qquad`); if(s.length!==2) return null; return stack([[s[0]+",", s[1]]]); };
+NAR.eq_comps=function(t){
+  var a=cut(t,R`,\;`); if(!a) return null;
+  var c=cut(a[1],R`\text{ contacted, against }`); if(!c) return null;
+  var r=cut(c[1],R`\;\Rightarrow\;`); if(!r) return null;
+  var g=[a[0]+",", c[0]+R`\text{ contacted,}`, R`\quad\text{against }`+r[0].trim()], tail=r[1].trim();
+  var ne=cut(tail,R`\;\text{(`);
+  if(ne){ var k=ne[1].indexOf(": "); g.push(R`\Rightarrow\;`+ne[0]);
+    if(k>=0){ g.push(R`\quad\text{(`+ne[1].slice(0,k+1)+"}", R`\quad\text{`+ne[1].slice(k+2)); } else g.push(R`\quad\text{(`+ne[1]); }
+  else g.push(R`\Rightarrow\;`+tail);
+  return stack([g]); };
+NAR.eq_d=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[4pt]&`); if(rows.length!==2) return null;
+  var r1=rows[0].replace(/^&/,"").split(R`,\qquad`); if(r1.length!==3) return null;
+  var rr=cut(r1[2],R`\quad\text{`); if(!rr) return null;
+  var r2=rows[1].split(R`,\qquad`); if(r2.length!==2) return null;
+  var r2b=cut(r2[1],R`\quad\text{`); if(!r2b) return null;
+  return stack([[r1[0]+",", r1[1]+",", rr[0], R`\quad\text{`+rr[1]],[r2[0]+",", r2b[0], R`\quad\text{`+r2b[1]]]); };
+NAR.eq_ds=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[3pt]&`); if(rows.length!==2) return null;
+  var head=rows[0].replace(/^&/,""), hs=splitText(head,", "), r2=rows[1].split(R`,\qquad`); if(r2.length!==3) return null;
+  return stack([hs?[hs[0], R`\quad`+hs[1]]:[head],[r2[0]+R`,\quad `+r2[1]+",", r2[2]]]); };
+NAR.eq_r=function(t){
+  var a=cut(t,R`,\qquad`); if(!a) return null;
+  var f=cut(a[1],R`=\frac{`); if(!f) return null;
+  var n=cut(f[1],"]-E["); if(!n) return null;
+  return stack([[a[0]+","],[f[0]+R`=\frac{\begin{aligned}&`+n[0]+R`]\\&\;-E[`+n[1].replace(/\}\{C\(a\)\}$/,R`\end{aligned}}{C(a)}`)]]); };
+NAR.eq_rs=function(t){ var a=cut(t,R`{:}\;\frac{`); if(!a) return null; return stack([[a[0]+"{:}", R`\quad\frac{`+a[1]]]); };
+NAR.eq_o=function(t){
+  var a=cut(t,R`\quad\text{s.t.}\quad `); if(!a) return null;
+  var b=cut(a[1],R`,\qquad `); if(!b) return null;
+  var c=cut(b[1],R`-\lambda\big(`); if(!c) return null;
+  return stack([[a[0], R`\quad\text{s.t.}\quad `+b[0]+","],[c[0], R`\qquad-\lambda\big(`+c[1]]]); };
+NAR.eq_os=function(t){
+  var a=cut(t,R`{:}\;`); if(!a) return null;
+  var b=cut(a[1],R`,\;`); if(!b) return null;
+  var c=cut(b[1],R`\Rightarrow `); if(!c) return null;
+  return stack([[a[0]+"{:}", b[0]+",", c[0].trim(), R`\Rightarrow `+c[1]]]); };
+NAR.eq_u=function(t){
+  var a=cut(t,R` +\underbrace{`); if(!a) return null;
+  var b=cut(a[1],R` -\lambda_T`); if(!b) return null;
+  return stack([[a[0], R`\quad+\underbrace{`+b[0], R`\quad-\lambda_T`+b[1]]]); };
+NAR.eq_us=function(t){
+  var a=cut(t,R` +\text{`); if(!a) return null;
+  var b=cut(a[1],R` -\text{`); if(!b) return null;
+  var c=cutLast(b[1],R`=\boxed{`); if(!c) return null;
+  return stack([[a[0], R`\quad+\text{`+b[0], R`\quad-\text{`+c[0], R`\quad=\boxed{`+c[1]]]); };
+NAR.eq_s=function(t){ var a=cut(t,R`,\quad `); if(!a) return null; return stack([[a[0]+",", a[1]]]); };
+NAR.eq_ss=function(t){
+  var a=cut(t,R` \;\Rightarrow\; `); if(!a) return null;
+  var l=a[0].split(R`,\;`), r=a[1].split(R`,\;`); if(l.length!==3||r.length!==3) return null;
+  return stack([[l[0]+R`,\;`+l[1]+",", l[2]],[R`\Rightarrow\;`+r[0]+R`,\;`+r[1]+",", R`\quad `+r[2]]]); };
+NAR.eq_c=function(t){
+  var u=t.replace(/\+(\d\.\d\d\\,\\text\{reporting\})/,R`\\&\quad+$1`).replace(/ \+(\d\.\d\d\\max)/,R`\\&\quad+$1`);
+  return u===t?null:"\\begin{aligned}&"+u+"\\end{aligned}"; };
+NAR.eq_loop=function(t){ var s=t.split(R`\rightarrow`); if(s.length!==5) return null;
+  return stack([[s.slice(0,3).join(R`\rightarrow`), R`\quad\rightarrow`+s.slice(3).join(R`\rightarrow`)]]); };
+NAR.eq_cs=function(t){
+  var b=inner(t,"aligned"); if(b===null) return null;
+  var rows=b.split(R`\\[3pt]&`); if(rows.length!==2) return null;
+  var a=rows[1].split(R`\qquad `); if(a.length!==2) return null;
+  var p=cut(a[0],"interval }"), f=cut(a[1],"80\\% }"); if(!p||!f) return null;
+  return stack([[rows[0].replace(/^&/,"")],[p[0]+"interval }", R`\quad `+p[1]],[f[0]+"80\\% }", R`\quad `+f[1]]]); };
+
+/* eq_s: the parenthetical that defines R and s is prose, so it leaves the
+   mathematics for a sans line under it (same words, same value) */
+function eqKey(id,html){
+  var host=$id(id); if(!host) return;
+  var k=host.nextElementSibling;
+  if(!k||!k.classList.contains("eq-key")){ k=el("p","eq-key"); host.parentNode.insertBefore(k,host.nextSibling); }
+  if(k.innerHTML!==html) k.innerHTML=html;
+}
+function tex2html(t){
+  var out="", i=0;
+  while(i<t.length){
+    if(t.indexOf("\\text{",i)===i){ var j=t.indexOf("}",i+6); if(j<0) break; out+=esc(t.slice(i+6,j)); i=j+1; continue; }
+    var c=t.charAt(i);
+    out+=/[A-Za-z]/.test(c)?"<i>"+c+"</i>":c==="="?"\u202f=\u202f":esc(c); i++;
+  }
+  return out;
+}
+
+function xform(id,tex){
+  var t=norm(tex);
+  /* a negative figure keeps its sign outside \text, where KaTeX sets a true minus, not a hyphen */
+  t=t.replace(/\\text\{-(?=\\\$|\d)/g,"-\\text{");
+  /* days: a thin space before the unit (277\,d), the console's one duration style */
+  t=t.replace(/\\text\{ d, /g,"\\,\\text{d}\\text{, ").replace(/\\text\{ d\}/g,"\\,\\text{d}");
+  if(id==="eq_s"){ var p=cut(t,"\\quad\\text{(}"); if(p){ t=p[0]; eqKey(id,tex2html("\\text{(}"+p[1])); } }
+  /* a colon that introduces a result is punctuation, not a relation: no space before it */
+  if(id==="eq_rs"||id==="eq_os") t=t.replace(":\\;","{:}\\;");
+  t=ungather(t);
+  if(narrow(id)&&NAR[id]){ var n=null; try{ n=NAR[id](t); }catch(e){ n=null; } if(n) t=n; else MISS[id]=(MISS[id]||0)+1; }
+  return t;
+}
+
+/* prose inside the mathematics (\text runs that are words, not variable names)
+   is set in the interface face so it reads as commentary on the formula */
+function proseRuns(host){
+  if(host.id==="eq_loop") return;
+  var ts=host.querySelectorAll(".katex .mord.text");
+  for(var i=0;i<ts.length;i++){ var s=ts[i], x=s.textContent.replace(/\u00a0/g," ");
+    if(!/[A-Za-z]{2,}/.test(x)) continue;
+    if(/\S\s+\S/.test(x.trim())||/^\s+[A-Za-z]{2,}|[A-Za-z]{2,}\s+$/.test(x)) s.classList.add("kx-p"); }
+}
+function cue(host){
+  var card=host.closest&&host.closest(".eq"); if(!card) return;
+  var any=false, ids=card.querySelectorAll("[id]");
+  for(var i=0;i<ids.length;i++) if(ids[i].classList.contains("scrolls")) any=true;
+  card.classList.toggle("scrolls",any);
+}
+
+if(typeof window.eq==="function"&&typeof window.eqFit==="function"){
+  var eq0=window.eq;
+  window.eq=function(id,tex,display){ var t=tex, h=$id(id);
+    if(h&&h.closest("#view-console")){ try{ t=xform(id,tex); }catch(e){ t=tex; } }
+    return eq0.call(this,id,t,display); };
+  /* never below 11px rendered: past that the display scrolls inside its card,
+     with a fade and a cue (mark(), below the bar helpers, reads .scrolls) */
+  window.eqFit=function(host){
+    var k=host.querySelector(".katex-display")||host; if(!host.isConnected) return;
+    host.style.fontSize=""; host.classList.remove("scrolls");
+    proseRuns(host);
+    var cw=host.clientWidth; if(!cw){ cue(host); return; }
+    var sw=k.scrollWidth;
+    if(sw>cw+1){
+      var kx=host.querySelector(".katex"), base=kx?parseFloat(getComputedStyle(kx).fontSize)||14:14;
+      var s=Math.max(Math.min(1,11/base),(cw-4)/sw*.97);
+      host.style.fontSize=(s*100).toFixed(2)+"%";
+      if(k.scrollWidth>host.clientWidth+1) host.classList.add("scrolls");
+    }
+    cue(host);
+  };
+  /* a card that crosses NARROW_W gets the other layout: re-render once */
+  if("ResizeObserver" in window){
+    var ro=new ResizeObserver(function(es){
+      var flip=false, refit=[];
+      es.forEach(function(e){ var x=e.target, w=e.contentRect.width; if(!w) return; var id=x.id, n=w<NARROW_W;
+        if(narrow(id)!==n||!NW.has(id)){ if(narrow(id)!==n&&typeof EQ!=="undefined"&&EQ.last.has(id)) flip=true; NW.set(id,n); }
+        /* same layout, new width (a scrollbar, a split opening): fit it again */
+        if(Math.abs((x.__w||0)-w)>1&&x.querySelector(".katex")) refit.push(x); x.__w=w; });
+      if(flip&&typeof STATE!=="undefined"&&STATE.r&&typeof scheduleRender==="function") scheduleRender();
+      else refit.forEach(function(x){ window.eqFit(x); });
+    });
+    doc.querySelectorAll("#view-console .eq [id]").forEach(function(x){ ro.observe(x); });
+  }
+  /* KaTeX's faces load on first use, after the first fit: measure again once they arrive */
+  if(doc.fonts&&doc.fonts.addEventListener){ var ft=0;
+    doc.fonts.addEventListener("loadingdone",function(){ clearTimeout(ft); ft=setTimeout(function(){
+      doc.querySelectorAll("#view-console .eq [id]").forEach(function(x){ if(x.querySelector(".katex")) window.eqFit(x); }); },120); }); }
+}
+window.OMNI_V8C={xform:xform,NAR:NAR,narrow:narrow,NW:NW,miss:MISS};
+
+/* =====================================================================
+   2. AFTER EVERY RENDER
+   render() is wrapped (as v4 does), so each pass below runs once per
+   render, in the same frame. The passes only add classes, labels and
+   decoration, or copy text the section already shows: no figure is
+   computed here except by the model's own formatters.
+   ===================================================================== */
+function firstEnd(t){ var re=/[.!?]['’”)]?(?=\s+[A-Z(“])/g, m=re.exec(t); return m?m.index+m[0].length:-1; }
+
+/* tables: data-th on every cell (VL 7.8), and on the two card tables a real
+   label element per figure, so a phone shows each figure with its column name
+   (a real element, so "ΔP_C" keeps its subscript) */
+function heads(tb){ var hr=tb.rows[0]; if(!hr||!hr.querySelector("th")) return null;
+  return [].map.call(hr.cells,function(c){ return {t:c.textContent.replace(/\s+/g," ").trim(),h:c.innerHTML.trim()}; }); }
+function tablePass(id,labels){
+  var tb=$id(id); if(!tb) return; var H=heads(tb); if(!H) return;
+  for(var i=1;i<tb.rows.length;i++){ var cells=tb.rows[i].cells, c=0;
+    for(var j=0;j<cells.length;j++){ var td=cells[j], h=H[c]; c+=td.colSpan||1; if(!h) continue;
+      if(td.getAttribute("data-th")!==h.t) td.setAttribute("data-th",h.t);
+      if(labels&&j>0&&!td.querySelector(".cl")) td.insertAdjacentHTML("afterbegin",'<span class="cl">'+h.h+'</span>'); } }
+}
+function buyerPass(){
+  var tb=$id("buytbl"); if(!tb) return;
+  for(var i=1;i<tb.rows.length;i++){ var r=tb.rows[i], name=r.cells[0]; if(!name) continue;
+    if(!name.querySelector(".tags")){ var tags=name.querySelectorAll(":scope>.tag");
+      if(tags.length){ var box=el("span","tags"); tags.forEach(function(t){ box.appendChild(t); });
+        name.insertBefore(box,name.querySelector(":scope>.muted")); } }
+    var rare=name.querySelector(":scope>.muted"); if(rare) rare.classList.add("rare");
+    var syn=r.cells[3];
+    if(syn&&syn.classList.contains("pos")&&!syn.querySelector(".fv")){ var n=syn.lastChild;
+      if(n&&n.nodeType===3&&n.textContent.trim()){ var f=el("span","fv"); syn.replaceChild(f,n); f.appendChild(n); } }
+  }
+}
+
+/* key-figure strips (VL 7.4): labels the page already uses, values from the
+   same formatters or the rendered hero tiles, refreshed after each render */
+var KF={};
+function kfMake(anchor,key,cls){
+  var a=$id(anchor), p=a&&a.closest(".panel"); if(!p) return null;
+  var k=el("div","kf"+(cls?" "+cls:"")); k.setAttribute("aria-live","off"); k.dataset.k=key;
+  var lede=p.querySelector(":scope>.lede"); p.insertBefore(k,lede||p.firstChild); KF[key]=k; return k;
+}
+function badgeOf(src){ if(!src) return ""; var c=src.cloneNode(true); c.removeAttribute("id"); return c.outerHTML; }
+function setHTML(node,html){ if(node&&node.__h!==html){ node.innerHTML=html; node.__h=html; } }
+function ring(f){
+  f=Math.max(0,Math.min(1,f||0)); var R=32, C=2*Math.PI*R, a=-Math.PI/2+f*2*Math.PI;
+  return '<svg class="kf-ring" viewBox="0 0 72 72" aria-hidden="true" focusable="false"><defs><linearGradient id="v8c-rg" x1="0" y1="0" x2="1" y2="1">'
+    +'<stop offset="0" stop-color="#b8a4ff"/><stop offset=".5" stop-color="#9ecbff"/><stop offset="1" stop-color="#6ff2dc"/></linearGradient></defs>'
+    +'<circle class="t" cx="36" cy="36" r="32"/>'
+    +'<circle class="a" cx="36" cy="36" r="32" stroke="url(#v8c-rg)" stroke-dasharray="'+(f*C).toFixed(1)+' '+C.toFixed(1)+'" transform="rotate(-90 36 36)"/>'
+    +'<circle class="m" cx="'+(36+R*Math.cos(a)).toFixed(1)+'" cy="'+(36+R*Math.sin(a)).toFixed(1)+'" r="2.6" style="filter:drop-shadow(0 0 4px #9ecbff)"/></svg>';
+}
+function kfFill(){
+  var r=typeof STATE!=="undefined"&&STATE.r, mo=typeof money==="function"?money:null;
+  if(KF.value&&r&&mo){
+    setHTML(KF.value,'<div class="kf-main"><div class="kf-l"><span>Model-supported value</span>'+badgeOf($id("o_msv_pv"))+'</div>'
+      +'<div class="kf-n">'+esc(mo(r.V))+'</div></div>'
+      +'<div class="kf-sat"><div><div class="kf-l">Median price if it closes</div><div class="kf-s">'+esc(mo(r.Vreal))+'</div></div>'
+      +'<div><div class="kf-l">Expected price if it closes</div><div class="kf-s">'+esc(mo(r.Vmean))+'</div></div></div>'); }
+  var pcEl=$id("o_pc");
+  if(KF.pc&&pcEl){ var t=pcEl.textContent.trim();
+    setHTML(KF.pc,'<div class="kf-main"><div class="kf-l"><span>Chance of closing</span>'+badgeOf($id("o_pc_pv"))+'</div>'
+      +'<div class="kf-n">'+esc(t)+'</div></div>'+ring(parseFloat(t)/100)); }
+  var tEl=$id("o_t");
+  if(KF.time&&tEl) setHTML(KF.time,'<div class="kf-main"><div class="kf-l"><span>Median time to close</span>'+badgeOf($id("o_t_pv"))+'</div>'
+      +'<div class="kf-n">'+esc(tEl.textContent.trim())+'</div></div>');
+  var bb=$id("o_bb");
+  if(KF.buy&&bb){ var tile=bb.closest(".big"), pv=tile&&tile.querySelector(".k .pv");
+    setHTML(KF.buy,'<div class="kf-main"><div class="kf-l"><span>Pursue first</span>'+badgeOf(pv)+'</div>'
+      +'<div class="kf-row"><i class="kf-planet" aria-hidden="true"></i><div class="kf-n name">'+esc(bb.textContent.trim())+'</div></div></div>'); }
+  var sf=$id("sensflat");
+  if(KF.sens&&sf){ var b=sf.querySelector(":scope>b:first-child"), q=b?b.textContent.trim():"";
+    KF.sens.hidden=!q; sf.classList.toggle("lead-moved",!!q);
+    setHTML(KF.sens,q?'<p class="kf-q">'+esc(q)+'</p>':""); }
+  for(var k in KF){ var n=KF[k]; if(n&&/undefined|NaN/.test(n.textContent)) n.hidden=true; }
+}
+
+/* the value gap as a trajectory: from today's value to the potential, labelled
+   with #o_gapu's own words, split across the two ends */
+function parseMoney(s){ var m=/([−-]?)\$([\d.,]+)\s*([kMB]?)/.exec(s||""); if(!m) return NaN;
+  return (m[1]?-1:1)*parseFloat(m[2].replace(/,/g,""))*({k:1e3,M:1e6,B:1e9}[m[3]]||1); }
+function gapTraj(){
+  var host=$id("gap_traj"), u=$id("o_gapu"), fig=u&&u.parentNode; if(!host||!u) return;
+  var m=/^from\s+(.+?)\s+to\s+(.+)$/.exec(u.textContent.trim());
+  if(!m){ setHTML(host,""); if(fig) fig.classList.remove("has-traj"); return; }
+  var up=parseMoney(m[2])>parseMoney(m[1]), y1=up?17:35;
+  setHTML(host,'<svg viewBox="0 0 320 58" aria-hidden="true" focusable="false"><defs>'
+    +'<radialGradient id="v8c-gp" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#d8ecff"/><stop offset="1" stop-color="rgb(95,198,234)"/></radialGradient>'
+    +'<filter id="v8c-gb" x="-2" y="-2" width="5" height="5"><feGaussianBlur stdDeviation="3.2"/></filter></defs>'
+    +'<path class="arc" d="M14 35 C 92 '+(up?2:35)+', 222 '+(up?0:35)+', 297 '+y1+'"/>'
+    +'<circle class="p0h" cx="8" cy="36" r="6"/><circle class="p0" cx="8" cy="36" r="3"/>'
+    +'<circle class="halo" cx="306" cy="'+y1+'" r="9" filter="url(#v8c-gb)"/><circle class="p1" cx="306" cy="'+y1+'" r="4.6"/>'
+    +'<text x="0" y="56">from '+esc(m[1])+'</text><text x="320" y="'+(y1+21)+'" text-anchor="end">to '+esc(m[2])+'</text></svg>');
+  if(fig) fig.classList.add("has-traj");
+}
+
+/* long notes keep their first sentence; the rest folds into "More detail" (VL 7.5) */
+var foldOpen={};
+function moreAfter(node,key){
+  var d=node.nextElementSibling;
+  if(!d||!d.classList.contains("more")||d.dataset.k!==key){
+    d=el("details","more"); d.dataset.k=key; d.innerHTML='<summary>More detail</summary><span class="more-body"></span>';
+    d.addEventListener("toggle",function(){ foldOpen[key]=d.open; });
+    node.parentNode.insertBefore(d,node.nextSibling); }
+  if(!!foldOpen[key]!==d.open) d.open=!!foldOpen[key];
+  return d;
+}
+function fold(node,key,fix){
+  if(!node) return;
+  var full=node.textContent; if(node.__first&&full===node.__first) return;   /* already folded this render */
+  if(fix) full=fix(full);
+  var i=firstEnd(full), d=moreAfter(node,key);
+  if(i<0||full.length-i<60){ node.__first=null; if(node.textContent!==full) node.textContent=full; d.hidden=true; return; }
+  var first=full.slice(0,i); node.textContent=first; node.__first=first;
+  d.querySelector(".more-body").textContent=full.slice(i).trim(); d.hidden=false;
+}
+function folds(){
+  fold($id("o_listnote"),"listnote");
+  fold(doc.querySelector("#o_real .rzf"),"rzf",function(t){ return t.replace(/\$500K/g,"$500k"); });
+}
+
+/* scenario cells: each range lit on one shared axis, bear low to bull high, read from
+   the figures the cells print (decoration, aria-hidden) */
+function scenBars(){
+  var sc=$id("scen"); if(!sc) return;
+  var cells=[].filter.call(sc.children,function(c){ return c.tagName==="DIV"; }); if(cells.length!==3) return;
+  var rr=cells.map(function(c){ var g=c.querySelector(".rng"); if(!g) return null;
+    var t=g.firstChild&&g.firstChild.nodeType===3?g.firstChild.textContent:g.textContent, q=t.split("–");
+    var lo=parseMoney(q[0]), hi=q.length>1?parseMoney(q[1]):lo; return isFinite(lo)&&isFinite(hi)?[lo,hi]:null; });
+  sc.classList.toggle("capped",!!sc.querySelector(".cap"));
+  if(rr.some(function(x){ return !x; })) return;
+  var mn=Math.min(rr[0][0],rr[1][0],rr[2][0]), mx=Math.max(rr[0][1],rr[1][1],rr[2][1]); if(!(mx>mn*1.0001)) return;
+  cells.forEach(function(c,i){ var b=c.querySelector(".sbar");
+    if(!b){ b=el("i","sbar"); b.setAttribute("aria-hidden","true"); c.insertBefore(b,c.querySelector(".pct")); }
+    var a=(rr[i][0]-mn)/(mx-mn), z=(rr[i][1]-mn)/(mx-mn);
+    b.style.setProperty("--a",(a*100).toFixed(2)+"%"); b.style.setProperty("--z",(z*100).toFixed(2)+"%"); b.classList.toggle("pt",z-a<.01); });
+}
+
+function post(){
+  tablePass("multbl",false); tablePass("buytbl",true); tablePass("intbl",true); buyerPass();
+  kfFill(); gapTraj(); folds(); scenBars();
+}
+
+/* =====================================================================
+   3. ONCE, AT LOAD
+   ===================================================================== */
+/* phone ledes: four lines and a real button (the text stays in the DOM) */
+function ledeInit(){
+  doc.querySelectorAll("#view-console .sec .panel>.lede").forEach(function(p){
+    var nx=p.nextElementSibling; if(nx&&nx.classList.contains("lede-more")) return;
+    p.classList.add("clamp");
+    var b=el("button","lede-more","Read more"); b.type="button"; b.setAttribute("aria-expanded","false");
+    b.addEventListener("click",function(){ p.classList.add("open"); b.setAttribute("aria-expanded","true"); b.hidden=true;
+      p.setAttribute("tabindex","-1"); try{ p.focus({preventScroll:true}); }catch(e){} });
+    p.parentNode.insertBefore(b,p.nextSibling);
+  });
+}
+function ledeFit(){
+  var on=window.matchMedia&&matchMedia("(max-width:560px)").matches;
+  doc.querySelectorAll("#view-console .lede.clamp").forEach(function(p){
+    var b=p.nextElementSibling; if(!b||!b.classList.contains("lede-more")) return;
+    if(p.classList.contains("open")){ b.hidden=true; return; }
+    b.hidden=!on||p.scrollHeight<=p.clientHeight+2; });
+}
+function srcsPass(){
+  doc.querySelectorAll("#srcs li b").forEach(function(b){ var t=b.textContent.trim();
+    if(/\d/.test(t)&&/^[\d$.,%×–−\s-]+(years?)?$/.test(t)) b.classList.add("fig"); });
+}
+function rules(){
+  ["multbl","buytbl","intbl"].forEach(function(id){ var t=$id(id), p=t&&t.closest(".panel"); if(!p) return;
+    var e=p.querySelector(":scope>.eq"); if(!e||(e.previousElementSibling&&e.previousElementSibling.classList.contains("v8-rule"))) return;
+    var r=el("div","v8-rule"); r.setAttribute("aria-hidden","true"); p.insertBefore(r,e); });
+  ["buytbl","intbl"].forEach(function(id){ var t=$id(id); if(t) t.classList.add("cards"); });
+}
+
+kfMake("multbl","value"); kfMake("pcbars","pc"); kfMake("tcurve","time"); kfMake("starmap","buy"); kfMake("sensV","sens","kf-quote");
+ledeInit(); srcsPass(); rules();
+if(typeof window.render==="function"){
+  var render0=window.render;
+  window.render=function(){ var out=render0.apply(this,arguments); try{ post(); }catch(e){ window.__v8cErr=e; } return out; };
+}
+var rz=0;
+addEventListener("resize",function(){ clearTimeout(rz); rz=setTimeout(ledeFit,200); },{passive:true});
+if(doc.fonts&&doc.fonts.ready) doc.fonts.ready.then(function(){ setTimeout(ledeFit,60); });
+[600,1800].forEach(function(t){ setTimeout(ledeFit,t); });
+
+/* the shared reveal hook (VL 8), guarded: the hero lane's copy wins when both load */
+(function(){ if(window.__v8reveal) return; window.__v8reveal=1;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window)) return;
+  document.documentElement.classList.add('v8-reveal');
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('landed'); io.unobserve(e.target); } });},{rootMargin:'0px 0px -15% 0px'});
+  function arm(){ document.querySelectorAll('#view-console .sec:not(.landed),#view-data .sec:not(.landed)').forEach(function(s){ io.observe(s); }); }
+  arm(); var dv=document.getElementById('dataviews'); if(dv) new MutationObserver(arm).observe(dv,{childList:true});
+})();
+
+})();
 </script>
 <!-- ======== end v8-console-js ======== -->
 <!-- (separator) -->
