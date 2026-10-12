@@ -468,8 +468,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(r.Vmean/r.inputs.ask<=pr*(1+1e-9),`${t.ind} rho=${rho.toFixed(2)}: E[P|close]/ask rose with the ask`);
       pv=r.Vmean; pr=r.Vmean/r.inputs.ask; } }
   /* 24h. optimiser: theta = 0 does not move. At theta = .75 (the default) the utility has two near-equal peaks, near
-          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.915 at $900/day, 0.866 with no delay
-          cost) and theta (0.771 at $900/day, 0.763 with no delay cost; pinned in 28), so the
+          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.92 at $900/day, 0.866 with no delay
+          cost) and theta (0.772 at $900/day, 0.763 with no delay cost; pinned in 28), so the
           WINNER is not pinned: it must be one of the two peaks, and the peaks must lie within 1% of value (the page
           then shows the patient-seller price as a range) */
   { const b0=A.bestRatio(EXF,0,900), b75=A.bestRatio(EXF,.75,900);
@@ -514,7 +514,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(/\$\("o_listnote"\)\.textContent=optNote\(s,r\.V,rSell,rKeep\)\.text;/.test(HTML),"the optimiser note is written by optNote");
   ok(HTML.indexOf("time to close depends on deal size, not on the ask")<0,"the old 'delay cost does not move either' note is gone");
   ok(/const tMedA=FT\.days\*out\.tMult;/.test(HTML)&&(HTML.match(/FT\.days/g)||[]).length===1,"FT.days is read exactly once in model() (the tMedA line)");
-  ok(HTML.includes('id="o_t_pv"')&&HTML.includes('id="o_tstretch"')&&HTML.includes("aggregate × judgment"),"tile tag and live stretch note present");
+  ok(HTML.includes('id="o_t_pv"')&&HTML.includes('id="o_tstretch"')&&HTML.includes("fitted × judgment"),"tile tag and live stretch note present");
   ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&/about 0\.09 on the time-given-sale scale \(about 0\.06&ndash;0\.07 if only the marketing leg\s+were stretched\) and 0\.15 on the sale-clock scale/.test(HTML)
      &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
@@ -527,16 +527,16 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const s=median("rest",1.5e5); ok(A.bestRatio(s,0,4000)<A.bestRatio(s,0,0)-1e-3,"a cost of delay lowers the delay-aware ask"); }
   const EXO={grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false};
   /* the walk-away asks the Data tab quotes (75% kept, delay charged on the mean time to close): $900/day 1.13, 1.14, 1.15,
-     1.15; $4,000/day 1.09, 1.13, 1.14, 1.14 for earnings $150k/$400k/$1.45M/$5M. If another change moves them, update the
+     1.15; $4,000/day 1.09, 1.12, 1.14, 1.14 for earnings $150k/$400k/$1.45M/$5M. If another change moves them, update the
      Data-tab paragraph. */
-  { const Q={900:["1.13","1.14","1.15","1.15"],4000:["1.09","1.13","1.14","1.14"]};
+  { const Q={900:["1.13","1.14","1.15","1.15"],4000:["1.09","1.12","1.14","1.14"]};
     [1.5e5,4e5,1.45e6,5e6].forEach((ern,i)=>{ const s={...EXO,ind:"medical",ern,rev:ern/0.24};
       for(const lam of [900,4000]){ const b=A.bestRatio(s,.75,lam);
         ok(b.toFixed(2)===Q[lam][i],`Data tab: walk-away ask at $${ern} and $${lam}/day ${b.toFixed(3)} (text says ${Q[lam][i]})`); } }); }
   /* the knife edge the Data tab quotes for the framework example: the cap wins from about 76% kept with no delay cost,
-     77% at $900/day, 80% at $4,000/day */
+     77% at $900/day, 81% at $4,000/day */
   { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6};
-    for(const [lam,pct] of [[0,76],[900,77],[4000,80]]){ let lo=.70,hi=.86;
+    for(const [lam,pct] of [[0,76],[900,77],[4000,81]]){ let lo=.70,hi=.86;
       for(let k=0;k<12;k++){ const m=(lo+hi)/2; A.bestRatio(ex,m,lam)>1.45?hi=m:lo=m; }
       ok(Math.round(50*(lo+hi))===pct,`Data tab: patient-seller cap from ${(50*(lo+hi)).toFixed(1)}% kept at $${lam}/day (text says ${pct}%)`); } }
   /* small deals leave the cap at $900/day at theta .75 */
@@ -653,7 +653,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* at the cap with an interior peak more than 1% below it, the note names that peak instead of claiming none, and the
      flat-top ask is rounded up (framework example at 85% kept; auto repair $1.2M/$300k at 90%) */
   { const f=noteAt({...EXO,ind:"medical",rev:6e6,ern:1.45e6},.85,900), a=noteAt({...EXO,ind:"auto",rev:1.2e6,ern:3e5},.9,900);
-    for(const [v,pm,lo,hi,fl] of [[f,1.22,1.25,1.33,1.37],[a,1.24,1.15,1.22,1.33]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
+    for(const [v,pm,lo,hi,fl] of [[f,1.22,1.25,1.33,1.37],[a,1.24,1.10,1.22,1.32]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
       const U=m=>{ const x=A.model({...v.t,ask:V*m}); return x.EVp+(1-x.PC)*v.t.theta*x.V-v.t.lamT*x.tMean; }, gap=n.peak?(U(v.o)-n.peak.u)/V*100:NaN;
       ok(v.o>A.RHO_MAX-.02&&!n.alt&&n.peak&&Math.abs(n.peak.m-pm)<.015&&gap>lo&&gap<hi&&!/no second peak|rises all the way/.test(n.text)
          &&n.text.includes(`another peak, at ${n.peak.m.toFixed(2)}× value, but to this owner it is worth ${gap.toFixed(2)}% of value less than the cap, beyond a tie`)
@@ -767,7 +767,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.includes("Not adopted: the fit&rsquo;s negative-binomial thin-pool factor"),"Data tab: the NB thin-pool factor is listed as not adopted");
   ok(HTML.includes("<code>IND</code> buyers is also the typical pool that the thin-pool factor"),"Data tab: the IND row names the typical pool");
   /* ENG_SHARE is CALIBRATED everywhere: its row badge, the ledger, and (like FAN_S) no tally */
-  ok(/new Set\(MODELS\.fitted\.ttc_shape\.beta\)\.size;\s+\/\* time-to-close shape levels \*\/\s+\/\* the two CALIBRATED constants, FAN_S and ENG_SHARE/.test(HTML)
+  ok(/\(\(MODELS\.fitted\.ttc_medians\|\|\{\}\)\.listing\|\|\[\]\)\.length;\s+\/\* time-to-close band medians[^*]*\*\/\s+\/\* the two CALIBRATED constants, FAN_S and ENG_SHARE/.test(HTML)
      &&!/\+ 1;\s+\/\* ENG_SHARE/.test(HTML),"nFit does not count ENG_SHARE (calibrated, like FAN_S)");
   ok(/Buyer pool: expected offers, and how a thin pool lowers the closing probability\s*&nbsp;<span class="st adj">calibrated<\/span>/.test(HTML)
      &&HTML.includes("(the offer share that sets its scale is now calibrated to IBBA)")&&!HTML.includes("sets its scale is now fitted"),"ENG_SHARE badged calibrated in its row and in the ledger");
@@ -833,10 +833,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const margin=(API,th,lam)=>{ const V=API.model({...EXF,ask:1}).V, U=m=>{ const r=API.model({...EXF,ask:V*m}); return r.EVp+(1-r.PC)*th*r.V-lam*r.tMean; };
     let b=-Infinity; for(let m=1.0;m<=1.40+1e-9;m+=.002) b=Math.max(b,U(m)); return (b-U(A.RHO_MAX))/V; };
   const m9=margin(A,.75,900), m0=margin(A,.75,0);
-  ok(Math.abs(m9-.0046)<.0003&&Math.abs(m0-.0027)<.0003,`interior peak wins by ${(m9*100).toFixed(2)}% of value at $900/day, ${(m0*100).toFixed(2)}% with no delay cost (comment: 0.46%, 0.27%)`);
-  ok(margin(A,.768,900)>0&&margin(A,.774,900)<0&&margin(A,.760,0)>0&&margin(A,.766,0)<0,"theta flip near 0.771 at $900/day and 0.763 with no delay cost");
+  ok(Math.abs(m9-.0048)<.0003&&Math.abs(m0-.0027)<.0003,`interior peak wins by ${(m9*100).toFixed(2)}% of value at $900/day, ${(m0*100).toFixed(2)}% with no delay cost (comment: 0.48%, 0.27%)`);
+  ok(margin(A,.768,900)>0&&margin(A,.774,900)<0&&margin(A,.760,0)>0&&margin(A,.766,0)<0,"theta flip near 0.772 at $900/day and 0.763 with no delay cost");
   const S=f=>A.loadWith([["const FAN_S=0.80;","const FAN_S="+f+";"]]);
-  ok(margin(S(.905),.75,900)>0&&margin(S(.925),.75,900)<0&&margin(S(.860),.75,0)>0&&margin(S(.872),.75,0)<0,"FAN_S flip near 0.915 at $900/day and 0.866 with no delay cost");
+  ok(margin(S(.91),.75,900)>0&&margin(S(.93),.75,900)<0&&margin(S(.860),.75,0)>0&&margin(S(.872),.75,0)<0,"FAN_S flip near 0.92 at $900/day and 0.866 with no delay cost");
   /* 28b. the share of closings at the ceiling is continuous: no 1/48 steps on a 0.05% change in the ask */
   { let worst=0, prev=null; for(let a=2e6;a<9e6;a*=1.0005){ const c=A.model({...EXF,ask:a}).capShare; if(prev!==null) worst=Math.max(worst,Math.abs(c-prev)); prev=c; }
     ok(worst<.002,`capShare moves at most ${worst.toFixed(5)} per 0.05% of ask (was 1/48 = 0.0208)`);
@@ -1015,6 +1015,36 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* R1-31, R1-32: tallies */
   ok(HTML.includes("Object.values(V.fan_quantiles||{}).filter(v=>v!==1).length")&&HTML.includes("new Set(Object.values(R.pif.sector||{})).size")
      &&HTML.includes('filter(v=>typeof v==="number").length')&&HTML.includes("estimated from data: transactions, plus listing and survey tables"),"R1-31/32: tallies");
+}
+
+/* ---- 31. time-to-close band medians fitted to the IBBA histograms (fit/time_to_close_medians.py) ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const TM=A.MODELS.fitted.ttc_medians, K=[2.5e5,Math.sqrt(5e5*1e6),Math.sqrt(1e6*2e6),Math.sqrt(2e6*5e6),Math.sqrt(5e6*5e7)];
+  ok(TM&&TM.bands.join()===A.MODELS.close_and_timing.time_to_close.bands.join()&&TM.listing.length===5&&TM.loi.length===5,"ttc medians: one per IBBA band, same order");
+  ok(K.every((v,i)=>Math.abs(A.fitTiming(v,"medical").months-TM.listing[i])<1e-9&&Math.abs(A.fitTiming(v,"medical").loi-TM.loi[i])<1e-9),"ttc medians: fitTiming reads the fitted listing and LOI medians at each band centre");
+  ok(TM.listing.every((v,i)=>i===0||v>TM.listing[i-1])&&TM.loi.every((v,i)=>i===0||v>TM.loi[i-1]),"ttc medians: larger deals take longer, band by band");
+  ok(TM.listing.every((v,i)=>Math.abs(v-TM.published_listing[i])<=4*TM.listing_se[i]+.5)
+     &&TM.published_listing.join()===A.MODELS.fitted.ttc_medians.bands.map(b=>A.MODELS.close_and_timing.time_to_close.median_months_listing_to_close_recent[b]).join(),
+     "ttc medians: within reach of IBBA's published figures, which stay in MODELS for comparison");
+  ok(TM.loqo_gain_per_deal.listing[0]>0&&TM.loqo_gain_per_deal.loi[0]>0&&TM.temporal_gain_per_deal.listing[1]===TM.temporal_gain_per_deal.listing[2],"ttc medians: adopted only on an out-of-sample gain");
+  /* the size-order quirk the Data tab quantifies: the share closed by day t may rise with size only past ~18 months,
+     by at most 0.7 pts (1.4 with the published medians) */
+  const rise=B=>{ let worst=0, wt=0, first=Infinity;
+    for(let t=30;t<=2000;t+=10){ let lo=Infinity;
+      for(let lv=Math.log(5e4);lv<=Math.log(3e7);lv+=.01){ const ft=B.fitTiming(Math.exp(lv),"medical"), F=1/(1+Math.pow(t/ft.days,-ft.beta));
+        lo=Math.min(lo,F); if(F-lo>worst){worst=F-lo; wt=t;} if(F-lo>1e-4) first=Math.min(first,t); } }
+    return {worst:worst*100,wt,first}; };
+  const now=rise(A), pub=rise(A.loadWith([["const TM=MODELS.fitted.ttc_medians;","const TM=null;"]]));
+  ok(now.worst<.7&&now.worst>.6&&now.wt>=800&&now.wt<=1000&&now.first>=500&&pub.worst>1.3&&pub.worst<1.45,
+     `ttc medians: residual size-order rise ${now.worst.toFixed(2)} pts near ${now.wt} d from day ${now.first}; published ${pub.worst.toFixed(2)}`);
+  ok(HTML.includes("at most 0.7 pts, near 900 days, against 1.4 pts with the published")&&HTML.includes("by under one point"),"ttc medians: the quirk is described as computed");
+  /* texts no longer call the median a published lookup */
+  ok(!HTML.includes("published size-band lookup")&&!HTML.includes("the median is still the IBBA band median")&&!HTML.includes("Median pinned to the band median")
+     &&!HTML.includes("The median is the IBBA band median")&&!HTML.includes("Median is a size-band lookup")&&!HTML.includes("The median stays on the band figure"),"ttc medians: no stale 'lookup' claims");
+  ok(HTML.includes('<span class="pv f" id="o_t_pv"><i></i>fitted</span>')&&HTML.includes('pv.innerHTML="<i></i>"+(j?"fitted × judgment":"fitted");'),"ttc medians: the tile badge says fitted");
+  ok(HTML.includes("((MODELS.fitted.ttc_medians||{}).listing||[]).length;")&&HTML.includes("const nAgg = 2 + Object.keys(C.close_probability.valuation_gap_distribution).length"),"ttc medians: counted as fitted; the aggregate count is read from the tables");
+  ok(Math.abs(A.fitTiming(4e5,"medical").days-A.fitTiming(4e5,"medical").months*30.44)<1e-9,"ttc medians: days = months x 30.44");
 }
 
 console.log(`${pass} passed, ${fail} failed`);

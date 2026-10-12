@@ -1744,7 +1744,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
             <div class="big"><div class="k">Model value <span class="pv f" id="o_msv_pv" title="BIZCOMPS fitted value, positioned inside its measured spread by the quality inputs (that placement is judgment)"><i></i>fitted</span></div><div class="n sm" id="o_msv">—</div></div>
             <div class="big"><div class="k">Expected multiple <span class="pv f" id="o_mult_pv" title="Fitted multiple times the quality position (judgment)"><i></i>fitted</span></div><div class="n sm" id="o_mult">—</div></div>
             <div class="big"><div class="k">Survival risk <span class="pv f" id="o_risk_pv"><i></i>fitted</span></div><div class="n sm" id="o_risk">—</div></div>
-            <div class="big"><div class="k">Median time to close <span class="pv a" id="o_t_pv"><i></i>aggregate</span></div><div class="n sm" id="o_t">—</div></div>
+            <div class="big"><div class="k">Median time to close <span class="pv f" id="o_t_pv"><i></i>fitted</span></div><div class="n sm" id="o_t">—</div></div>
             <div class="big"><div class="k">Pursue first <span class="pv j"><i></i>judgment</span></div><div class="n sm" id="o_bb">—</div></div>
         </div>
       </div>
@@ -1805,16 +1805,16 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <svg class="sec-glyph" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#4da3ff" stroke-opacity=".45"/><path d="M10 5v5.4l3.4 2.2" stroke="#9ecbff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
       <h2>Time to close</h2><span class="ref">framework §9</span></div>
       <div class="panel">
-        <p class="lede"><b>The median is a published size-band lookup; the spread is fitted.</b> The curve
-          is a log-logistic whose shape comes from IBBA&rsquo;s per-band histograms of months to close
-          (4,533 closed deals over 15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), with its median pinned to the band median. It describes deals that
-          closed and says nothing about a listing that never does. Its shape depends on deal size, never on
-          the ask: deals under $500K are more spread out than larger ones. Because the published $500K&ndash;$1M median is shorter than the recent histograms show,
-          the curve&rsquo;s long end can rise slightly with size between $250k and $707k. For an ask above
+        <p class="lede"><b>The median and the spread are both fitted.</b> The curve
+          is a log-logistic whose median and shape both come from IBBA&rsquo;s per-band histograms of months to close
+          (4,533 closed deals over 15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4). It describes deals that
+          closed and says nothing about a listing that never does. Both depend on deal size, never on
+          the ask: larger deals take longer, and deals under $500K are more spread out than larger ones. Because of that wider spread,
+          the share closed after about 18 months can still rise slightly with size between $250k and $707k, by under one point. For an ask above
           model value the median, and the curve with it, is stretched by a <b>judgment</b> multiplier: overpricing costs time.</p>
         <svg id="tcurve" viewBox="0 0 760 270" role="img" aria-label="Share of closing deals closed by each day, conditional on closing"></svg>
         <p class="note" id="o_tstretch" style="margin:4px 0 0"></p>
-        <div class="eq"><div class="lbl">Median pinned to the band median, stretched above model value; shape fitted by size band</div>
+        <div class="eq"><div class="lbl">Median and shape fitted by size band; the median is stretched above model value</div>
           <div id="eq_t"></div><div class="sub" id="eq_ts"></div></div>
         <div id="o_real"></div>
       </div>
@@ -2051,6 +2051,7 @@ MODELS.fitted={"model":"omni_fitted_v4","asof":"2026-10-07","sba_rate":{"prime":
    own grouped medians (display only); hist_*_se are quarter-bootstrap SEs, sampling only (they ignore where deals
    sit inside a one-month answer). Closed deals only. */
 MODELS.fitted.ttc_shape={"family":"loglogistic","bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],"beta":[2.20,2.64,2.64,2.64,2.64],"beta_se":[0.16,0.13,0.13,0.13,0.13],"n":[2100,867,676,548,342],"n_quarters":15,"hist_median_listing":[6.6,8.1,8.3,9.3,9.9],"hist_median_listing_se":[0.21,0.24,0.24,0.25,0.38],"hist_median_loi":[2.2,3.1,3.2,3.8,3.9],"hist_median_loi_se":[0.03,0.06,0.05,0.15,0.13],"source":"IBBA / M&A Source Market Pulse full reports, 15 quarters (2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4), per-band histograms of months listing/engagement to close; closed deals only"};
+MODELS.fitted.ttc_medians={"bands":["<500K","500K-1M","1-2M","2-5M","5-50M"],"listing":[6.54,7.75,8.02,9.03,10.14],"listing_se":[0.18,0.18,0.18,0.29,0.3],"loi":[2.12,3.06,3.2,3.87,4.05],"loi_se":[0.04,0.07,0.06,0.13,0.14],"published_listing":[6.5,7.25,8.0,8.0,10.5],"published_loi":[2.0,3.0,3.0,3.0,3.5],"loqo_gain_per_deal":{"listing":[0.0029,0.0013,12,15],"loi":[0.0126,0.0036,13,15]},"temporal_gain_per_deal":{"listing":[0.0037,4,4],"loi":[0.0141,4,4]},"calib_max_abs_pts":{"listing":{"d90":[2.1,2.2],"d180":[9.4,3.0],"d365":[6.9,4.7]},"loi":{"d90":[19.5,3.5],"d180":[7.8,3.9],"d365":[1.4,2.0]},"note":"[published medians, refitted medians]: largest gap in percentage points between the drawn curve and the histograms' share closed by day 90/180/365, over the five bands"},"n":[2100,867,676,548,342],"source":"fit/time_to_close_medians.py: maximum-likelihood medians of the interval-censored log-logistic with the shipped shape, IBBA / M&A Source Market Pulse per-band histograms, 15 quarters (2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4), quarter-bootstrap SEs, shrunk toward a line in ln(band centre). Replaces IBBA's published 2018-23 band medians, which predict held-out quarters worse."};
 MODELS.fitted.competition={"eng_share":0.184,"eng_share_se":0.027,"eng_share_ci95":[0.13,0.226],"eng_share_spec_range":[0.164,0.201],"eng_share_spec_n":9,"eng_share_pln":{"c":0.21,"se":0.015,"log_sd":0.78,"note":"Poisson-lognormal scale, which fits better; it pairs with its own log-sd, not with nb_r, so it is not a range for eng_share. Never read by the model"},"calibration":"ENG_SHARE turns buyers contacted x engagement into expected offers. It is the scale at which a typical pool reproduces IBBA's offers per closed deal by size band, fitted by maximum likelihood with a zero-truncated negative binomial (dispersion nb_r, fitted jointly). Only the scale is adopted: the model's thin-pool factor keeps the Poisson shape, and nb_r is not read by the model","nb_r":1.07,"nb_r_se":0.55,"nb_r_ci95":[0.4,2.86],"nb_r_spec_range":[0.82,1.9],"nb_thin_pool":{"status":"not adopted (review): its level rests on the zero-offer class, which IBBA never observes, so it is an extrapolation of the mixing family, not identified","thin_half_pool":[0.62,0.82],"thin_quarter_pool":[0.35,0.6],"p_any_offer_typical_under_500k":[0.5,0.57],"pepperdine_base_close_under_500k":0.61,"p_any_offer_note":"0.50 under the NB, 0.57 under the Poisson-lognormal; below the base close rate, which a sale needing an offer rules out"},"thin_shape":"calibrated scale, judgment shape: Poisson chance of at least one offer, relative to a typical pool's, with a smooth cap at 1 (THIN_W); assumes closing does not depend on the number of offers once there is one (the histograms lean toward it does, which would lower the factor) and that offers grow in proportion to buyers contacted (a weak analog leans toward less than proportional, which would raise it)","thin_half_pool":[0.58,0.85],"thin_quarter_pool":[0.31,0.6],"thin_half_pool_at_eng_ci":[0.56,0.89],"thin_cap_w":0.05,"thin_cap_max_lift":0.014,"thin_half_pool_old":[0.65,0.96],"thin_quarter_pool_old":[0.37,0.8],"thin_selection_drop_half":[0.01,0.11],"thin_beta_rise_half":[0.05,0.18],"quasi_dispersion":[1.4,4.7],"n_deals":1523,"n_deals_rounding_consistent":1452,"band_quarters":25,"quarters":"2023Q1-2023Q4, 2025Q4","quarter_clusters":5,"heldout_loglik_per_deal":{"nb":-1.588,"poisson_same_scale":-1.702},"band_centres":[250000,707000,1414000,3162000,15810000],"offers_per_closed_deal_lower_bound":{"<500K":2.0,"500K-1M":2.3,"1M-2M":2.78,"2M-5M":2.83,"5M-50M":3.83},"offers_per_closed_deal_bandfree_fit":{"<500K":2.02,"500K-1M":2.32,"1M-2M":2.86,"2M-5M":2.92,"5M-50M":4.28},"offers_per_closed_deal_bandfree_se":{"<500K":0.1,"500K-1M":0.17,"1M-2M":0.23,"2M-5M":0.19,"5M-50M":1.2},"offers_per_closed_deal_model":{"<500K":1.965,"500K-1M":2.488,"1M-2M":2.802,"2M-5M":3.182,"5M-50M":3.745},"expected_offers_typical_pool":[0.99,2.8],"expected_offers_typical_pool_by_industry":[0.65,3.49],"offers_per_closed_deal_poisson_shape":{"<500K":1.578,"500K-1M":1.954,"1M-2M":2.197,"2M-5M":2.506,"5M-50M":2.992},"avg_offers_bars_2024_2026":{"<500K":1.824,"500K-1M":2.456,"1M-2M":2.656,"2M-5M":3.281,"5M-50M":4.627},"series_disagreement":{"2023Q4_bars_minus_histogram_lower_bound":[-0.38,-0.2,-0.12,-0.48,-0.12],"2025Q4_table_minus_histogram_lower_bound":[0.18,0.42,0.74,-0.84,4.1]},"share_one_offer":{"<500K":0.478,"500K-1M":0.415,"1M-2M":0.34,"2M-5M":0.297,"5M-50M":0.264},"kappa":0.03,"kappa_status":"judgment (not identified)","kappa_ibba_within_band":[-0.01,0.165],"kappa_ci95_ibba":[-0.33,0.31],"kappa_two_way_fe_eiv":[-0.186,0.152],"kappa_crossband_upper":0.33,"kappa_n_band_quarters":40,"comp_h_note":"COMP_H = 3 x ENG_SHARE / 0.34: the old half-saturation of 3 engaged buyers at a 0.34 share, re-expressed in offers, so the premium is unchanged","strategic_premium":{"status":"consistency check only; BUYERS mf, syn and PHI unchanged (judgment)","pepperdine_2016":[0.166,0.019],"pepperdine_2025_secondary":[0.104,0.025],"re_pooled":[0.137,0.031],"model_full_presence":0.107,"theta":[1.155,0.186],"implied_str_adj_2016_only":[1.25,1.2],"implied_str_adj_2025_only":[1.18,1.14]},"addon_over_platform_gf":[1.076,0.086],"score_effect_at_integration":{"median_half_pool":[1,25],"median_half_pool_old":[1,43],"median_half_pool_drop":21,"median_three_quarter_pool":[19,43],"median_three_quarter_pool_old":[27,48],"median_quarter_pool":[1,1],"median_quarter_pool_old":[1,15],"example_25_buyers":[27,2],"example_40_buyers":[40,33],"example_65_buyers":[43,43]},"refit_when":"refit ENG_SHARE (fit/competition_buyers.py) whenever IND buyers, the BUYERS fit functions, peRef or buyerMix change: it is calibrated against this console's own typical pool","source":"IBBA/M&A Source Market Pulse offers-per-closed-deal histograms by deal-size band, zero-truncated negative binomial (fit/competition_buyers.py). Both flagged quarters are kept. 2023Q4 (read from a multi-series line chart) is inconsistent with the same report's average-offers bars in all five bands (its lowest possible means exceed them by 0.12-0.48); 2025Q4 is inconsistent in one band ($2M-5M) and its $5M+ cell has 35% at 10+ (n=26). Dropping 2025Q4 gives eng_share 0.190; dropping 2023Q4 and that cell 0.164; 2023Q1-Q3 only 0.170. Kappa: IBBA realized/ask x average offers, within band. Buyer factors: Pepperdine PCM 2016/2025, GF Data, Stanford 2024, as a consistency check"};
 const VBANDS=[["<500K",0,5e5],["500K-1M",5e5,1e6],["1-2M",1e6,2e6],["2-5M",2e6,5e6],["5-50M",5e6,5e7]];
 const vbandOf=p=>{for(const[n,lo,hi]of VBANDS){if(p>=lo&&p<hi)return n}return p>=5e7?"5-50M":"<500K"};
@@ -2410,12 +2411,12 @@ function fitClose(ask,val,channel,size){
           reasons:C.failure_reasons,gapDist:C.valuation_gap_distribution};
 }
 
-/* ---- Model III: time to close (AGGREGATE, IBBA Market Pulse) ----
-   Size-band medians (a lookup) and a curve shape fitted by size band to IBBA's grouped
-   histograms (MODELS.fitted.ttc_shape). No deal-level durations exist, so nothing here
+/* ---- Model III: time to close (FITTED to IBBA Market Pulse aggregates) ----
+   Size-band medians (MODELS.fitted.ttc_medians) and a curve shape (MODELS.fitted.ttc_shape),
+   both fitted by size band to IBBA's grouped histograms. No deal-level durations exist, so nothing here
    has covariates beyond deal size. (The ask enters only in model(), through timeMult: a
    labelled judgment that stretches the band median when the ask is above model value.) */
-/* Published figures are band medians. Read off a band they jump at every edge: $1 of
+/* The medians, fitted or published, are one per band. Read off a band they jump at every edge: $1 of
    earnings across $5M of value added 76 days and $73k of expected proceeds. Treat each
    median as the value at its band's geometric centre and interpolate in ln(price),
    flat beyond the outer centres - as BANDS and the LGD curve already do. */
@@ -2437,12 +2438,17 @@ function fitTiming(price,indKey){
   const PR=MODELS.value.price_realisation_by_industry;
   const f=(PR&&PR.factor&&PR.factor[indKey]!==undefined)?PR.factor[indKey]:1;
   const B=T.bands, col=o=>B.map(b=>o[b]);
-  const months=bandInterp(price,col(T.median_months_listing_to_close_recent));
+  /* band medians FITTED to the same IBBA histograms the shape comes from (fit/time_to_close_medians.py): they predict
+     held-out quarters better than IBBA's published 2018-23 medians, which they replace; the published figures stay in
+     MODELS for comparison. Was a published lookup whose $500K-1M and $2-5M medians sat 0.8 and 1.3 months below the
+     histograms, so the drawn curve's long end rose with size between $250k and $707k. */
+  const TM=MODELS.fitted.ttc_medians;
+  const months=bandInterp(price,TM?TM.listing:col(T.median_months_listing_to_close_recent));
   const pas=bandInterp(price,col(T.price_pct_of_asking));
   const pa=clamp(pas*f,.55,1.12);
   return {months:months,
           beta:bandInterp(price,MODELS.fitted.ttc_shape.beta),
-          loi:bandInterp(price,col(T.median_months_loi_to_close_recent)),
+          loi:bandInterp(price,TM?TM.loi:col(T.median_months_loi_to_close_recent)),
           band:bd,pctAsk:pa,pctAskSize:pas,indFactor:f,
           indN:(PR&&PR.n&&PR.n[indKey])||0,
           days:months*30.44};
@@ -2828,9 +2834,10 @@ function model(s){
   const lamE=clamp(LAM0*Math.exp(-etaT/KW),LAM_FLOOR,900);
   const F=t=>1-Math.exp(-Math.pow(t/lamE,KW));
   /* ---- AGGREGATE OVERRIDE (Model III) ----------------------------
-     The median is the IBBA band median, interpolated in ln(value). The shape
-     is fitted: a log-logistic whose spread beta comes from IBBA's per-band
-     histograms of months to close (MODELS.fitted.ttc_shape). The odds of
+     The median is fitted to IBBA's per-band histograms of months to close
+     (MODELS.fitted.ttc_medians), interpolated in ln(value). The shape is fitted
+     to the same histograms: a log-logistic whose spread beta is
+     MODELS.fitted.ttc_shape. The odds of
      having closed by day t are (t/t_med)^beta, so F(t_med)=1/2 exactly with no
      scale to solve. The curve is pinned to the final out.tMed; beta is keyed
      on Vbase like the band, never on the ask. Conditional on closing.       */
@@ -3267,9 +3274,9 @@ const FIELD_RANGE={own:[.02,.99],mgt:[.02,.99],fin:[.02,1],rec:[0,1],ret:[.05,.9
    price-elastic the closing probability is and on what a retained business is
    worth to the owner: ~1.1x when a failed sale is a total loss. For an owner content to
    keep it (theta = .75) the utility has two near-equal peaks, an interior one near 1.15x
-   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.46% of value
-   (framework example; 0.27% with no delay cost); the cap wins for FAN_S above about 0.915 (about 0.866
-   with no delay cost), theta from about 0.771 (0.763 with no delay cost), or a price-gap penalty scale PEN_MAX
+   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.48% of value
+   (framework example; 0.27% with no delay cost); the cap wins for FAN_S above about 0.92 (about 0.866
+   with no delay cost), theta from about 0.772 (0.763 with no delay cost), or a price-gap penalty scale PEN_MAX
    below about 0.43 (shipped 0.45, a spec judgment). The delay cost is charged on
    the MEAN time to close (out.tMean), as a per-day cost's expectation must be. That knife-edge is set by how
    widely prices scatter at asks of 1.4-1.5x, where FAN_S (calibrated near 1.07x) is
@@ -4175,8 +4182,10 @@ function render(){
     +(r.fv.wedge?'<span class="sub2">'+xx(r.M*r.fv.wedge)+' EBITDA</span>':"");
   $("o_t").textContent=Math.round(r.tMed)+" days";
   { const pv=$("o_t_pv"), j=r.tMult>1.0005;   /* above value the median carries a judgment multiplier */
-    pv.className="pv "+(j?"j":"a"); pv.innerHTML="<i></i>"+(j?"aggregate × judgment":"aggregate");
-    pv.title=j?`Band median ${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)} for an ask above model value (overpricing costs time, a labelled judgment)`:"";
+    /* the band median is fitted to IBBA's per-band histograms (MODELS.fitted.ttc_medians), no longer a published lookup */
+    pv.className="pv "+(j?"j":"f"); pv.innerHTML="<i></i>"+(j?"fitted × judgment":"fitted");
+    pv.title=j?`Fitted band median ${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)} for an ask above model value (overpricing costs time, a labelled judgment)`
+              :"Band median fitted to IBBA's per-band histograms of months to close; closed deals only";
     $("o_tstretch").textContent=j?`Your ask is ${Math.round((s.ask/r.V-1)*100)}% above model value, so the median here is the band's `
       +`${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)} (overpricing costs time: a labelled judgment, see the Data tab).`:""; }
   /* The observed share of SBA acquisition loans of this size charged off within 5 years
@@ -4581,9 +4590,15 @@ function renderData(){
     + 1    /* the SBA tail factor (years 9-10 borrowed from mature 7(a) loans): labelled judgment in Model V */
     + 4;   /* the price-gap penalty scale PEN_MAX, the $1M / $5M edges of the base-rate size ramp and the placing of the open
               '>50%' gap bucket at 100% (AUDIT_FINDINGS R1-1) */
-  /* published market aggregates: the 14 Pepperdine, IBBA and BizBuySell figures the Aggregate section lists, plus
-     the prime rate, Census and BLS series. One constant for the headline tally and the section badge. */
-  const nAgg = 14 + 3;
+  /* published market aggregates the console reads, counted from the tables themselves: Pepperdine's two base rates
+     and its price-gap shares (Model I), IBBA's price-to-ask by size band (the ask ceiling), BizBuySell's price-to-ask
+     by industry (the realisation panel), plus the prime rate, Census and BLS series. IBBA's band medians of time to
+     close are fitted now (fit/time_to_close_medians.py) and counted in nFit. One constant for the headline tally and
+     the section badge. */
+  const nAgg = 2 + Object.keys(C.close_probability.valuation_gap_distribution).length
+             + C.time_to_close.bands.length
+             + Object.keys((V.price_realisation_by_industry||{}).factor||{}).length
+             + 3;
   const nFit = 1 + Object.keys(V.coefficients).length + Object.keys(V.industry_effects).length
              + Object.keys(V.industry_effects_naics6||{}).length
              + R.co.log_base.filter(v=>v!=null).length + R.pif.log_base.length    /* hazard baselines */
@@ -4600,7 +4615,8 @@ function renderData(){
              + ((V.calibration||{}).log_correction||[]).length          /* median calibration knots */
              + new Set(Object.values(R.pif.sector||{})).size            /* payoff hazard sector effects */
              + 3                                                       /* loss severity: level, size, age */
-             + new Set(MODELS.fitted.ttc_shape.beta).size;             /* time-to-close shape levels */
+             + new Set(MODELS.fitted.ttc_shape.beta).size              /* time-to-close shape levels */
+             + ((MODELS.fitted.ttc_medians||{}).listing||[]).length;   /* time-to-close band medians (the LOI medians feed no figure) */
   /* the two CALIBRATED constants, FAN_S and ENG_SHARE (offers per closed deal, IBBA), are badged
      "calibrated" in their rows and counted in no tally: they are set to reproduce a market average,
      not estimated from transaction outcomes */
@@ -4844,15 +4860,17 @@ function renderData(){
 
     <p class="grp-title" style="margin-top:18px">Model III — time to close</p>
     <div class="tw"><table>
-      <thead><tr><th>Deal size</th><th class="n">Listing &rarr; close</th><th class="n">LOI &rarr; close</th><th class="n">Curve shape &beta;</th><th class="n">Histogram medians, listing / LOI</th><th class="n">Price / ask</th></tr></thead><tbody>
-      ${C.time_to_close.bands.map((b,i)=>{ const S=MODELS.fitted.ttc_shape; return `<tr><td>${b}</td>
-        <td class="n">${C.time_to_close.median_months_listing_to_close_recent[b]} mo</td>
-        <td class="n">${C.time_to_close.median_months_loi_to_close_recent[b]} mo</td>
+      <thead><tr><th>Deal size</th><th class="n">Listing &rarr; close, fitted median</th><th class="n">LOI &rarr; close, fitted median</th><th class="n">IBBA published, listing / LOI</th><th class="n">Curve shape &beta;</th><th class="n">Histogram medians, listing / LOI</th><th class="n">Price / ask</th></tr></thead><tbody>
+      ${C.time_to_close.bands.map((b,i)=>{ const S=MODELS.fitted.ttc_shape, M=MODELS.fitted.ttc_medians,
+          L=C.time_to_close.median_months_listing_to_close_recent[b], O=C.time_to_close.median_months_loi_to_close_recent[b]; return `<tr><td>${b}</td>
+        <td class="n">${M?`${M.listing[i].toFixed(2)} &plusmn; ${M.listing_se[i].toFixed(2)}`:L} mo</td>
+        <td class="n">${M?`${M.loi[i].toFixed(2)} &plusmn; ${M.loi_se[i].toFixed(2)}`:O} mo</td>
+        <td class="n">${L} / ${O} mo</td>
         <td class="n">${S.beta[i].toFixed(2)} &plusmn; ${S.beta_se[i].toFixed(2)}</td>
         <td class="n">${S.hist_median_listing[i].toFixed(1)} / ${S.hist_median_loi[i].toFixed(1)} mo</td>
         <td class="n">${(C.time_to_close.price_pct_of_asking[b]*100).toFixed(0)}%</td></tr>`; }).join('')}
       </tbody></table></div>
-    <p class="note"><b>The median is a lookup; the curve&rsquo;s shape is fitted.</b> IBBA&rsquo;s Market Pulse
+    <p class="note"><b>The median and the curve&rsquo;s shape are both fitted.</b> IBBA&rsquo;s Market Pulse
     full reports chart how many months each closed deal took, by size band: 15 quarters (2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), 4,533 closed deals.
     Fitted to those histograms and scored on held-out quarters, a log-logistic fits as well as a gamma, at least
     as well as a refitted Weibull (its edge is within noise in the under-$500K and $1&ndash;2M bands), and better than a lognormal. It predicts held-out quarters better than the Weibull
@@ -4865,11 +4883,22 @@ function renderData(){
     because brokers may round or truncate months and because &ldquo;under one month&rdquo; is ambiguous. The
     under-$500K shape is the least certain: its improvement over the old curve depends on how &ldquo;under one
     month&rdquo; is read. Months are counted from engagement or listing, so for larger deals part of the steeper shape
-    may be preparation time. The median stays on the band figure (IBBA, 2018&ndash;23). The histogram medians beside
-    it come from the 15 quarters above and run about 0.8&ndash;1.3 months longer in the $500K&ndash;$1M and $2&ndash;5M bands. Because the published $500K&ndash;$1M median is shorter than its histogram median, the curve&rsquo;s long end rises
-    slightly with size between $250k and $707k (up to 1.3 pts at 540 days). For $2&ndash;5M deals the
-    curve overstates the share closed by day 180 by about 9 pts (15 before) and by day 365 by about 7 (3
-    before). Everything here describes deals that closed, sampled by the quarter they closed in; the most recent
+    may be preparation time. ${(()=>{ const M=MODELS.fitted.ttc_medians; if(!M) return `The median is IBBA&rsquo;s published band figure (2018&ndash;23).`;
+      const g=M.loqo_gain_per_deal, tg=M.temporal_gain_per_deal, cm=M.calib_max_abs_pts.listing,
+            gap=i=>(M.listing[i]-M.published_listing[i]).toFixed(1);
+      return `<b>The medians are fitted to the same histograms</b> with the shape held at the values above, each band shrunk
+    toward a line in ln(deal size) by how noisy it is (fit/time_to_close_medians.py). They replace IBBA&rsquo;s published
+    2018&ndash;23 band medians, shown beside them, because they predict held-out quarters better. Leaving out one quarter at a
+    time, listing to close gains ${g.listing[0].toFixed(4)} nats per deal (SE ${g.listing[1].toFixed(4)}), better in ${g.listing[2]} of
+    ${g.listing[3]} quarters, and LOI to close gains ${g.loi[0].toFixed(4)} (SE ${g.loi[1].toFixed(4)}), better in ${g.loi[2]} of ${g.loi[3]}.
+    Fitted on 2020&ndash;22 and scored on the ${tg.listing[2]} later quarters, ${tg.listing[1]===tg.listing[2]&&tg.loi[1]===tg.loi[2]?`both are better in all ${tg.listing[2]}`:`they are better in ${tg.listing[1]} and ${tg.loi[1]} of ${tg.listing[2]}`}. The gains are
+    small; what they fix is the published $500K&ndash;$1M and $2&ndash;5M medians, which sat ${gap(1)} and ${gap(3)} months below
+    the fitted ones. Against the histograms&rsquo; share closed, the largest gap over the five bands falls from
+    ${cm.d180[0].toFixed(1)} to ${cm.d180[1].toFixed(1)} pts at 180 days and from ${cm.d365[0].toFixed(1)} to ${cm.d365[1].toFixed(1)} at 365 (${cm.d90[0].toFixed(1)} to ${cm.d90[1].toFixed(1)} at 90 days,
+    no change). Because deals under $500K are more spread out, the share closed after about 18 months still rises
+    slightly with size between $250k and $707k: at most 0.7 pts, near 900 days, against 1.4 pts with the published
+    medians. The LOI medians are shown for reference; no figure on the console reads them.`; })()}
+    Everything here describes deals that closed, sampled by the quarter they closed in; the most recent
     quarters run slightly steeper.</p>
     <p class="note"><b>Overpricing costs time (added Oct 2026) &mdash; a labelled judgment, not an estimate.</b>
     The band median above, and the curve drawn through it, hold for an ask at or below model value. Above it the
@@ -4898,9 +4927,9 @@ function renderData(){
     probability, the price, the expected proceeds, the proceeds-maximising ask and both scores do not read it. With
     75% of value kept and $900 a day of delay cost the walk-away ask is 1.13&times;, 1.14&times;, 1.15&times; and
     1.15&times; for earnings of $150k, $400k, $1.45M and $5M (1.15&times; at every size with b = 0), and
-    1.09&times;, 1.13&times;, 1.14&times; and 1.14&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
+    1.09&times;, 1.12&times;, 1.14&times; and 1.14&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
     near 1.15&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
-    cap wins from about 77% kept at $900 a day, 76% with no delay cost and 80% at $4,000), in the realised-price
+    cap wins from about 77% kept at $900 a day, 76% with no delay cost and 81% at $4,000), in the realised-price
     fan and in the judgment scale of the price-gap penalty (the cap wins if it is set below about 0.43), not a measurement of b; the console shows both ends as a range when they are within 1% of value.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     ${(()=>{ /* computed from the shipped sector effects and the eight DealStats sectors tabulated below, so it cannot go
@@ -5217,10 +5246,17 @@ function renderData(){
         <td>Weibull, shape k = ${KW} (judgment), scale re-solved to the band median</td>
         <td>log-logistic, &beta; ${Fv.ttc_shape.beta[0].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[0].toFixed(2)} under $500K and
         ${Fv.ttc_shape.beta[4].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[4].toFixed(2)} from $500K up, interpolated in ln(value);
-        the median is still the IBBA band median</td>
+        the median is fitted too (next row)</td>
         <td>IBBA / M&amp;A Source Market Pulse per-band histograms of months to close: ${Fv.ttc_shape.n.reduce((a,b)=>a+b,0).toLocaleString()}
         closed deals over ${Fv.ttc_shape.n_quarters} quarters (2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), interval-censored fit; beats the old
         curve on held-out quarters (12 of 15). Closed deals only; no gradient above $500K is identified</td></tr>
+      ${Fv.ttc_medians?(()=>{ const M=Fv.ttc_medians, g=M.loqo_gain_per_deal, tg=M.temporal_gain_per_deal; return `<tr><td>Median time to close by size band (listing to close)</td>
+        <td>IBBA&rsquo;s published 2018&ndash;23 band medians: ${M.published_listing.join(', ')} months</td>
+        <td>${M.listing.map((v,i)=>`${v.toFixed(2)} &plusmn; ${M.listing_se[i].toFixed(2)}`).join(', ')} months, each band shrunk toward a
+        line in ln(deal size); interpolated in ln(value)</td>
+        <td>The same histograms: interval-censored maximum likelihood with the shape held at the row above, quarter-bootstrap SEs.
+        Predicts held-out quarters better than the published medians (${g.listing[2]} of ${g.listing[3]} left out one at a time; ${tg.listing[1]} of
+        ${tg.listing[2]} on 2023&ndash;25 held out). Closed deals only</td></tr>`; })():''}
       <tr><td>Realised-price fan: share of the value spread kept once a business is listed (FAN_S; drives the price-if-it-closes scenarios)
         &nbsp;<span class="st adj">calibrated</span></td>
         <td>1.00 (the value model&rsquo;s whole out-of-fold spread)</td>
@@ -5497,12 +5533,13 @@ ${(()=>{ const TS=MODELS.close_and_timing.close_probability.ib_termination_serie
   const dips=ys.filter((y,i)=>i>0&&+y>2021&&TS[y]<TS[ys[i-1]]);
   return `Termination has risen since the 2020&ndash;21 trough of ${(TS["2020"]*100).toFixed(0)}%${dips.length?` (not every year: ${dips.map(y=>`${(TS[y]*100).toFixed(0)}% in ${y}`).join(', ')})`:''}, reaching ${(TS[last]*100).toFixed(0)}% in ${last}.`; })()}</li>
 
-<li><span class="pv a"><i></i>aggregate</span> <b>Time to close</b> &mdash;
-IBBA / M&amp;A Source Market Pulse, <b>12 quarterly editions 2018&ndash;2023</b>, cross-checked across
-overlapping five-year windows and corroborated by BVR&rsquo;s 228-day all-size median.
-Median is a size-band lookup; the curve shape is <b>fitted</b> from IBBA&rsquo;s per-band histograms
+<li><span class="pv f"><i></i>fitted</span> <b>Time to close</b> &mdash;
+IBBA / M&amp;A Source Market Pulse. The band medians and the curve shape are both <b>fitted</b> to IBBA&rsquo;s per-band histograms
 of months to close (15 quarters, 2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4; 4,533 closed deals; no deal-level durations): a log-logistic with
-&beta; 2.20 under $500K and 2.64 from $500K up (no gradient above $500K is identified).
+medians from ${MODELS.fitted.ttc_medians.listing[0].toFixed(1)} months under $500K to ${MODELS.fitted.ttc_medians.listing[4].toFixed(1)} for $5&ndash;50M, and
+&beta; 2.20 under $500K and 2.64 from $500K up (no shape gradient above $500K is identified). The fitted medians replace IBBA&rsquo;s
+published band medians (12 quarterly editions, 2018&ndash;2023), which predict held-out quarters worse; BVR&rsquo;s 228-day all-size
+median corroborates the level.
 Above model value the band median is stretched by a <b>judgment</b> multiplier (Model III, <i>Overpricing costs time</i>):
 online-marketplace analogs give its sign, not its size.</li>
 
