@@ -8002,6 +8002,15 @@ details.more[open]>summary::before,:is(#view-console,#view-data) details.more[op
   .nav::after,.nav-ind,.nav-ind-h,.masthead h1 .h1-ink,.hero-stats .big::before,
   :is(.tab,.btn,select,summary,.lede-more,a,button):focus-visible{animation:none!important;transition:none!important}
 }
+
+/* UI round 3 (closing check). r3-1: on phones the masthead status grid was only as wide as its content, so the three labels
+   ran together 8px apart; give it the full measure and a 12px column gap. r3-2: the tab bar sat 3px under the status values;
+   pull it up 6px instead of 22px (its sentinel moves with it, so the docked shadow still toggles when the bar docks). */
+@media (min-width:375px) and (max-width:560px){ .mast-status{width:100%;column-gap:var(--sp-3,12px)!important} }
+@media (min-width:375px) and (max-width:420px){ .mast-status dd{font-size:14px} }
+@media (max-width:560px){ .nav{margin-top:-6px} .nav-sentinel{margin-top:-6px} }
+/* r3-1, narrow phones (375-383px, e.g. iPhone SE and mini): one row would wrap 'Market aggregate', so keep the two-row layout */
+@media (max-width:383px){ .mast-status{grid-template-columns:repeat(2,auto);justify-content:start;gap:var(--sp-3,12px) var(--sp-5,24px)!important;width:auto} }
 </style>
 <!-- ======== end v8-hero ======== -->
 <!-- (separator) -->
