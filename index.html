@@ -858,7 +858,7 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
 td.inked{position:relative;isolation:isolate}
 td.inked::before{
   content:"";position:absolute;inset:3px 0 3px 0;z-index:-1;
-  background:var(--ink);border-radius:3px;
+  background:var(--inkbar);border-radius:3px;
   transition:background .45s cubic-bezier(.22,1,.36,1)}
 /* centre rule on diverging columns, so zero is legible without colour */
 td.inked::after{
@@ -6204,13 +6204,13 @@ document.querySelectorAll("input,select").forEach(el=>{
         if(diverging){
           var f = Math.min(Math.abs(v2)/mag, 1) * 46;           // half-width %
           var rgb = v2 >= 0 ? POS : NEG;
-          cell2.style.setProperty('--ink',
+          cell2.style.setProperty('--inkbar',
             v2 >= 0 ? 'linear-gradient(90deg,transparent 50%,rgba('+rgb+',.30) 50%,rgba('+rgb+',.30) '+(50+f)+'%,transparent '+(50+f)+'%)'
                     : 'linear-gradient(90deg,transparent '+(50-f)+'%,rgba('+rgb+',.30) '+(50-f)+'%,rgba('+rgb+',.30) 50%,transparent 50%)');
           cell2.style.setProperty('--inkrule','1px');
         } else {
           var f2 = (hi===lo)?0:Math.min(Math.max((v2-Math.min(lo,0))/(hi-Math.min(lo,0)),0),1)*92;
-          cell2.style.setProperty('--ink',
+          cell2.style.setProperty('--inkbar',
             'linear-gradient(90deg,rgba('+SEQ+',.20) 0,rgba('+SEQ+',.20) '+f2+'%,transparent '+f2+'%)');
           cell2.style.setProperty('--inkrule','0px');
         }
