@@ -1048,5 +1048,62 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(Math.abs(A.fitTiming(4e5,"medical").days-A.fitTiming(4e5,"medical").months*30.44)<1e-9,"ttc medians: days = months x 30.44");
 }
 
+/* ---- 32. round-2 audit fixes (AUDIT_FINDINGS round 2, verified at 0f1fa9b) ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  const V0=A.model({...FX,ask:1}).V;
+  /* R2-1: each buyer's EV is P_E x P_C,j x softmin(V_j, ceiling), and the page prints that formula and the capped price */
+  { const r=A.model(FX);
+    ok(r.buyers.every(b=>Math.abs(b.Pj-A.softMin(b.Vj,r.ceil))<1e-6&&Math.abs(b.EV-b.PE*b.PCj*b.Pj)<1e-6),"R2-1: EV_j = P_E P_C softmin(V_j, ceiling)");
+    ok(HTML.includes("EV_j=P_{E,j}\\\\,P_{C,j}\\\\,\\\\operatorname{softmin}\\\\big(V_j,\\\\;\\\\bar a\\\\,c_{\\\\text{ask}}\\\\big)")&&HTML.includes("at this ask</span>")
+       &&HTML.includes("this ask caps what it pays at }")&&HTML.includes("A(\\\\tfrac{\\\\bar a}{W})"),"R2-1: eq_b, eq_a, the table and 'pays most' show the cap"); }
+  /* R2-2: the fan's anchoring reads the effective ask, so past RHO_MAX x value the price if it closes is flat; asks below
+     about 1.4x value are untouched; the optimiser never keeps an ask above RHO_MAX x its value */
+  { const at=m=>A.model({...FX,ask:V0*m});
+    ok([2,3,5].every(m=>Math.abs(at(m).Vmean/at(2).Vmean-1)<1e-9&&Math.abs(at(m).Vreal/at(2).Vreal-1)<1e-9)&&Math.abs(at(1.7).Vmean/at(2).Vmean-1)<1e-5,"R2-2: E[P | close] and the median price flat from 2x value (within 1e-5 from 1.7x: the soft minimum saturates exponentially)");
+    ok([.6,.9,1.05,1.2].every(m=>Math.abs(at(m).askEff/(V0*m)-1)<1e-9)&&Math.abs(at(1.35).askEff/(V0*1.35)-1)<1e-5,"R2-2: the effective ask is the ask to 1e-9 below 1.2x, 1e-5 at 1.35x");
+    ok(at(2).PC<at(1.6).PC&&at(2).tMed>at(1.6).tMed,"R2-2: past the cap a higher ask still costs closing probability and time");
+    const s={...FX,ask:2*V0,theta:.95}; s.rhoSell=A.bestRatio(s,0,0); s.optRho=A.bestRatio(s,s.theta,s.lamT);
+    const b=A.optimize(s,A.model(s),s.budget,s.lamT,s.theta);
+    ok(b.U.keys.includes("reprice")&&b.V.keys.includes("reprice"),"R2-2: an ask at 2x value is repriced by both programmes"); }
+  /* R2-3: the held-out Poisson benchmark is labelled for what it is, and the console's own pairing is reported */
+  { const H=A.MODELS.fitted.competition.heldout_loglik_per_deal;
+    ok(!("poisson_same_scale" in H)&&H.poisson_own_scale>H.poisson_console_pairing&&H.nb>H.poisson_own_scale&&Math.abs(H.poisson_console_pairing-H.poisson_old_034)<.01
+       &&HTML.includes("for what the thin-pool factor uses, the Poisson shape at the negative"),"R2-3: held-out benchmarks named and the console pairing shown"); }
+  /* R2-4: the days-on-market self-audit row explains why it reads off; 213 days now, 207 with the published medians */
+  { const prof=(B)=>{ const I=B.IND.prof, R=B.sizeRefs(158950); const s={ind:"prof",rev:703000,ern:158950,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:I.buyers||50};
+      return B.model({...s,ask:B.model({...s,ask:1}).V}).tMed; };
+    const now=prof(A), pub=prof(A.loadWith([["const TM=MODELS.fitted.ttc_medians;","const TM=null;"]]));
+    ok(Math.round(now)===213&&Math.round(pub)===207&&Math.abs(now-170)>=40&&Math.abs(pub-170)<40&&HTML.includes("reads off on a disagreement between the two sources (207 days with IBBA&rsquo;s published medians"),
+       `R2-4: self-audit days row ${now.toFixed(1)} (published medians ${pub.toFixed(1)}) explained`); }
+  /* R2-5: eq_vs's definition of h reproduces the hinge above the $3M SDE cap too */
+  { const H=A.MODELS.value.size_hinge;
+    ok([1e5,1.45e6,3e6,5e6,8e6,2e7].every(ern=>{ const r=A.model({...FX,ern,rev:Math.max(ern/.25,1e6)}), sk=ern/1e3;
+      const def=sk>H.cap_sde_thousands?Math.log(H.cap_sde_thousands/H.knot_sde_thousands)+H.slope_beyond_cap*Math.log(sk/H.cap_sde_thousands):Math.max(0,Math.log(sk/H.knot_sde_thousands));
+      return Math.abs(def-r.fv.hinge)<1e-9; })&&HTML.includes("hCap=s.ern/1e3>HZ.cap_sde_thousands"),"R2-5: the printed hinge definition reproduces h at every SDE"); }
+  /* R2-6: the LOI leg's share is read from the medians in use: about 40%, 32-43% by band */
+  { const TM=A.MODELS.fitted.ttc_medians, sh=TM.loi.map((v,i)=>v/TM.listing[i]), med=sh.slice().sort((a,b)=>a-b)[2];
+    ok(Math.round(med*100)===40&&Math.round(Math.min(...sh)*100)===32&&Math.round(Math.max(...sh)*100)===43&&HTML.includes("(${loiTxt})")&&!HTML.includes("about 36% of it)"),"R2-6: LOI share computed"); }
+  /* R2-7: the medians' SE includes half the rounded-vs-truncated gap, in quadrature */
+  { const TM=A.MODELS.fitted.ttc_medians;
+    ok(["listing","loi"].every(k=>TM[k+"_se"].every((v,i)=>v>=TM[k+"_se_sampling"][i]&&Math.abs(v-Math.hypot(TM[k+"_se_sampling"][i],TM.convention_shift[k][i]/2))<=.011))
+       &&HTML.includes("half the rounded-against-truncated gap added"),"R2-7: median SEs carry the convention term"); }
+  /* R2-8, R2-9: tallies counted from the tables */
+  { const C=A.MODELS.close_and_timing, V=A.MODELS.value;
+    const nAgg=2+Object.keys(C.close_probability.valuation_gap_distribution).length+C.time_to_close.bands.length+Object.keys(V.price_realisation_by_industry.factor).length
+              +C.ibba_cash_at_close.by_band.length+(C.dvi_consideration?4:0)+3;
+    ok(nAgg===39&&HTML.includes("+ ((C.ibba_cash_at_close||{}).by_band||[]).length"),"R2-8: the aggregate tally counts cash at close and deal structure (39)");
+    const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
+    const numLeaves=o=>typeof o==="function"?numLits(o):typeof o==="number"?1:o&&typeof o==="object"?Object.values(o).reduce((a,v)=>a+numLeaves(v),0):0;
+    const grp={ind:1,str:1,adj:1,pep:1,add:1,fo:1};
+    const nBuy=A.BUYERS.length*2+A.BUYERS.filter(b=>!grp[b.k]).length*2+A.BUYERS.reduce((a,b)=>a+numLits(b.fit),0)+12;
+    const nInt=A.INTERV.length+A.INTERV.reduce((a,v)=>a+numLits(v.cost)+numLeaves(v.eff),0);
+    ok(nBuy===54&&nInt===43&&HTML.includes("${nBuy}</td>")&&HTML.includes("${nInt}</td>")&&!HTML.includes("BUYERS.length*4"),`R2-9: BUYERS ${nBuy} and INTERV ${nInt} counted from their definitions`); }
+  /* R2-10, R2-11: provenance wording */
+  ok(HTML.includes("and time to close to IBBA&rsquo;s per-band histograms of closed deals")&&!HTML.includes("closing probability and timing are market aggregates"),"R2-10: footer");
+  ok(!HTML.includes("never on business quality")&&!HTML.includes("&mdash; not on business quality")&&HTML.includes("It has no quality term"),"R2-11: P_C's quality claims");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

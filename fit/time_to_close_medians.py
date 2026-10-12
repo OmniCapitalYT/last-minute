@@ -20,14 +20,22 @@ What it does
      integer answers are rounded months, k -> [k-0.5, k+0.5); '<1 month' and '1 month' merged into [0, 1.5).
   1. Per band and measure (listing -> close, LOI -> close), the maximum-likelihood median of an interval-
      censored log-logistic with beta fixed at the shipped two-level values. Grouped medians beside it.
-  2. Standard errors: cluster bootstrap over QUARTERS (B = 1000), resampled jointly across bands.
-  3. Out of sample: leave-one-quarter-out. Each quarter's medians are refitted on the other 14 quarters and
-     the held-out quarter is scored; the comparison is the same curve pinned to the published medians.
-     Gain per held-out deal with a quarter-clustered SE and t(14). Temporal holdout: fit on 2020Q1-2022Q4,
-     score 2023Q1-2023Q3 and 2025Q4. The published medians come from editions that overlap the test quarters,
-     which favours them; the refit has to win anyway.
+  2. Standard errors: cluster bootstrap over QUARTERS (B = 1000), resampled jointly across bands (sampling SE).
+     The reporting convention is not identified: read as truncated months (k -> [k, k+1), sub-2-month answers
+     [0, 2)) every median comes out about 0.55 months longer than under the central rounded reading. As
+     time_to_close_shape.py does for beta, half that floor-round gap is added to the sampling SE in quadrature
+     (total SE, shipped as listing_se / loi_se); the medians themselves stay on the central reading.
+  3. Out of sample: leave-one-quarter-out. Each quarter's medians are refitted on the other 14 quarters, put
+     through the shipped pipeline (shrunk toward the line with tau^2 re-estimated in the fold, rounded to 0.01
+     month) and the held-out quarter is scored; the comparison is the same curve pinned to the published
+     medians. Gain per held-out deal with a quarter-clustered SE and t(14). The raw MLE medians are scored
+     too, for reference. Temporal holdout: fit on 2020Q1-2022Q4, score 2023Q1-2023Q3 and 2025Q4. The published
+     medians come from editions that overlap the test quarters, which favours them; the refit has to win anyway.
+     In a fold the log-scale SEs used for the shrinkage are the full-sample bootstrap SEs scaled by
+     sqrt(quarters / training quarters), an approximation (no bootstrap inside each fold).
   4. Shrinkage: the band estimates are shrunk toward a weighted straight line in ln(band centre) (Fay-Herriot,
-     DerSimonian-Laird tau^2). With 342-2,100 deals per band the shrinkage is small; it is reported and applied.
+     DerSimonian-Laird tau^2). The weight on the line is B = v / (v + tau^2); RESULT stores it and its
+     complement, the weight on the band's own estimate.
   5. Recommendation: ship the shrunk MLE medians (rounded to 0.01 month) if both out-of-sample comparisons
      favour them; otherwise keep the published medians and say why.
 """
@@ -68,8 +76,8 @@ def load_ibba():
     return h
 
 
-def interval(cat):
-    off = 0.5
+def interval(cat, conv='round'):
+    off = 0.5 if conv == 'round' else 0.0          # boundaries at k-0.5 (rounded months) or k (truncated months)
     if cat in ('<1 mo', '1 mo'):
         return (0.0, 2 - off)
     m = re.fullmatch(r'(\d+) mo', cat)
@@ -80,15 +88,17 @@ def interval(cat):
 
 H = load_ibba()
 H['count'] = H.pct / H.row_sum * H.n_closed
-iv = [interval(c) for c in H.category]
-H['lo'] = [a for a, b in iv]; H['hi'] = [b for a, b in iv]
+for conv in ('round', 'floor'):
+    iv = [interval(c, conv) for c in H.category]
+    H['lo_' + conv] = [a for a, b in iv]; H['hi_' + conv] = [b for a, b in iv]
 
 
-def matrices(measure, band):
+def matrices(measure, band, conv='round'):
     g = H[(H.measure == measure) & (H.band == band)]
-    ints = sorted(set(zip(g.lo, g.hi))); qs = sorted(g.period.unique())
+    los, his = g['lo_' + conv], g['hi_' + conv]
+    ints = sorted(set(zip(los, his))); qs = sorted(g.period.unique())
     C = np.zeros((len(qs), len(ints))); idx = {v: j for j, v in enumerate(ints)}
-    for p, lo, hi, c in zip(g.period, g.lo, g.hi, g['count']):
+    for p, lo, hi, c in zip(g.period, los, his, g['count']):
         C[qs.index(p), idx[(lo, hi)]] += c
     return qs, np.array([a for a, b in ints]), np.array([b for a, b in ints]), C
 
@@ -150,29 +160,49 @@ for measure, key in MEASURES.items():
     # 4. shrinkage toward a line in ln(centre), on the log median
     post_l, tau2, Qstat, Bw = eb_line(np.log(mle), lse, np.log(CENTRES))
     shrunk = np.exp(post_l)
-    # 3. leave-one-quarter-out
-    gain_q = np.zeros(nq); n_q = np.zeros(nq); gain_qb = np.zeros((nq, 5)); n_qb = np.zeros((nq, 5))
+    # 2b. the reporting convention: the same pipeline with months read as truncated; half the gap joins the SE
+    mats_f = [matrices(measure, b, 'floor') for b in BANDS]
+    mle_f = np.array([mle_median(BETA[i], m[1], m[2], m[3].sum(0)) for i, m in enumerate(mats_f)])
+    shrunk_f = np.exp(eb_line(np.log(mle_f), lse, np.log(CENTRES))[0])
+    conv_shift = np.round(shrunk_f, 2) - np.round(shrunk, 2)
+    se_total = np.sqrt(se ** 2 + (conv_shift / 2) ** 2)
+
+    def pipeline_meds(cmat, scale):
+        """the shipped pipeline on a subset of quarters: MLE per band, shrunk toward the line, rounded to 0.01"""
+        raw = np.array([mle_median(BETA[i], m[1], m[2], cm) for i, (m, cm) in enumerate(zip(mats, cmat))])
+        return raw, np.round(np.exp(eb_line(np.log(raw), lse * scale, np.log(CENTRES))[0]), 2)
+
+    def summarise(gq, nq_, extra=None):
+        N = nq_.sum(); g_ = gq.sum() / N; s_ = np.sqrt(len(gq)) * gq.std(ddof=1) / N
+        d = dict(gain_per_deal=float(g_), se=float(s_), t=float(g_ / s_), df=len(gq) - 1,
+                 p_two_sided=float(2 * stats.t.sf(abs(g_ / s_), len(gq) - 1)), quarters_better=int((gq > 0).sum()), quarters=len(gq))
+        if extra: d.update(extra)
+        return d
+    # 3. leave-one-quarter-out: the shipped pipeline (headline) and the raw MLE (reference)
+    gain_q = np.zeros(nq); gain_raw = np.zeros(nq); n_q = np.zeros(nq); gain_qb = np.zeros((nq, 5)); n_qb = np.zeros((nq, 5))
     for qi in range(nq):
         keep = np.arange(nq) != qi
+        raw_tr, ship_tr = pipeline_meds([m[3][keep].sum(0) for m in mats], np.sqrt(nq / (nq - 1)))
         for i, m in enumerate(mats):
-            tr = m[3][keep].sum(0); te = m[3][qi]
-            med_tr = mle_median(BETA[i], m[1], m[2], tr)
-            g = loglik(BETA[i], med_tr, m[1], m[2], te) - loglik(BETA[i], pub[i], m[1], m[2], te)
-            gain_q[qi] += g; n_q[qi] += te.sum(); gain_qb[qi, i] = g; n_qb[qi, i] = te.sum()
-    N = n_q.sum(); g_ = gain_q.sum() / N; s_ = np.sqrt(nq) * gain_q.std(ddof=1) / N
-    loqo = dict(gain_per_deal=float(g_), se=float(s_), t=float(g_ / s_), df=nq - 1,
-                p_two_sided=float(2 * stats.t.sf(abs(g_ / s_), nq - 1)), quarters_better=int((gain_q > 0).sum()), quarters=nq,
-                by_band=dict(zip(JS_BANDS, (gain_qb.sum(0) / n_qb.sum(0)).round(5).tolist())))
-    # temporal holdout
+            te = m[3][qi]; base = loglik(BETA[i], pub[i], m[1], m[2], te)
+            g = loglik(BETA[i], ship_tr[i], m[1], m[2], te) - base
+            gain_q[qi] += g; gain_raw[qi] += loglik(BETA[i], raw_tr[i], m[1], m[2], te) - base
+            n_q[qi] += te.sum(); gain_qb[qi, i] = g; n_qb[qi, i] = te.sum()
+    loqo = summarise(gain_q, n_q, dict(scored='shipped pipeline: shrunk in the fold, rounded to 0.01 month',
+                                       by_band=dict(zip(JS_BANDS, (gain_qb.sum(0) / n_qb.sum(0)).round(5).tolist())),
+                                       raw_mle=summarise(gain_raw, n_q)))
+    # temporal holdout, same two scorings
     train = [i for i, q in enumerate(qs) if q <= '2022Q4']; test = [i for i, q in enumerate(qs) if q > '2022Q4']
-    tg = np.zeros(len(test)); tn = np.zeros(len(test))
+    raw_tr, ship_tr = pipeline_meds([m[3][train].sum(0) for m in mats], np.sqrt(nq / len(train)))
+    tg = np.zeros(len(test)); tgr = np.zeros(len(test)); tn = np.zeros(len(test))
     for i, m in enumerate(mats):
-        med_tr = mle_median(BETA[i], m[1], m[2], m[3][train].sum(0))
         for j, qi in enumerate(test):
-            te = m[3][qi]
-            tg[j] += loglik(BETA[i], med_tr, m[1], m[2], te) - loglik(BETA[i], pub[i], m[1], m[2], te); tn[j] += te.sum()
+            te = m[3][qi]; base = loglik(BETA[i], pub[i], m[1], m[2], te)
+            tg[j] += loglik(BETA[i], ship_tr[i], m[1], m[2], te) - base
+            tgr[j] += loglik(BETA[i], raw_tr[i], m[1], m[2], te) - base; tn[j] += te.sum()
     temporal = dict(train=[qs[i] for i in train], test=[qs[i] for i in test], gain_per_deal=float(tg.sum() / tn.sum()),
-                    se=float(np.sqrt(len(test)) * tg.std(ddof=1) / tn.sum()), quarters_better=int((tg > 0).sum()))
+                    se=float(np.sqrt(len(test)) * tg.std(ddof=1) / tn.sum()), quarters_better=int((tg > 0).sum()),
+                    scored='shipped pipeline', raw_mle=dict(gain_per_deal=float(tgr.sum() / tn.sum()), quarters_better=int((tgr > 0).sum())))
     # in-sample fit of the shipped curve against each median set, per deal
     ll = lambda meds: sum(loglik(BETA[i], meds[i], m[1], m[2], m[3].sum(0)) for i, m in enumerate(mats)) / n_deals.sum()
     adopt = loqo['gain_per_deal'] > 0 and temporal['gain_per_deal'] > 0
@@ -191,7 +221,10 @@ for measure, key in MEASURES.items():
                               max_abs_pts_refit=max(abs(r['refit']) for r in rows))
     RES[measure] = dict(quarters=qs, n_deals=n_deals.round(0).tolist(), published=pub.tolist(), mle=mle.round(4).tolist(),
                         mle_se_boot=se.round(4).tolist(), grouped=grp.round(4).tolist(),
-                        eb=dict(tau2_log=tau2, Q=Qstat, shrink_weight_on_line=(1 - Bw).round(4).tolist() if tau2 > 0 else [1.0] * 5,
+                        convention=dict(floor_mle=mle_f.round(4).tolist(), floor_shrunk=shrunk_f.round(4).tolist(),
+                                        shift_months=conv_shift.round(2).tolist(), se_total=se_total.round(4).tolist(),
+                                        note='months read as truncated instead of rounded; half the shift is added to the sampling SE in quadrature'),
+                        eb=dict(tau2_log=tau2, Q=Qstat, weight_on_line=Bw.round(4).tolist(), weight_on_own_estimate=(1 - Bw).round(4).tolist(),
                                 shrunk=shrunk.round(4).tolist()),
                         loqo=loqo, temporal=temporal,
                         insample_ll_per_deal=dict(published=ll(pub), mle=ll(mle), shrunk=ll(shrunk)), calibration_pts=calib,
@@ -199,8 +232,11 @@ for measure, key in MEASURES.items():
     print(measure)
     for i, b in enumerate(JS_BANDS):
         print(f'  {b:8s} published {pub[i]:5.2f}  mle {mle[i]:5.2f} (se {se[i]:.2f})  grouped {grp[i]:5.2f}  shrunk {shrunk[i]:5.2f}  n {n_deals[i]:.0f}')
-    print(f'  tau2(log) {tau2:.4g}  LOQO gain/deal {g_:+.4f} (se {s_:.4f}, t {g_/s_:.2f}, {loqo["quarters_better"]}/{nq} quarters)'
-          f'  temporal {temporal["gain_per_deal"]:+.4f} (se {temporal["se"]:.4f}, {temporal["quarters_better"]}/{len(test)})  adopt {adopt}')
+    print(f'  tau2(log) {tau2:.4g}  weight on line {np.round(Bw, 3).tolist()}  floor-round shift {conv_shift.round(2).tolist()}  total SE {se_total.round(2).tolist()}')
+    print(f'  LOQO (shipped) gain/deal {loqo["gain_per_deal"]:+.5f} (se {loqo["se"]:.5f}, t {loqo["t"]:.2f}, {loqo["quarters_better"]}/{nq} quarters);'
+          f' raw MLE {loqo["raw_mle"]["gain_per_deal"]:+.5f} ({loqo["raw_mle"]["quarters_better"]}/{nq})')
+    print(f'  temporal (shipped) {temporal["gain_per_deal"]:+.5f} (se {temporal["se"]:.5f}, {temporal["quarters_better"]}/{len(test)});'
+          f' raw MLE {temporal["raw_mle"]["gain_per_deal"]:+.5f}  adopt {adopt}')
 
 json.dump(RES, open(OUT + '/RESULT.json', 'w'), indent=1)
 print('wrote', OUT + '/RESULT.json')

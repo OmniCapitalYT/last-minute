@@ -219,6 +219,8 @@ for(let i=0;i<N;i++){
       ok(Math.abs((U(rK)-U(rS))-(tv-(rS.EVp-rK.EVp)-s.theta*V0*(rK.PC-rS.PC)))<1e-6*V0,"net = time value - proceeds given up - value kept lost",ctx(s)); } }
   if(i%50===0){ const t={...s,rhoSell:A.bestRatio(s,0,0)}; t.optRho=A.bestRatio(s,s.theta,s.lamT);
     const rr=A.model(t), best=A.optimize(t,rr,t.budget,t.lamT,t.theta), uRho=best.U.keys.includes("reprice")?t.optRho:t.rhoSell;
+    /* AUDIT_FINDINGS R2-2: neither programme keeps an ask above RHO_MAX x its own value */
+    ok(["V","U"].every(k=>best[k].keys.includes("reprice")||t.ask<=A.RHO_MAX*best[k].r.V*(1+1e-9)),"optimiser never keeps an over-cap ask",ctx(s));
     const c=A.optCardNote(t,best,t.rhoSell,uRho), dC=best.U.c-best.V.c, dT=(best.U.t+best.U.days)-(best.V.t+best.V.days);
     const sameK=JSON.stringify(best.V.keys.slice().sort())===JSON.stringify(best.U.keys.slice().sort());
     ok(!/NaN|undefined|Infinity|[−-]\$/.test(c.text),"card subtitle has no NaN or negative money",ctx(s,{text:c.text}));
@@ -248,6 +250,14 @@ for(let i=0;i<N;i++){
     if(i%3===0){ const rp=PUB.model(s);
       ok(rp.V===r.V&&rp.Vmean===r.Vmean&&rp.PC===r.PC&&rp.EVp===r.EVp&&rp.risk.p===r.risk.p&&rp.risk.expLoss===r.risk.expLoss&&rp.betaT===r.betaT,"medians move only the time outputs",ctx(s,{dPC:rp.PC-r.PC}));
       ok(Math.abs(rp.tMed/r.tMed-PUB.fitTiming(r.Vbase,s.ind).months/ft.months)<1e-9,"published and fitted curves differ only by the median",ctx(s)); } }
+
+  /* 7p. past RHO_MAX x value the ask stops moving the price (AUDIT_FINDINGS R2-2): the effective ask saturates (fully by
+     2x value: the soft minimum's 0.012 log-width), so the price if it closes, the median price and the ceiling are flat,
+     while the closing probability keeps falling */
+  if(rho>2){ const rb=A.model({...s,ask:s.ask*1.4});
+    ok(Math.abs(rb.Vmean/r.Vmean-1)<1e-9&&Math.abs(rb.Vreal/r.Vreal-1)<1e-9&&Math.abs(rb.ceil/r.ceil-1)<1e-9,"price flat past the cap",ctx(s,{a:r.Vmean,b:rb.Vmean}));
+    ok(rb.PC<=r.PC+1e-12,"closing probability still falls past the cap",ctx(s)); }
+  if(rho<1.2) ok(Math.abs(r.askEff/s.ask-1)<1e-9,"below 1.2x the effective ask is the ask to 1e-9",ctx(s,{e:r.askEff}));
 
   /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
      (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises

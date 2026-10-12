@@ -1501,7 +1501,7 @@ def main():
         "(${Fv.competition.quarters}, ${Fv.competition.quarter_clusters} quarters, so the standard errors rest on few clusters), about "
         "${Fv.competition.n_deals.toLocaleString()} closed deals (the published percentages fit about "
         "${Fv.competition.n_deals_rounding_consistent.toLocaleString()} answering the offers question). Held-out quarters: log-likelihood %.3f per deal, "
-        "against %.3f for a Poisson at the fitted scale. The 2023Q4 histogram, read off a line chart, sits above the same report&rsquo;s average-offers bars "
+        "against %.3f for a Poisson at its own fitted scale (not the console's ENG_SHARE; see fit/competition_heldout_poisson.py). The 2023Q4 histogram, read off a line chart, sits above the same report&rsquo;s average-offers bars "
         "in all five bands (by %.2f&ndash;%.2f), and 2025Q4&rsquo;s $2M&ndash;5M histogram sits above its own table; both are kept, and dropping them gives "
         "%.2f&ndash;%.2f. On IBBA&rsquo;s 2024&ndash;26 average-offers bars the RMSE is %.2f (free band levels %.2f; the old scale %.2f), but the bars and "
         "the histograms disagree wherever both exist, so that check is indicative only.\n"
@@ -1677,7 +1677,7 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
                      "every band. Shrinkage: none toward 0.34 (IBBA is the target population and 0.34 had no data behind it). The console's size gradient "
                      "against five free band levels: %s. Quasi-likelihood note: %s.")
                     % (np.round(btab.c_band.values, 3).tolist(), Q, stats.chi2.sf(Q, 4), qtxt(ql_grad), phi_txt),
-             validation=("Leave-one-quarter-out held-out log-likelihood per deal: %.3f, against %.3f for a Poisson at the fitted console scale, %.3f with free band "
+             validation=("Leave-one-quarter-out held-out log-likelihood per deal: %.3f, against %.3f for a Poisson on the console's size gradient at its own fitted scale, %.3f with free band "
                          "levels, %.3f for a free zero-truncated Poisson, %.3f for the Poisson-lognormal and %.3f at the old 0.34 Poisson scale. Mean held-out "
                          "error in the one-offer share: %.3f, against %.3f now. Strictly temporal (fit on the 2023 histograms only, i.e. the 'drop 2025Q4' "
                          "specification, c=%.3f, r=%.2f) against IBBA's 2024Q1-2026Q2 average-offers bars (45 band-quarters): RMSE %.2f (bias %+.2f). With "
@@ -1701,7 +1701,7 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
                 % (f2(r_hat * r_se_log), len(qs), f2(r_ci[0]), f2(r_ci[1]), jk_se[1], "/".join("%.2f" % x for x in REV3["sq_r"]), nb_r_rng[0], nb_r_rng[1],
                    n_spec_nb, spec_c_txt),
              n="Same as ENG_SHARE",
-             method=("The same zero-truncated NB fit. Poisson is rejected: against the NB with free band means %s; against a Poisson at the fitted console scale "
+             method=("The same zero-truncated NB fit. Poisson is rejected: against the NB with free band means %s; against a Poisson on the console's size gradient at its own fitted scale "
                      "%s. A common r is not rejected against band-specific r (%s). r measures MARGINAL heterogeneity across deals within a band (size within "
                      "the band, industry mix, marketing breadth, quality), part of which the console conditions on; the industry-mixture likelihood raises it "
                      "to %.2f. The NB is not the best mixing family: a Poisson-lognormal fits better (dAIC %.1f; %s).")
