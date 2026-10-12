@@ -443,7 +443,7 @@ with the data that would fit it:
   table above); only the effect of quality and of the ask on time remain unfitted (the ask's effect is now a
   labelled judgment, T_ELAST 0.10: see "Overpricing costs time" below).
   ~~Open follow-up: refit the time-to-close band medians to the 2020–25 histograms.~~ *Done (October 2026):*
-  `fit/time_to_close_medians.py`; see "Logic audits (rounds 0 to 4) and the time-to-close median refit, October 2026" at the end of this file.
+  `fit/time_to_close_medians.py`; see "Logic audits (rounds 0 to 5) and the time-to-close median refit, October 2026" at the end of this file.
   The size-order exception shrinks from 1.4 to 0.7 pts and now starts past about 18 months.
 - **Anchoring:** fitting the sale price against the ask needs deal-level pairs of asking and
   sale prices. The model's expected price sits 8 to 14 points below IBBA's average above $1M,
@@ -672,7 +672,7 @@ businesses, 0 of 28,000 numeric fields differ).
   banned wording and the rendered evidence template); tests/fuzz.test.js 7h (qz is the signed weighted z over the norm;
   QW reads only the fitted weights; growth moves qz by w/norm).
 
-## Logic audits (rounds 0 to 4) and the time-to-close median refit, October 2026
+## Logic audits (rounds 0 to 5) and the time-to-close median refit, October 2026
 
 ### How the audits ran
 
@@ -692,6 +692,7 @@ Full verdicts, reproductions and rejections are in `AUDIT_FINDINGS.md`.
 | 2 | 0f1fa9b | 25 | 16 (11 distinct) | 9 | df83852, 3d53b6f |
 | 3 | 3d53b6f | 20 | 11 (9 distinct), plus 1 reproduced by hand where the verifiers returned no verdict | 8 | 39842b1 |
 | 4 | a7346a7 | 7 (2 of 4 auditors finished) | 7 verified by hand, plus 1 from a hand-run numbers pass | 0 | f3c3f87, 79a18c0 |
+| 5 | 706a61c | 12 (4 auditors; the invariants auditor found nothing) | 9 (7 distinct; 2 medium) | 3 | eec0ddd |
 
 ### What changed
 
@@ -755,6 +756,13 @@ These were hand-typed and had gone stale:
 - The budget box shows two decimals in millions.
 - The binding-ask note names the measure it ranks by.
 
+**Round 5**
+- The sensitivity panel's ask and buyer-pool rows show the step they name, a 5% lower ask and 25% more buyers, from the current state. The central difference they used straddled the proceeds peak and the typical pool: at the recommended ask it showed +$51k for a 5% cut that the model prices at −$34k (R5-2).
+- The competition premium's dollar figure at the point estimate goes through the ask ceiling, as P(W) does; it overstated the effect by up to 4× just short of the median binding (R5-3).
+- The judgment ledger counts the `IND` anchors and PMIN, PMAX, LAM0 and KW as inert: 124 of 432, not 104 (R5-1).
+- The Data tab computes the old judgement build's swing (1.47× to 6.06× on the framework example, against 1.75× to 3.17× fitted) and the owner-pay share of SDE (37–64% at $200K, 18–58% at $3M), instead of typing figures the model contradicts (R5-4, R5-5).
+- The staffing comparison is scoped to the $5M 7(a) limit (R5-6), and two lines of this section are corrected (R5-7).
+
 **Competition**
 - The held-out benchmark is labelled correctly: a Poisson at its own refitted scale (0.255).
 - The pairing the thin-pool factor actually uses (Poisson shape at the NB's scale) is now scored: −1.778 per deal, no better than the old 0.34 judgment (−1.773). So the scale is calibrated and the shape stays judgment (`fit/competition_heldout_poisson.py`).
@@ -794,15 +802,15 @@ Each item is on the Data tab's "Still judgement" ledger with the data that would
 
 ### Where the audit loop stands, and the dated sections above
 
-- **Rounds.** The confirmed defects fell from 25 and 34 (rounds 0–1) to 11, 10 and 8 (rounds 2–4).
+- **Rounds.** The confirmed defects fell from 25 and 34 (rounds 0–1) to 11, 10, 8 and 7 (rounds 2–5).
 - **Remaining defects are textual.** After round 2 they are almost all low-severity wording and count defects; the one medium was R3-6's rounding of millions.
 - **No defect since round 2 has changed a model output** (value, prices, P_C, time, risk, proceeds, the recommended asks or the scores).
   - Round 3's R3-6 and R3-8 corrected how figures were displayed: rounding of millions, and the printed point-estimate anchoring factor.
   - The rest are wording and count defects.
   - Round 4's value auditor found only a ledger count, and the hand-run numbers pass (about 14,240 checks across 33 states) found one ambiguous sentence.
+  - Round 5's two medium findings were display computations: the sensitivity panel's ask and buyer-pool rows, and the competition premium's dollar figure. The rest were typed figures and counts.
 - **The loop is not formally closed.**
-  - Round 4 lost its claims and numbers auditors and both verifiers to the subagent usage cap. Its findings are single-reviewer verdicts, and the Data-tab claims were not re-audited independently after round 3.
-  - A fifth round with independent two-lens verification is due once the cap resets (2026-10-15 01:00 UTC).
+  - Round 4 lost its claims and numbers auditors and both verifiers to the subagent usage cap. Round 5 re-audited the claims and numbers with full two-lens verification and confirmed 7 defects, so a sixth round is reviewing the round-5 fixes, the arithmetic the render code does itself, and the figures typed into prose.
 - **The dated sections above are records at the time of integration.** On the shipped model, for the framework example:
   - the median time to close is 277 / 281 / 287 / 295 days at 1 / 1.2 / 1.5 / 2× value (248 / 252 / 257 / 265 before the median refit);
   - the walk-away ask (75% kept) is 1.13 / 1.14 / 1.15 / 1.15 at $900 a day and 1.09 / 1.12 / 1.14 / 1.14 at $4,000;
@@ -814,7 +822,7 @@ Each item is on the Data tab's "Still judgement" ledger with the data that would
 ### Tests
 
 At HEAD:
-- `node tests/model.test.js`: 7,458 checks. Section 29 pins the round-0 fixes, 30 round 1, 31 the median refit, 32 round 2, 33 round 3 and 34 round 4.
+- `node tests/model.test.js`: 7,465 checks. Section 29 pins the round-0 fixes, 30 round 1, 31 the median refit, 32 round 2, 33 round 3, 34 round 4 and 35 round 5.
 - `node tests/fuzz.test.js 1500`: 173,364 checks. Invariants 7i–7p cover:
   - E[T];
   - P_C monotone in the ask with no floor;
