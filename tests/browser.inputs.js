@@ -47,11 +47,15 @@ let pw; try{ pw=require("playwright"); }catch(e){ pw=require("/opt/node-tools/no
   await p.evaluate(()=>{ IN.ask=3.24e6; scheduleRender(); }); await p.waitForTimeout(1500);
   sc=await p.evaluate(()=>({o:+document.getElementById("o_score").textContent,b:+document.getElementById("o_score_biz").textContent}));
   ok(sc.b>=sc.o,`the business score is never the lower: Omni ${sc.o}, business ${sc.b}`);
-  /* closings held at a ceiling below the ask are labelled as the ask ceiling, not "at the ask" */
+  /* closings held at a ceiling below the ask are labelled as the ask ceiling, never "at the ask"; and past RHO_MAX x value
+     the price if it closes stops rising with the ask (AUDIT_FINDINGS R2-2: the fan's anchoring reads the effective ask) */
   await p.evaluate(()=>{ const r=document.getElementById("i_buy"); r.value=600; r.dispatchEvent(new Event("input",{bubbles:true})); IN.ask=7.36e6; scheduleRender(); });
   await p.waitForTimeout(1500);
-  const ov=await p.evaluate(()=>document.getElementById("o_val").textContent);
-  ok(/% at the ask ceiling of \$6\.1\dM/.test(ov),`price tile names the ceiling: ${ov}`);
+  const ov=await p.evaluate(()=>document.getElementById("o_val").textContent), sv=await p.evaluate(()=>document.getElementById("scen").textContent);
+  ok(!/at the ask(?! ceiling)/.test(ov)&&/80th–94th percentile of closings · \d+% of closings at the ask ceiling/.test(sv),`price tile and bull case name the ceiling: ${ov} | ${sv.slice(0,160)}`);
+  await p.evaluate(()=>{ IN.ask=9.5e6; scheduleRender(); }); await p.waitForTimeout(1500);
+  const ov2=await p.evaluate(()=>document.getElementById("o_val").textContent);
+  ok(ov2.split("80%")[0]===ov.split("80%")[0],`the price if it closes is flat past 1.5x value: ${ov.split("80%")[0]} at $7.36M, ${ov2.split("80%")[0]} at $9.5M`);
   /* a fitted table rebuilt by fit/build_models.py (no quality_weights_v2 metadata) still renders the Data tab */
   const qwErr=await p.evaluate(()=>{ const W=MODELS.fitted.quality_weights, keep={};
     for(const k of ["own","mgt","se","raw","hedonic","prior","source"]) keep[k]=W[k];
