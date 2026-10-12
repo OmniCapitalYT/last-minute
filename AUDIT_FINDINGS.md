@@ -838,3 +838,177 @@ Round 1 had 51 findings. Twenty were raised against 7cac297 before the round-0 b
 | `datatab:selfaudit:anchor-rows-test-inert-judgment-curve` | The numbers reproduce: sizeAnchor 6.77/2.95/4.00; at $20M the fitted multiple is mfg 3.10 SDE (3.41 EBITDA), prof 3.45/4.29 and medical 2.45/2.87; medical at $3.5M is 2.45/3.43; patching BANDS changes r.anchor but leaves V, M, P_C, EVp and the Omni score unchanged. The behaviour itself is documented as deliberate, though. AUDIT.md lines 247-256 record that the self-checks were rewritten to 'test exactly what they pri… |
 | `datatab:model2:equation-omits-median-calibration` | The numbers are right: fitValue gives rawPoint 3,277,007, point 3,493,348 and calib 1.0660, and log_correction runs from -0.04773 to +0.10787. But the calibration step is documented on the page, in the panel that produces the value. The §8 lede reads 'the fitted BIZCOMPS equation ... median-calibrated, then placed inside the measured residual spread'. eq_v typesets E[V/X] = $1k·P̂·c(ln P̂)·q, and eq_vs renders for th… |
 | `datatab:fitted-public:lede-every-row-from-dataset` | The row in question labels itself. It carries an explicit 'judgment' badge, and its text says 'The sign is from data, the size is a labelled judgment ... stated range 0.05–0.26'. fit/README.md and the main panel do the same: the time tile title reads 'overpricing costs time, a labelled judgment, see the Data tab', and the §III caption says 'stretched by a judgment multiplier'. The task's rules state that a deliberate… |
+
+# Round 2 (verified at commit 0f1fa9b)
+
+Round 2 ran after the round-1 batch and the time-to-close median refit. Five new auditors covered the model's math line by line, the decision layer, a property sweep across the input space, the fitted constants against their scripts and claims, and every on-screen number against the model, with visual layout out of scope. Two verifiers checked every finding against a frozen copy of 0f1fa9b: one reproduced it independently, the other tried to refute it. A finding is confirmed only if it reproduced and was not refuted. **25 findings were raised; 16 were confirmed. They reduce to 11 distinct defects**, because three auditors found the same incomplete R1-4 fix and two auditors each found three of the others. 9 were rejected.
+
+## Confirmed
+
+| # | Severity | Keys | Title |
+|---|---|---|---|
+| R2-1 | medium | `numbers:buyers:ev-capped-but-eq_b-table-and-pays-most-uncapped`, `decisions:buyers:eq-b-ev-formula-omits-ask-ceiling`, `math:buyers:eq_b-ev-uses-vj-not-capped-price` | The R1-4 fix (buyers:ev:vj-priced-above-ask-ceiling) is incomplete: EV_j now uses the ask-capped price, but eq_b, the buyer table and 'pays most' still show the uncapped V_j, so the table's columns no longer multiply to its EV |
+| R2-2 | medium | `decisions:optimize:anchoring-keeps-rising-past-rho-max-utility-card-keeps-over-cap-ask` | Past RHO_MAX the realised price keeps rising, against the documented claim that it stops, and the utility optimiser then keeps an over-cap ask that the walk-away tile rejects |
+| R2-3 | medium | `fits:competition:heldout-poisson-mislabelled-same-scale` | Data tab and MODELS call the -1.702 held-out benchmark 'a Poisson at the same scale', but it is a Poisson at its own fitted scale 0.255; at the shipped 0.184 scale it scores -1.774, no better than the old 0.34 judgment |
+| R2-4 | low | `fits:ttc_medians:days-on-market-self-audit-flipped-off`, `math:timing:selfaudit-days-row-flips-off-after-median-refit` | The median refit turned the 'Days on market' self-audit row from 'in range' to 'off', with no note anywhere |
+| R2-5 | low | `numbers:eq_vs:hinge-definition-omits-3m-sde-cap`, `math:value:eq_vs-hinge-definition-omits-cap` | The R1-20 fix (presentation:eq_v:general-form-terms-never-valued) defines h as 'ln(SDE/$150k), floored at 0', but above $3M of SDE the code caps it, so the printed definition no longer reproduces the printed h or P-hat |
+| R2-6 | low | `fits:ttc_medians:loi-leg-share-36pct-stale`, `invariants:timing:loi-share-36pct-stale-after-median-refit` | 'LOI-to-close leg (about 36% of it)' was computed with the published medians; with the fitted medians that ship, the same computation gives 40% (43% for the framework example) |
+| R2-7 | low | `fits:ttc_medians:median-se-omits-month-reporting-convention` | The ± on the fitted medians is sampling-only, yet the Data tab says the ± is widened for brokers rounding or truncating months; under the truncation reading every median moves +0.53 to +0.57 months (about 3 SE) |
+| R2-8 | low | `fits:datatab:nagg-omits-ibba-cash-at-close` | The aggregate tally ('30 read from published market aggregates') and the Aggregate section leave out IBBA's cash-at-close shares, which the model reads into the hero's 'cash at close' figure |
+| R2-9 | low | `decisions:datatab:buyers-interv-judgment-rows-miscounted-and-reach-understated` | The judgment ledger counts BUYERS as 8×4 (12 of those are inert window edges) and leaves out its 22 live fit coefficients; INTERV is counted 33 against 43 hand-set numbers; and the BUYERS row omits that it moves P_C below a typical pool |
+| R2-10 | low | `numbers:foot:timing-called-market-aggregate-after-ttc-fit` | After the post-round-1 time-to-close refit (0f1fa9b) the time tile is badged 'fitted', but the console footer still calls timing a 'market aggregate', and the Data tab still files time to close under the Aggregate section |
+| R2-11 | low | `numbers:pc-lede:never-on-quality-contradicted-by-sensitivity-dpc` | The fix for closing:datatab:pc-quality-independence-claim-false-at-fixed-ask is incomplete: the console lede and the Aggregate key still say P_C never depends on business quality, while the same page's sensitivity shows owner independence moving P_C by 5.2 pts |
+
+### R2-1. The R1-4 fix (buyers:ev:vj-priced-above-ask-ceiling) is incomplete: EV_j now uses the ask-capped price, but eq_b, the buyer table and 'pays most' still show the uncapped V_j, so the table's columns no longer multiply to its EV
+
+- **Keys:** `numbers:buyers:ev-capped-but-eq_b-table-and-pays-most-uncapped`, `decisions:buyers:eq-b-ev-formula-omits-ask-ceiling`, `math:buyers:eq_b-ev-uses-vj-not-capped-price`  
+- **Severity:** medium  
+- **Where:** index.html model() lines 2973-2974 (b.Pj=softMin(b.Vj,out.ceil); b.EV=b.PE*b.PCj*b.Pj) and 2905-2906 (out.top chosen by Vj; stratPrem=top.Vj-V). render(): eq_b line 4366 (EV_j = P_E,j P_C,j V_j), buyer table lines 4358/4363 ('Price it would pay' = money(b.Vj)), eq_bs line 4371 ('pays most: ... -> V_j (+..., +...% over model value)'), drawStars labels and axis 'Price this buyer would pay'
+
+**Why it is wrong.** Since R1-4 the model pays each buyer softMin(V_j, ceiling), because no realised price can exceed the ask ceiling. Every figure displayed around that change still uses the uncapped V_j. The equation on screen (EV_j = P_E P_C V_j) is not the one that produces the EV column, so a reader cannot rebuild Expected value from the three columns beside it (off by 1.2-1.6x at the default and up to 8x on an underpriced large deal). 'Pays most' and its '+26.8% over model value' premium describe money the model says this listing never collects. That is the half of R1-4 ('pays most' prices V_j above the ask) the fix left open, and its own proposal was to show the ask-capped figure beside 'pays most'.
+
+**Verifier (reproduce).** Confirmed: the shipped R1-4 fix is incomplete. The printed equation eq_b is not the formula that produces the EV column. 'Pays most' and its premium still show only the uncapped V_j, with no capped figure beside them, although R1-4's own proposed fix asked for one ('would pay $5.19M; this ask caps it at $3.24M'). Showing V_j as 'Price it would pay' (willingness to pay) is defensible on its own. The genuine defects are the mismatched eq_b formula and the missing capped price in eq_bs and the table, which leave EV impossible to rebuild from the displayed columns. Not in KNOWN_FINDINGS except as the R1-4 fix this extends. Medium is reasonable given the 8x gap on underpriced large deals; low-to-medium at the default.
+
+**Fix (as proposed).** Print eq_b as EV_j = P_E,j * P_C,j * min(V_j, ceiling), with softmin as in eq_a. Add the capped price to the table (e.g. 'Price at this ask' = money(b.Pj)) or relabel V_j 'Would pay (uncapped)'. In eq_bs, give the capped price next to 'pays most', e.g. 'would pay $5.19M; this ask caps it at $3.24M', or pick and word 'pays most' on Pj. Add a test that PE*PCj*Pj equals EV for each displayed row.
+
+### R2-2. Past RHO_MAX the realised price keeps rising, against the documented claim that it stops, and the utility optimiser then keeps an over-cap ask that the walk-away tile rejects
+
+- **Keys:** `decisions:optimize:anchoring-keeps-rising-past-rho-max-utility-card-keeps-over-cap-ask`  
+- **Severity:** medium  
+- **Where:** index.html model() l.2950-2953 (comment: 'Anchoring stops at RHO_MAX ... beyond it a higher ask only costs closing probability') and l.3034 (Pf[i]=W*anchorAt(rhoOf(s.ask/W))*comp, which caps each slice's own ask/W, not the listing's gap); AUDIT.md l.21 item #3 ('Past that point, a higher ask only costs closing probability'); optimize() l.3533 (const ru=hasR?...:r; a subset without a reprice keeps s0.ask with no bound); bestRatio() l.3290-3296 (TOP=RHO_MAX, 'a corner solution, not a recommendation'); render o_list2 / #optout
+
+**Why it is wrong.** The code contradicts the stated mechanism. AUDIT.md #3 and the model comment say anchoring and the ceiling stop at RHO_MAX, so a higher ask beyond it 'only costs closing probability'. But anchoring is applied to each fan slice at ask/W. Every slice above the median is still below RHO_MAX when the ask reaches 1.5V, so E[P|close] keeps rising until about 2xV. That is exactly the unmeasured region bestRatio refuses to search ('a corner solution, not a recommendation'). The optimiser does not respect that domain either. Its utility search compares 'reprice to optRho' against 'keep the current ask', and the current ask is unbounded. So for any patient seller who enters an ask above the cap, the second card recommends keeping it: two recommendations for the same objective on the same page disagree ($6.14M vs $8.18M), and the card's choice rests entirely on the anchoring past RHO_MAX that the documentation says does not exist.
+
+**Verifier (reproduce).** Confirmed and genuine. The code contradicts its documentation in three places: AUDIT.md #3 ('Anchoring and the ceiling both stop rising past RHO_MAX ... Past that point, a higher ask only costs closing probability'), the model comment at l.2950-2953 and the RHO_MAX comment ('anchoring earns nothing past it'). Only the point anchoring (anchorF, the multiple-table row, eq_a) and the ceiling stop. The per-slice anchoring at l.3034 does not, so E[P|close] rises 2% past the cap.
+
+The bestRatio comment admits that utility 'kept climbing into that unmeasured region (a corner solution, not a recommendation)' and limits the search to RHO_MAX. But optimize() compares 'reprice to optRho' against the user's current ask with no bound. For a patient seller (theta >= ~.78) who enters an ask above the cap, the utility card therefore recommends keeping that ask, up to at least 2.29x the improved value. …
+
+**Fix (as proposed).** Make the anchoring stop where the documentation says it stops. Cap the anchoring argument on the listing's gap, e.g. rhoOf applied to min(ask, RHO_MAX*V)/W, or equivalently W*anchorAt(rhoOf(min(ask,RHO_MAX*V)/W)), so E[P|close] is flat in the ask beyond RHO_MAX*V and U peaks inside bestRatio's domain. Independently, in optimize() treat a current ask above RHO_MAX*V' as outside the search domain: force the reprice, or clamp the kept ask to RHO_MAX*V'. Add a fuzz invariant that Vmean is non-increasing in the ask past 1.5V and that best.U never keeps an ask above RHO_MAX x its value. Update AUDIT.md #3 and the optNote 'rises all the way to the cap' wording accordingly.
+
+### R2-3. Data tab and MODELS call the -1.702 held-out benchmark 'a Poisson at the same scale', but it is a Poisson at its own fitted scale 0.255; at the shipped 0.184 scale it scores -1.774, no better than the old 0.34 judgment
+
+- **Keys:** `fits:competition:heldout-poisson-mislabelled-same-scale`  
+- **Severity:** medium  
+- **Where:** index.html Data tab 'Fitted from public data' competition row (line ~5316: 'Held-out quarters: log-likelihood ${heldout_loglik_per_deal.nb} per deal, against ${...poisson_same_scale} for a Poisson at the same scale'); MODELS.fitted.competition.heldout_loglik_per_deal.poisson_same_scale; source fit/competition_buyers.py lines 588-592 ('poisson_fitted_scale_M5P')
+
+**Why it is wrong.** The -1.702 figure is a Poisson whose scale was refitted to 0.255, which is 39% above ENG_SHARE. 'At the same scale' tells the reader the comparison holds the 0.184 scale fixed and isolates the NB-versus-Poisson shape. The console keeps the Poisson shape at 0.184, and that combination scores -1.774 on held-out quarters, 0.186 nats behind the NB instead of 0.114. It is also no better than the old 0.34 Poisson (-1.773). The MODELS key name repeats the error.
+
+**Verifier (reproduce).** Confirmed. In this row 'the scale' means ENG_SHARE c (the text says the NB is 'used only to calibrate the scale'). The -1.702 Poisson does not use that scale: it uses its own MLE, c=0.255, 39% higher. A Poisson actually at 0.184, which is the shape-and-scale pair the thin-pool factor uses, scores -1.774. That is 0.186 nats behind the NB (not 0.114), and marginally worse than the old 0.34 Poisson (-1.773). The NB-beats-Poisson conclusion stands either way. The defect is the label and key name. Severity: low to medium.
+
+**Fix (as proposed).** Relabel the figure 'a Poisson at its own fitted scale (0.26)', rename the key (e.g. poisson_own_scale), and add the held-out score of the Poisson at 0.184 (-1.774) that the console actually uses, next to the old 0.34 Poisson (-1.773).
+
+### R2-4. The median refit turned the 'Days on market' self-audit row from 'in range' to 'off', with no note anywhere
+
+- **Keys:** `fits:ttc_medians:days-on-market-self-audit-flipped-off`, `math:timing:selfaudit-days-row-flips-off-after-median-refit`  
+- **Severity:** low  
+- **Where:** index.html renderCalib() row 'Days on market, main street, fairly priced' (line 5468: ms=at('prof',158950,703000), test |ms.tMed-170|<40); fitTiming TM switch (line 2445); AUDIT.md:253 ('two rows honestly read "off"') and AUDIT.md:442-444 (the follow-up says the BizBuySell days-on-market self-check must be re-verified)
+
+**Why it is wrong.** The refit adds a third failing self-audit row. AUDIT.md still says only two rows 'honestly read off' (2.35x and 6.77x). The open follow-up this change closes explicitly required this BizBuySell days-on-market self-check to be re-verified once the medians moved. It was not, and the regression is undocumented. The fitted band median at $373k now sits 43 days above BizBuySell's 170-day median. Either the benchmark comparison (IBBA listing-to-close vs BizBuySell days on market) needs a note, or the check's target or window needs revisiting.
+
+**Verifier (reproduce).** Confirmed. The 'off' reading itself is honest, and the self-audit is meant to show it. The defect is that the refit flipped the row from in range (206.7 d) to off (213.3 d), although the closing follow-up said explicitly that this check must be re-verified, and nothing records it. The page and the commit say nothing, AUDIT.md still lists two off rows, and no test pins the row. A one-line note fixes it, since the explanation already exists in anchoring_realization's RESULT: BizBuySell days on market (171) against IBBA listing to close (~217). So does re-targeting the benchmark. Severity: low to medium.
+
+**Fix (as proposed).** Add a sentence to the self-audit and AUDIT.md saying the fitted medians put Main-Street listing-to-close at about 213 days against BizBuySell's 170, and why (different clocks and samples: anchoring_realization's RESULT already notes IBBA's like-for-like median is 217 days). Alternatively, re-target the row to an IBBA-consistent benchmark. Add a test that pins the row's status.
+
+### R2-5. The R1-20 fix (presentation:eq_v:general-form-terms-never-valued) defines h as 'ln(SDE/$150k), floored at 0', but above $3M of SDE the code caps it, so the printed definition no longer reproduces the printed h or P-hat
+
+- **Keys:** `numbers:eq_vs:hinge-definition-omits-3m-sde-cap`, `math:value:eq_vs-hinge-definition-omits-cap`  
+- **Severity:** low  
+- **Where:** index.html render() eq_vs line 4293 (label 'ln(SDE/$150k), floored at 0' next to r.fv.hinge); fitValue line 2138 (hinge = (hc-hk) + slope_beyond_cap*(ln sk - hc) above cap_sde_thousands = 3000)
+
+**Why it is wrong.** R1-20 added the term definitions so that 'the substituted line can be checked against' eq_v. Above $3M of SDE, which the rail reaches easily (earnings up to 85% of revenues up to $200M), the definition printed beside h is false. A reader following it gets a value 10-20% higher than the boxed E[V|X]. The cap is a deliberate part of the fit (the multiple goes flat beyond the data), but the console never states it.
+
+**Verifier (reproduce).** Confirmed, low. The cap is a deliberate, documented part of the fit: MODELS.value.size_hinge.form, and the Data tab Model II block prints 'then slope 0.535951 above 3M'. But the Console definition added for R1-20, whose purpose is that 'the substituted line can be checked against' eq_v, is wrong for any SDE above $3M, a value the earnings field accepts. A reader who applies it gets a P-hat 3-20% too high. The fault is incomplete console labelling, not a model bug.
+
+**Fix (as proposed).** Print the full definition, e.g. 'h = ln(SDE/$150k) floored at 0, rising at 0.536 per log point above $3M SDE', or switch the label on r.fv.hinge when s.ern exceeds cap_sde_thousands. Add a test that the printed definition reproduces r.fv.hinge for ern in {1e5, 1.45e6, 5e6, 8e6}.
+
+### R2-6. 'LOI-to-close leg (about 36% of it)' was computed with the published medians; with the fitted medians that ship, the same computation gives 40% (43% for the framework example)
+
+- **Keys:** `fits:ttc_medians:loi-leg-share-36pct-stale`, `invariants:timing:loi-share-36pct-stale-after-median-refit`  
+- **Severity:** low  
+- **Where:** index.html Data tab 'Overpricing costs time' note (line 4919-4920, hard-coded 'about 36% of it'); timeMult comment line 2358; the derived '0.06-0.07 if only the marketing leg were stretched' (lines 2365-2366, Data tab row and note); origin fit/overpricing_time.py line 1172 LOI_SHARE = median of r.ft.loi*30.44/r.ft.days over 64 median businesses
+
+**Why it is wrong.** The text is a hard-coded number derived from the model's band medians, and the median refit moved it from 36% to 40%. The parenthetical 'about 0.06-0.07 if only the marketing leg were stretched' rests on the same share. It is 0.09-0.10 x (1-0.36). With 0.40 it becomes 0.054-0.060, so about 0.05-0.06. The note therefore understates how much of the stretch falls on a leg the analogs do not measure.
+
+**Verifier (reproduce).** Confirmed. The 36% was computed from the published medians that the refit replaced. With the shipped medians the same computation gives 40%, and the table beside it implies 32-43%. The derived marketing-leg figure shifts slightly, to about 0.05-0.06. The fit/README says the LOI medians feed no console figure, but this sentence is a claim about the console's own median, and it should use the medians the page now shows. Severity: low.
+
+**Fix (as proposed).** Compute the share live, e.g. from MODELS.fitted.ttc_medians.loi/listing as overpricing_time.py defines it, or update both the comment and the Data tab to 'about 40%' and the marketing-leg equivalent to 'about 0.05-0.06'.
+
+### R2-7. The ± on the fitted medians is sampling-only, yet the Data tab says the ± is widened for brokers rounding or truncating months; under the truncation reading every median moves +0.53 to +0.57 months (about 3 SE)
+
+- **Keys:** `fits:ttc_medians:median-se-omits-month-reporting-convention`  
+- **Severity:** low  
+- **Where:** index.html Data tab Model III table (median ± listing_se, line 4866) and note ('The ± is the standard error from resampling quarters, widened because brokers may round or truncate months and because "under one month" is ambiguous', line ~4882); MODELS.fitted.ttc_medians.listing_se; fit/time_to_close_medians.py interval() (off = 0.5 only) and step 2 (quarter bootstrap only)
+
+**Why it is wrong.** The table shows a median ± and a β ± side by side, and the only sentence that explains '±' says it is widened for the month-reporting convention. That is true for β and false for the medians. Their ± is quarter-bootstrap sampling error only, while the documented convention ambiguity shifts every median by about 3 of those SEs. The medians' uncertainty is therefore understated by about a factor of 2-3, inconsistently with the shape row beside it.
+
+**Verifier (reproduce).** Confirmed. The sentence was written when β was the only ± in the table (the shape script's template showed the histogram medians without ±). After the refit added median ±, the sentence was left unqualified. It is true for β and false for both median columns. The convention ambiguity that the shape fit treats as a systematic term moves every median by about 0.55 months, which is 2-3 times the listing SE and much more for LOI. The 'Fitted from public data' row correctly says 'quarter-bootstrap SEs', so the page contradicts itself. Severity: low.
+
+**Fix (as proposed).** Either add the rounding-vs-floor half-gap (about 0.27-0.28 months) in quadrature to listing_se and loi_se, as time_to_close_shape.py does for β, or label the median ± as 'sampling only (quarter bootstrap); reading months as truncated would add about 0.55 months to every median'.
+
+### R2-8. The aggregate tally ('30 read from published market aggregates') and the Aggregate section leave out IBBA's cash-at-close shares, which the model reads into the hero's 'cash at close' figure
+
+- **Keys:** `fits:datatab:nagg-omits-ibba-cash-at-close`  
+- **Severity:** low  
+- **Where:** index.html renderData() nAgg (lines 4593-4601, comment 'counted from the tables themselves' lists Pepperdine bases and gap shares, IBBA price-to-ask, BizBuySell price-to-ask, prime, Census, BLS); Aggregate section note 'Three more published aggregates feed the console' (line ~4818); model() lines 3072-3074 read MODELS.close_and_timing.ibba_cash_at_close.by_band
+
+**Why it is wrong.** The tally claims to count the published aggregates the console reads, from the tables themselves. A five-value IBBA table that sets a displayed dollar figure ($347k deferred out of $2.10M on the default inputs) is missing. So the aggregate count is 5 short, and the Aggregate section's list of feeding aggregates is incomplete.
+
+**Verifier (reproduce).** Confirmed. A five-value IBBA aggregate that sets displayed dollar figures ($347k deferred out of $2.10M on the default inputs) is missing from the aggregate tally and from the Aggregate section's list of feeding aggregates. Commit 0f1fa9b says 'the aggregate count is read from the tables', so this is an omission in that computed count (30 where it should be 35). Severity: low.
+
+**Fix (as proposed).** Add C.ibba_cash_at_close.by_band.length to nAgg (35), and list IBBA's cash at close in the Aggregate section's 'more published aggregates' sentence.
+
+### R2-9. The judgment ledger counts BUYERS as 8×4 (12 of those are inert window edges) and leaves out its 22 live fit coefficients; INTERV is counted 33 against 43 hand-set numbers; and the BUYERS row omits that it moves P_C below a typical pool
+
+- **Keys:** `decisions:datatab:buyers-interv-judgment-rows-miscounted-and-reach-understated`  
+- **Severity:** low  
+- **Where:** index.html renderData() nJudg l.4587-4592 (BUYERS.length*4 + INTERV.length*3); judgment table rows l.5133-5136 (BUYERS count ${BUYERS.length*4}, reach 'Pursue-first, strategic premium, competitive tension'; INTERV count ${INTERV.length*3}); model() sizeFit (lo/hi read only when BUYER_GROUP has no group: eta, mbo); peRef → nEngRef/nPool → thinF
+
+**Why it is wrong.** The ledger exists to say how many hand-set numbers there are and which reported figures they reach (R1-31/R1-32 fixed the same kind of miscount elsewhere). The BUYERS count includes 12 numbers the model never reads and leaves out the 22 coefficients that set engagement, pursue-first, the competition premium and the typical pool's engagement (peRef). INTERV is undercounted by 10 (30%). Through peRef the archetypes set the thin-pool factor, so below a typical pool they move the closing probability, expected proceeds and the Omni score. The IND row says this about IND buyers, but the BUYERS row lists only pursue-first, strategic premium and competitive tension.
+
+**Verifier (reproduce).** Confirmed. This is the same kind of ledger miscount that was accepted and fixed in R1-32 (counting non-parameters) and R1-31 (omitting live parameters). BUYERS*4 counts 12 numbers the model never reads and omits the 22 fit-function coefficients. Those coefficients set engagement, pursue-first, the competition premium and peRef; the code's own ENG_SHARE comment says to refit 'whenever ... the BUYERS fit functions, peRef ... change'. INTERV*3 undercounts the hand-set days, cost and effect numbers by 10 (43 against 33).
+
+The BUYERS reach column omits that the archetypes move P_C, EVp and the Omni score below a typical pool through peRef and thinF, which the IND row states for IND buyers. A window change can move PC below a typical pool and leave the $1.45M calibration point unchanged, so a one-scalar ENG_SHARE refit cannot absorb it.
+
+Caveat: the ledger counts loosely elsewhere too (e.g. …
+
+**Fix (as proposed).** Count BUYERS as syn + mf (16) + the eta/mbo windows (4) + the 22 fit coefficients (+ the PE/PCj form constants if they are meant to be counted), and INTERV as the actual days, cost and effect parameters (43), or compute both from the definitions. Add to the BUYERS row: 'and, through the typical pool's engagement, the thin-pool factor: the closing probability, expected proceeds and Omni score below a typical pool'.
+
+### R2-10. After the post-round-1 time-to-close refit (0f1fa9b) the time tile is badged 'fitted', but the console footer still calls timing a 'market aggregate', and the Data tab still files time to close under the Aggregate section
+
+- **Keys:** `numbers:foot:timing-called-market-aggregate-after-ttc-fit`  
+- **Severity:** low  
+- **Where:** index.html footer line 5566 ('closing probability and timing are market aggregates conditioning on deal size and price gap'); Data tab Aggregate section header line 4811 ('closing probability & time to close'), with the Model III fitted-median table placed inside it (line 4861); compare o_t_pv in render() lines 4185-4188 (class 'f', 'fitted') and the srcs 'fitted Time to close' item (line 5537)
+
+**Why it is wrong.** Since 0f1fa9b the band medians and the shape are both fitted: MODELS.fitted.ttc_medians from fit/time_to_close_medians.py, MODELS.fitted.ttc_shape. The console's own badge and source note say 'fitted', while the footer and the Data tab's tier heading still describe timing as a published aggregate. The page's provenance labels contradict each other on the same quantity.
+
+**Verifier (reproduce).** Confirmed, low. The footer's provenance claim for timing contradicts the 'fitted' badge and Method item on the same page, a stale label left by the 0f1fa9b refit. The Data-tab half is weaker: the Model III subsection inside the Aggregate section explicitly says both are fitted, and its table includes the aggregate Price/ask column, so placing it there is partly defensible. Only the section ref and lede still imply that time to close is a published aggregate. The footer is the clear defect.
+
+**Fix (as proposed).** Footer: 'closing probability is a market aggregate conditioning on deal size, price gap and, below a typical pool, the buyers contacted; time to close is fitted to IBBA's histograms, with a labelled judgment factor for time above value'. Change the Aggregate section's ref to 'closing probability' and move the Model III table to the Fitted section, or say there that it is fitted.
+
+### R2-11. The fix for closing:datatab:pc-quality-independence-claim-false-at-fixed-ask is incomplete: the console lede and the Aggregate key still say P_C never depends on business quality, while the same page's sensitivity shows owner independence moving P_C by 5.2 pts
+
+- **Keys:** `numbers:pc-lede:never-on-quality-contradicted-by-sensitivity-dpc`  
+- **Severity:** low  
+- **Where:** index.html console Probability-of-closing lede line 1791 ('it conditions on deal size, the asking gap and the number of buyers contacted, never on business quality'); Method-panel key line 5499 ('Aggregate ... - not on business quality'); compare the corrected Method-panel item ('At the same dollar ask, a better business has a smaller price gap and so closes more often') and eq_ds / the sensP bars
+
+**Why it is wrong.** Round 0 rewrote only the Data-tab sentence. P_C reads the gap to the quality-positioned V, so at any fixed dollar ask above value, every quality input moves P_C. The console's own sensitivity panel prints exactly that (+5.2 pts per sd of owner independence) beneath a lede that says the probability conditions 'never on business quality'. The accurate statement, true at a fixed ask relative to model value, already appears in the Method panel on the same tab.
+
+**Verifier (reproduce).** Confirmed, low: the round-0 fix (#4, closing:datatab:pc-quality-independence-claim-false-at-fixed-ask) is incomplete. That finding's Where named only the Data-tab provenance sentence, which was reworded. The same absolute claim survives in the console lede (line 1791) and the Aggregate key (line 5499). On the same page, the sensitivity panel shows quality moving P_C by up to 5.2 pts at an ask above value. A reader could take 'never on business quality' as a statement about conditioning variables, since quality enters only through the gap. But read as a statement about the function it is false, and the page's own Method item already gives the accurate wording.
+
+**Fix (as proposed).** Reword both, e.g. 'it has no quality term: at the same ask relative to model value, quality does not move it; at the same dollar ask, a better business has a smaller gap and closes more often'.
+
+## Rejected by verification
+
+| Key | Why rejected |
+|---|---|
+| `math:risk:loan-sized-on-model-value-exceeds-ask` | The numbers reproduce (/tmp/claude-0/r2work/skeptic-math/f1.js, f1b.js). At the default, V is 4,090,444, ceil 3,240,000, Vmean 3,103,307 and risk.loan 3,476,877, which is 1.073x the ask. p is 3.178% and rel 0.563. fitRisk(min(V,ceil)) gives 3.739%, and p stays 3.178% at ask/V of 0.5, 0.79, 1.0 and 1.2. The behaviour is still intended, labelled on the page, and immaterial to any decision.  (1) The page states the … |
+| `decisions:buyers:synergy-captured-column-shows-buyer-synergy-not-seller-share` | Refuted: this re-raises a point that was already rejected, adds no new evidence against the rejection, and is immaterial.  The numbers reproduce. Direct strategic S is 1,101,013 and φS is 418,385. Vj−V is 1,097,907, and the row reads '$1.10M $5.19M $967k'.  However, round-1 finding buyers:labels:vj-is-negotiated-price-not-value-to-buyer (KNOWN_FINDINGS, rejected) already covered exactly this. Its reproduction in … |
+| `invariants:selfaudit:days-on-market-row-off-after-median-refit` | The numbers reproduce, but the behaviour is correct, it was anticipated in the record, and it is immaterial.  Reproduction: /tmp/claude-0/r2work/invariants/selfaudit_days.js gives tMed 213.29 days with the fitted medians and 206.67 with TM=null. pw2.js shows three rows reading 'off' (2.35x, 213 days, 6.77x).  (1) The row does what the live self-audit is designed to do. The section says 'These run live against the … |
+| `invariants:fuzz:rate-fixture-pins-risk-at-spread-cap` | The fixture facts reproduce: fuzzrate.js shows all 1,500 of 1,500 fuzz samples at spread 3.0, and the framework example gives 3.18% on the page path against 7.83% at rate 10.5. But the central claim is contradicted by the test suite. The finding says the size-dependent spread the page uses, and its interaction with loan size in the risk headline, 'sit outside every risk invariant'. They do not: - tests/model.test.js … |
+| `invariants:value:soi-wedge-monotone-claim-contradicted` | The numbers reproduce, but the defect is immaterial: no displayed number or claim is wrong and no decision changes. wedge.js confirms the knots 1.8679 / 1.8978 / 1.8117 / ... / 1.1199, and sdeEbitdaWedge('62') reads 1.9158 at $158k, 1.9463 at $354k and 1.9023 at $500k.  (1) The monotone '1.90 to 1.08' claim exists only in a source comment (index.html:2088-2091) and in MODELS.value.soi_size_wedge.why. The 'why' … |
+| `fits:ttc_medians:shrink-weight-mislabelled-and-oos-scores-unshrunk` | Refuted as immaterial. The code reading is right: eb_line's B=v/(v+tau2) is the weight on the line, yet RESULT stores 1-B as 'shrink_weight_on_line'. But that field exists only in /tmp/claude-0/fit5/time_to_close_medians/RESULT.json. Nothing in index.html, fit/README.md, the tests or AUDIT reads it (grep finds it only at the script's line 194). The shrunk medians are computed correctly from B. On the held-out claim, … |
+| `fits:ttc_shape:hist-median-5-50m-double-rounded` | Refuted as immaterial. The arithmetic holds: fits.json band_table 5M-50M listing grouped_median is 9.951368; round(x,2)=9.95 and '%.1f'%9.95 = '9.9', where a single rounding gives 10.0. But 9.9 is only 0.051 months from the true 9.951, which is 0.001 months (about 1 hour) beyond the 0.05 half-unit tolerance. The value is a boundary tie on a display-only constant (the ttc_shape comment says 'hist_* are the … |
+| `numbers:eq_cs:fitted-residual-band-recentred-on-quality-value` | The numbers reproduce: the default band is $2.09M-$6.93M, which is r.V x 0.5102/1.694. r.vLo/vHi = $1.78M/$5.92M, and qFactor = 1.171. But the centring is the model's documented design, not a mislabel. (1) AUDIT.md lines 52-55 record it as a known, deliberate limitation: 'Quality positioning moves the median, and the full residual fan is then applied around it. If quality really explains part of the residual, the … |
+| `numbers:selfaudit:days-on-market-row-off-after-ttc-refit` | The numbers reproduce. For the renderCalib ms profile (prof, $158,950 SDE, $703k revenue, ask = V, Vbase $373,423), tMed is 206.7 d at r1snap and 213.3 d at r2snap, and the Data tab reads '213 days vs 170 +/- 40 days off'. But it is not a defect. The row computes exactly what its label says and reports a true verdict. No displayed number or claim is wrong, and no decision depends on it. The page's design accepts … |
+
+Two of the rejected findings concern `fit/time_to_close_medians.py` and were rejected only as immaterial: the RESULT field `shrink_weight_on_line` stored the weight on each band's own estimate, and the out-of-sample scores were computed for the raw maximum-likelihood medians rather than the shrunk medians that ship. Both are corrected in the round-2 batch anyway, since the script is new.
