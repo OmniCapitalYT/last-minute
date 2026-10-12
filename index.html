@@ -8010,6 +8010,12 @@ details.more[open]>summary::before,:is(#view-console,#view-data) details.more[op
 @media (max-width:560px){ .nav{margin-top:-6px} .nav-sentinel{margin-top:-6px} }
 /* r3-1, narrow phones (375-383px, e.g. iPhone SE and mini): one row would wrap 'Market aggregate', so keep the two-row layout */
 @media (max-width:383px){ .mast-status{grid-template-columns:repeat(2,auto);justify-content:start;gap:var(--sp-3,12px) var(--sp-5,24px)!important;width:auto} }
+
+/* final verification. On phones the focal canvas's 1:0.8 box made the planet narrower than its "chance of closing"
+   label, so the glyphs crossed the bright limb: a square box at <=480px keeps the label inside the disc. And the
+   nowrap .ref pills (42px phone indent) ran past the 16px gutter at 360-375px: let them wrap. */
+@media (max-width:480px){ #focal{aspect-ratio:1/1} }
+@media (max-width:420px){ .sec-head .ref{white-space:normal!important;max-width:calc(100% - 42px);flex:0 1 auto!important;height:auto!important;line-height:1.35} }
 </style>
 <!-- ======== end v8-hero ======== -->
 <!-- (separator) -->
@@ -8765,6 +8771,10 @@ html.v8-reveal #view-console .sec.landed:not(.kf-lit) .gap-figure .n{
   #view-console .gap-traj .traj-pulse,#view-console .gap-traj .traj-flash{animation:none!important;display:none}
   #foot .foot-mark .s{animation:none!important}
 }
+
+/* final verification: the visually hidden KaTeX fallback in the feedback-loop card was a keyboard-focusable scroller
+   (overflow-x:auto on 157px of content in a 1px box), so Tab landed on an invisible stop */
+#view-console #eq_loop .katex-display{overflow:visible!important}
 </style>
 <!-- ======== end v8-console ======== -->
 <!-- (separator) -->
@@ -10500,7 +10510,8 @@ function fold(node,key,fix){
   d.querySelector(".more-body").textContent=full.slice(i).trim(); d.hidden=false;
 }
 function folds(){
-  fold($id("o_listnote"),"listnote");
+  /* #o_listnote is not folded: its later sentences carry the qualifiers on the walk-away price ("read it as a range ...
+     close to a tie", "test the market" at the 1.5x cap), which must stay visible beside the number (final verification) */
   fold(doc.querySelector("#o_real .rzf"),"rzf",function(t){ return t.replace(/\$500K/g,"$500k"); });
 }
 
