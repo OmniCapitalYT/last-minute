@@ -669,3 +669,160 @@ businesses, 0 of 28,000 numeric fields differ).
   check changed from "sale minus ask < 0" to "the difference is not significant", plus the growth-shape checks, the
   banned wording and the rendered evidence template); tests/fuzz.test.js 7h (qz is the signed weighted z over the norm;
   QW reads only the fitted weights; growth moves qz by w/norm).
+
+## Logic audits (rounds 0 to 4) and the time-to-close median refit, October 2026
+
+### How the audits ran
+
+Each round worked from a frozen copy of the page at one commit:
+- **Find.** Independent auditors each took one area, and every finding had to carry a numeric reproduction: the exact inputs and the numbers they produced.
+- **Verify.** Two verifiers judged every finding. One tried to reproduce it with their own commands; the other tried to refute it. A refutation could show the behaviour was intended and labelled, already documented, mis-measured, or immaterial.
+- **Confirm.** A finding counts as confirmed only if it reproduced and was not refuted.
+- **Fix.** Confirmed findings were fixed in one batch and pinned by tests.
+- **Repeat.** The next round started from the fixed page and was told what had already been raised, fixed or rejected (with the reason), so it looked for what earlier rounds missed and for anything the fixes broke.
+
+Full verdicts, reproductions and rejections are in `AUDIT_FINDINGS.md`.
+
+| Round | Commit audited | Raised | Confirmed | Rejected | Fixed in |
+|---|---|---|---|---|---|
+| 0 | 7cac297 | — | 25 (17 distinct) | — | a6d235c |
+| 1 | a6d235c | 51 | 34 | 17 | c27ebf1, 1084036, 549537e |
+| 2 | 0f1fa9b | 25 | 16 (11 distinct) | 9 | df83852, 3d53b6f |
+| 3 | 3d53b6f | 20 | 11 (9 distinct), plus 1 reproduced by hand where the verifiers returned no verdict | 8 | 39842b1 |
+| 4 | a7346a7 | 7 (2 of 4 auditors finished) | 7 verified by hand, plus 1 from a hand-run numbers pass | 0 | f3c3f87, 79a18c0 |
+
+### What changed
+
+**Decisions**
+- The cost of delay is charged on the mean time to close, E[T], not the median.
+- The 2% floor that froze P_C far above value is gone.
+- The business score is priced at the proceeds-optimal ask and at least a typical buyer pool.
+- Each buyer closes on the gap between the ask and its own value V_j, and is paid at most the ask ceiling (R1-4, R1-5). The equation, the table and "pays most" show that cap (R2-1).
+- **The fan's anchoring now stops where the documentation always said it did (R2-2).** Each fan slice used to anchor on the raw ask against its own W, so E[P | close] kept rising about 2% between 1.5× and 2× value, the region bestRatio refuses to search. Every slice now anchors on the effective ask softmin(ask, 1.5 V), the same quantity the ceiling reads.
+  - The effective ask differs from the ask by under 1e-9 below 1.2× value and by about 2e-6 at 1.35×. (Commit df83852's message calls asks below about 1.4× "bit-identical", which overstates it.)
+  - The optimiser no longer keeps an ask above 1.5× a programme's value.
+  - Near-cap figures moved: the interior peak wins by 0.55% of value (was 0.48%), the theta flip is 0.776 (was 0.772), the FAN_S flip 0.94 (was 0.92), the PEN_MAX flip 0.42 (was 0.43), and the patient-seller cap wins from 77% / 78% / 81% kept (was 76% / 77% / 81%).
+  - Walk-away asks at the quoted precision are unchanged.
+
+**Optimiser and table texts**
+- optNote, optCardNote and the sensitivity note describe the numbers they sit beside: term directions, the coin-toss rule at 1% of value, the delay cost in dollars, and the ask-binding share.
+- The intervention table's net days use E[T].
+
+**Provenance**
+- Badges switch to "× judgment" where a judgment factor acts: the quality position on value and the multiple, PEN_MAX and the size ramp on P_C, the SBA tail factor on risk, and overpricing on time.
+- The time tile now reads "fitted".
+- The three tallies are counted from the tables themselves: fitted 537, aggregate 38, judgment 432 at 79a18c0.
+  - These ledger rows read their own definitions (R2-9, R3-4, R4-2, R4-7):
+    - BUYERS (54) and INTERV (43);
+    - the judgment multiple stack (68);
+    - category (38) and confidence (8);
+    - quality-dimension peer scales (19) and size and buyer-pool scales (3).
+  - The note under the ledger is computed from the rows: 104 of the 432 are inert (R4-4).
+  - The aggregate count includes IBBA's cash at close and DealStats' deal structure, but not the prime rate, which moves no figure (R2-8, R3-2).
+  - The masthead and footer no longer call timing an aggregate (R2-10, R3-1).
+- P_C is described as having no quality term, reached by quality only through the gap.
+
+**Equations**
+- Every eq_* general form now reproduces the substituted line beneath it:
+  - the hinge definition above $3M of SDE;
+  - the gap-tail rate to three significant figures;
+  - the median calibration and quality position in eq_vs;
+  - the stack bounds;
+  - the softmin cap in eq_a and eq_b.
+
+**Data-tab claims computed live**
+These were hand-typed and had gone stale:
+- the termination trend, generated from the series;
+- the DealStats cross-check (r = 0.46 on the eight tabulated sectors, not the old 0.887);
+- the SBA loan-size reversal;
+- the walk-away and knife-edge figures;
+- the LOI-leg share (40%, 32–43% by band) and the marketing-leg conversion of T_ELAST (0.05–0.06).
+
+**Display and texts (round 3)**
+- `money(x,0)` kept no decimals in millions, so $1.30M of costs showed as "$1M" and a $1.5M budget as "$2M"; it now keeps two (R3-6).
+- The star-map tooltip shows the price at this ask (R3-7).
+- The printed point-estimate anchoring reads the effective ask, as the fan does (R3-8).
+- The SBA loan-size gap is described at the hazard pieces' start ages: ×0.89 per tenfold before month 72, ×1.16 from it; it is not "closing at 5.4 years" (R3-5).
+- The TermInMonths leak is measured on the hazard model's own loans by the new `fit/sba_term_trap.py`: 84% of paid-in-full loans carry a standard term against 11% of charged-off ones, and the field alone gives AUC 0.825. The old figures (86.9%, 13.0%, AUC 0.957) came from the superseded logistic (R3-9).
+- Pepperdine's resolved termination range is read from the series: 33–41% (R3-10).
+
+**Round 4**
+- `TermInMonths` is not the time to charge-off (within 3 months for 2.5% of charged-off loans), so the page no longer says SBA overwrites it with that.
+- SBA's jobs count runs from about a third of the Census head count to several times it, not "several times fewer".
+- The GM salary's firm-size rank is labelled judgment.
+- The budget box shows two decimals in millions.
+- The binding-ask note names the measure it ranks by.
+
+**Competition**
+- The held-out benchmark is labelled correctly: a Poisson at its own refitted scale (0.255).
+- The pairing the thin-pool factor actually uses (Poisson shape at the NB's scale) is now scored: −1.778 per deal, no better than the old 0.34 judgment (−1.773). So the scale is calibrated and the shape stays judgment (`fit/competition_heldout_poisson.py`).
+
+**Time-to-close band medians: fitted (`fit/time_to_close_medians.py`)**
+- **Method.** They were IBBA's published 2018–23 lookup. They are now maximum-likelihood medians of the interval-censored log-logistic, fitted with the shipped shape to the same per-band histograms (15 quarters, 4,533 closed deals). Each band is shrunk toward a line in ln(deal size).
+- **Values.** 6.54 / 7.75 / 8.02 / 9.03 / 10.14 months listing to close; 2.12 / 3.06 / 3.20 / 3.87 / 4.05 LOI to close.
+- **SEs.** Quarter-bootstrap, with half the rounded-against-truncated month gap (0.5–0.6 months) added in quadrature.
+- **Out of sample.** The shipped pipeline (shrunk in each fold, rounded) beats the published medians:
+  - listing +0.0028 nats per deal (SE 0.0012), better in 12 of 15 held-out quarters;
+  - LOI +0.0126 (SE 0.0035), 13 of 15;
+  - both better in 4 of 4 quarters when fitted on 2020–22.
+- **Calibration against the histograms.** The largest gap in the share closed falls from 9.4 to 3.0 points at 180 days and from 6.9 to 4.7 at 365 days.
+- **Remaining size-order quirk.** The share closed after about 18 months still rises with size between $250k and $707k, now by at most 0.7 points near 900 days (was 1.4). This comes from the wider under-$500K shape.
+- **Effect on the framework example.**
+  - The median time to close at value goes from 248 to 277 days and E[T] from 318 to 355; the share closed by day 180 falls from 30% to 24%.
+  - The proceeds-optimal ask (1.10×) and the walk-away ask (1.15×) are unchanged.
+- **Self-audit.** The BizBuySell days-on-market row now reads off (213 days against 170 ± 40; 207 with the published medians). The row says this is a disagreement between IBBA and BizBuySell, rather than widening its window. With this row, three self-audit rows read off.
+
+### What remains judgment, and why
+
+Each item is on the Data tab's "Still judgement" ledger with the data that would fit it. None can be fitted from anything reachable here.
+
+| Component | Why it is not fitted |
+|---|---|
+| **Quality position (qFactor) and the judgment stack's bounds** | No dataset records the soft variables (owner dependence, recurring revenue, concentration, …) per closed deal. Listing text priced only owner dependence and management depth, and those weights are shrunk toward 1. |
+| **Anchoring strength α = 0.55, ceiling A_max = 1.30** | Sale-to-ask data identify (1−α)·s, not α: with s refitted, every α from 0.30 to 0.85 gives the same realisation level. Fitting α needs asks that vary for reasons unrelated to the business. |
+| **PEN_MAX = 0.45, the $1M–$5M base-rate ramp, and the >50% bucket's placement** | Pepperdine publishes where price-killed deals died and base rates by channel, not a response of P_C to the gap or a base rate by size. These are load-bearing: below 0.42 the framework example's walk-away ask jumps to the cap. |
+| **T_ELAST = 0.10 (time cost of overpricing)** | The sign is fixed by online-marketplace analogs. The Main-Street size is not identified: DealLedger has 31 sales, and the pooled 95% interval includes zero. |
+| **Competition premium κ = 0.03 and the thin-pool factor's shape and cap** | IBBA's histograms are of closed deals, so the zero-offer class is never observed. Its band averages bound κ only to −0.33..+0.31. |
+| **FAN_S = 0.80 and ENG_SHARE = 0.184** | *Calibrated*, not estimated. Each is set to reproduce a market average (sale-to-ask; offers per closed deal), and neither mechanism is identified. They are counted in no tally. |
+| **Buyer archetypes, φ, strategic premium** | Who bought what at what premium is unpublished. The size mix is fitted; the multiple factors are only checked, against Pepperdine 2016/2025 and GF Data. |
+| **SBA tail factor ×1.20 (years 9–10)** | No change-of-ownership loan is older than 8.5 years (SBA has flagged them only since Dec 2017). |
+| **Intervention costs, durations and effects; category sub-score weights; the confidence formula** | They need before/after records of pre-sale changes, or an outcome to predict. Nobody publishes either. |
+| **GM firm-size rank and the e-commerce wage bridge** | OEWS has no wages by firm size and no e-commerce row since NAICS 2022. |
+| **IND typical buyer pools** | They set the reference for the thin-pool factor and the competition premium; no source counts buyers contacted per listing. |
+
+### Where the audit loop stands, and the dated sections above
+
+- **Rounds.** The confirmed defects fell from 25 and 34 (rounds 0–1) to 11, 10 and 8 (rounds 2–4).
+- **Remaining defects are textual.** After round 2 they are almost all low-severity wording and count defects; the one medium was R3-6's rounding of millions.
+- **No defect since round 2 has changed a model output** (value, prices, P_C, time, risk, proceeds, the recommended asks or the scores).
+  - Round 3's R3-6 and R3-8 corrected how figures were displayed: rounding of millions, and the printed point-estimate anchoring factor.
+  - The rest are wording and count defects.
+  - Round 4's value auditor found only a ledger count, and the hand-run numbers pass (about 14,240 checks across 33 states) found one ambiguous sentence.
+- **The loop is not formally closed.**
+  - Round 4 lost its claims and numbers auditors and both verifiers to the subagent usage cap. Its findings are single-reviewer verdicts, and the Data-tab claims were not re-audited independently after round 3.
+  - A fifth round with independent two-lens verification is due once the cap resets (2026-10-15 01:00 UTC).
+- **The dated sections above are records at the time of integration.** On the shipped model, for the framework example:
+  - the median time to close is 277 / 281 / 287 / 295 days at 1 / 1.2 / 1.5 / 2× value (248 / 252 / 257 / 265 before the median refit);
+  - the walk-away ask (75% kept) is 1.13 / 1.14 / 1.15 / 1.15 at $900 a day and 1.09 / 1.12 / 1.14 / 1.14 at $4,000;
+  - the patient-seller cap wins from 77% kept with no delay cost, 78% at $900 a day and 81% at $4,000;
+  - the FAN_S flips are 0.88 and 0.94;
+  - the Omni score at 25 / 40 / 50 / 65 buyers is 1 / 31 / 41 / 41, and at 40 buyers with a typical pool of 40 / 50 / 60 it is 41 / 31 / 25;
+  - three self-audit rows read off, not two.
+
+### Tests
+
+At HEAD:
+- `node tests/model.test.js`: 7,458 checks. Section 29 pins the round-0 fixes, 30 round 1, 31 the median refit, 32 round 2, 33 round 3 and 34 round 4.
+- `node tests/fuzz.test.js 1500`: 173,364 checks. Invariants 7i–7p cover:
+  - E[T];
+  - P_C monotone in the ask with no floor;
+  - buyer EV = P_E·P_C,j·P_j;
+  - the SBA rate;
+  - outreach;
+  - the score pool;
+  - the optimiser texts;
+  - the fitted medians (monotone, continuous, reading only deal size, moving only time outputs);
+  - the flat price past the cap.
+
+  The optimiser never keeps an over-cap ask.
+- `node tests/browser.inputs.js` and `node tests/browser.sweep.js` (118 input states at 1440px and 390px): pass.
