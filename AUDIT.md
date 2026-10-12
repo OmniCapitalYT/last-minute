@@ -428,7 +428,7 @@ command.
 | industry SDE margins 7–21% × size curve, sd 0.45 | fitted 20–30% at $200k SDE (shrunk toward the pooled level), slope 0.075, sd 0.59 | 5,055 broker listings (DealLedger, CC0) |
 | equal weight on owner dependence, management depth | 1.24 and 0.60 of an equal share, shrunk toward 1 (neither clearly different from 1) | 5,714 listings with descriptions |
 | buyer-type size windows | individual / strategic / financial share by deal value, interpolated between IBBA bands | IBBA buyer mix, 47 complete band-quarters |
-| time-to-close curve: Weibull, judgment shape k = 1.42 | log-logistic pinned to the band median, shape β 2.20 under $500K and 2.64 from $500K up (interpolated in ln value) | IBBA Market Pulse per-band histograms of months to close, 15 quarters, 4,533 closed deals (`fit/time_to_close_shape.py`) |
+| time-to-close curve: Weibull, judgment shape k = 1.42 | log-logistic pinned to the band median, shape β 2.20 under $500K and 2.64 from $500K up (interpolated in ln value); the band medians themselves fitted to the same histograms since (6.54 / 7.75 / 8.02 / 9.03 / 10.14 months, `fit/time_to_close_medians.py`) | IBBA Market Pulse per-band histograms of months to close, 15 quarters, 4,533 closed deals (`fit/time_to_close_shape.py`) |
 
 **What the data could not fit, and why.** The Data tab has a new ledger listing each of these
 with the data that would fit it:
@@ -439,11 +439,9 @@ with the data that would fit it:
   curve's shape. *Superseded:* the shape is now fitted from IBBA's per-band histograms (see the
   table above); only the effect of quality and of the ask on time remain unfitted (the ask's effect is now a
   labelled judgment, T_ELAST 0.10: see "Overpricing costs time" below).
-  **Open follow-up:** refit the time-to-close band medians to the 2020–25 histograms (grouped medians
-  6.6 / 8.1 / 8.3 / 9.3 / 9.9 months; Option B in `fit/time_to_close_shape.py`). It moves the median, so the
-  optimiser's delay cost, the intervention table and the BizBuySell days-on-market self-check must be
-  re-verified. It would remove the one size-order exception: F(540 d) rises by up to 1.3 pts with size
-  between $250k and $707k, because the 2018–23 $500K–1M median is 0.8 months shorter than its histogram.
+  ~~Open follow-up: refit the time-to-close band medians to the 2020–25 histograms.~~ *Done (October 2026):*
+  `fit/time_to_close_medians.py`; see "Logic audits, round 0 to round 2, and the median refit" at the end of this file.
+  The size-order exception shrinks from 1.4 to 0.7 pts and now starts past about 18 months.
 - **Anchoring:** fitting the sale price against the ask needs deal-level pairs of asking and
   sale prices. The model's expected price sits 8 to 14 points below IBBA's average above $1M,
   and no anchoring setting closes that gap: the measured value spread is too wide.

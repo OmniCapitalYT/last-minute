@@ -22,6 +22,8 @@ function sample(){
   return s;
 }
 const fin=x=>typeof x==="number"&&isFinite(x);
+/* the model with IBBA's published band medians instead of the fitted ones (7o) */
+const PUB=A.loadWith([["const TM=MODELS.fitted.ttc_medians;","const TM=null;"]]);
 const ctx=(s,extra)=>JSON.stringify({...s,...extra},(k,v)=>typeof v==="number"?+v.toPrecision(5):v);
 
 for(let i=0;i<N;i++){
@@ -229,6 +231,23 @@ for(let i=0;i<N;i++){
       const m=c.text.match(/pays only through (.*?)(, while (.*))?\.$/), named=m?m[1]:"", against=m&&m[3]?m[3]:"";
       ok(!(named.includes("value retained")&&dRet<=0)&&!(named.includes("cost of delay")&&dDel<=0)
          &&!(against.includes("value retained")&&dRet>=0)&&!(against.includes("cost of delay")&&dDel>=0),"card subtitle names each term in its true direction",ctx(s,{text:c.text,dRet,dDel})); } }
+
+  /* 7o. band medians fitted to the IBBA histograms (fit/time_to_close_medians.py): the median reads deal size (Vbase)
+     alone, rises with it, has no jump at the band knots, sits between its neighbouring fitted medians, and is exactly
+     the curve's median at a fair ask. Swapping the published medians back in moves only the time outputs: value,
+     prices, P_C and risk are untouched */
+  { const TM=A.MODELS.fitted.ttc_medians, ft=A.fitTiming(r.Vbase,s.ind), lo=Math.min(...TM.listing), hi=Math.max(...TM.listing);
+    ok(ft.months>=lo-1e-12&&ft.months<=hi+1e-12&&Math.abs(ft.days-ft.months*30.44)<1e-9,"fitted median inside the fitted band range",ctx(s,{m:ft.months}));
+    ok(A.fitTiming(r.Vbase,pick(INDS)).months===ft.months,"fitted median reads no industry",ctx(s));
+    ok(A.fitTiming(r.Vbase*1.07,s.ind).months>=ft.months-1e-12,"fitted median never falls with deal size",ctx(s));
+    ok(Math.abs(A.fitTiming(r.Vbase*(1+1e-7),s.ind).months-ft.months)<1e-5,"fitted median continuous in deal size",ctx(s));
+    const rf=A.model({...s,ask:Math.min(r.V,r.Vbase)*.8});
+    ok(rf.tMult===1&&Math.abs(rf.tMed-A.fitTiming(rf.Vbase,s.ind).days)<1e-9,"at a fair ask the median is the fitted band median",ctx(s,{tMed:rf.tMed}));
+    const rq=A.model({...s,own:1-s.own,fin:1-s.fin,mgt:1-s.mgt,ask:Math.min(r.V,r.Vbase)*.8}), rq0=A.model({...s,ask:Math.min(r.V,r.Vbase)*.8});
+    if(rq.Vbase===rq0.Vbase&&rq.tMult===1&&rq0.tMult===1) ok(rq.tMed===rq0.tMed,"fitted median reads no quality input at a fair ask",ctx(s));
+    if(i%3===0){ const rp=PUB.model(s);
+      ok(rp.V===r.V&&rp.Vmean===r.Vmean&&rp.PC===r.PC&&rp.EVp===r.EVp&&rp.risk.p===r.risk.p&&rp.risk.expLoss===r.risk.expLoss&&rp.betaT===r.betaT,"medians move only the time outputs",ctx(s,{dPC:rp.PC-r.PC}));
+      ok(Math.abs(rp.tMed/r.tMed-PUB.fitTiming(r.Vbase,s.ind).months/ft.months)<1e-9,"published and fitted curves differ only by the median",ctx(s)); } }
 
   /* 8. the proceeds optimum beats the entered ask, and reads neither theta nor the cost of delay
      (overpricing_time: render prices the business score at bestRatio(s,0,0)); a cost of delay never raises
