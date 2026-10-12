@@ -7865,6 +7865,9 @@ html[data-stage="9"] .v8-wash.w-d,html[data-stage="10"] .v8-wash.w-d{opacity:1}
   .score-wrap .score-dial,.score-wrap .score-moon,.sec-head::after,.sec .sec-head::before,
   #view-console .sec .sec-head::after,#view-data .sec .sec-head::after{animation:none!important;transition:none!important}
 }
+
+/* UI round 2 (r2-2): the sticky tab bar must not cover a control that keyboard focus scrolls into view (WCAG 2.2 SC 2.4.11) */
+html{scroll-padding-top:72px}
 </style>
 <!-- ======== end v8-hero ======== -->
 <!-- (separator) -->
@@ -8432,6 +8435,11 @@ html.v8-reveal #view-console .sec:not(.landed) .kf{opacity:0;transform:translate
   #view-console .rail #reset,#view-console .rail .f input.v{animation:none!important;transition:none!important}
   html.v8-reveal #view-console .sec:not(.landed) .kf{opacity:1;transform:none}
 }
+
+/* UI round 2 (r2-1): the feedback-loop card's KaTeX fallback is visually hidden, so eqFit() measured it as overflowing and
+   showed a scroll chevron with nothing to scroll; and the chevron's nudge must stop under reduced motion like everything else */
+#view-console .eq.v8loop-card.scrolls::after{content:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){.eq.scrolls::after{animation:none!important}}
 </style>
 <!-- ======== end v8-console ======== -->
 <!-- (separator) -->
@@ -9997,6 +10005,10 @@ function ledeFit(){
   doc.querySelectorAll("#view-console .lede.clamp").forEach(function(p){
     var b=p.nextElementSibling; if(!b||!b.classList.contains("lede-more")) return;
     if(p.classList.contains("open")){ b.hidden=true; return; }
+    /* a clamp that hides a line and a half or less costs more (a 40px button and a cut word) than it saves: show the whole
+       lede instead (UI round 2, r2-3) */
+    var lh=parseFloat(getComputedStyle(p).lineHeight)||26, over=p.scrollHeight-p.clientHeight;
+    if(on&&over>2&&over<=lh*1.5){ p.classList.add("open"); b.hidden=true; return; }
     b.hidden=!on||p.scrollHeight<=p.clientHeight+2; });
 }
 function srcsPass(){
