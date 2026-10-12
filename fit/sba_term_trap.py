@@ -12,7 +12,9 @@ prime between -2 and 10 points). The spread here is the clean file's (prime on t
 re-keys it to the month-start prime, which moves the filter's edge by about one loan, so n can differ by 1.
   - share of loans carrying a standard contractual term (60, 84, 120 or 300 months), by status;
   - the most common recorded terms among charged-off loans;
-  - how well TermInMonths alone separates charged-off from paid-in-full loans (AUC, Mann-Whitney).
+  - how well TermInMonths alone separates charged-off from paid-in-full loans (AUC, Mann-Whitney);
+  - whether the recorded term is the time to charge-off (it is not: AUDIT_FINDINGS round 4): the share of charged-off
+    loans whose term is within 3 months of the months from approval to charge-off, and the correlation.
 """
 import json, os
 import numpy as np, pandas as pd
@@ -23,7 +25,8 @@ OUT = '/tmp/claude-0/fit5/sba_term_trap'
 os.makedirs(OUT, exist_ok=True)
 STD = [60, 84, 120, 300]
 raw = pd.read_csv(SRC, low_memory=False, usecols=['LoanStatus', 'months_on_book', 'RevolverStatus', 'InitialInterestRate',
-                                                   'spread_over_prime', 'TermInMonths', 'term_is_standard'])
+                                                   'spread_over_prime', 'TermInMonths', 'term_is_standard',
+                                                   'months_approval_to_chargeoff'])
 d = raw[raw.LoanStatus.isin(['PIF', 'CHGOFF', 'EXEMPT']) & (raw.months_on_book >= 0) & (raw.RevolverStatus == 0)
         & raw.InitialInterestRate.gt(0) & raw.spread_over_prime.between(-2, 10)].copy()
 d['std'] = d.TermInMonths.isin(STD)
@@ -35,7 +38,12 @@ res = d[d.LoanStatus.isin(['PIF', 'CHGOFF'])]
 y = (res.LoanStatus == 'CHGOFF').values
 u = stats.mannwhitneyu(-res.TermInMonths.values[y], -res.TermInMonths.values[~y], alternative='two-sided').statistic
 auc = float(u / (y.sum() * (~y).sum()))                    # P(a charged-off loan records a shorter term than a paid one)
+co = d[d.LoanStatus == 'CHGOFF']
+gap = (co.TermInMonths - co.months_approval_to_chargeoff).abs()
 R = dict(n=int(len(d)), standard_terms=STD, by_status=by,
+         chgoff_term_within3_of_elapsed=round(float((gap <= 3).mean()), 4),
+         chgoff_corr_term_elapsed=round(float(co.TermInMonths.corr(co.months_approval_to_chargeoff)), 3),
+         chgoff_median_months_to_chargeoff=round(float(co.months_approval_to_chargeoff.median()), 1),
          chgoff_most_common_terms=[[int(k), int(v)] for k, v in co_terms.items()],
          chgoff_median_term=float(d.loc[d.LoanStatus == 'CHGOFF', 'TermInMonths'].median()),
          pif_median_term=float(d.loc[d.LoanStatus == 'PIF', 'TermInMonths'].median()),

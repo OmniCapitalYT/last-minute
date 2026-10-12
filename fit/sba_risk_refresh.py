@@ -583,7 +583,7 @@ Pall = build_panel(ALL, d['T'].values, d.ev.values)
 say('panel pieces', len(Pall['y']), 'exposure loan-months', round(Pall['dt'].sum()), 'events', np.bincount(Pall['y']).tolist())
 say('CO events in bucket 0 (first 6 months):', int(((Pall['b'] == 0) & (Pall['y'] == 1)).sum()))
 # staffing is not a model input: SBA JobsSupported (jobs created plus retained, lender-reported) is not what the console
-# can supply (Census employees per revenue, several times larger for the same loan); it is fitted below as a check.
+# can supply (Census employees per revenue, from about a third of the SBA figure to several times it); it is fitted below as a check.
 CO_COVS = ['lnamt', 'franchise', 'spread', 'fixed', 'spread_x_fixed', 'lnamt_x_age']
 PIF_COVS = ['lnamt', 'franchise', 'spread', 'fixed', 'dprimeV']
 # extra covariates for specification checks only
@@ -1169,8 +1169,8 @@ BAND_CONSOLE_RATIO = {k: r4(v['model60_table_spread'] / v['cif60']) for k, v in 
 BAND_CONSOLE_Z = {k: r4((v['model60_table_spread'] - v['cif60']) / v['cif60_se']) for k, v in band_rows.items()}
 say('   console / observed 5-year rate by band:', BAND_CONSOLE_RATIO, 'z:', BAND_CONSOLE_Z)
 
-# real-estate notes by loan band: TermInMonths > 120 among loans that were not charged off (SBA overwrites the term of
-# charged-off loans with months to charge-off, so it can be read only for paid-off and open loans)
+# real-estate notes by loan band: TermInMonths > 120 among loans that were not charged off (SBA does not keep the contractual term of
+# charged-off loans, so it can be read only for paid-off and open loans)
 _nc = d.ev.values != 1
 RE_SHARE = {}
 for nm, lo, hi in LBANDS:
@@ -1348,7 +1348,7 @@ for fy in range(2010, 2016):
     byv[fy] = {'n': int(len(m)), **{'cif%d' % g: r4(v[g]) for g in TG}, 'r120_96': r4(v[120] / v[96])}
 tail['by_vintage'] = byv
 # the ratio rises with loan size; part of that is term mix (larger mature loans more often carry 25-year real-estate
-# terms, and TermInMonths cannot be used to separate it because SBA overwrites it for charged-off loans)
+# terms, and TermInMonths cannot be used to separate it because SBA does not keep the contractual term for charged-off loans)
 mat_all = A7[A7.ApprovalFY.between(2010, 2015)]
 TBANDS = [('<150k', 0, 1.5e5), ('150-350k', 1.5e5, 3.5e5), ('350-750k', 3.5e5, 7.5e5), ('0.75-1.5M', 7.5e5, 1.5e6), ('>=1.5M', 1.5e6, 1e12)]
 tail_band = {}
@@ -1660,12 +1660,12 @@ RISK = {
                  "sensitivity": SPEC_BASE, "newest_cohort_as_reference": NEWEST_REF, "previous_definition": BASE_DIAG['previous_definition']},
     "staffing": {"applied": False, "coef_if_fitted": JOBS_CHECK['co_lnjobs'], "lr": JOBS_CHECK['co_lr'], "sba_jobs_median_by_loan_band": JOBS_CHECK['sba_jobs_median_by_loan_band'],
                  "note": ("SBA JobsSupported (jobs created plus retained, lender-reported) would add %+.3f (SE %.3f, Hessian) per unit of ln(1+jobs), LR %.1f; "
-                          "not used, because the console's head count is a different measure (Census employees per revenue, several times the SBA "
-                          "figure for the same loan), so risk does not move with staffing" % (JOBS_CHECK['co_lnjobs'][0], JOBS_CHECK['co_lnjobs'][1], JOBS_CHECK['co_lr']))},
+                          "not used, because the console's head count is a different measure (Census employees per revenue, from about a third of the SBA figure to several times it "
+                          "for the same loan), so risk does not move with staffing" % (JOBS_CHECK['co_lnjobs'][0], JOBS_CHECK['co_lnjobs'][1], JOBS_CHECK['co_lr']))},
     "real_estate": {"share_term_over_120m": {k: v['share_term_over_120m'] for k, v in RE_SHARE.items()},
                     "note": ("share of SBA acquisition notes with a term over 10 years (real-estate notes), paid-off and open loans: %s. A business-only "
                              "acquisition of the same size is probably riskier, and more severe, than shown; the data cannot separate it because SBA "
-                             "overwrites the term of charged-off loans (standard terms on %.0f%% of charged-off loans against %.0f%% of others)."
+                             "does not keep the contractual term of charged-off loans (standard terms on %.0f%% of charged-off loans against %.0f%% of others)."
                              % (', '.join('%s %.0f%%' % (k, 100 * v['share_term_over_120m']) for k, v in RE_SHARE.items()), 100 * RE_NOTE['standard_term_share_chargeoffs'],
                                 100 * RE_NOTE['standard_term_share_others']))},
     "spread_channel": {"no_spread_lnamt": NOSPREAD['lnamt'], "cif96_ratio_shipped_over_nospread": NOSPREAD['cif96_ratio_shipped_over_nospread'],
@@ -1723,7 +1723,7 @@ RISK = {
             "note": ("gross charge-off / original approval on charged-off acquisition term loans; gross of recoveries, after amortisation. "
                      "expLoss counts charge-offs by month 120; loans that default in years 8-10 are charged off later (mature 7(a) loans "
                      "approved FY2010-13: CIF(144)/CIF(120) = %.2f), so lifetime loss on the note runs higher" % tail['ratio_144_over_120_FY2010_13'])},
-    "EXCLUDED_FIELD": "TermInMonths - SBA overwrites it with months-to-chargeoff. Leaks the label. Never use.",
+    "EXCLUDED_FIELD": "TermInMonths - for charged-off loans SBA does not keep the contractual term, and it is not the time to charge-off either. Leaks the label. Never use.",
     "not_used": ("rate level at approval (confounded with the COVID-relief cohorts; the spread over prime carries the risk signal) and "
                  "prime moves after approval (payment-shock term %.3f, SE %.3f): prime is held flat at today's value"
                  % (spec['+dprimeV_payment_shock']['terms']['dprimeV'][0], spec['+dprimeV_payment_shock']['terms']['dprimeV'][1])),
@@ -1888,7 +1888,7 @@ DATA_V = r'''<div class="panel" style="margin-top:14px"><p class="grp-title">Mod
     With no rate entered, the spread is read off the median table for the loan size, so risk by size includes lender pricing (larger loans get lower spreads):
     against a model without the spread, the 8-year figure here runs &times;${Math.min(...Object.values(R.spread_channel.cif96_ratio_shipped_over_nospread)).toFixed(2)}&ndash;${Math.max(...Object.values(R.spread_channel.cif96_ratio_shipped_over_nospread)).toFixed(2)} across $100K&ndash;$4M loans.
     Real-estate notes: ${(R.real_estate.share_term_over_120m["<250K"]*100).toFixed(0)}% of SBA acquisition notes under $250K run longer than 10 years, against ${(R.real_estate.share_term_over_120m["2-5M"]*100).toFixed(0)}% over $2M.
-    A business-only acquisition of the same size is probably riskier than shown; SBA overwrites the term of charged-off loans, so this cannot be separated.</p>
+    A business-only acquisition of the same size is probably riskier than shown; SBA does not keep the contractual term of charged-off loans, so this cannot be separated.</p>
     <div class="chk" style="margin-top:10px"><div>Out-of-sample AUC, charge-off within 5 years<div class="muted" style="font-size:11.8px">5-fold CV by loan; the resolved-only logistic scored ${R.validation.cv5_auc60_current.toFixed(3)} on the same loans</div></div>
       <span class="n" style="color:#5ee0a8">${R.validation.cv5_auc60.toFixed(3)}</span><span class="n muted">Brier ${R.validation.cv5_brier60.toFixed(4)} &middot; observed/predicted ${R.validation.cv5_oe60.toFixed(2)}</span><span class="st pub">fitted</span></div>
     <div class="chk"><div>Newer loans<div class="muted" style="font-size:11.8px">fitted on FY2018&ndash;21 approvals, scored on the ${R.validation.n_events_vintage} charge-offs of FY2022&ndash;24 approvals: under-predicted</div></div>
@@ -2474,7 +2474,7 @@ PARAMS = [
                       CYCLE['r120_96_range'][0], CYCLE['r120_96_range'][1])),
   'se': ('%.2f (judgment; the measurable parts - bootstrap %.3f, across-vintage sd %.3f, size-matching %.3f, flat-hazard alternative %.3f - combine to %.3f). It covers the loan-band range '
          '1.07-1.33 at about 2 SE; the band gradient is partly term mix (larger mature loans more often carry 25-year real-estate terms) and cannot be separated because SBA '
-         'overwrites TermInMonths for charged-off loans' % (TAIL_SE, tail['ratio_120_over_96_se'], TAIL_SD_VINT, abs(TAIL - tv[120] / tv[96]), abs(model_ratio_120_96 - TAIL), TAIL_COMPOSITE)),
+         'does not keep the contractual TermInMonths for charged-off loans' % (TAIL_SE, tail['ratio_120_over_96_se'], TAIL_SD_VINT, abs(TAIL - tv[120] / tv[96]), abs(model_ratio_120_96 - TAIL), TAIL_COMPOSITE)),
   'n': '%s loans (FY2010-15, all sizes, for the band table); %s loans >= $150k, %s charge-offs' % (format(int(sum(v['n'] for v in tail_band.values())), ','), format(tail['n'], ','), format(tail['chgoff'], ',')),
   'method': 'Aalen-Johansen cumulative incidence (PIF competing) by loan band on the raw FOIA FY2010-2019 file, weighted by the acquisition loans\' share in each band; transfer from all 7(a) term loans to acquisitions (no CHOW loan is older than 8.5 years)',
   'validation': ('cross-check: mature-vintage CIF(96)/CIF(60) = %.2f vs %.2f observed in CHOW loans, so the shape transfers to within ~13%%; the 8-year point itself is fitted on acquisition loans. '
@@ -2632,7 +2632,7 @@ PARAMS = [
  {'param': 'real_estate (share of acquisition notes with a term over 10 years, by loan band; display only); new', 'current_value': 'none',
   'fitted_value': ', '.join('%s %.1f%%' % (k, 100 * v['share_term_over_120m']) for k, v in RE_SHARE.items()) + ' (paid-off and open loans)',
   'se': 'binomial, < 1 pp per band', 'n': ', '.join('%s %s' % (k, format(v['n'], ',')) for k, v in RE_SHARE.items()),
-  'method': 'TermInMonths > 120 among loans not charged off (SBA overwrites the term of charged-off loans: a standard term on %.0f%% of them against %.0f%% of others)' % (100 * RE_NOTE['standard_term_share_chargeoffs'], 100 * RE_NOTE['standard_term_share_others']),
+  'method': 'TermInMonths > 120 among loans not charged off (SBA does not keep the contractual term of charged-off loans: a standard term on %.0f%% of them against %.0f%% of others)' % (100 * RE_NOTE['standard_term_share_chargeoffs'], 100 * RE_NOTE['standard_term_share_others']),
   'validation': 'n/a (descriptive); the confound with the size gradient is not identified (see not_identified)',
   'recommended_value': 'MODELS.risk.real_estate (display); Data tab caveat: a business-only acquisition of the same size is probably riskier than shown'},
  {'param': 'like-for-like comparison (replaces full_dataset_base_rate 0.1718, all 7(a) loans of all vintages, resolved-only)', 'current_value': '5.69% vs 17.18%',
@@ -2669,10 +2669,10 @@ NOT_ID = [
   % (LENDER_FE['eb_sd'], LENDER_FE['lr'], LENDER_FE['core_with_fe']['spread'], LENDER_FE['core_with_fe']['lnamt'])),
  'Business-quality inputs (owner dependence, management depth, recurring revenue, concentration): no counterpart in SBA data, so survival risk does not move with them; it conditions on size, spread, industry, franchise and state only.',
  ('Staffing in the console\'s terms: SBA JobsSupported (jobs created plus retained, lender-reported) carries %+.3f (SE %.3f) per unit of ln(1+jobs), but the console\'s head count (Census employees per revenue) '
-  'measures something else and runs several times higher, so staffing is not a model input; a labour-intensity effect, if any, is not captured.' % (JOBS_CHECK['co_lnjobs'][0], JOBS_CHECK['co_lnjobs'][1])),
+  'measures something else (from about a third of the SBA figure to several times it), so staffing is not a model input; a labour-intensity effect, if any, is not captured.' % (JOBS_CHECK['co_lnjobs'][0], JOBS_CHECK['co_lnjobs'][1])),
  ('Real-estate collateral: SBA acquisition notes with a term over 10 years (real-estate notes) rise from %.0f%% of loans under $250k to %.0f%% over $2M. Part of the size gradient, and of the fading of the size '
   'effect with loan age (longer liquidation before charge-off), may be collateral rather than default risk; a business-only acquisition of the same size is probably riskier and more severe than shown. '
-  'Not identifiable: SBA overwrites TermInMonths of charged-off loans (a standard term on %.0f%% of them against %.0f%% of others), in mature vintages too.'
+  'Not identifiable: SBA does not keep the contractual TermInMonths of charged-off loans (a standard term on %.0f%% of them against %.0f%% of others), in mature vintages too.'
   % (100 * RE_SHARE['<250K']['share_term_over_120m'], 100 * RE_SHARE['2-5M']['share_term_over_120m'], 100 * RE_NOTE['standard_term_share_chargeoffs'], 100 * RE_NOTE['standard_term_share_others'])),
  ('Which part of 2023-26 is "current": charge-offs in calendar 2025-26 ran x%.2f the 2023-24 rate (age-, size- and spread-adjusted; quarter-clustered SE of the log %.2f). The data cannot say whether 2023-24 '
   'was a post-relief catch-up or 2025-26 slower SBA charge-off processing; the pooled level is shipped and the two periods bracket it (8-year %.1f-%.1f%%).'
@@ -2728,7 +2728,7 @@ DATA_TAB = (
    'rate level given the spread %+.2f (%.2f), %+.2f (%.2f) with approval cohorts, not applied; staffing (SBA jobs supported) %+.2f (SE %.2f) per ln(1+jobs) if fitted, "not used: SBA counts jobs created and retained, the console counts Census employees, several times more". '
    'Note: "SEs are the largest of the model-based, lender-clustered and two-way estimates ... lenders differ (between-lender sd %.2f) ... The console prices an average lender. Loans written at today\'s prime may run %.0f-%.0f%% above the level shown. '
    'With no rate entered, the spread is read off the median table for the loan size, so risk by size includes lender pricing (larger loans get lower spreads): against a model without the spread, the 8-year figure here runs x%.2f-%.2f across $100K-$4M loans. '
-   'Real-estate notes: %.0f%% of SBA acquisition notes under $250K run longer than 10 years, against %.0f%% over $2M. A business-only acquisition of the same size is probably riskier than shown; SBA overwrites the term of charged-off loans, so this cannot be separated." '
+   'Real-estate notes: %.0f%% of SBA acquisition notes under $250K run longer than 10 years, against %.0f%% over $2M. A business-only acquisition of the same size is probably riskier than shown; SBA does not keep the contractual term of charged-off loans, so this cannot be separated." '
    % (RISK['co']['coef']['lnamt'], RISK['co']['se']['lnamt'], RISK['co']['age_coef']['lnamt'], RISK['co']['se']['lnamt_x_age'], RISK['co']['coef']['spread'], RISK['co']['se']['spread'],
       RISK['co']['coef']['franchise'], RISK['co']['se']['franchise'], RISK['sector_tau'], RISK['naics6_sd'], RISK['state_sd'],
       GAMMA, GAMMA_SE, RATE_LEVEL['coef_calendar'][0], RATE_LEVEL['coef_calendar'][1], RATE_LEVEL['coef_calendar_cohort'][0], RATE_LEVEL['coef_calendar_cohort'][1],

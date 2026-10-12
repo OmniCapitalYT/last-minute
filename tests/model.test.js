@@ -519,7 +519,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&HTML.includes("const mktTxt=`${(0.09*(1-loiMed)).toFixed(2)}&ndash;${(0.10*(1-loiMed)).toFixed(2)}`;")&&!HTML.includes("36% of it), which the analogs")
      &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
-  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ nCat \+ nConf \+ nPeer \+ 11 \+ 2 \+ 1\s+\+ 1\s+\/\* the SBA tail factor[^*]*\*\/\s+\+ 4;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ nDelta \+ nCat \+ nConf \+ nPeer \+ nPeerX \+ 11 \+ 2 \+ 1\s+\+ 1\s+\/\* the SBA tail factor[^*]*\*\/\s+\+ 4;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
     const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
@@ -1120,14 +1120,15 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&Math.abs(a.risk.p-b.risk.p)<1e-12,"R3-2: the prime level moves no figure"); }
   /* R3-3: the employee count is described as reaching no figure (it still exists for fitRisk's signature) */
   { const B=A.loadWith([["function jobsFor(rev,ind){ const J","function jobsFor(rev,ind){ return 1e9; const J"]]), a=A.model({...FX,jobs:undefined}), b=B.model({...FX,jobs:undefined});
-    ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&a.risk.p===b.risk.p&&A.gmSalary(FX)===B.gmSalary(FX)&&HTML.includes("is still computed but reaches no figure"),"R3-3: the head count reaches no figure, and the page says so"); }
+    ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&a.risk.p===b.risk.p&&A.gmSalary(FX)===B.gmSalary(FX)&&HTML.includes("so the count reaches no figure")&&!HTML.includes("Employees for this revenue")&&!HTML.includes("<tr><td>Firm-size rank behind the GM salary</td>"),"R3-3 (+ round 4): the head count reaches no figure, and no public-data row claims it"); }
   /* R3-4: the ledger counts the category formulas (38), the confidence formula (8) and the peer scales (22) */
   { const src=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
     const sl=(a,b)=>{ const i=src.indexOf(a); return src.slice(i,src.indexOf(b,i)); };
     const mults=t=>(t.match(/(?<![\w.])(\d+\.\d*|\.\d+|\d+)\*/g)||[]).length;
     const cat=sl("out.cats={","const catMean"), conf=sl("const conf=","out.conf=conf"), z=sl("const z={","const emRaw");
     const nCat=mults(cat)+(cat.match(/-\.\d+\)/g)||[]).length+4, nConf=mults(conf)+4, nPeer=(z.match(/\/\.\d+/g)||[]).length+(z.match(/-\.\d+\)\//g)||[]).length+1+8;
-    ok(nCat===38&&nConf===8&&nPeer===22&&HTML.includes("+ nBuy + nInt + 13 + nCat + nConf + nPeer + 11 + 2 + 1")&&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>"),
+    /* round 4 splits the 22 by reach: 19 quality-dimension scales, medians and sizeRefs; 3 size and buyer-pool scales */
+    ok(nCat===38&&nConf===8&&nPeer===22&&HTML.includes("+ nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1")&&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>"),
        `R3-4: ledger counts ${nCat}/${nConf}/${nPeer}`); }
   /* R3-5: the loan-size gap is read at the hazard pieces' start ages: x0.89 per tenfold before month 72, x1.16 from it */
   { const R=A.MODELS.risk, c=R.co.coef.lnamt, a=R.co.age_coef.lnamt, hr=m=>Math.exp(R.co.lp_shrink*(c+a*(Math.min(m,R.co.age_cap_months)/12-R.co.age_center_years))*Math.LN10);
@@ -1146,6 +1147,37 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* R3-10: Pepperdine's resolved termination range is read from the series */
   { const S=A.MODELS.close_and_timing.close_probability.broker_resolved_by_year, t=Object.values(S).map(v=>1-v);
     ok(Math.round(Math.min(...t)*100)===33&&Math.round(Math.max(...t)*100)===41&&!HTML.includes("gives 32&ndash;39%"),"R3-10: termination range computed"); }
+}
+
+/* ---- 34. round-4 findings, verified by hand (the subagent verifiers were unavailable): AUDIT_FINDINGS round 4 ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  /* R4-1: TermInMonths is not the time to charge-off; the page no longer says SBA overwrites it */
+  { const T=A.MODELS.risk.term_trap;
+    ok(!/overwrites/.test(HTML)&&T.chgoff_term_within3_of_elapsed<.05&&Math.abs(T.chgoff_corr_term_elapsed)<.2&&T.chgoff_median_months_to_chargeoff<T.chgoff_median_term,"R4-1: TermInMonths mechanism"); }
+  /* R4-2: the size and buyer-pool scales reach only the categories and confidence; the quality-dimension scales reach value */
+  { const pk=r=>[r.V,r.PC,r.EVp].join(), base=A.model(FX);
+    const sz=A.loadWith([["Math.log10(7e5))/.45","Math.log10(7e5))/.90"]]).model(FX), by=A.loadWith([["Math.log(I.buyers||50))/.9","Math.log(I.buyers||50))/1.8"]]).model(FX),
+          rc=A.loadWith([["(s.rec-I.rec)/.28","(s.rec-I.rec)/.20"]]).model(FX);
+    ok(pk(sz)===pk(base)&&pk(by)===pk(base)&&JSON.stringify(sz.cats)!==JSON.stringify(base.cats)&&rc.V!==base.V
+       &&HTML.includes("Only the category sub-scores and the confidence figure: the quality position does not read them."),"R4-2: peer scales split by reach (19 + 3)"); }
+  /* R4-3: the staffing row states the measured relation, not 'several times fewer' */
+  ok(!HTML.includes("several times fewer than the firm's Census employees")&&HTML.includes("runs from about a third of SBA's figure to several times it"),"R4-3: staffing wording");
+  { const med=A.MODELS.risk.staffing.sba_jobs_median_by_loan_band, rat=[];
+    for(const ind of Object.keys(A.IND)) for(const ern of [1e5,1.6e5,3e5,6e5,1.45e6]){ const r=A.model({...FX,ind,ern,rev:ern/.21,ask:1e6}); if(med[r.risk.empBandKey]) rat.push(r.jobs/med[r.risk.empBandKey]); }
+    ok(Math.min(...rat)<.5&&Math.min(...rat)>.25&&Math.max(...rat)>2,`R4-3: Census/SBA ratio ${Math.min(...rat).toFixed(2)}-${Math.max(...rat).toFixed(2)}`); }
+  /* R4-4: the ledger note is computed from the rows: 104 inert of 432 */
+  ok(HTML.includes("const inert=nDelta+Object.keys(B).length+Object.keys(NL).length+Object.keys(G).length;")&&!HTML.includes("made most of this table inert")
+     &&HTML.includes("Superseded by the fitted time-to-close curve."),"R4-4: ledger note from the counts");
+  /* R4-5: the GM salary row names its size rank as judgment */
+  ok(HTML.includes("the rank is Census&rsquo;s share of the industry&rsquo;s employment in smaller firms at this revenue (SUSB 2022), a labelled"),"R4-5: GM rank labelled judgment");
+  /* R4-6: the budget box shows two decimals in millions, as the optimiser cards echo it */
+  ok(HTML.includes('setBox("v_bud",s.budget?money(s.budget):"none");')&&A.money(1.25e6)===A.money(1.25e6,0),"R4-6: budget box matches the echo");
+  /* R4-7: the delta stack is counted from its source: 52 + 6 + 5 + 5 = 68 */
+  { const src=String(A.model), i=src.indexOf("const d={"), dsrc=src.slice(i,src.indexOf("let sum=0",i));
+    const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
+    ok(numLits(dsrc)===52&&HTML.includes("${nDelta}</td>"),"R4-7: delta stack counted (68)"); }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

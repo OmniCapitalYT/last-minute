@@ -1173,3 +1173,105 @@ The shipped data contradict the specific numbers: 83.6%/11.4% under the stated d
 | `numbers:eq_p:tail-k-three-sig-figs-still-misses-boxed-pc` | Refuted as immaterial: the leftover gap is display rounding, and the shipped fix is exactly the one R1-19's verifier proposed ('Print k to three significant figures (k=0.00114)').  The numbers reproduce (f5.js). In the small state (ern 1.2e5, rev 5e5) g = 1220.6%. The code's penalty is 0.8459 (boxed 0.846, P_C 9.37% → 9.4%). The printed k = 0.00114 gives 0.8467 → 0.847 and 9.32% → 9.3%.  Over every gap from 100% to … |
 | `claims:aggregate-lede:tables-cut-by-size-contradicts-channel-ramp` | The numbers reproduce, but the two sentences do not contradict each other, the ramp is labelled, and nothing displayed is wrong.  Reproduction: fitClose(V,V,undefined,V).base is 0.6080 at $0.5M and $1M, 0.6524 at $2.24M, 0.6769 at $3,493,348, and 0.6967 at $5M and $20M. MODELS.close_and_timing.close_probability has no size-cut table. Playwright on r3snap shows both phrases on the rendered Data tab.  (1) No … |
 | `claims:audit-docs:knife-edge-walkaway-score-figures-stale-dangling-section` | The figures reproduce, but every stale figure sits in a non-displayed artefact, and the page itself shows the current values.  auditdoc.js gives 277/281/287/295 days, walk-away asks of 1.13/1.14/1.15/1.15 at $900/day and 1.09/1.12/1.14/1.14 at $4,000/day, theta flips 0.766/0.776/0.811, FAN_S flips 0.883/0.937, interior margins of 0.34%/0.55% of value, and Omni scores 1/31/41/41 and 41/31/25. AUDIT.md has no '## … |
+
+# Round 4 (verified at commit a7346a7, by hand)
+
+Round 4 ran four new auditors on a7346a7: a review of the round-3 fixes, the value side and decisions, numbers on both tabs, and claims. **Only the first two finished.** The subagent usage cap was exhausted partway through (it resets 2026-10-15 01:00 UTC). It killed the numbers and claims auditors, and both verifiers for each finished auditor. The 7 findings raised were therefore verified by hand, by me, with both lenses applied in turn:
+- **Reproduce:** independent numbers from my own scripts in /tmp/claude-0/r4verify.
+- **Refute:** a deliberate attempt to show each finding intended, labelled, documented or mis-measured.
+
+**All 7 reproduced, and none was refuted. All are low severity, and none is a math or logic error in a computed figure.** These are single-reviewer verdicts, not the two-agent verification of rounds 0–3, and the round is incomplete: the numbers and claims areas were not re-audited after round 3.
+
+| # | Severity | Key | Title |
+|---|---|---|---|
+| R4-1 | low | `r3fixes:term-trap:overwrite-mechanism-contradicted-by-shipped-loans` | R3-9 fix incomplete: the page still says 'SBA overwrites TermInMonths with elapsed months to charge-off', but on the shipped 41,201 loans the recorded term almost never matches months to charge-off. The repo's own data dictionary says the same. |
+| R4-2 | low | `r3fixes:ledger:peer-row-reach-wrong-for-size-and-pool-scales` | R3-4 fix: the new 'Peer spreads and size-varying peer medians' ledger row (22) counts the size z-score's centre and scale and the buyer-pool scale. Its reach column says they move the quality position, model value, P_C, proceeds and both scores, but those three move only the category bars and confidence. |
+| R4-3 | low | `r3fixes:datatab:staffing-row-sba-jobs-several-times-fewer-contradicted` | R3-3 rewording of the Model V staffing row says SBA's jobs count is 'several times fewer than the firm's Census employees', but the console's own numbers put the two counts level or reversed for main-street deals |
+| R4-4 | low | `r3fixes:ledger:note-says-most-of-table-inert-and-value-untouched` | The note under the judgment ledger still says fitting made 'most of this table inert' and that judgment now reaches only Model IV and the intervention layer. After R3-4 the ledger's own rows show 328 of 377 numbers live, and 22 of them move model value by up to ±3%. |
+| R4-5 | low | `r3fixes:datatab:gm-rank-row-was-column-and-fitted-section-contradict` | R3-3 renamed the public-data row to 'Firm-size rank behind the GM salary' but kept the head count's 'Was: revenue ÷ $150k employees'. It also lists, as a public-data replacement 'used live', a rank that the same tab, the code and its fit script call judgment. |
+| R4-6 | low | `r3fixes:money:budget-box-still-one-decimal-card-echo-differs` | R3-6 fix incomplete: the optimiser card now echoes the budget to two decimals, but the budget box next to it still rounds to $0.1M, so the page still shows the user's own budget as two different numbers (up to about 5% apart) |
+| R4-7 | low | `value:ledger:dstack-counted-one-per-delta` | R3-4's fix is incomplete: the judgment ledger still counts the d{} multiple stack as 13 numbers, but by the page's own counting rule it holds 52, so the headline '377 still chosen by judgement' is about 40-60 low |
+
+### R4-1. R3-9 fix incomplete: the page still says 'SBA overwrites TermInMonths with elapsed months to charge-off', but on the shipped 41,201 loans the recorded term almost never matches months to charge-off. The repo's own data dictionary says the same.
+
+- **Key:** `r3fixes:term-trap:overwrite-mechanism-contradicted-by-shipped-loans`  
+- **Severity:** low  
+- **Where:** index.html renderData() Model V 'Four traps' item 1, l.4869-4870 ('SBA overwrites it with elapsed months to charge-off, so it encodes the outcome'); #srcs 'Two traps handled', l.5664 ('SBA overwrites TermInMonths with elapsed months to charge-off:'); MODELS header comment, l.2038. The figures beside these sentences now come from MODELS.risk.term_trap (fit/sba_term_trap.py).
+
+**Why it is wrong.** R3-9 replaced the superseded statistics with figures from the shipped population, but kept the mechanism sentence. That sentence is false on the same population: an overwritten term would equal the elapsed months to charge-off, and it matches for 2.5% of charged-off loans. The field still leaks the outcome (only 11% of charged-off loans carry a standard term, AUC 0.825), so excluding it remains right. The stated reason, however, is a claim about the source data that the shipped data, the page's own MODELS figures and the repo's data dictionary all contradict.
+
+**Verification (by hand).** On the 721 charged-off loans of the hazard population, the recorded term is within 3 months of the months from approval to charge-off for 18 (2.5%), with correlation -0.064 and medians of 89 against 49.6 months. The repo's DATA_DICTIONARY.csv says the same ("It does NOT equal months-to-charge-off"). Refutation attempt: the term does not match elapsed months from disbursement either, and no reading of "overwrites with elapsed months" fits. The leak itself stands (11% against 84% standard terms, AUC 0.825).
+
+**Fix (as proposed).** Reword all three places to the mechanism the data support. For example: 'For charged-off loans SBA's recorded term is not the contractual term: only 11% carry a standard term and the rest scatter (median 89 against 120 months), and it does not track months to charge-off (within 3 months for 2.5%). So it encodes the outcome.' Store the match share (term_matches_chargeoff_age) in MODELS.risk.term_trap from fit/sba_term_trap.py and render it from there.
+
+### R4-2. R3-4 fix: the new 'Peer spreads and size-varying peer medians' ledger row (22) counts the size z-score's centre and scale and the buyer-pool scale. Its reach column says they move the quality position, model value, P_C, proceeds and both scores, but those three move only the category bars and confidence.
+
+- **Key:** `r3fixes:ledger:peer-row-reach-wrong-for-size-and-pool-scales`  
+- **Severity:** low  
+- **Where:** index.html renderData() nPeer (l.4654-4658: zSrc '/.xx' matches include size '/.45' and buy '/.9', plus '+ 1' for the $700k size centre). Judgement table row 'Peer spreads and size-varying peer medians' (l.5235-5236), reach: 'The quality position, and through it model value, the multiple, the closing probability above value, expected proceeds and both scores.' The quality composite reads only MODELS.value.quality_band.dimensions = rec,own,mgt,grw,gm,ret,fin,cc,plt (model() l.2753-2758).
+
+**Why it is wrong.** The ledger's stated job, the reason R3-4 was accepted, is to count hand-set numbers and say which reported figures they reach. Three of the row's 22 numbers (the size centre $700k, the size scale 0.45 and the pool scale 0.9) never enter the quality composite. Changing them leaves value, P_C, proceeds and both scores unchanged to the dollar, so the reach column is false for them. The column also leaves out what every number in the row does reach: the nine category sub-scores and the confidence figure, through the z-scores and the confidence formula's typicality term. Neither appears in the row.
+
+**Verification (by hand).** At the framework default, doubling the size z-score scale, moving the size centre to $200k or doubling the buyer-pool scale leaves V, P_C and EVp unchanged to the dollar and changes only the category sub-scores and the confidence figure. Tightening the rec spread to 0.20 moves V +3.0%. The row's reach is therefore false for 3 of its 22 numbers, and it omits the categories and confidence for all 22. Refutation attempt: the reach column describes each row as a whole. That reading still states a reach that 3 of the row's numbers do not have.
+
+**Fix (as proposed).** Split the row: (a) the 19 quality-dimension spreads, medians and sizeRefs, which reach the quality position, value, multiple, P_C above value, proceeds, both scores, and also the category bars and confidence; (b) the size centre and scale and the buyer-pool scale (3), which reach only the category sub-scores and the confidence figure. Alternatively, say so in the reach column.
+
+### R4-3. R3-3 rewording of the Model V staffing row says SBA's jobs count is 'several times fewer than the firm's Census employees', but the console's own numbers put the two counts level or reversed for main-street deals
+
+- **Key:** `r3fixes:datatab:staffing-row-sba-jobs-several-times-fewer-contradicted`  
+- **Severity:** low  
+- **Where:** index.html renderData() Model V table, row 'staffing (SBA jobs supported)', l.4837: 'not used: SBA counts jobs created and retained, several times fewer than the firm's Census employees'. The same claim is in MODELS.risk.staffing.note ('several times the SBA figure for the same loan'). Compare model() out.jobs = jobsFor(rev,ind) with MODELS.risk.staffing.sba_jobs_median_by_loan_band at r.risk.empBandKey.
+
+**Why it is wrong.** The R3-3 fix rewrote this row. Its new justification for dropping staffing ('several times fewer') is a quantitative claim that the console's own two counts contradict. At typical main-street sizes they are equal or reversed, and even at the framework default the ratio is about 2. Whatever reason remains for not using SBA jobs, the size relation stated is not the one the page's figures show.
+
+**Verification (by hand).** Over 16 industries x 5 earnings levels (80 cases), the Census head count divided by SBA's median jobs for the loan band runs 0.33-7.86, median 1.10, and is below 1 in 30 cases. The default is 29 against 14. The staffing row's "several times fewer" is false over most of the range. The embedded MODELS.risk.staffing.note and fit/sba_risk_refresh.py carried the same claim and are corrected too.
+
+**Fix (as proposed).** State the actual relation from the console's figures, e.g. 'SBA counts jobs created plus retained, a different measure (0.8-2x the Census head count across sizes)'. Alternatively drop the magnitude claim and keep only 'a different measure', as the Fitted-from-public-data row already does.
+
+### R4-4. The note under the judgment ledger still says fitting made 'most of this table inert' and that judgment now reaches only Model IV and the intervention layer. After R3-4 the ledger's own rows show 328 of 377 numbers live, and 22 of them move model value by up to ±3%.
+
+- **Key:** `r3fixes:ledger:note-says-most-of-table-inert-and-value-untouched`  
+- **Severity:** low  
+- **Where:** index.html renderData() Judgement section, note after the table (l.~5262): 'Fitting the value and closing models made most of this table inert ... What remains live is the buyer model, the interventions, the optimizer and the Omni score - and those are exactly the outputs the framework calls Model IV and the intervention layer'. Contrast the rows added by R3-4 ('Peer spreads ...' reach: model value, the multiple, P_C above value, proceeds, both scores; Category 38; Confidence 8) and the PEN_MAX, T_ELAST and SBA tail rows (Models I, III and V).
+
+**Why it is wrong.** The note sums up the third column and contradicts it. 'Most' is false by the ledger's own counts (13% inert). The rows R3-4 added state that 22 hand-set numbers set the quality position and through it model value, P_C and proceeds. The PEN_MAX, T_ELAST and tail-factor rows reach Models I, III and V. None of these are 'Model IV and the intervention layer'. This was already partly stale (IND, PEN_MAX), and R3-4 made it more so. It is the claim most likely to be read as the conclusion of the table.
+
+**Verification (by hand).** Counted from the rows (with R4-7's recount), 104 of 432 numbers are inert, not "most". The PEN_MAX, T_ELAST, SBA-tail, IND and peer rows reach Models I, II, III and V, not only Model IV and the intervention layer. While checking this, the G row's "Superseded by the band lookup" also proved stale since the median refit; it is corrected in the same fix.
+
+**Fix (as proposed).** Rewrite the note from the counts: about 49 of the 377 numbers (the delta stack and the close and hazard betas) no longer touch a reported figure. The rest are live: the quality position inside the measured value spread (IND medians, peer spreads, sizeRefs), the price-gap penalty and time multiplier, the SBA tail, the buyer model, the interventions and optimiser, the category and confidence formulas. Alternatively compute the inert/live split from the row data.
+
+### R4-5. R3-3 renamed the public-data row to 'Firm-size rank behind the GM salary' but kept the head count's 'Was: revenue ÷ $150k employees'. It also lists, as a public-data replacement 'used live', a rank that the same tab, the code and its fit script call judgment.
+
+- **Key:** `r3fixes:datatab:gm-rank-row-was-column-and-fitted-section-contradict`  
+- **Severity:** low  
+- **Where:** index.html renderData() 'Fitted from public data' table, row 'Firm-size rank behind the GM salary' (l.5301-5304), with lede 'Each row below used to be a number someone typed in. Each is now read from a public dataset'. Compare the next row 'General manager salary ... Was: 2.4% of revenue, $85k–$350k' (l.~5305); the 'Still judgement' row 'Where a firm sits in its industry's general-manager pay distribution (bigger firms ranked higher, by Census employment)' (data.txt l.350); the gmSalary() comment ('the rank is a JUDGEMENT'); fit/oews_refresh.py l.1893/1898 ('The firm-size rank is not identifie
+
+**Why it is wrong.** The renamed row describes a component that never had the stated predecessor. revenue ÷ $150k was the old employee count (a survival-risk input, AUDIT.md l.428). The old GM salary was 2.4% of revenue with no firm-size rank (AUDIT.md l.429, and the next row). The rank also maps an employment share onto wage percentiles, which the code comment, the fit script and the 'Still judgement' table on the same tab all label judgment. Yet the row now sits in the section headed as public-data replacements the console 'uses live'. The page contradicts itself on whether the GM rank is data or judgment.
+
+**Verification (by hand).** The row read "Firm-size rank behind the GM salary | Was: revenue / $150k employees", which was the old head count, not a rank. gmSalary is identical when jobsFor returns 1. The code comment and the Still-judgement table call the rank judgment, yet the row sits under "read from a public dataset ... used live". The row is removed, and the GM salary row now names the rank as a labelled judgment.
+
+**Fix (as proposed).** Restore the row to what changed: 'Employees for this revenue | revenue ÷ $150k | revenue ÷ Census receipts per employee (computed; reaches no figure)'. Alternatively drop it, since it reaches nothing. Describe the employment-share input under the GM salary row ('Census employment share, used as the firm-size rank, a labelled judgment'), not as a separate public-data replacement.
+
+### R4-6. R3-6 fix incomplete: the optimiser card now echoes the budget to two decimals, but the budget box next to it still rounds to $0.1M, so the page still shows the user's own budget as two different numbers (up to about 5% apart)
+
+- **Key:** `r3fixes:money:budget-box-still-one-decimal-card-echo-differs`  
+- **Severity:** low  
+- **Where:** index.html labels() l.4027: setBox('v_bud', money(s.budget,1)). Optimiser card 'Total committed ... of ${money(s.budget,0)}' (l.4544) and eq_os 'B=${tm(s.budget,0)}' (l.4560), which after the money() change print two decimals in millions.
+
+**Why it is wrong.** R3-6 was confirmed partly because 'the page echoes the user's own budget back as a different number from the one in the box next to it'. Its proposed test, 'the card's budget text equals the v_bud box', would still fail. The fix changed the echo to two decimals but left the box at one, so now the box is the copy that disagrees with the value the optimiser uses. Every other money box (rev, ern, ask) shows two decimals via money(x).
+
+**Verification (by hand).** money(1.25e6,1) = "$1.3M" in the budget box, against "$1.25M" in the optimiser card and in eq_os after R3-6. Refutation attempt: the box is an input echo, and its one decimal predates R3-6. It still shows the user a different budget from the one the optimiser uses.
+
+**Fix (as proposed).** Use money(s.budget) (two decimals in millions) for v_bud, as for the other money boxes. Add the proposed test that the card's 'of' amount and eq_os's B equal the v_bud text.
+
+### R4-7. R3-4's fix is incomplete: the judgment ledger still counts the d{} multiple stack as 13 numbers, but by the page's own counting rule it holds 52, so the headline '377 still chosen by judgement' is about 40-60 low
+
+- **Key:** `value:ledger:dstack-counted-one-per-delta`  
+- **Severity:** low  
+- **Where:** index.html renderData(): l.4661 `nJudg = ... + nBuy + nInt + 13 + nCat + ...` and the ledger row at l.5220 ('d{} multiple deltas ... 13'). The numbers it should count are in model(): the d={...} object at l.2711-2725, the concentration cut points c1-c3 at l.2710, the stack bounds at l.2728-2729 (-.55, .85, .90, .42, 1.85) and the industry-weighting constants in w/fInd at l.2702-2703 (.75, .30, 5.4, 1.5, 2.65).
+
+**Why it is wrong.** The judgment ledger exists to count the hand-set numbers. R1-31, R1-32, R2-9 and R3-4 were all accepted for this same class of miscount. R3-4's fix explicitly replaced 'one number per formula' with a literal count for the category formulas (9 to 43) and the confidence formula, but it left the d{} row, which repeats the defect: 13 deltas are counted as 13 numbers when they hold 52 by the page's own rule. With the uncounted concentration cut points, stack bounds and industry weights, the displayed headline (377) is about 40-60 low. The block is inert: it feeds only the 'Judgement multiple, not used' row of the multiple table and a self-audit row. That inertness is why the severity is low, but the count shown is still contradicted by the code.
+
+**Verification (by hand).** By the page's own numLits rule the d{} object holds 52 literals, plus 6 concentration cut points, 5 industry-weighting constants and 5 stack bounds: 68, counted as 13. The block is inert (Nothing), so no figure moves, but the ledger count and the headline tally were wrong.
+
+**Fix (as proposed).** Count the d{} block from model()'s own source, as R3-4 did for nCat, nConf and nPeer. For example, nDelta = numLits(slice('const c1=clamp','let sum=0')) plus the stack bounds slice and the fInd slice. Use nDelta in both the ledger row and nJudg in place of the literal 13, and name the stack bounds and fInd constants in the row's sub-label.
