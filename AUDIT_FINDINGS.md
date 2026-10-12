@@ -1012,3 +1012,164 @@ Caveat: the ledger counts loosely elsewhere too (e.g. …
 | `numbers:selfaudit:days-on-market-row-off-after-ttc-refit` | The numbers reproduce. For the renderCalib ms profile (prof, $158,950 SDE, $703k revenue, ask = V, Vbase $373,423), tMed is 206.7 d at r1snap and 213.3 d at r2snap, and the Data tab reads '213 days vs 170 +/- 40 days off'. But it is not a defect. The row computes exactly what its label says and reports a true verdict. No displayed number or claim is wrong, and no decision depends on it. The page's design accepts … |
 
 Two of the rejected findings concern `fit/time_to_close_medians.py` and were rejected only as immaterial: the RESULT field `shrink_weight_on_line` stored the weight on each band's own estimate, and the out-of-sample scores were computed for the raw maximum-likelihood medians rather than the shrunk medians that ship. Both are corrected in the round-2 batch anyway, since the script is new.
+
+# Round 3 (verified at commit 3d53b6f)
+
+Round 3 ran after the round-2 batch. Four new auditors reviewed the round-2 fixes against the pre-fix snapshot, the areas earlier rounds covered least (SBA risk, the scores, the ledgers), every on-screen number against the model, and every quoted claim in the Data tab, comments and docs. Verification was as before: one verifier reproduced each finding, another tried to refute it. **20 findings were raised. 11 were confirmed by both verifiers, and they reduce to 9 distinct defects. The verifiers returned no verdict on one finding (R3-10); I reproduced it myself and found no reading that refutes it, so it is listed as confirmed with that caveat. 8 were rejected.** Of the rejected findings, two concern documentation staleness: AUDIT.md's dated sections, code comments and fit/README.md figures from before R2-2 and the median refit. They are rejected as non-displayed, but they are corrected anyway in the round-3 batch.
+
+## Confirmed
+
+| # | Severity | Keys | Title |
+|---|---|---|---|
+| R3-1 | low | `r2fixes:provenance:masthead-close-and-timing-still-market-aggregate`, `numbers:mast:close-and-timing-market-aggregate-r2-10-incomplete` | R2-10 fix incomplete: the masthead status strip still says 'Close and timing: Market aggregate', which contradicts the corrected footer and the 'fitted' time-to-close badge |
+| R3-2 | low | `riskscores:sbaRate:prime-sets-note-rate-shown-nowhere` | Fix for R1-7 (risk:datatab:prime-claimed-to-feed-risk) is wrong: the Data tab now says the prime 'sets the SBA note rate shown beside the survival risk', but no note rate is shown anywhere, and the aggregate tally still counts the prime as feeding a displayed figure |
+| R3-3 | low | `riskscores:jobsFor:employee-count-feeds-nothing` | The Census employee count (jobsFor) and payroll-per-employee figures are computed and listed as live public-data replacements, but no displayed figure reads them; the GM salary uses only the employment-share rank |
+| R3-4 | low | `claims:judgment-ledger:peer-spreads-sizerefs-category-confidence-uncounted`, `riskscores:datatab:category-weights-counted-9-confidence-uncounted` | The judgment tally (318) leaves out the hand-set peer spreads and size-varying peer medians that set the quality position, counts the nine category formulas as 9 numbers when they hold 43, and counts the confidence formula nowhere |
+| R3-5 | low | `riskscores:fitRisk:size-gap-closes-at-6-not-5.4` | The fix for R1-30 (datatab:model5:size-gap-reverses-not-closes) is wrong: the page now says the loan-size hazard gap 'closes at about 5.4 years', but the shipped hazard (and the fit) evaluate the size × age term at each piece's start, so larger loans keep a ×0.89 per-tenfold advantage until month 72 and the sign flips exactly at 6.0 years |
+| R3-6 | medium | `numbers:optimiser:costs-and-budget-rounded-to-whole-millions` | Optimiser cards, eq_os, eq_us, the cost column and the budget echo print million-scale dollars through money(x,0), so $1.30M shows as '$1M' and a $1.5M budget as '$2M' |
+| R3-7 | low | `numbers:starmap:tooltip-ev-not-rebuildable-r2-1-incomplete` | Fix incomplete for numbers:buyers:ev-capped-but-eq_b-table-and-pays-most-uncapped (R2-1): the star-map tooltip still shows only the uncapped V_j, so engages × closes × its price misses its own 'expected value' by 1.3–8× |
+| R3-8 | low | `numbers:eq_as:point-estimate-anchor-ignores-eq_a-effective-ask` | Since R2-2, eq_as and the multiple table print the point-estimate anchoring on the raw ask (ρ = ask/V), but eq_a now defines it on ā/W, so past about 1.4× value the printed ρ, ρ̃ and A are not eq_a's |
+| R3-9 | low | `claims:model5-traps:terminmonths-and-collateral-stats-from-superseded-logistic` | The Data tab, the source list and the MODELS header quote TermInMonths and collateral diagnostics from the superseded 13,613-loan resolved logistic, and the shipped 41,200-loan data contradict them |
+| R3-10 | low | `claims:datatab-reconcile:pepperdine-resolved-termination-range-32-39-stale` | 'Pepperdine's resolved-outcome basis gives 32–39%' leaves out 2023 (41.1%) and 2024 (40.0%), the two years that set the console's own broker base |
+
+### R3-1. R2-10 fix incomplete: the masthead status strip still says 'Close and timing: Market aggregate', which contradicts the corrected footer and the 'fitted' time-to-close badge
+
+- **Keys:** `r2fixes:provenance:masthead-close-and-timing-still-market-aggregate`, `numbers:mast:close-and-timing-market-aggregate-r2-10-incomplete`  
+- **Severity:** low  
+- **Where:** index.html l.1628, static masthead <dl class="mast-status">: '<dt>Close and timing</dt><dd><span class="dot amber"></span>Market aggregate</dd>'. Compare the footer as rewritten for R2-10 (l.5636-5638: 'time to close [fitted] to IBBA's per-band histograms ...; closing probability is a market aggregate') and the o_t_pv badge 'fitted'
+
+**Why it is wrong.** R2-10 was that timing is still described as a published aggregate after the 0f1fa9b refit, although its band medians and shape are both fitted (MODELS.fitted.ttc_medians, ttc_shape). The fix changed the footer and the Data-tab section ref but missed the first provenance label on the page. That label still files timing under 'Market aggregate', with the amber aggregate dot, so the page contradicts itself on the same quantity.
+
+**Verifier (reproduce).** Confirmed, low. The R2-10 fix rewrote the footer and the Data-tab section ref but missed the masthead provenance strip. The strip still files timing under 'Market aggregate' with the aggregate (amber) dot, contradicting the 'fitted' time badge and the corrected footer on the same page. This is a provenance claim, not styling, so it is in scope. It is not in KNOWN_FINDINGS; R2-10's Where named only the footer and the Data tab.
+
+**Fix (as proposed).** Split the stat: 'Closing probability: Market aggregate' and 'Time to close: Fitted', or label it 'Close: aggregate · Timing: fitted'. Add a test that no static provenance label calls timing an aggregate.
+
+### R3-2. Fix for R1-7 (risk:datatab:prime-claimed-to-feed-risk) is wrong: the Data tab now says the prime 'sets the SBA note rate shown beside the survival risk', but no note rate is shown anywhere, and the aggregate tally still counts the prime as feeding a displayed figure
+
+- **Keys:** `riskscores:sbaRate:prime-sets-note-rate-shown-nowhere`  
+- **Severity:** low  
+- **Where:** index.html renderData(), Aggregate panel note ('Three more series feed it as well: the prime rate (7.00%, Fed H.15), which sets the SBA note rate shown beside the survival risk ...'); nAgg's '+ 3' ('plus the prime rate, Census and BLS series', counted as aggregates 'the console reads into a figure it shows'); the 'SBA loan rate in the survival-risk model' row ('WSJ prime 7.00% + 1.42-2.50 pts'); model() out.rate
+
+**Why it is wrong.** The round-1 fix replaced 'the prime feeds the survival risk' with another claim the code contradicts. The prime is said to set a rate 'shown beside the survival risk', but the risk tile, its tooltip and every other panel show no note rate. In the same sentence the page also says the prime 'moves no figure', so it contradicts itself. The nAgg comment defines the count as aggregates the console reads into a figure it shows, yet the prime is still counted, so the aggregate tally is one too high. The 'SBA loan rate' row still presents prime plus spread as the model input; R1-7's proposed rename to a spread row was not done.
+
+**Verifier (reproduce).** Confirmed, low severity, text only. The R1-7 fix replaced one false claim with another: no note rate is shown beside the survival risk, or anywhere else, and none ever has been. The same sentence also says the prime 'moves no figure', which is correct, so the sentence partly contradicts itself. The tally part is weaker. The visible headline label says only 'read from published market aggregates', and the console does read the prime. Only the code comment defines the count as aggregates read 'into a figure it shows', and under that definition the prime should not be counted (39 -> 38). The R1-7 suggestion to rename the 'SBA loan rate in the survival-risk model' row was offered only as an alternative fix, so on its own it is not a defect. The core defect is the false 'shown beside the …
+
+**Fix (as proposed).** Drop 'which sets the SBA note rate shown beside the survival risk', or actually show r.rate in the risk tile. Remove the prime from nAgg's '+3' (39 -> 38) unless the rate is displayed. Rename the Fitted-from-public-data row to 'SBA spread over prime by loan size (the survival risk reads only the spread)'.
+
+### R3-3. The Census employee count (jobsFor) and payroll-per-employee figures are computed and listed as live public-data replacements, but no displayed figure reads them; the GM salary uses only the employment-share rank
+
+- **Keys:** `riskscores:jobsFor:employee-count-feeds-nothing`  
+- **Severity:** low  
+- **Where:** index.html jobsFor() (line ~2197) and model() out.jobs; Data tab 'Fitted from public data' row 'Employees for this revenue (the firm-size rank behind the GM salary) ... revenue ÷ receipts per employee for the industry at this firm size' under the lede 'Each is now read from a public dataset, and the console uses it live'; Aggregate note 'Census receipts, payroll and employment by industry and firm size ... for the general-manager cost'; Model V staffing row 'the console counts Census employees'
+
+**Why it is wrong.** The Data tab presents 'employees for this revenue' as a public-data replacement the console 'uses live', and says it is 'the firm-size rank behind the GM salary'. But the employee count is computed and then discarded: fitRisk ignores its jobs argument and gmSalary never calls jobsFor. The firm-size rank comes from a different column (the employment-weighted CDF), not from employees. The Aggregate note also credits Census receipts and payroll per employee to the general-manager cost, which reads neither. A reader would expect the head count to move something; it moves nothing.
+
+**Verifier (reproduce).** Confirmed, low severity, text and dead code. The employee count is computed (out.jobs) and reaches no displayed figure. The GM salary's firm-size rank comes from the employment-share column read at revenue, not from the head count, so the row describes something that is not used live, against the section lede. Payroll per employee is never read at all. The jobsFor code comment itself admits fitRisk ignores the count, and the row says it is no longer a survival-risk input, but nothing on the page says the count is unused. The staffing row's 'the console counts Census employees' is literally true (out.jobs is computed) but implies a use that does not exist. None of this is in KNOWN_FINDINGS.
+
+**Fix (as proposed).** Either delete jobsFor/out.jobs and reword the row as 'Firm-size rank behind the GM salary: share of the industry's employment in smaller firms at this revenue (Census SUSB)', or show the employee count where it is meant to be used. Drop 'receipts, payroll' from the Aggregate note, and 'the console counts Census employees' from the staffing row.
+
+### R3-4. The judgment tally (318) leaves out the hand-set peer spreads and size-varying peer medians that set the quality position, counts the nine category formulas as 9 numbers when they hold 43, and counts the confidence formula nowhere
+
+- **Keys:** `claims:judgment-ledger:peer-spreads-sizerefs-category-confidence-uncounted`, `riskscores:datatab:category-weights-counted-9-confidence-uncounted`  
+- **Severity:** low  
+- **Where:** index.html renderData() nJudg l.~4634-4640 ('+ 13 + 9 + 11 + 2 + 1 + 1 + 4') and the judgment table rows: IND l.~5180, 'Category sub-score weights' l.5197; model() z block l.2671-2686 (spreads .28/.25/.28/.13/.13/.13/.28/.13/.22, medians cc .16 and plt .40); sizeRefs() l.2466-2469 (.62, .30, .42, .28, .55, .22, 5.85, 1.20); out.cats l.2995-3005; conf l.3011-3013
+
+**Why it is wrong.** The ledger's stated job is to count the hand-set numbers and say which reported figures they reach. R1-31, R1-32 and R2-9 were accepted for this same class of miscount, and R2-9's fix counted BUYERS and INTERV from their definitions. The 19 spreads, medians and size-curve coefficients set where the business sits in the −27%/+32% quality band: they move the model value, the multiple, P_C above value, expected proceeds and both scores. The IND row credits 'the z-scores' to IND's 9 fields, which hold only four of the nine medians and none of the spreads. The category row undercounts by a factor of about 4, and the displayed confidence figure's coefficients are counted nowhere. The headline '318 still chosen by judgement' is therefore at least about 60 low.
+
+**Verifier (reproduce).** Confirmed, low. The 'Still judgement' table names 'the peer medians and spreads behind every quality z-score' and 'Category sub-score weights and the confidence formula' as judgment, so they are labelled. The defect is in the count.
+
+The ledger's numbers are wrong in the same way R1-31/R1-32/R2-9 were accepted for:
+- The category row says 9 where there are 32 weights (43 literals by the page's own numLits rule).
+- 19 live spread/median/size-curve constants that move V by 1-3.5% and the Omni score by up to 7 points are in no tally term. The IND row credits 'the z-scores' to IND, which holds only 4 of the 9 medians and none of the spreads.
+- The confidence formula's constants are uncounted.
+
+The headline 318 is about 60 low (19 + 34 + about 11). This is not in KNOWN_FINDINGS.
+
+**Fix (as proposed).** Add a ledger row 'Peer spreads and size-varying peer medians (z-score scales, cc/plt medians, sizeRefs)' with its count and reach (quality position → value, multiple, P_C above value, proceeds, scores). Count the category formulas and the confidence formula with numLits, as R2-9 did for BUYERS and INTERV. Fold all of these into nJudg.
+
+### R3-5. The fix for R1-30 (datatab:model5:size-gap-reverses-not-closes) is wrong: the page now says the loan-size hazard gap 'closes at about 5.4 years', but the shipped hazard (and the fit) evaluate the size × age term at each piece's start, so larger loans keep a ×0.89 per-tenfold advantage until month 72 and the sign flips exactly at 6.0 years
+
+- **Keys:** `riskscores:fitRisk:size-gap-closes-at-6-not-5.4`  
+- **Severity:** low  
+- **Where:** index.html renderData() Model V table row 'ln(loan) × years on book (to 6)' (cross=4-c/a); fitRisk() comment ('the hazard gap closes at about 5.4 years and reverses slightly after it'); fitRisk run(): ya=Math.min(E[j],C.age_cap_months)/12-C.age_center_years; fit/sba_risk_refresh.py age_term(b) = min(EDGES[b],72)/12-4
+
+**Why it is wrong.** Neither the fitted model nor fitRisk has a size × age term that varies within a hazard piece. Both use the piece-start age (age_term(b) in the fit, E[j] in fitRisk), so at no age between 5.4 and 6 years is the gap closed. Larger loans still carry an 11% lower hazard per tenfold there, and the reversal is a step at month 72. The R1-30 verifier read the coefficients as a continuous line, and the shipped text copied that, replacing a statement that was right for the code ('closes by year 6') with one the code contradicts. The fit script's own description still says 'the hazard gap closes by year 6'.
+
+**Verifier (reproduce).** Confirmed, low severity, and the evidence answers R1-30's premise. The R1-30 fix read the interaction as continuous in age. In both the fitted model and fitRisk, 'years on book' is the start age of each hazard piece, so the gap is never closed. Between 5.4 and 6 years larger loans still carry ×0.887 per tenfold, and the sign flips as a step at month 72. The '×1.16 from year 6' part of the text is correct. Only 'closes at about 5.4 years' contradicts the code. This is a text-only defect with no figure affected.
+
+**Fix (as proposed).** Say 'larger loans are charged off less often through year 6 (×0.89 per tenfold in year 6); from month 72 the sign reverses (×1.16 per tenfold, held there)'. Compute it from the piece-start ages (cap and edges) rather than 4 - c/a, and correct the fitRisk comment to match.
+
+### R3-6. Optimiser cards, eq_os, eq_us, the cost column and the budget echo print million-scale dollars through money(x,0), so $1.30M shows as '$1M' and a $1.5M budget as '$2M'
+
+- **Keys:** `numbers:optimiser:costs-and-budget-rounded-to-whole-millions`  
+- **Severity:** medium  
+- **Where:** index.html money() lines 3616-3623 (dp is passed to toFixed for M and B but ignored for k); dp=0 call sites: intbl cost column line 4494 (money(o.c,0)); optimiser card rows and total lines 4532-4533 (money(cost(s),0), money(sel.c,0) 'of' money(s.budget,0)); optV note line 4545 (money(best.V.c,0)); eq_os lines 4549-4551 (tm(s.budget,0), tm(best.V.c,0)); eq_us line 4557 (tm(best.U.c,0)); optCardNote line 3457 (money(|dC|,0)). The budget box itself (labels(), line 4016) uses money(s.budget,1).
+
+**Why it is wrong.** money(v,0) means 'no decimals'. For the k range it already prints whole thousands, but for the M range it rounds to whole millions: errors of up to 50%, here −23% ($1.30M → $1M), +33% ($1.5M → $2M) and −18% ($1.2M → $1M). The page echoes the user's own budget back as a different number from the one in the box next to it. The card's rows no longer add up to its 'Total committed', and eq_us's printed arithmetic misses its boxed U by about $0.3M. This is the same defect class as the fixed R1 finding numbers:optnote:cost-of-delay-rounded-to-thousands, in the dollar figures that fix did not touch.
+
+**Verifier (reproduce).** Confirmed and genuine, medium. Same defect class as the fixed R1-23 (a rounded figure printed beside numbers computed on the exact value), but in different call sites. The page echoes the user's own budget back as a different number ($1.5M -> $2M, +33%). The card's rows do not add up to its 'Total committed' ($1.30M -> $1M, −23%), and eq_us's printed arithmetic misses its boxed U by about $0.3M. Nothing in KNOWN_FINDINGS covers money(x,0) in the M range. Fix: keep dp=0 only below $999.5k, e.g. money(x) for the M range at these call sites.
+
+**Fix (as proposed).** Stop passing dp=0 for amounts that can reach $1M. Use money(x) (two decimals in M) or a helper that keeps dp=0 only below $999.5k, at all eight call sites. Add a test that money(sel.c,·) in the card equals the sum of the displayed row costs within display rounding, and that the card's budget text equals the v_bud box.
+
+### R3-7. Fix incomplete for numbers:buyers:ev-capped-but-eq_b-table-and-pays-most-uncapped (R2-1): the star-map tooltip still shows only the uncapped V_j, so engages × closes × its price misses its own 'expected value' by 1.3–8×
+
+- **Keys:** `numbers:starmap:tooltip-ev-not-rebuildable-r2-1-incomplete`  
+- **Severity:** low  
+- **Where:** index.html drawStars() lines 3890-3893: <title> = b.n / 'value to buyer '+money(b.Vj) / 'engages '+pc(PE)+' · closes '+pc(PCj) / 'expected value '+money(b.EV). b.EV = PE·PCj·Pj with Pj = softMin(Vj, ceil) (model() lines 2986-2987). R2-1 listed drawStars in its Where. The fix added the capped price to the table (line 4386) and eq_b/eq_bs, not to the tooltip.
+
+**Why it is wrong.** R2-1 was confirmed because a reader could not rebuild Expected value from the displayed price, engagement and close rate. The fix made the table and equations show P_j = softmin(V_j, ceiling), but the tooltip on the same buyers still pairs the uncapped V_j with the capped EV. It also still calls V_j 'value to buyer', while the axis and the table call it the price the buyer would pay.
+
+**Verifier (reproduce).** Confirmed, low. R2-1's Where named the drawStars labels, and its confirmed defect was that a reader cannot rebuild Expected value from the displayed price, engagement and close rate. The fix added the capped price to the table and to eq_b/eq_bs but not to the star tooltip. The tooltip still pairs the uncapped V_j ('value to buyer') with the capped EV: off by 1.1–1.6× at the default and up to 8× on an underpriced large deal. This is new evidence that the shipped fix is incomplete, not a re-raise.
+
+**Fix (as proposed).** In drawStars' <title>, add the capped price whenever b.Pj < 0.995·b.Vj, as the table does ('price it would pay $5.19M ($3.24M at this ask)'), and rename 'value to buyer' to 'price it would pay'. Add the tooltip to the R2-1 test that PE·PCj·shown price rebuilds EV.
+
+### R3-8. Since R2-2, eq_as and the multiple table print the point-estimate anchoring on the raw ask (ρ = ask/V), but eq_a now defines it on ā/W, so past about 1.4× value the printed ρ, ρ̃ and A are not eq_a's
+
+- **Keys:** `numbers:eq_as:point-estimate-anchor-ignores-eq_a-effective-ask`  
+- **Severity:** low  
+- **Where:** model() lines 2960-2962 (out.rho = rhoOf(priceRatio), out.anchorF = anchorAt(out.rho), with priceRatio = ask/V) against line 3047 (every fan slice uses anchorAt(rhoOf(out.askEff/W)), askEff = softMin(ask, 1.5V)). render(): eq_a lines 4323-4328 (A(ā/W), ā = softmin(ask, 1.5E[V|X])), eq_as line 4329, multiple-table row line 4291, eq_comps line 4403 (V·anchorF·comp 'at the point estimate').
+
+**Why it is wrong.** The R2-2 fix moved the fan's anchoring onto the effective ask ā and rewrote eq_a to say so, but the substituted line under it still evaluates A at ask/V. So the printed ρ (2.00 or 13.21) is not the quantity eq_a's A takes (at most 1.5), and A is double-softmin'd in the fan but not on screen. The gap is small (0.002–0.003 in A, about 0.2%), but it sits in the third printed decimal, beyond display rounding, and the table says the anchoring is 'flat past 1.50×' at a level (1.189) the fan never applies (1.187).
+
+**Verifier (reproduce).** Confirmed, low. This is a side effect of the R2-2 change, which the brief asks to be checked. eq_a now defines the slice argument as ā/W with ā = softmin(ask, 1.5E[V|X]), but the substituted eq_as line and the table still evaluate A at the raw ask/V. Past about 1.4× value, the printed ρ̃ (1.500 vs 1.488, 24 half-units of its last digit) and A (1.189 vs 1.187) are therefore not what eq_a gives at the point estimate. The printed A is a factor no slice applies. The dollar consequence is negligible (about 0.2%, and eq_comps is unchanged at display precision). The defect is a formula-versus-display inconsistency, not rounding.
+
+**Fix (as proposed).** Compute the displayed point-estimate factor as the fan does: out.rho = rhoOf(out.askEff/out.V); out.anchorF = anchorAt(out.rho). Print ρ as askEff/V (or print both 'ask/V = 2.00, ā/V = 1.50'), and add a test that anchorF equals the W = V slice's factor.
+
+### R3-9. The Data tab, the source list and the MODELS header quote TermInMonths and collateral diagnostics from the superseded 13,613-loan resolved logistic, and the shipped 41,200-loan data contradict them
+
+- **Keys:** `claims:model5-traps:terminmonths-and-collateral-stats-from-superseded-logistic`  
+- **Severity:** low  
+- **Where:** index.html renderData() 'Four traps' item 1, l.4841-4844; 'Refused, and why' Collateral row, l.5153-5154; #srcs 'Two traps handled', l.5625-5626; MODELS header comment, l.2038-2040. Contrast MODELS.risk.real_estate.note and fit/sba_risk_refresh.py l.1179-1181 and l.1934-1936
+
+**Why it is wrong.** The figures describe a dataset and model the console no longer uses, but they are presented as properties of 'these loans' (the 41,200-loan hazard model). The shipped data do not reproduce them: 83.6% / 11.4% against 86.9% / 13.0%, and charged-off terms cluster at 87-120 months, not at 42-53. The page's own MODELS metadata gives a different charged-off share (11%). The Data tab's lede says its tables 'cannot drift out of step with what the console actually runs', and these hard-coded numbers have done exactly that.
+
+**Verifier (reproduce).** Confirmed, low. The leakage point itself still holds on the shipped data (87%/11.5%). But the quoted 86.9%/13.0%, the '42, 49, 50, 53' scatter, the AUC 0.957 and the collateral test (0.6255 → 0.6246) all come from the superseded 13,613-loan resolved logistic. Under the 'tested in the risk model' wording they read as properties of the shipped 41,200-loan hazard model.
+
+The shipped data contradict the specific numbers: 83.6%/11.4% under the stated definition, and charged-off terms cluster at 87-120 months. The page's own MODELS.risk.real_estate.note gives 11%/86%. No script reproduces the figures. This is not in KNOWN_FINDINGS.
+
+**Fix (as proposed).** Compute the trap statistics in sba_risk_refresh.py on the shipped population: standard-term shares by status, the charged-off term distribution, and the AUC with TermInMonths included. Store them in MODELS.risk and render them from there. Either rerun the collateral test in the hazard model or say it was dropped from the earlier resolved-loan logistic. Update the MODELS header comment to match.
+
+### R3-10. 'Pepperdine's resolved-outcome basis gives 32–39%' leaves out 2023 (41.1%) and 2024 (40.0%), the two years that set the console's own broker base
+
+- **Keys:** `claims:datatab-reconcile:pepperdine-resolved-termination-range-32-39-stale`  
+- **Severity:** low  
+- **Where:** index.html renderData() 'One number refuses to reconcile' note, l.5166-5169 (hard-coded '32&ndash;39%'); data in MODELS.close_and_timing.close_probability.broker_resolved_by_year and recent_basis; also the broker_basis metadata note
+
+**Why it is wrong.** The sentence compares IBBA's 49% with a Pepperdine range that the shipped series contradicts. The range stops before the years the model actually reads, which understates Pepperdine's recent termination and widens the stated gap between the two sources. The number is hard-coded rather than read from the series the console uses.
+
+**Verifier (reproduce).** No verdict returned by the workflow verifiers. Reproduced by hand at 3d53b6f: 1 - broker_resolved_by_year gives 32.7% (2016, 2017), 37.3% (2018), 36.5% (2019), 41.1% (2023) and 40.0% (2024); the console's recent broker base 0.608 (mean of 2019, 2023 and 2024) implies 39.2%. The quoted "32-39%" covers only 2016-2019, and the sentence does not say so.
+
+**Fix (as proposed).** Compute the range from broker_resolved_by_year (32.6–41.1%; the recent base implies 39.2%). Correct or drop the '43% 2024' headline claim in broker_basis.
+
+## Rejected by verification
+
+| Key | Why rejected |
+|---|---|
+| `r2fixes:optimize:cap-domain-cut-flips-utility-card` | The numbers reproduce (jump2.js/jump3.js; my /tmp/claude-0/r3work/skeptic-r2fixes/f1a.js, f1b.js), but the finding's argument does not hold.  (1) Inside the cap the tile does not reject the kept ask. On the same page, optNote under the walk-away tile reads, for this exact state at 1.4999x: 'Asking 1.50x value instead is worth within 0.21% of value to this owner, close to a tie, so read the patient-seller price as a … |
+| `r2fixes:model:askeff-softmin-moves-in-domain-knife-edge` | The numbers reproduce (proposal.js: margins 0.483/0.550/0.483%, theta flips 0.7725/0.7757/0.7725). The smoothing is a documented design choice, and the figures quoted are the shipped model's own.  (1) AUDIT.md item #3 states the design: 'Anchoring and the ceiling both stop rising past RHO_MAX = 1.5x ... (smoothly, so there is no kink in the search range)'. The softMin comment says 'within K of the kink it rounds the … |
+| `r2fixes:buyers:starmap-tooltip-uncapped-vj-does-not-rebuild-ev` | The tooltip strings reproduce (pw2.js): 'Direct strategic competitor value to buyer $5.19M engages 45% · closes 67% expected value $967k', with Pj = $3.24M for every buyer. But this was already ruled on, and it is immaterial.  (1) R2-1's verifier limited the genuine defect: 'Showing V_j as "Price it would pay" (willingness to pay) is defensible on its own. The genuine defects are the mismatched eq_b formula and the … |
+| `r2fixes:docs:audit-md-dangling-section-and-stale-crossrefs` | The pointer and the line contents reproduce: AUDIT.md l.445 names a section that no heading in AUDIT.md, AUDIT_FINDINGS.md or fit/README.md matches, and l.549, l.588 and l.255 read as quoted. But the finding is out of scope and immaterial.  (1) AUDIT.md is a developer record, not part of the app. The scope is model logic, equations, fitted constants, Data-tab and note claims, and numbers. No displayed number or … |
+| `r2fixes:fits:competition-buyers-console-scale-labels-and-stale-result` | The greps reproduce: competition_buyers.py l.470/548, and RESULT.json l.12/21 dated Oct 11 04:10. heldout_poisson.json gives poisson_own_scale -1.7018 at c 0.2554. But nothing shown or recorded in the repo is wrong.  (1) The phrase survives only in internal dict keys of an LR/quasi-LR test. For an LR test between two MLE fits, the Poisson's scale must be its own fitted one. The script's docstring defines the model … |
+| `numbers:eq_p:tail-k-three-sig-figs-still-misses-boxed-pc` | Refuted as immaterial: the leftover gap is display rounding, and the shipped fix is exactly the one R1-19's verifier proposed ('Print k to three significant figures (k=0.00114)').  The numbers reproduce (f5.js). In the small state (ern 1.2e5, rev 5e5) g = 1220.6%. The code's penalty is 0.8459 (boxed 0.846, P_C 9.37% → 9.4%). The printed k = 0.00114 gives 0.8467 → 0.847 and 9.32% → 9.3%.  Over every gap from 100% to … |
+| `claims:aggregate-lede:tables-cut-by-size-contradicts-channel-ramp` | The numbers reproduce, but the two sentences do not contradict each other, the ramp is labelled, and nothing displayed is wrong.  Reproduction: fitClose(V,V,undefined,V).base is 0.6080 at $0.5M and $1M, 0.6524 at $2.24M, 0.6769 at $3,493,348, and 0.6967 at $5M and $20M. MODELS.close_and_timing.close_probability has no size-cut table. Playwright on r3snap shows both phrases on the rendered Data tab.  (1) No … |
+| `claims:audit-docs:knife-edge-walkaway-score-figures-stale-dangling-section` | The figures reproduce, but every stale figure sits in a non-displayed artefact, and the page itself shows the current values.  auditdoc.js gives 277/281/287/295 days, walk-away asks of 1.13/1.14/1.15/1.15 at $900/day and 1.09/1.12/1.14/1.14 at $4,000/day, theta flips 0.766/0.776/0.811, FAN_S flips 0.883/0.937, interior margins of 0.34%/0.55% of value, and Omni scores 1/31/41/41 and 41/31/25. AUDIT.md has no '## … |
