@@ -1793,7 +1793,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           and the number of buyers contacted, and has no quality term. Quality reaches it only through the gap: at the
           same ask relative to model value it does not move, but at the same dollar ask a better business has a smaller
           gap and closes more often. The contribution chart below is
-          the <i>judgement</i> logistic that this replaced: it is kept because the direction of each
+          the <i>judgment</i> logistic that this replaced: it is kept because the direction of each
           variable is defensible and it shows what the model would weigh if the coefficients had ever
           been estimated. It does not move the number above.</p>
         <div id="pcbars"></div>
@@ -1855,7 +1855,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           by placing the business inside the fitted residual spread, so their size is measured but their
           placement is judgment. The ask and the buyer pool cannot change what a business supports, so
           they are absent here. <b>Right: what the seller should expect to receive</b> &mdash; closing
-          probability times the realised price, the quantity the optimiser maximises. Every lever
+          probability times the realised price, the quantity the optimizer maximizes. Every lever
           reaches it, but through the price gap and the ask ceiling, so the two columns can disagree,
           and when they do the right-hand one is the one a seller banks. The ask and buyer-pool rows show
           the step they name rather than a derivative: expected proceeds peak at the best ask and bend at a
@@ -4323,7 +4323,7 @@ function render(){
     +(Math.abs(r.dsumRaw-r.dsum)>1e-9||Math.abs(r.Mraw-r.Mjudg)>1e-9?`<tr class="lg"><td>Bounds on the stack${tsub("net held to −55%…+85%; multiple held to max(0.90×, 0.42× base)–1.85× base")}</td>
         <td class="n muted wrap">${r.dsumRaw>=0?"+":"−"}${Math.abs(r.dsumRaw*100).toFixed(1)}% → ${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}%</td>
         <td class="n muted wrap">${Math.abs(r.Mraw-r.Mjudg)>1e-9?`${xx(r.Mraw)} → ${xx(r.Mjudg)}`:"—"}</td></tr>`:"")
-    +`<tr class="lg"><td>Judgement multiple <span class="st free">not used</span></td>
+    +`<tr class="lg"><td>Judgment multiple <span class="st free">not used</span></td>
         <td class="n">${r.dsum>=0?"+":"−"}${Math.abs(r.dsum*100).toFixed(1)}%<span class="u"> net</span></td>
         <td class="n muted">${xx(r.Mjudg)}</td></tr>
       <tr class="sum"><td><b>Fitted multiple</b> <span class="st pub">BIZCOMPS</span>${tsub("regression, not the stack above")}</td>
@@ -8217,7 +8217,7 @@ html.v8-reveal #view-console .sec:not(.landed) #cats .cat-fill{transform:scaleX(
 #view-console .lede-more{display:none}
 #view-console .lede-more[hidden]{display:none!important}
 @media(max-width:560px){
-  #view-console .sec .lede.clamp:not(.open){display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  #view-console .sec .lede.clamp:not(.open){display:block;-webkit-line-clamp:unset;max-height:calc(4 * 1.7em);overflow:hidden}
   #view-console .lede.clamp:not(.open)+.lede-more{display:inline-flex;align-items:center;gap:8px;min-height:40px;margin:-20px 0 20px;padding:0 4px 0 0;
     border:0;background:none;cursor:pointer;font:500 13px/1.4 var(--sans);color:var(--ink2,#b9c3d8);border-radius:6px}
 }
@@ -8269,7 +8269,7 @@ html.v8-reveal #view-console .sec:not(.landed) #cats .cat-fill{transform:scaleX(
 #view-console .rail select:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
 #view-console .rail .f.fchk{display:block;margin:-4px 0 12px}
 #view-console .rail .f.fchk label{display:inline-flex;align-items:center;gap:12px;min-height:40px;margin:0;cursor:pointer;
-  font:400 13.5px/1.3 var(--sans);color:var(--ink2,#b9c3d8)}
+  font:400 var(--fs-ui,13px)/1.3 var(--sans);color:var(--ink2,#b9c3d8)}
 #view-console .rail #i_fr{-webkit-appearance:none;appearance:none;flex:none;display:inline-grid;place-content:center;width:18px;height:18px;margin:0;
   border-radius:5px;border:1px solid rgba(158,203,255,.35);background:rgba(12,18,40,.6);cursor:pointer;accent-color:auto;
   transition:background .2s ease,border-color .2s ease,box-shadow .2s ease}
@@ -8369,7 +8369,7 @@ html.v8-reveal #view-console .sec:not(.landed) #cats .cat-fill{transform:scaleX(
 #view-console #scen>div:nth-child(3)::before{background:repeating-linear-gradient(90deg,#9ecbff 0 1px,transparent 1px 4px)}
 #view-console #scen .lab{margin:0 0 6px}
 #view-console #scen .rng{font:600 var(--fs-fig-m,20px)/1.25 var(--fig)!important;font-variant-numeric:tabular-nums;letter-spacing:normal}
-#view-console #scen .cap{display:block;margin-top:2px;font:400 12px/1.4 var(--sans);color:var(--ink3,#8590a8)}
+#view-console #scen .cap{display:block;margin-top:2px;font:400 var(--fs-cap,11.5px)/1.4 var(--sans);color:var(--ink3,#8590a8)}
 #view-console #scen .sbar{display:block;position:relative;height:4px;margin:14px 0 2px;border-radius:2px;background:rgba(160,180,230,.1)}
 #view-console #scen .sbar::after{content:"";position:absolute;top:0;bottom:0;left:var(--a,0%);width:calc(var(--z,100%) - var(--a,0%));min-width:4px;
   border-radius:2px;background:var(--sc);box-shadow:0 0 8px var(--sc)}
@@ -8388,7 +8388,7 @@ html.v8-reveal #view-console .sec:not(.landed) #cats .cat-fill{transform:scaleX(
 #view-console #o_real .rz::before{content:"";position:absolute;left:8%;right:8%;top:-1px;height:1px;pointer-events:none;
   background:linear-gradient(90deg,transparent,rgb(var(--hue,158 203 255)/.6) 30% 70%,transparent);box-shadow:0 0 12px rgb(var(--hue,158 203 255)/.35)}
 #view-console #o_real .rzrow{padding:10px 0;border-bottom:1px solid var(--hair,rgba(160,180,230,.14))}
-#view-console #o_real .rzk{font:400 13.5px/1.45 var(--sans);color:var(--ink,#eef2fb)}
+#view-console #o_real .rzk{font:400 var(--fs-ui,13px)/1.45 var(--sans);color:var(--ink,#eef2fb)}
 #view-console #o_real .rzv{font:600 var(--fs-fig-s,15px)/1.3 var(--fig)!important;font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb)}
 #view-console #o_real .rzn{font:400 11.5px/1.5 var(--sans);color:var(--ink3,#8590a8)}
 #view-console #o_real .rzf{margin:14px 0 0}
@@ -8440,6 +8440,155 @@ html.v8-reveal #view-console .sec:not(.landed) .kf{opacity:0;transform:translate
    showed a scroll chevron with nothing to scroll; and the chevron's nudge must stop under reduced motion like everything else */
 #view-console .eq.v8loop-card.scrolls::after{content:none!important;animation:none!important}
 @media (prefers-reduced-motion:reduce){.eq.scrolls::after{animation:none!important}}
+
+/* ===== UI round 2 (full): console lane ==================================== */
+/* r2-layout-2: the Sensitivity conclusion compares both columns, so it follows the
+   two charts at full width (moved after .split by post(); stacked order unchanged) */
+#view-console .split:has(#sensV){align-items:start}
+#view-console .split:has(#sensV)+#sensflat{margin:24px 0 0;max-width:68ch;padding:2px 0 2px 16px;
+  border-left:1px solid transparent;border-image:linear-gradient(rgb(var(--hue,158 203 255)/.55),rgb(var(--hue,158 203 255)/0)) 1}
+@media (forced-colors:active){ #view-console .split:has(#sensV)+#sensflat{border-image:none;border-left-color:CanvasText} }
+
+/* r2-type-8: buyer cards, the price takes two cells so its label and sub-line sit on one line */
+@container (max-width:640px){ #view-console #buytbl tbody td:nth-child(5){grid-column:span 2} }
+/* the second card row's labels are one line now: no reserved second line above its figures */
+@container (max-width:440px){ #view-console #buytbl td:nth-child(n+5) .cl{min-height:0} }
+/* ~360px phones: 'Expected value' wraps in its third of the card, so both labels keep two lines and the figures align */
+@container (max-width:290px){ #view-console #buytbl td:nth-child(n+5) .cl{min-height:2.8em} }
+@media(max-width:560px){
+  #view-console #buytbl td.n .muted{white-space:nowrap}
+  #view-console #buytbl td .cl{text-wrap:balance}
+}
+
+/* r2-type-3: a duration's unit in the label ink, not the figure's gradient
+   (the span paints its own fill because .kf-n paints with background-clip:text) */
+#view-console .kf-n .unit{font-size:.42em;font-weight:500;margin-left:.1em;letter-spacing:0;
+  color:var(--ink2,#b9c3d8);-webkit-text-fill-color:var(--ink2,#b9c3d8);background:none;filter:none}
+
+/* CoB1: each boxed answer is a lit capsule (static; TeX unchanged; fill <= .08) */
+#view-console .eq .katex .fbox{border:1px solid rgb(var(--hue,158 203 255)/.6)!important;border-radius:6px;
+  background:rgb(var(--hue,158 203 255)/.08);
+  box-shadow:0 0 0 1px rgb(var(--hue,158 203 255)/.10),0 0 14px -2px rgb(var(--hue,158 203 255)/.45),0 0 28px rgb(var(--hue,158 203 255)/.16),inset 0 1px 0 rgba(255,255,255,.08)}
+#view-console .eq .katex .boxpad{color:#fff}
+#view-console .eq.scrolls .katex .fbox{box-shadow:0 0 0 1px rgb(var(--hue,158 203 255)/.10),0 0 8px -2px rgb(var(--hue,158 203 255)/.45),inset 0 1px 0 rgba(255,255,255,.08)}
+@media (forced-colors:active){#view-console .eq .katex .fbox{border-color:CanvasText!important;box-shadow:none;background:none}}
+
+/* CoB2 (R1): each key figure sits in its own light. The halo is a pseudo-element of the
+   figure's WRAPPER (never of the background-clip:text figure), behind it in an isolated
+   box, sized so it fades out inside the panel with no hard edge */
+#view-console .kf-main,#view-console .gap-figure,#view-console #decide .body{position:relative;isolation:isolate}
+#view-console .kf-main::before,#view-console .gap-figure::before,#view-console #decide .body::before{content:"";position:absolute;z-index:-1;pointer-events:none;
+  width:var(--hw,320px);height:var(--hh,150px);left:calc(var(--hx,64px) - var(--hw,320px) / 2);top:calc(var(--hy,19px) - var(--hh,150px) / 2);
+  background:radial-gradient(closest-side,rgb(var(--hc,var(--hue,158 203 255))/.18),rgb(var(--hc2,var(--hue2,184 164 255))/.06) 55%,transparent 72%)}
+/* centred on the figure: .kf-n is the last line of .kf-main (19px is half its line box) */
+#view-console .kf-main::before{top:auto;bottom:calc(19px - var(--hh,150px) / 2)}
+#view-console .kf[data-k=pc] .kf-main{--hx:40px}
+#view-console .kf[data-k=time] .kf-main{--hx:56px}
+#view-console .kf[data-k=buy] .kf-main{--hx:150px;--hw:420px}
+#view-console .gap-figure{--hx:66px;--hy:19px}
+#view-console #decide .body{--hx:84px;--hy:42px}
+#view-console #decide .walk{--hc:111 242 220;--hc2:158 203 255}
+@media(max-width:560px){
+  #view-console .kf-main,#view-console .gap-figure,#view-console #decide .body{--hw:240px;--hh:120px}
+  #view-console .kf-main::before{bottom:calc(15px - var(--hh,120px) / 2)}
+  #view-console .kf[data-k=value] .kf-main,#view-console .gap-figure{--hx:51px}
+  #view-console .kf[data-k=pc] .kf-main{--hx:31px}
+  #view-console .kf[data-k=time] .kf-main{--hx:44px}
+  #view-console .kf[data-k=buy] .kf-main{--hx:130px;--hw:300px}
+  #view-console .gap-figure{--hy:15px}
+  #view-console #decide .body{--hx:72px;--hy:39px}
+}
+/* the Sensitivity key line is a sentence, not a number: the same light, softer, behind its rule */
+#view-console .kf-quote{isolation:isolate}
+#view-console .kf-quote::before{display:block;content:"";position:absolute;z-index:-1;pointer-events:none;left:-80px;top:50%;width:400px;height:150px;
+  margin:-75px 0 0;bottom:auto;border-radius:0;box-shadow:none;
+  background:radial-gradient(closest-side,rgb(var(--hue,158 203 255)/.14),rgb(var(--hue2,184 164 255)/.05) 55%,transparent 72%)}
+@media(max-width:560px){ #view-console .kf-quote::before{left:-60px;width:280px;height:120px;margin:-60px 0 0} }
+@media (forced-colors:active){
+  #view-console .kf-quote::before{display:none}
+  #view-console .kf-main::before,#view-console .gap-figure::before,#view-console #decide .body::before{display:none}
+  #view-console .kf-n .unit{color:CanvasText;-webkit-text-fill-color:CanvasText}
+}
+/* CoB2 (R2): first light, once per page load: a prismatic glint crosses each key figure
+   when its section lands; .kf-lit (set on animationend) retires it so render() never replays it */
+html.v8-reveal #view-console .sec.landed:not(.kf-lit) .kf-n,
+html.v8-reveal #view-console .sec.landed:not(.kf-lit) .gap-figure .n{
+  background-image:linear-gradient(100deg,transparent 0 38%,rgba(158,203,255,.9) 45%,rgba(255,255,255,.95) 50%,rgba(184,164,255,.9) 55%,transparent 62%),linear-gradient(180deg,#fff 15%,#d8ecff 85%);
+  background-size:250% 100%,100% 100%;background-repeat:no-repeat;background-position:150% 0,0 0;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:kf-glint 1.4s cubic-bezier(.4,0,.2,1) .5s 1 both}
+@keyframes kf-glint{to{background-position:-50% 0,0 0}}
+
+/* CoB3: the three futures cast their own light down from their edge (washes <= .08) */
+#view-console #scen>div{--scr:158 203 255;--sca:.08;
+  background-image:linear-gradient(180deg,rgb(var(--scr)/var(--sca)),transparent 40%);
+  box-shadow:inset 0 1px 0 rgb(var(--scr)/.28),inset 0 12px 22px -18px rgb(var(--scr)/.55)}
+#view-console #scen>div::after{content:none}
+#view-console #scen>div:nth-child(1){--scr:255 180 171}
+#view-console #scen>div:nth-child(2){--scr:216 236 255;--sca:.06}
+#view-console #scen>div:nth-child(3){--scr:158 203 255}
+/* r2-layout-8: the three cells share row heights, so every description starts on one line */
+@media(min-width:701px){
+  @supports (grid-template-rows:subgrid){
+    #view-console #scen{grid-template-rows:repeat(5,auto)}
+    #view-console #scen>div{display:grid;grid-row:span 5;grid-template-rows:subgrid;align-content:start}
+  }
+  @supports not (grid-template-rows:subgrid){ #view-console #scen .pct{min-height:calc(2 * 1.4em)} }
+}
+
+/* r2-type-11: nothing under 11px; captions and rail labels on the shared scale */
+#view-console #intbl sub,#view-console .note sub{font-size:.85em;vertical-align:-.2em}
+#view-console #intbl th sub,#view-console #intbl .cl sub{font-size:11px}
+
+/* r2-layout-6: provenance in two columns aligned with the tier cards above */
+@media(min-width:1081px){
+  #view-console #srcs ul{columns:2 300px;column-gap:40px}   /* one column again when two would fall under 300px */
+  #view-console #srcs li{break-inside:avoid}
+}
+
+/* r2-type-13c (A3): one figure weight across both tabs: 500, results 600 */
+#view-console td.n{font-weight:500}
+#view-console tr.sum td.n,#view-console td.n b{font-weight:600}
+
+/* shared separator helper (r2-type-7): a separator that would end a line becomes the break */
+.sep.brk{display:block!important;height:0;overflow:hidden}   /* !important: the legacy '.brk{display:none!important}' (removed decoration) would hide it */
+/* the optimizer sub-lines are .k, a flex row elsewhere: here they are one line of prose */
+#view-console #decide #o_listp,#view-console #decide #o_listp2{display:block!important}
+
+@media (prefers-reduced-motion:reduce){
+  html.v8-reveal #view-console .sec.landed:not(.kf-lit) .kf-n,
+  html.v8-reveal #view-console .sec.landed:not(.kf-lit) .gap-figure .n{animation:none!important;background-image:linear-gradient(180deg,#fff 15%,#d8ecff 85%)}
+}
+
+/* CoB4: a gravity well under the thumb while it is dragged (interaction state, A2);
+   the 40px target and the focus halo are unchanged; the existing press scale is kept */
+#view-console .rail input[type=range]::-webkit-slider-thumb{transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .16s ease}
+#view-console .rail input[type=range]::-moz-range-thumb{transition:transform .16s cubic-bezier(.22,1,.36,1),box-shadow .16s ease}
+#view-console .rail input[type=range]:active::-webkit-slider-thumb{box-shadow:0 0 0 7px rgba(158,203,255,.14),0 0 24px rgba(184,164,255,.75)!important}
+#view-console .rail input[type=range]:active::-moz-range-thumb{transform:scale(1.18);box-shadow:0 0 0 7px rgba(158,203,255,.14),0 0 24px rgba(184,164,255,.75)!important}
+#view-console .rail input[type=range]:active{filter:brightness(1.12) saturate(1.1)}
+
+/* CoB5: one transfer-orbit pulse runs the value-gap arc when the section lands, and the
+   destination flares once on arrival (one-shot stroke-dashoffset, A1) */
+#view-console .gap-traj .traj-pulse{filter:drop-shadow(0 0 4px rgba(158,203,255,.9));animation:traj-pulse 1.6s cubic-bezier(.45,0,.2,1) .4s 1 both}
+@keyframes traj-pulse{0%{stroke-dashoffset:6;opacity:0}10%{opacity:1}90%{opacity:1}100%{stroke-dashoffset:-100;opacity:0}}
+#view-console .gap-traj .traj-flash{fill:rgb(var(--hue,158 203 255)/.75);transform-box:fill-box;transform-origin:center;opacity:0;
+  animation:traj-flash .6s cubic-bezier(.22,1,.36,1) 1.86s 1 both}
+@keyframes traj-flash{0%{opacity:0;transform:scale(1)}40%{opacity:.95;transform:scale(1.6)}100%{opacity:0;transform:scale(1)}}
+
+/* CoB6: the last frame. Centred on the Data view; a lit top rim; the moon keeps its orbit */
+@media(min-width:1081px){ .wrap:has(>#view-data:not([hidden])) #foot{margin-inline:auto} }
+#foot::before{background:linear-gradient(90deg,transparent,rgba(158,203,255,.35) 30%,rgba(184,164,255,.25) 70%,transparent)}
+#foot .foot-mark{width:18px;height:18px;vertical-align:-4px}
+#foot .foot-mark .s{transform-origin:7px 7px;animation:v8c-moon 24s linear infinite}
+@keyframes v8c-moon{to{transform:rotate(360deg)}}
+
+@media (prefers-reduced-motion:reduce){
+  #view-console .rail input[type=range]::-webkit-slider-thumb,#view-console .rail input[type=range]::-moz-range-thumb{transition:none!important}
+  #view-console .rail input[type=range]:active::-webkit-slider-thumb,#view-console .rail input[type=range]:active::-moz-range-thumb{transform:none!important}
+  #view-console .gap-traj .traj-pulse,#view-console .gap-traj .traj-flash{animation:none!important;display:none}
+  #foot .foot-mark .s{animation:none!important}
+}
 </style>
 <!-- ======== end v8-console ======== -->
 <!-- (separator) -->
@@ -9793,7 +9942,12 @@ function proseRuns(host){
   var ts=host.querySelectorAll(".katex .mord.text");
   for(var i=0;i<ts.length;i++){ var s=ts[i], x=s.textContent.replace(/\u00a0/g," ");
     if(!/[A-Za-z]{2,}/.test(x)) continue;
-    if(/\S\s+\S/.test(x.trim())||/^\s+[A-Za-z]{2,}|[A-Za-z]{2,}\s+$/.test(x)) s.classList.add("kx-p"); }
+    if(/\S\s+\S/.test(x.trim())||/^\s+[A-Za-z]{2,}|[A-Za-z]{2,}\s+$/.test(x)
+      ||(/^\(/.test(x.trim())&&!s.closest(".msupsub"))) s.classList.add("kx-p");
+    /* a spaced parenthetical, "\;(\text{High})", is prose with its brackets; a function's argument, y(\text{ask}), is not */
+    var o=s.previousElementSibling, c=s.nextElementSibling, q=o&&o.previousElementSibling;
+    if(!s.closest(".msupsub")&&o&&c&&o.classList.contains("mopen")&&o.textContent==="("&&c.classList.contains("mclose")&&c.textContent===")"
+      &&q&&q.classList.contains("mspace")){ s.classList.add("kx-p"); o.classList.add("kx-p"); c.classList.add("kx-p"); } }
 }
 function cue(host){
   var card=host.closest&&host.closest(".eq"); if(!card) return;
@@ -9907,8 +10061,9 @@ function kfFill(){
     setHTML(KF.pc,'<div class="kf-main"><div class="kf-l"><span>Chance of closing</span>'+badgeOf($id("o_pc_pv"))+'</div>'
       +'<div class="kf-n">'+esc(t)+'</div></div>'+ring(parseFloat(t)/100)); }
   var tEl=$id("o_t");
-  if(KF.time&&tEl) setHTML(KF.time,'<div class="kf-main"><div class="kf-l"><span>Median time to close</span>'+badgeOf($id("o_t_pv"))+'</div>'
-      +'<div class="kf-n">'+esc(tEl.textContent.trim())+'</div></div>');
+  if(KF.time&&tEl){ var tt=tEl.textContent.trim(), tm=/^([\u2212-]?[\d.,]+)\s+([A-Za-z][A-Za-z ]*)$/.exec(tt);
+    setHTML(KF.time,'<div class="kf-main"><div class="kf-l"><span>Median time to close</span>'+badgeOf($id("o_t_pv"))+'</div>'
+      +'<div class="kf-n">'+(tm?esc(tm[1])+'<span class="unit"> '+esc(tm[2])+'</span>':esc(tt))+'</div></div>'); }
   var bb=$id("o_bb");
   if(KF.buy&&bb){ var tile=bb.closest(".big"), pv=tile&&tile.querySelector(".k .pv");
     setHTML(KF.buy,'<div class="kf-main"><div class="kf-l"><span>Pursue first</span>'+badgeOf(pv)+'</div>'
@@ -9937,6 +10092,29 @@ function gapTraj(){
     +'<circle class="halo" cx="306" cy="'+y1+'" r="9" filter="url(#v8c-gb)"/><circle class="p1" cx="306" cy="'+y1+'" r="4.6"/>'
     +'<text x="0" y="56">from '+esc(m[1])+'</text><text x="320" y="'+(y1+21)+'" text-anchor="end">to '+esc(m[2])+'</text></svg>');
   if(fig) fig.classList.add("has-traj");
+}
+
+/* CoB5: one transfer-orbit pulse along the arc, the first time the section lands (never on later renders) */
+var trajPulsed=false;
+function trajPulse(){
+  if(trajPulsed||!doc.documentElement.classList.contains("v8-reveal")) return;
+  var host=$id("gap_traj"), svg=host&&host.querySelector("svg"), arc=svg&&svg.querySelector(".arc"), halo=svg&&svg.querySelector(".halo");
+  if(!arc||!halo) return; trajPulsed=true;
+  var ns="http://www.w3.org/2000/svg", p=doc.createElementNS(ns,"path"), f=doc.createElementNS(ns,"circle");
+  p.setAttribute("class","traj-pulse"); p.setAttribute("d",arc.getAttribute("d")); p.setAttribute("pathLength","100");
+  p.setAttribute("fill","none"); p.setAttribute("stroke","#e9fbff"); p.setAttribute("stroke-width","2"); p.setAttribute("stroke-linecap","round");
+  p.setAttribute("stroke-dasharray","6 106"); p.setAttribute("stroke-dashoffset","6"); p.setAttribute("aria-hidden","true");
+  f.setAttribute("class","traj-flash"); f.setAttribute("cx",halo.getAttribute("cx")); f.setAttribute("cy",halo.getAttribute("cy")); f.setAttribute("r","9");
+  f.setAttribute("filter","url(#v8c-gb)"); f.setAttribute("aria-hidden","true");
+  svg.insertBefore(p,halo); svg.insertBefore(f,halo);
+  p.addEventListener("animationend",function(){ p.remove(); });
+  f.addEventListener("animationend",function(){ f.remove(); });
+}
+function trajArm(){
+  var host=$id("gap_traj"), sec=host&&host.closest(".sec"); if(!sec||!("MutationObserver" in window)) return;
+  if(sec.classList.contains("landed")){ trajPulsed=true; return; }    /* already in view at load: nothing to announce */
+  var mo=new MutationObserver(function(){ if(sec.classList.contains("landed")){ mo.disconnect(); trajPulse(); } });
+  mo.observe(sec,{attributes:true,attributeFilter:["class"]});
 }
 
 /* long notes keep their first sentence; the rest folds into "More detail" (VL 7.5) */
@@ -9981,9 +10159,16 @@ function scenBars(){
     b.style.setProperty("--a",(a*100).toFixed(2)+"%"); b.style.setProperty("--z",(z*100).toFixed(2)+"%"); b.classList.toggle("pt",z-a<.01); });
 }
 
+/* r2-layout-2: #sensflat compares both columns, so it is the section's full-width conclusion
+   after the split (guarded: cheap to re-run after every render; render() writes into it by id) */
+function sensMove(){ var sf=$id("sensflat"), sv=$id("sensV"), sp=sv&&sv.closest(".split");
+  if(sf&&sp&&sf.previousElementSibling!==sp) sp.after(sf); }
+/* r2-type-7c: a ' · ' separator never dangles at a line end on the optimizer sub-lines */
+function seps(){ if(window.__v8sep){ window.__v8sep($id("o_listp")); window.__v8sep($id("o_listp2")); } }
+
 function post(){
   tablePass("multbl",false); tablePass("buytbl",true); tablePass("intbl",true); buyerPass();
-  kfFill(); gapTraj(); folds(); scenBars();
+  kfFill(); gapTraj(); folds(); scenBars(); sensMove(); seps();
 }
 
 /* =====================================================================
@@ -10022,14 +10207,35 @@ function rules(){
   ["buytbl","intbl"].forEach(function(id){ var t=$id(id); if(t) t.classList.add("cards"); });
 }
 
+/* shared, guarded: identical in every lane that uses it */
+(function(){ if(window.__v8sep) return;
+  window.__v8sep=function(el){ if(!el) return;
+    if(!el.querySelector('.sep')){            /* wrap once per render */
+      var h=el.innerHTML; if(h.indexOf(' · ')<0) return;
+      el.innerHTML=h.split(' · ').join('<span class="sep"> · </span>');   /* textContent unchanged */
+    }
+    var s=el.querySelectorAll('.sep'); s.forEach(function(x){x.classList.remove('brk')});
+    s.forEach(function(x){ var a=x.previousSibling, b=x.nextSibling, r=x.getBoundingClientRect();
+      var ra=a&&a.nodeType===3?(function(){var g=document.createRange();g.selectNodeContents(a);var q=g.getClientRects();return q[q.length-1];})():(a&&a.getBoundingClientRect?a.getBoundingClientRect():null);
+      var rb=b&&b.nodeType===3?(function(){var g=document.createRange();g.selectNodeContents(b);return g.getClientRects()[0];})():(b&&b.getBoundingClientRect?b.getBoundingClientRect():null);
+      if((ra&&ra.top<r.top-2)||(rb&&rb.top>r.top+2)) x.classList.add('brk'); });
+  };
+})();
+
 kfMake("multbl","value"); kfMake("pcbars","pc"); kfMake("tcurve","time"); kfMake("starmap","buy"); kfMake("sensV","sens","kf-quote");
-ledeInit(); srcsPass(); rules();
+ledeInit(); srcsPass(); rules(); trajArm();
 if(typeof window.render==="function"){
   var render0=window.render;
   window.render=function(){ var out=render0.apply(this,arguments); try{ post(); }catch(e){ window.__v8cErr=e; } return out; };
 }
-var rz=0;
-addEventListener("resize",function(){ clearTimeout(rz); rz=setTimeout(ledeFit,200); },{passive:true});
+var rz=0, rzs=0;
+addEventListener("resize",function(){ clearTimeout(rz); rz=setTimeout(ledeFit,200); clearTimeout(rzs); rzs=setTimeout(seps,150); },{passive:true});
+if(doc.fonts&&doc.fonts.ready) doc.fonts.ready.then(function(){ setTimeout(seps,80); });
+/* CoB2: the first-light glint plays once per section; retire it so a re-render never replays it */
+function lit(e){ if(e.animationName!=="kf-glint") return; var sc=e.target.closest&&e.target.closest(".sec"); if(sc) sc.classList.add("kf-lit"); }
+doc.addEventListener("animationend",lit,true); doc.addEventListener("animationcancel",lit,true);
+doc.addEventListener("animationstart",function(e){ if(e.animationName!=="kf-glint") return;
+  var sc=e.target.closest&&e.target.closest(".sec"); if(sc&&!sc.__lt) sc.__lt=setTimeout(function(){ sc.classList.add("kf-lit"); },3000); },true);
 if(doc.fonts&&doc.fonts.ready) doc.fonts.ready.then(function(){ setTimeout(ledeFit,60); });
 [600,1800].forEach(function(t){ setTimeout(ledeFit,t); });
 
