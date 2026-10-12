@@ -849,3 +849,32 @@ At HEAD:
 
   The optimiser never keeps an over-cap ask.
 - `node tests/browser.inputs.js` and `node tests/browser.sweep.js` (118 input states at 1440px and 390px): pass.
+
+## UI upgrade (Phase 4), October 2026
+
+The brief: "more premium, not busier", with "tons of space-themed elements, vibrant colors, and universe visuals", keeping every space element, the palette, the intro animation and the warp transitions, and never changing a number or the meaning of any text.
+
+### How it ran
+- **Before.** Every section of both tabs was screenshotted at 1440 and 390 px (44 images) at 706a61c.
+- **Round 1 critique.** Three critics (layout, typography and consistency, premium space aesthetic) went through every screenshot and measured the live page. Their 267 findings were merged into 120 issues (18 high, 67 medium, 35 low) and a shared visual language: per-section hue pairs and planets, glow and texture recipes, one type, spacing and radius scale, a table contract and a reveal hook. Four high-severity themes: phones hid the numbers (wide tables scrolled twice or pushed figure columns off-screen, chart text rendered at 3–5 px, 19 of 33 equations shrank to 6.9 px and still clipped); outright defects (score-dial moons 90° from their arcs, KPI labels at 2.8–3.9:1 contrast from stacked opacity, invisible slider focus); no system (36 font sizes, nine radii, six small-label styles); and section identities that never reached the screen.
+- **Round 1 implementation.** Four lanes worked in parallel git worktrees, each owning one region: hero and the shared layer, charts, the console sections, and the Data tab. All 120 issues were addressed (four partially: see below) and every upgrade plan was implemented. Each lane is one squash-merge commit: a2fd636 (Data tab), c6345e8 (console), 4b0a7a8 (hero and shared layer), 8221fb1 (charts); f8e8c01 fixes a cross-lane custom-property clash. The four merged without conflicts, and the merged build passed every test.
+- **Round 2 (light, by the owner's choice to finish by 1 PM ET).** One reviewer checked the merged page for regressions and for round-1 high or medium issues that persist, and the fixes were applied directly. It found no round-1 high or medium issue still present (all 18 round-1 highs confirmed fixed, measured) and three medium regressions: a scroll chevron with nothing to scroll that kept animating even under reduced motion, the new sticky tab bar able to cover a control that keyboard focus scrolls into view, and phone lede clamps that hid a single line and cut a word. All three are fixed in 4e0010a and verified in the browser. Low-severity polish was out of this round's scope (subscripts and inline code render at 8–10 px; Data-tab section heads sit flush with the panel edge where Console heads are inset).
+
+### What changed, by area
+- **Shared layer:** tokens for hue, ink, type, spacing and radius; a chip primitive; provenance dots in their tier colours; star-plate equation cards; one table contract (`.wide` with a sticky first column, `.cards` that stack into labelled cards on phones, scroll-aware fades); one `details.more` disclosure; a guarded reveal hook. Nothing animates under `prefers-reduced-motion`.
+- **Masthead and hero:** a planet-limb horizon that the sticky tab bar docks on (tabs above the fold on a phone); the hero in three tiers (planet beside the two dials, which now end exactly at their arcs; calibration band and quality bar; the KPI grid at 10.6:1 label contrast).
+- **Section identity:** each section has a hue pair, a recoloured waypoint planet, an orbit rule and a glyph emblem; nebula washes stay inside the glass at no more than 10% so text contrast is unchanged.
+- **Charts:** every chart is drawn at its displayed size with all text at 11 px or more on both widths; the star map is a sky with collision-free labels; the time curve carries a comet at the median; star-track bars; the focal planet's percentage always matches its tile.
+- **Console sections:** key-figure strips lead each section; equations re-stack one term per line on phones instead of shrinking (smallest equation text 12.3 px); tables become cards on phones; the optimiser's sell-or-walk-away choice is a binary-star card; spectral scenario cards; 40 px tap targets in the rail.
+- **Data tab:** a tier planet and hue per section; a stellar-spectrum tally; the Still-judgement table (4,289 px wide before) reads in three columns; check rows aligned to 1 px; self-audit rows with verdict chips and gauges; a star-chart index in the right gutter on wide screens.
+
+### Not done, or done partly
+- r1-data-02: three of 25 check rows are still 201–250 px tall at 390 because of text length; folding would not get them under 140 px.
+- r1-data-14: the optional sticky side column for long notes was not built; long notes keep their first sentence and fold the rest.
+- r1-hero-18: the second KPI row is 238 px tall at 1440 (293 before; the target was 180) because its definition lines must stay visible.
+- r1-hero-06: two pairs of adjacent sections differ by about 3 colour levels at the panel corner rather than 4, the most the 10% wash cap allows; their rims, rules, planets and emblems still differ.
+- The full critique loop ("until a round finds nothing new") was cut to one light round at the owner's request, so low-severity polish was not re-reviewed after round 1.
+- Before and after screenshots of every section at both widths were taken at 706a61c and 4e0010a; they are working files, not committed.
+
+### Tests
+At the merged head: `node tests/model.test.js` 7,468 pass; `node tests/fuzz.test.js 1500` 173,364 checks pass; `node tests/browser.inputs.js` and `node tests/browser.sweep.js` (118 input states at 1440 and 390 px, no horizontal overflow, no NaN): pass. No test was changed by the UI work.
