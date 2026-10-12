@@ -1618,7 +1618,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
   <div class="mast-top">
     <div>
       <div class="mast-eyebrow">The Omni Method</div>
-      <h1>Exit Valuation &amp; Saleability Console</h1>
+      <h1><span class="h1-ink">Exit Valuation &amp; Saleability Console</span></h1>
       <p class="mast-sub">Enter a company's operating metrics. Every model in the framework runs
         and shows the working behind each number.</p>
     </div>
@@ -1720,12 +1720,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
 
     <div class="panel flush">
       <div class="hero">
-        <div class="hero-orbit"><canvas id="focal" aria-hidden="true"></canvas><div class="focal-legend" id="focal_legend"></div>
-          <div class="hero-under">
-            <div class="conf"><span class="dot" id="o_cdot"></span><span id="o_conf">—</span></div>
-            <div id="o_qband"></div>
-            <div id="o_xwarn"></div>
-          </div></div>
+        <div class="hero-orbit"><canvas id="focal" aria-hidden="true"></canvas><div class="focal-legend" id="focal_legend"></div></div>
         <div class="hero-read">
           <div class="scores">
             <div class="sc">
@@ -1738,6 +1733,11 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
             </div>
           </div>
           <p class="score-cap" id="o_cap"></p>
+        </div>
+        <div class="hero-under">
+          <div class="conf"><span class="dot" id="o_cdot"></span><span id="o_conf">—</span></div>
+          <div id="o_qband"></div>
+          <div id="o_xwarn"></div>
         </div>
         <div class="hero-stats">
             <div class="big"><div class="k">Price if it closes <span class="pv j" title="The fitted value's measured spread, narrowed to the share that remains once a business is listed (calibrated), moved by anchoring and competition (both judgment), and capped at the ask"><i></i>judgment</span></div><div class="n" id="o_val">—</div></div>
@@ -4157,7 +4157,7 @@ function render(){
   /* the 80% range, not 30-70: when most closings land at the ceiling the middle of the
      distribution is one point, and the mean (pulled down by the lower tail) sat outside it */
   { const lo=r.q(.10), hi=r.q(.90);
-    $("o_val").innerHTML=money(r.Vmean)+'<span class="sub2">'
+    $("o_val").innerHTML='<span class="kfig">'+money(r.Vmean)+'</span><span class="sub2">'
       +(hi-lo<.005*hi?'nearly every closing at the ask ceiling'
         :'80% between '+money(lo)+' and '+money(hi)+(r.capShare>=.3?' &middot; '+pc(r.capShare)+' at the ask ceiling'
           +(r.ceil<.99*s.ask?' of '+money(r.ceil):''):''))
@@ -4170,7 +4170,7 @@ function render(){
       pv.title="Pepperdine base rate, interpolated by deal size between $1M and $5M (a judgment ramp)"
         +(gap?`, × (1 − ${r.fc.pen.toFixed(3)}) for a ${r.fc.gap.toFixed(0)}% price gap: the shape of the penalty is Pepperdine's, its ${PEN_MAX} scale a judgment`:", with no price-gap penalty at or below model value")
         +(thin?`, × ${r.thinF.toFixed(3)} for a thin pool: ${s.buyers} buyers contacted against a typical ${(IND[s.ind]||IND.prof).buyers||50} (calibrated scale, judgment shape)`:""); } }
-  $("o_ev").innerHTML=money(r.EVp)
+  $("o_ev").innerHTML='<span class="kfig">'+money(r.EVp)+'</span>'
     +(r.cashShare<1?'<span class="sub2">'+money(r.EVcash)+' cash at close</span>':"");
   $("o_msv").textContent=money(r.V);
   /* the value and the multiple are the fitted figure times the quality position, which is judgment: badge them so whenever
@@ -4191,6 +4191,7 @@ function render(){
     /* 1st, 2nd, 3rd, 4th - "62th percentile" undermines everything else on the panel */
     var pn=Math.min(99,Math.max(1,Math.round(p*100))), t1=pn%10, t2=pn%100;
     var ord=(t1===1&&t2!==11)?"st":(t1===2&&t2!==12)?"nd":(t1===3&&t2!==13)?"rd":"th";
+    var qOpen=!!el.querySelector("details[open]");   /* a re-render keeps the disclosure as the reader left it */
     el.innerHTML='<div class="qband">'
       +'<div class="qhd"><b>Quality position</b><span>'+pn+ord+' percentile &middot; '
       +(f>=1?'+':'')+((f-1)*100).toFixed(1)+'% on the fitted value</span></div>'
@@ -4202,10 +4203,11 @@ function render(){
       +QB.lo.toFixed(2)+'&times; and '+QB.hi.toFixed(2)+'&times; the model&rsquo;s point estimate. '
       +'<b>That spread is measured.</b> '
       +'The nine quality inputs decide where in it this business sits &mdash; here, the '+lab
-      +' &mdash; and <b>that placement is mostly judgment</b>: owner dependence and management depth carry '
+      +' &mdash; and <b>that placement is mostly judgment</b>:</p>'
+      +'<details class="more"'+(qOpen?' open':'')+'><summary>More detail</summary><p class="more-body">owner dependence and management depth carry '
       +'the weights broker listings price them at ('+MODELS.fitted.quality_weights.own.toFixed(2)+' and '
       +MODELS.fitted.quality_weights.mgt.toFixed(2)+' of an equal share); the other seven are '
-      +'weighted equally because no reachable data identifies their relative weight.</p></div>';
+      +'weighted equally because no reachable data identifies their relative weight.</p></details></div>';
   })();
 
   /* ---- extrapolation notice ---- */
@@ -4228,9 +4230,9 @@ function render(){
   })();
   /* the wedge was computed on every render and then discarded. An SDE multiple means
      little to a PE or strategic buyer; the EBITDA multiple it implies is what they bid on. */
-  $("o_mult").innerHTML=xx(r.M)+" SDE"
+  $("o_mult").innerHTML=xx(r.M)+' <span class="unit">SDE</span>'
     +(r.fv.wedge?'<span class="sub2">'+xx(r.M*r.fv.wedge)+' EBITDA</span>':"");
-  $("o_t").textContent=Math.round(r.tMed)+" days";
+  $("o_t").innerHTML=Math.round(r.tMed)+' <span class="unit">days</span>';
   { const pv=$("o_t_pv"), j=r.tMult>1.0005;   /* above value the median carries a judgment multiplier */
     /* the band median is fitted to IBBA's per-band histograms (MODELS.fitted.ttc_medians), no longer a published lookup */
     pv.className="pv "+(j?"j":"f"); pv.innerHTML="<i></i>"+(j?"fitted × judgment":"fitted");
@@ -4248,9 +4250,13 @@ function render(){
     /* above about $5.9M of model value the 7(a) cap binds: the figure is the risk of a capped $5M note, flat in deal
        size, and the comparison with the average loan and the observed size band no longer apply (AUDIT_FINDINGS R1-6) */
     const capped=R.loan_share*r.V>R.loan_range[1];
+    /* display only: an en dash in the period, "years" in full, and the loan band read as money ("$2–5M") */
+    const per=String(R.conditions).replace("-","–"), wasOpen=!!e.querySelector("details[open]");
+    const band=s=>{ s=String(s).replace(/K/g,"k"); if(s[0]==="<") return "<$"+s.slice(1);
+      const q=s.split("-"); return q.length>1?"$"+q[0]+"–"+(/[kM]$/.test(q[0])?"$":"")+q[1]:"$"+s; };
     let h=pc(k.p,1)+(capped?'':'  <span class="muted">('+k.rel.toFixed(2)+'× the average acquisition loan)</span>')
-      +'<span class="sub2">charged off within '+(k.term/12)+' yrs if '+R.conditions+' conditions hold; '
-      +pc(k.p5,1)+' within '+(k.horizon/12)+' yrs</span>';
+      +'<span class="sub2">charged off within '+(k.term/12)+' years if '+per+' conditions hold; '
+      +pc(k.p5,1)+' within '+(k.horizon/12)+' years</span>', more='';
     if(capped) h+='<span class="sub2">SBA 7(a) notes cap at $'+(R.loan_range[1]/1e6).toFixed(0)+'M ('+pc(R.loan_range[1]/r.V)
       +' of model value): the risk shown is for that note, not for financing the whole price</span>';
     /* the 10-year headline is the fitted 8-year figure times a judgment tail for years 9-10 (AUDIT_FINDINGS R1-18) */
@@ -4262,7 +4268,7 @@ function render(){
     if(k.empBand!=null&&!capped){
       t+="SBA acquisition loans of "+k.empBandKey+": "+(k.empBand*100).toFixed(2)
         +"% charged off within 5 years (Aalen-Johansen, "+k.empBandN.toLocaleString()+" loans). ";
-      h+='<span class="sub2">'+k.empBandKey+' loans: '+(k.empBand*100).toFixed(1)+'% observed by 5 yrs</span>';
+      more+='<span class="sub2">'+band(k.empBandKey)+' loans: '+(k.empBand*100).toFixed(1)+'% observed by 5 years</span>';
     }
     t+="Charge-offs in 2025-26 ran about "+B.conditions.ratio.toFixed(2)+"× the 2023-24 rate (age-adjusted); taking either period as current puts this figure at about "
       +pc(k.p*B.conditions_range.h96[0]/B.h96,1)+"-"+pc(k.p*B.conditions_range.h96[1]/B.h96,1)+". ";
@@ -4271,11 +4277,14 @@ function render(){
       +Math.round(R.through_cycle.cif120_FY2006_08[0]*100)+"-"+Math.round(R.through_cycle.cif120_FY2006_08[1]*100)+"% charged off within 10 years.";
     e.title=t;
     if(k.expLoss!=null)
-      h+='<span class="sub2">expected loss '+(k.expLoss*100).toFixed(1)+'% of the loan, charged off by year '+(k.term/12)+' ('
+      more+='<span class="sub2">expected loss '+(k.expLoss*100).toFixed(1)+'% of the loan, charged off by year '+(k.term/12)+' ('
         +(k.lgd*100).toFixed(0)+'% mean severity)</span>';
+    if(more) h+='<details class="more"'+(wasOpen?' open':'')+'><summary>More detail</summary><div class="more-body">'+more+'</div></details>';
     e.innerHTML=h;})();
-  $("o_bb").textContent=r.best.n.replace("Private equity","PE").replace("Individual owner-operator","Owner-operator");
-  $("o_conf").textContent=`Fitted on ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} acquisition loans — value R² ${MODELS.value.cv_r2_log}, 5-year risk AUC ${MODELS.risk.cv_auc}`;
+  /* a no-break space keeps a slash from starting a line ("Search fund /" then "ETA buyer") */
+  $("o_bb").textContent=r.best.n.replace("Private equity","PE").replace("Individual owner-operator","Owner-operator").replace(" / ","\u00a0/ ");
+  /* each metric stays on one line with its value */
+  $("o_conf").innerHTML=`Fitted on ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} acquisition loans — value <span class="nw">R² ${MODELS.value.cv_r2_log}</span>, 5-year risk <span class="nw">AUC ${MODELS.risk.cv_auc}</span>`;
   $("o_cdot").style.background="var(--mint)";
 
   /* ---------- §4 normalization ---------- */
@@ -6907,12 +6916,14 @@ window.OMNI_WARP=function(box,done){
 };
 
 /* ---- a small lit planet on the trajectory for every section ------------- */
+/* each planet is its section's hue (v8: violet, azure, pink and starlight replace the orange, gold, salmon
+   and green that read as provenance tiers) */
 var PALETTES=[
-  ["#e6f1ff","#7fb0ff","#132a5e","rgba(140,190,255,A)"], ["#fff0d6","#f2a24e","#4f1f06","rgba(255,180,100,A)"],
+  ["#e6f1ff","#7fb0ff","#132a5e","rgba(140,190,255,A)"], ["#f4efff","#b8a4ff","#2b1d6b","rgba(190,170,255,A)"],
   ["#dffff8","#46cdb9","#06343a","rgba(90,240,215,A)"],   ["#f2ebff","#9d84ff","#20145a","rgba(170,140,255,A)"],
-  ["#ffe2f1","#ff79c1","#4b0d34","rgba(255,120,200,A)"],   ["#fff7da","#e8c35a","#4a3404","rgba(255,220,120,A)"],
-  ["#e3fbff","#5fc6ea","#0b3446","rgba(110,210,255,A)"],   ["#ffe6dc","#f08a6a","#4d1609","rgba(255,150,120,A)"],
-  ["#eef0ff","#8f9cff","#1b1f5a","rgba(150,160,255,A)"],   ["#e9ffe6","#7ed98a","#0f3a15","rgba(140,240,150,A)"]
+  ["#ffe2f1","#ff79c1","#4b0d34","rgba(255,120,200,A)"],   ["#e2f0ff","#4da3ff","#0b2a5a","rgba(110,180,255,A)"],
+  ["#e3fbff","#5fc6ea","#0b3446","rgba(110,210,255,A)"],   ["#ffe9f6","#f58fd0","#46113a","rgba(255,140,210,A)"],
+  ["#eef0ff","#8f9cff","#1b1f5a","rgba(150,160,255,A)"],   ["#ffffff","#cfe3ff","#1e3566","rgba(200,225,255,A)"]
 ];
 function waypoints(){
   var G=window.OMNI_GFX; if(!G) return;
@@ -6938,9 +6949,14 @@ function blackHole(){
   for(var j=0;j<60;j++) LS.push({r:1.15+Math.pow(rnd(),.8)*3.2,a:rnd()*TAU,w:(.05+rnd()*.12)*(rnd()<.5?1:-1),o:.25+rnd()*.5,s:.6+rnd()*1.1});
   for(var i=0;i<2400;i++){ var r=1.45+Math.pow(rnd(),1.6)*1.9;
     P.push({r:r,a:rnd()*TAU,w:.9/Math.pow(r,1.5),s:.6+rnd()*1.4}); }
+  /* the gas is drawn as soft round sprites, one per heat step, built once, rather than square pixels */
+  var GAS=[]; for(var hb=0;hb<8;hb++){ var hh=hb/7, sc=document.createElement("canvas"); sc.width=sc.height=16;
+    var sg=sc.getContext("2d"), sr=sg.createRadialGradient(8,8,0,8,8,8), col="255,"+Math.round(170+70*hh)+","+Math.round(110+120*hh*hh);
+    sr.addColorStop(0,"rgba("+col+",1)"); sr.addColorStop(.35,"rgba("+col+",.5)"); sr.addColorStop(1,"rgba("+col+",0)");
+    sg.fillStyle=sr; sg.fillRect(0,0,16,16); GAS.push(sc); }
   function frame(t){
     var b=c.getBoundingClientRect(), W=b.width, H=b.height; if(W<10) return;
-    var g=G.fit(c,W,H), cx=W/2, cy=H/2, R=W*.12, flat=.22;
+    var g=G.fit(c,W,H), cx=W/2, cy=H/2, R=W*.12, flat=.22, nP=W<=360?1200:P.length;
     g.clearRect(0,0,W,H);
     /* background stars dragged into arcs as they pass near the photon ring */
     g.lineCap="round";
@@ -6952,13 +6968,13 @@ function blackHole(){
     g.fillStyle=halo; g.fillRect(0,0,W,H);
     function disk(back){
       g.globalCompositeOperation="lighter";
-      for(var k=0;k<P.length;k++){ var p=P[k], a=p.a+t*p.w*.35, sn=Math.sin(a);
+      for(var k=0;k<nP;k++){ var p=P[k], a=p.a+t*p.w*.35, sn=Math.sin(a);
         if((sn<0)!==back) continue;
         var x=cx+Math.cos(a)*p.r*R, y=cy+sn*p.r*R*flat;
-        var dop=.55+.45*-Math.cos(a), heat=1-(p.r-1.45)/1.9;
-        g.fillStyle="rgba(255,"+Math.round(170+70*heat)+","+Math.round(110+120*heat*heat)+","+(.18+.5*dop*heat).toFixed(3)+")";
-        g.fillRect(x,y,p.s,p.s); }
-      g.globalCompositeOperation="source-over"; }
+        var dop=.55+.45*-Math.cos(a), heat=1-(p.r-1.45)/1.9, d=p.s*1.6+1.2;
+        g.globalAlpha=Math.min(1,(.18+.5*dop*heat)*.7);
+        g.drawImage(GAS[Math.max(0,Math.min(7,Math.round(heat*7)))],x-d/2,y-d/2,d,d); }
+      g.globalAlpha=1; g.globalCompositeOperation="source-over"; }
     /* continuous disk: concentric bands, brighter on the approaching (left) side */
     function bands(back){
       g.globalCompositeOperation="lighter";
@@ -7267,28 +7283,10 @@ canvas.burst{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none
 .hero{grid-template-rows:auto auto;min-height:0!important}
 .hero-read{display:flex;flex-direction:column;justify-content:center}
 .hero-read .score-cap{margin-bottom:0}
-.hero-stats{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-  border-top:1px solid var(--hair,rgba(160,180,230,.14));position:relative;z-index:1}
-.hero-stats .big{margin:0!important;min-width:0;padding:20px clamp(16px,1.7vw,28px) 22px;
-  border-right:1px solid var(--hair,rgba(160,180,230,.14));display:flex!important;flex-direction:column!important}
-.hero-stats .big:nth-child(4n){border-right:0}
-.hero-stats .big:nth-child(n+5){border-top:1px solid var(--hair,rgba(160,180,230,.14))}
-.hero-stats .big .k{display:flex!important;flex-direction:row!important;align-items:baseline!important;
-  justify-content:space-between!important;gap:10px!important;min-height:0!important;flex:none!important;
-  margin:0 0 10px!important;font-size:12.5px!important;line-height:1.35!important;min-height:2.7em!important;align-items:flex-start!important}
-.hero-stats .big .k .pv{flex:none;font-size:10.5px!important;opacity:.8;white-space:nowrap}
-.hero-stats .big .n,.hero-stats .big .n.sm{margin:0!important;padding:0!important;color:var(--ink,#eef2fb)!important;
-  font-size:clamp(18px,1.45vw,22px)!important;font-weight:600!important;letter-spacing:-.01em!important;line-height:1.2!important}
-.hero-stats .big .n#o_bb{font-size:16px!important;line-height:1.3!important;color:#cbd9ff!important}
-.hero-stats .big .n .sub2{margin-top:6px;font-size:11.5px!important;font-weight:400!important;line-height:1.5!important;
-  letter-spacing:0!important;color:var(--ink3,#8590a8)!important}
-.hero-stats .big .n .muted{font-size:.7em;font-weight:400}
-@media(max-width:1180px){
-  .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .hero-stats .big:nth-child(4n){border-right:1px solid var(--hair,rgba(160,180,230,.14))}
-  .hero-stats .big:nth-child(2n){border-right:0}
-  .hero-stats .big:nth-child(n+3){border-top:1px solid var(--hair,rgba(160,180,230,.14))} }
-@media(max-width:400px){ .hero-stats .big{padding:16px 14px 18px} }
+.hero-stats{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:relative;z-index:1}
+.hero-stats .big{margin:0!important;min-width:0}
+@media(max-width:1180px){ .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))} }
+/* the tiles themselves (labels, figures, hairlines, star nodes) are styled in v8-hero */
 
 /* ---- reading: shorter lines, calmer weight, so the figures lead */
 .lede{max-width:70ch!important;font-size:15px!important;line-height:1.7!important;color:var(--ink2,#b9c3d8)!important}
@@ -7313,8 +7311,7 @@ td .tag.pick{border-color:rgba(158,203,255,.45)!important;background:rgba(77,163
 @media(max-width:700px){
   .tw>table{min-width:600px}
   .tw{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
-  .sec-head h2{flex:1 1 0!important}
-  .hero-stats .big .k{flex-direction:row!important;flex-wrap:wrap!important;gap:2px 8px!important} }
+  .sec-head h2{flex:1 1 0!important} }
 
 /* ---- small stat groups elsewhere (optimizer cards, value gap): label then figure, no gap */
 .big .k{min-height:0!important;flex:none!important;margin-bottom:6px!important}
@@ -7336,7 +7333,506 @@ li>.pv{display:inline-flex!important;align-items:center;gap:5px;line-height:1!im
 @media(max-width:560px){ .sec-head h2{flex:1 1 calc(100% - 46px)!important} }
 </style>
 <style id="v8-hero">
-/* v8-hero: hero, masthead, nav, input rail, footer, horizon (Phase 4 round 0) */
+/* ═════════════════════════════════════════════════════════════════════════
+   v8-hero: the shared layer and the page's chrome.
+   Shared: tokens, base text roles, panels, section identity, section headers,
+   chips, provenance badges, legend plates, equation plates, the table contract,
+   the disclosure pattern and the reveal hook's states. Chrome: masthead, tabs,
+   hero, KPI grid, sky and horizon. Other lanes read these tokens with
+   var(--token, literal) fallbacks and scope their own selectors.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ---------------------------------------------------------------- tokens */
+:root{
+  /* hue triplets, all tints of hues already on the page: rgb(var(--h-x) / a) */
+  --h-ice:158 203 255; --h-azure:77 163 255; --h-star:216 236 255; --h-violet:184 164 255;
+  --h-iris:157 132 255; --h-indigo:143 156 255; --h-teal:111 242 220; --h-cyan:95 198 234; --h-pink:255 122 200;
+  /* a section's identity pair; every section sets its own */
+  --hue:var(--h-ice); --hue2:var(--h-violet);
+  /* meaning, never decoration */
+  --tier-f:#5ee0a8; --tier-a:#ffc640; --tier-j:#ff8e7a; --pos:#9ecbff; --neg:#ffb4ab;
+  /* ink: --ink3 is the floor for text */
+  --ink:#eef2fb; --ink2:#b9c3d8; --ink3:#8590a8; --ink-title:#c9d3ec; --hair:rgba(160,180,230,.14);
+  /* type */
+  --fs-cap:11.5px; --fs-ui:13px; --fs-body:15px; --fs-fig-s:15px; --fs-fig-m:20px; --fs-fig-l:28px; --fs-fig-xl:36px;
+  --lh-cap:1.4; --lh-ui:1.55; --lh-note:1.6; --lh-body:1.7;
+  /* space, on the 4/8 grid */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:40px; --sp-8:48px;
+  --sp-9:64px; --sp-10:88px; --sp-11:128px;
+  /* radius */
+  --r-panel:22px; --r-card:14px; --r-control:10px; --r-nav:14px; --r-chip:999px;
+  --sec-gap:var(--sp-11);
+}
+@media(max-width:560px){ :root{ --r-panel:18px; --fs-fig-xl:28px; --sec-gap:var(--sp-10) } }
+
+/* ------------------------------------------------------------- base roles */
+:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
+sub,sup{line-height:0}
+sub{vertical-align:-.25em;font-size:.72em}
+code{font-family:var(--sans);font-size:.92em;padding:1px 5px;border-radius:6px;background:rgba(158,203,255,.08);
+  color:var(--ink2);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.fig{font-family:var(--fig)!important;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.lede{text-wrap:pretty;margin:0 0 var(--sp-5)}
+.note{font:400 var(--fs-ui)/var(--lh-note) var(--sans);color:var(--ink3);max-width:68ch;text-wrap:pretty;margin-top:var(--sp-3)}
+.grp-title{text-wrap:balance}
+/* labels of figures: colour, never opacity (the stacked .75 x .8 put them under AA) */
+.big .k{opacity:1!important;color:var(--ink2);font-size:var(--fs-cap);line-height:var(--lh-cap);font-weight:500;text-wrap:balance}
+.big .k .pv{opacity:1!important}
+
+/* ---------------------------------------------------------------- panels */
+.panel{border-radius:var(--r-panel)}
+.sec .panel{padding:var(--sp-7)}
+.sec .panel .panel{padding:var(--sp-5);border-radius:var(--r-card)}
+@media(max-width:560px){ .sec .panel{padding:var(--sp-5)} .sec .panel .panel{padding:var(--sp-4)} }
+.sec{margin-top:var(--sec-gap);scroll-margin-top:72px}
+/* interludes sit symmetrically between the sections around them */
+.interlude{margin:var(--sp-9) 0 calc(var(--sp-9) - var(--sec-gap))}
+@media(max-width:560px){ .interlude{margin:var(--sp-7) 0 calc(var(--sp-7) - var(--sec-gap))} }
+
+/* ------------------------------------------------ section identity (console) */
+#view-console .sec:nth-of-type(1){--hue:var(--h-ice);--hue2:var(--h-violet)}
+#view-console .sec:nth-of-type(2){--hue:var(--h-violet);--hue2:var(--h-azure)}
+#view-console .sec:nth-of-type(3){--hue:var(--h-teal);--hue2:var(--h-ice)}
+#view-console .sec:nth-of-type(4){--hue:var(--h-iris);--hue2:var(--h-pink)}
+#view-console .sec:nth-of-type(5){--hue:var(--h-pink);--hue2:var(--h-iris)}
+#view-console .sec:nth-of-type(6){--hue:var(--h-azure);--hue2:var(--h-teal)}
+#view-console .sec:nth-of-type(7){--hue:var(--h-cyan);--hue2:var(--h-violet)}
+#view-console .sec:nth-of-type(8){--hue:var(--h-pink);--hue2:var(--h-teal)}
+#view-console .sec:nth-of-type(9){--hue:var(--h-indigo);--hue2:var(--h-ice)}
+#view-console .sec:nth-of-type(10){--hue:var(--h-star);--hue2:var(--h-violet)}
+/* the gutter nebula behind each section takes the section's pair */
+#view-console .sec:nth-of-type(n){--tint:rgb(var(--hue) / .10);--tint2:rgb(var(--hue2) / .07)}
+/* a nebula wash inside the glass (<= .10, so text contrast is unchanged) and an aurora rim */
+#view-console .sec>.panel,#view-console .sec>.split>.panel{isolation:isolate;
+  background:radial-gradient(60% 50% at 0% 0%,rgb(var(--hue) / .10),transparent 70%),
+    radial-gradient(40% 40% at 100% 100%,rgb(var(--hue2) / .06),transparent 70%),
+    linear-gradient(170deg,rgba(17,22,44,.94),rgba(7,10,24,.96))!important;
+  box-shadow:0 0 0 1px var(--hair),0 30px 60px -40px rgba(0,0,0,.9),0 -10px 30px -22px rgb(var(--hue) / .6)!important}
+#view-console .sec>.panel::before,#view-console .sec>.split>.panel::before{opacity:.8;
+  background:linear-gradient(170deg,rgb(var(--hue) / .55),rgb(var(--hue) / .14) 26%,transparent 52%,rgb(var(--hue2) / .16) 100%)}
+/* the section's emblem as a faint watermark in the empty top-right of its first panel
+   (set by v8-hero-js only where it clears every line of text) */
+@media(min-width:1081px){
+  #view-console .sec>.panel.v8-wm::after{content:""!important;display:block!important;position:absolute;inset:0;z-index:-1;
+    pointer-events:none;border-radius:inherit;box-shadow:none;opacity:.07;
+    background:var(--glyph) no-repeat right 32px top 32px/120px 120px!important}
+}
+
+/* --------------------------------------------------------- section headers
+   planet, title, orbit rule, emblem chip */
+.sec-head{gap:var(--sp-4)!important;margin:0 0 var(--sp-5)!important}
+.sec-head h2{flex:0 1 auto!important;text-wrap:balance}
+.sec-head .ref{order:2}
+#view-console .sec .sec-head::after,#view-data .sec .sec-head::after{content:""!important;display:block!important;
+  position:static!important;order:1;flex:1 1 40px;width:auto!important;height:7px!important;align-self:center;
+  left:auto!important;top:auto!important;border:0!important;border-radius:0!important;margin:0!important;animation:none!important;
+  pointer-events:none;transform-origin:0 50%;transition:transform .9s cubic-bezier(.16,1,.3,1);
+  background:radial-gradient(circle at 3.5px 50%,rgb(var(--hue)) 1.6px,rgb(var(--hue) / .35) 2.4px,transparent 3.5px),
+    linear-gradient(90deg,rgb(var(--hue) / .55),rgb(var(--hue) / .12) 60%,transparent) 0 50%/100% 1px no-repeat}
+html.v8-reveal .sec:not(.landed) .sec-head::after{transform:scaleX(0)}
+@media(min-width:1081px){ #view-console .sec-head h2{padding-left:var(--sp-4)} }
+@media(max-width:560px){
+  #view-console .sec .sec-head::after,#view-data .sec .sec-head::after{display:none!important}
+  /* the title takes the line beside the planet; the chip drops under it */
+  .sec-head h2{flex:1 1 calc(100% - 46px)!important}
+  /* the chip lines up with the title only when a planet sits before it */
+  .sec-head .ref{margin-left:0!important}
+  .sec-head:has(.waypoint) .ref{margin-left:42px!important}
+}
+/* the section glyph, moved into its chip as a 14px emblem in the section's hue */
+.sec-head .ref .sec-glyph{display:inline-block!important;position:static!important;flex:none;width:14px!important;height:14px!important;
+  padding:0!important;margin:0!important;border-radius:0!important;background:none!important;filter:none!important}
+
+/* ------------------------------------------------------------------ chips */
+.chip,.sec-head .ref,td .tag{display:inline-flex!important;align-items:center;gap:6px!important;white-space:nowrap;
+  font:500 var(--fs-cap)/var(--lh-cap) var(--sans)!important;padding:2px 9px!important;border-radius:var(--r-chip)!important;
+  border:1px solid rgba(160,180,230,.18)!important;background:rgba(12,18,40,.85)!important;color:var(--ink3)!important;
+  box-shadow:none!important;vertical-align:baseline}
+.sec-head .ref{flex:none!important}
+td .tag{margin-left:8px}
+.chip.em,td .tag.pick{border-color:rgba(158,203,255,.45)!important;background:rgba(77,163,255,.12)!important;color:#d8ecff!important}
+.chip.em::before,td .tag.pick::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:#9ecbff;
+  box-shadow:0 0 6px rgba(158,203,255,.7)}
+.chip.off{color:#ffb4ab!important;border-color:rgba(255,180,171,.45)!important;background:rgba(255,180,171,.08)!important}
+
+/* ----------------------------------------------------- provenance badges
+   the word stays quiet; the dot carries the tier, in the colours the legend teaches */
+.pv.f i{background:var(--tier-f)!important;box-shadow:0 0 6px rgba(94,224,168,.55)}
+.pv.a i{background:var(--tier-a)!important;box-shadow:0 0 6px rgba(255,198,64,.5)}
+.pv.j i{background:var(--tier-j)!important;box-shadow:0 0 6px rgba(255,142,122,.5)}
+/* compound badges ("fitted × judgment") get both dots; v8-hero-js sets the class */
+.pv.fj i,.pv.aj i{position:relative;margin-right:8px}
+.pv.fj i{background:var(--tier-f)!important;box-shadow:0 0 6px rgba(94,224,168,.55)}
+.pv.aj i{background:var(--tier-a)!important;box-shadow:0 0 6px rgba(255,198,64,.5)}
+.pv.fj i::after,.pv.aj i::after{content:"";position:absolute;left:8px;top:0;width:6px;height:6px;border-radius:50%;
+  background:var(--tier-j);box-shadow:0 0 6px rgba(255,142,122,.5)}
+/* the rail's field class .f also matched every Fitted badge and card */
+.pv.f,.pvk.f{margin-bottom:0!important}
+/* inside text the badge is part of the line, not a box that stretches it */
+td .pv,p .pv,h2 .pv,li .pv,.note .pv{display:inline!important;line-height:inherit!important;margin:0!important}
+td .pv,p .pv,li .pv,.note .pv{vertical-align:baseline!important}
+td .pv i,p .pv i,h2 .pv i,li .pv i,.note .pv i{display:inline-block;vertical-align:middle;margin:0 5px 0 0;position:relative;top:-1px}
+td .pv.fj i,p .pv.fj i,li .pv.fj i,td .pv.aj i,p .pv.aj i,li .pv.aj i{margin-right:13px}
+
+/* ------------------------------------------------- tier plates (legend cards) */
+.pvkey{gap:var(--sp-3)!important}
+.pvkey .pvk{border-radius:var(--r-card);padding:14px 16px;font-size:var(--fs-ui);line-height:var(--lh-ui);color:var(--ink2)}
+.pvkey .pvk>b:first-child{display:block;font:600 13px/1.35 var(--sans)!important;color:var(--ink-title)!important;margin:0 0 6px}
+.pvkey .pvk>b:first-child::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.pvkey .pvk.f>b:first-child::before{background:var(--tier-f);box-shadow:0 0 8px rgba(94,224,168,.6)}
+.pvkey .pvk.a>b:first-child::before{background:var(--tier-a);box-shadow:0 0 8px rgba(255,198,64,.55)}
+.pvkey .pvk.j>b:first-child::before{background:var(--tier-j);box-shadow:0 0 8px rgba(255,142,122,.55)}
+.pvkey .pvk b:not(:first-child){color:var(--ink)!important}
+
+/* ------------------------------------------------------ equation star plates */
+.eq{border:1px solid rgba(158,203,255,.12);border-radius:var(--r-card)!important;padding:var(--sp-5);margin:var(--sp-5) 0 0;
+  background:rgba(6,10,28,.55) radial-gradient(rgba(158,203,255,.06) 1px,transparent 1.2px) 0 0/16px 16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 1px 0 0 rgb(var(--hue) / .22)}
+.eq:hover{transform:none;border-color:rgba(158,203,255,.2);
+  background:rgba(8,13,34,.62) radial-gradient(rgba(158,203,255,.07) 1px,transparent 1.2px) 0 0/16px 16px}
+.eq .lbl{font:500 var(--fs-cap)/var(--lh-cap) var(--sans)!important;color:var(--ink3);margin:0 0 var(--sp-3);text-wrap:balance}
+.eq .sub{border-top:0;margin-top:var(--sp-3);padding-top:var(--sp-3);
+  background:linear-gradient(90deg,transparent,rgba(160,180,230,.18) 12% 88%,transparent) top/100% 1px no-repeat}
+@media(max-width:560px){ .eq{padding:var(--sp-4)} }
+
+/* ------------------------------------------------------------ table contract */
+table{font-size:var(--fs-ui)}
+table th{font-size:var(--fs-cap);line-height:var(--lh-cap);font-weight:600;color:var(--ink2);border-bottom:0}
+table td{line-height:1.5;border-bottom:1px solid var(--hair)}
+table tr:has(>th){background:linear-gradient(90deg,transparent,rgba(160,180,230,.24) 6% 94%,transparent) bottom/100% 1px no-repeat!important}
+table td:first-child,table th:first-child{padding-left:12px;position:relative}
+/* summary rows are explicit (tr.sum), never "any row with a bold word" */
+tbody tr:has(td b){background:none}
+tbody tr:has(td b) td{border-bottom-color:var(--hair)}
+tbody tr:has(td b) td:first-child{box-shadow:none}
+tbody tr:hover{box-shadow:none;background:linear-gradient(90deg,rgba(77,163,255,.07),rgba(77,163,255,.01))}
+tbody tr.sum{background:linear-gradient(90deg,rgba(77,163,255,.06),transparent 70%)}
+tbody tr.sum td:first-child::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;border-radius:2px;
+  background:linear-gradient(#9ecbff,#b8a4ff);box-shadow:0 0 8px rgba(158,203,255,.6)}
+/* .tw is the only horizontal scroller; the table inside it is a table again */
+#view-console .tw>table,#view-data .tw>table{display:table;overflow:visible;max-width:none}
+.tw{position:relative;overflow-x:auto;overflow-y:hidden;max-width:100%;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+table.compact{width:auto;min-width:420px;max-width:640px}
+table.num td{vertical-align:middle}
+@media(max-width:700px){
+  .tw>table{min-width:0}
+  .tw{-webkit-mask-image:none;mask-image:none}
+  .tw>table.wide{min-width:600px}
+  .tw>table.wide th:first-child,.tw>table.wide td:first-child{position:sticky;left:0;z-index:1;background:var(--s-low);
+    box-shadow:1px 0 0 var(--hair)}
+  .tw.fade-l>table.wide th:first-child,.tw.fade-l>table.wide td:first-child{box-shadow:1px 0 0 var(--hair),10px 0 14px -10px rgba(0,0,0,.8)}
+  table.cards thead,table.cards tr:has(>th){display:none}
+  table.cards tr{display:block;padding:14px 0;border-bottom:1px solid var(--hair)}
+  table.cards td,table.cards td:first-child{display:block;padding:2px 0!important;text-align:left!important;border:0;white-space:normal}
+  /* each value carries its column's name; this also overrides the retired magnitude-bar layer on numeric cells */
+  table.cards td::before,table.cards td.inked::before{content:attr(data-th)!important;display:block!important;position:static!important;
+    inset:auto!important;z-index:auto!important;background:none!important;border-radius:0!important;
+    font:500 var(--fs-cap)/var(--lh-cap) var(--sans);color:var(--ink3);margin-top:6px}
+  table.cards td:first-child::before{content:none!important;display:none!important}
+}
+/* the edge fades only where there is more to see (classes from v8-hero-js) */
+.tw.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.tw.fade-l:not(:has(>table.wide)){-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px);mask-image:linear-gradient(90deg,transparent,#000 28px)}
+.tw.fade-l.fade-r:not(:has(>table.wide)){-webkit-mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 28px,#000 calc(100% - 28px),transparent)}
+/* until the box is first scrolled, a small chip says so; the mask leaves the chip whole */
+.tw.fade-r:not(.v8-seen){-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent),linear-gradient(#000,#000);
+  -webkit-mask-size:100% 100%,68px 24px;-webkit-mask-position:0 0,right 6px top 2px;-webkit-mask-repeat:no-repeat;
+  mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent),linear-gradient(#000,#000);
+  mask-size:100% 100%,68px 24px;mask-position:0 0,right 6px top 2px;mask-repeat:no-repeat}
+.tw.fade-r:not(.v8-seen)::after{content:"scroll \203A";position:absolute;right:8px;top:4px;z-index:3;width:64px;height:20px;
+  box-sizing:border-box;text-align:center;font:500 var(--fs-cap)/18px var(--sans);color:#d8ecff;pointer-events:none;
+  border-radius:999px;border:1px solid rgba(158,203,255,.45);background:rgba(14,22,48,.96);box-shadow:0 0 12px rgba(77,163,255,.25)}
+
+/* ------------------------------------------------------------ disclosure */
+details.more{margin-top:var(--sp-2)}
+details.more>summary{list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;
+  font:500 13px/1.4 var(--sans);color:var(--ink2);border-radius:6px;transition:color .2s ease}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"";flex:none;width:10px;height:10px;box-sizing:border-box;border-radius:50%;
+  border:1px solid rgb(var(--hue) / .7);background:radial-gradient(circle at 50% 0%,#fff 0 1.2px,transparent 1.8px);
+  transition:transform .25s ease}
+details.more[open]>summary::before{transform:rotate(90deg)}
+details.more>summary:hover{color:var(--ink)}
+details.more>summary:focus-visible{outline:2px solid #d8ecff;outline-offset:2px;border-radius:6px}
+.more-body{font:400 13px/1.6 var(--sans);color:var(--ink3);max-width:68ch;margin-top:var(--sp-2)}
+
+/* ============================================================== MASTHEAD */
+.masthead{min-height:min(80vh,720px);padding:clamp(64px,10vh,112px) 0 var(--sp-6);margin-bottom:0}
+/* the title takes starlight, and only its last word catches the violet */
+.masthead h1 .h1-ink{background:linear-gradient(100deg,#fff 0%,#eef4ff 40%,#e3ecff 74%,#cfc2ff 84%,#b8a4ff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-box-decoration-break:slice;box-decoration-break:slice}
+html .masthead h1{filter:drop-shadow(0 0 32px rgba(146,120,255,.22))!important}
+/* status: the tier dot hangs in front of its value, so label and value share one edge */
+.mast-status dd{position:relative}
+.mast-status dd .dot{position:absolute;left:-14px;top:.62em;margin-top:-3.5px}
+.mast-status dd .dot:not(.amber){background:var(--tier-f);box-shadow:0 0 8px rgba(94,224,168,.6)}
+.mast-status dd .dot.amber{background:var(--tier-a);box-shadow:0 0 8px rgba(255,198,64,.55)}
+/* a feathered atmosphere glow, then the planet's limb the tabs sit on */
+.masthead::after{bottom:-40px;height:140px;
+  background:radial-gradient(120% 100% at 50% 100%,rgba(77,163,255,.16),transparent 60%);
+  -webkit-mask-image:linear-gradient(transparent,#000 40%,#000 60%,transparent);mask-image:linear-gradient(transparent,#000 40%,#000 60%,transparent)}
+/* z-index -1: behind every block of content that follows, in front of the sky */
+.v8-limb{position:absolute;left:calc(-1*var(--gutter));right:calc(-1*var(--gutter));top:100%;height:260px;margin-top:-24px;
+  overflow:hidden;pointer-events:none;z-index:-1}
+/* the rim catches the light; above it the atmosphere scatters blue, below it the night side hides the stars */
+.v8-limb::before{content:"";position:absolute;left:-8%;right:-8%;top:24px;height:calc(clamp(48px,8.4vw,120px) + 160px);
+  border-radius:50% 50% 0 0/clamp(48px,8.4vw,120px) clamp(48px,8.4vw,120px) 0 0;border-top:1px solid rgba(196,224,255,.6);
+  background:linear-gradient(180deg,rgba(120,170,255,.10),rgba(5,9,24,.78) 28px,rgba(4,7,19,.7) 60%,rgba(4,7,19,0));
+  box-shadow:0 -2px 10px rgba(140,190,255,.32),0 -14px 44px rgba(110,140,255,.20),inset 0 8px 18px -8px rgba(150,200,255,.30);
+  -webkit-mask-image:linear-gradient(90deg,transparent 2%,#000 30%,#000 70%,transparent 98%);
+  mask-image:linear-gradient(90deg,transparent 2%,#000 30%,#000 70%,transparent 98%)}
+
+/* ================================================================== TABS */
+.nav{position:sticky;top:8px;z-index:20;margin:-22px 0 var(--sp-7);padding:4px;gap:4px;border-radius:var(--r-nav);
+  background:rgba(10,14,30,.62);border:1px solid rgba(158,203,255,.16);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 12px 30px -14px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.05)}
+.nav .tab{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border-radius:var(--r-control);
+  font:500 var(--fs-ui)/1.2 var(--sans);color:var(--ink2)}
+.nav .tab:hover{color:var(--ink);transform:none}
+.nav .tab.on{color:#eaf2ff;background:linear-gradient(180deg,rgba(77,163,255,.26),rgba(184,164,255,.16));
+  box-shadow:inset 0 0 0 1px rgba(158,203,255,.38),0 0 18px rgba(77,163,255,.28)}
+/* the underline is a short comet: tail from the left, a glowing head at the right */
+.nav .tab::after{left:16px;right:18px;bottom:6px;height:1px;border-radius:1px;background:linear-gradient(90deg,transparent,#d8ecff)}
+.nav .tab.on::after{box-shadow:none}
+.nav .tab::before{content:"";position:absolute;right:15px;bottom:5px;width:3px;height:3px;border-radius:50%;background:#fff;
+  box-shadow:0 0 6px 1px rgba(216,236,255,.9);transform:scale(0);transition:transform .3s cubic-bezier(.22,1,.36,1) .12s}
+.nav .tab:hover::before,.nav .tab.on::before{transform:scale(1)}
+.nav .tab:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
+/* the pinned tabs sit over the rail's top, so the rail pins below them */
+@media(min-width:1081px){ .console>.panel.rail{top:72px;max-height:calc(100vh - 88px)} }
+
+/* ================================================================== HERO */
+.hero{align-items:stretch}
+.hero-orbit{justify-content:center!important;animation:none!important}
+/* the planet sits in its own patch of deep space: a violet nebula and a few fixed stars around the canvas */
+@media(min-width:821px){
+  .hero .hero-orbit{background:radial-gradient(56% 36% at 50% 48%,rgba(120,90,255,.13),rgba(60,90,220,.04) 55%,transparent 75%),
+    radial-gradient(1.2px 1.2px at 12% 14%,rgba(223,232,255,.7),transparent),radial-gradient(1px 1px at 31% 7%,rgba(223,232,255,.5),transparent),
+    radial-gradient(1px 1px at 78% 11%,rgba(223,232,255,.55),transparent),radial-gradient(1.3px 1.3px at 91% 24%,rgba(200,190,255,.6),transparent),
+    radial-gradient(1px 1px at 7% 71%,rgba(223,232,255,.45),transparent),radial-gradient(1.2px 1.2px at 22% 92%,rgba(223,232,255,.6),transparent),
+    radial-gradient(1px 1px at 63% 95%,rgba(200,190,255,.5),transparent),radial-gradient(1px 1px at 88% 83%,rgba(223,232,255,.5),transparent)!important}
+}
+/* only the planet floats; the figures and prose beside it stay still */
+#focal{animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.hero-read{justify-content:center!important;padding:var(--sp-7)!important;border-left:0!important;
+  background:linear-gradient(180deg,transparent,rgba(160,180,230,.16) 15% 85%,transparent) left/1px 100% no-repeat}
+@media(max-width:820px){ .hero-read{border-top:0!important;
+  background:linear-gradient(90deg,transparent,rgba(160,180,230,.16) 15% 85%,transparent) top/100% 1px no-repeat} }
+
+/* legend: bear, median and bull in one row, label over value, marks that match the rings */
+#focal_legend{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 var(--sp-4)!important;
+  justify-items:center;text-align:center;max-width:460px;width:100%;margin:var(--sp-3) auto 0!important}
+#focal_legend .fl{display:grid!important;grid-template-columns:auto auto;align-items:center;justify-content:center;
+  gap:4px 8px!important;white-space:nowrap;min-width:0}
+#focal_legend .fl i{grid-column:1;width:16px;height:0;align-self:center;border-top:1.5px dashed #ffb4ab}
+#focal_legend .fl.base i{border-top:1.5px solid #d8ecff}
+#focal_legend .fl.bull i{border-top:2px dotted #9ecbff}
+#focal_legend .fk{grid-column:2;font:500 var(--fs-cap)/var(--lh-cap) var(--sans);color:var(--ink3)}
+#focal_legend .fv{grid-column:1/-1;font:600 var(--fs-fig-s)/1.3 var(--fig)!important;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* score dials: one origin for the arc and its moon, a bezel of ticks, a comet tail */
+.score-wrap .score-dial{background:conic-gradient(from 0deg,var(--violet) 0deg,#9ecbff calc(var(--score,0)*1.8deg),
+  var(--teal) calc(var(--score,0)*3.6deg),rgba(158,203,255,.08) 0);transition:--score .9s cubic-bezier(.22,1,.36,1)}
+.score-wrap .score-moon{transition:--score .9s cubic-bezier(.22,1,.36,1)}
+.score-wrap .score-moon::after{box-shadow:0 0 14px rgba(190,230,255,.95),0 0 0 5px rgba(111,242,220,.10),0 0 20px 6px rgba(111,242,220,.32)}
+.score-wrap .score-moon::before{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  --tl:min(24deg,calc(var(--score,0)*3.6deg));
+  background:conic-gradient(from calc(-1*var(--tl)),rgba(190,230,255,0) 0deg,rgba(190,230,255,.5) var(--tl),transparent var(--tl));
+  -webkit-mask:radial-gradient(closest-side,transparent 82%,#000 84%);mask:radial-gradient(closest-side,transparent 82%,#000 84%)}
+.sc .score-wrap::before{content:"";position:absolute;inset:-7px;border-radius:50%;pointer-events:none;
+  background:repeating-conic-gradient(rgba(216,236,255,.38) 0 .8deg,transparent .8deg 36deg),
+    repeating-conic-gradient(rgba(158,203,255,.16) 0 .6deg,transparent .6deg 6deg);
+  -webkit-mask:radial-gradient(closest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));
+  mask:radial-gradient(closest-side,transparent calc(100% - 4px),#000 calc(100% - 3px))}
+.hero-read{container-type:inline-size}
+.scores{position:relative;margin:0 0 var(--sp-5);--dial:112px}
+.sc{position:relative;z-index:1}
+.sc-k{font-size:var(--fs-body)}
+.sc-n{max-width:190px;text-wrap:balance;font:500 var(--fs-cap)/var(--lh-cap) var(--sans);color:var(--ink3)}
+@media(max-width:820px){ .scores{--dial:92px} }
+/* two dials side by side read as one instrument: a binary pair on a shared, static orbit */
+@container (min-width:248px){
+  .scores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4)}
+  .sc{flex-direction:column;align-items:center;text-align:center;gap:var(--sp-3)}
+  .sc-t{display:flex;flex-direction:column;align-items:center}
+  .sc-n{max-width:none}
+  .sc-t{gap:2px}
+  .scores::before{content:"";position:absolute;left:50%;top:calc(var(--dial)/2);width:360px;height:150px;margin:-75px 0 0 -180px;
+    z-index:0;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 150'%3E%3Cg fill='none' stroke='rgb(184,164,255)' stroke-opacity='.24' stroke-dasharray='2 7' transform='rotate(-6 180 75)'%3E%3Cellipse cx='180' cy='75' rx='170' ry='60'/%3E%3Cellipse cx='180' cy='75' rx='118' ry='42'/%3E%3C/g%3E%3Cg fill='%23dfe8ff' fill-opacity='.3'%3E%3Ccircle cx='22' cy='38' r='.8'/%3E%3Ccircle cx='61' cy='128' r='.8'/%3E%3Ccircle cx='104' cy='14' r='.7'/%3E%3Ccircle cx='147' cy='141' r='.8'/%3E%3Ccircle cx='178' cy='9' r='.7'/%3E%3Ccircle cx='214' cy='136' r='.8'/%3E%3Ccircle cx='262' cy='21' r='.7'/%3E%3Ccircle cx='303' cy='118' r='.8'/%3E%3Ccircle cx='337' cy='52' r='.7'/%3E%3Ccircle cx='349' cy='97' r='.8'/%3E%3C/g%3E%3C/svg%3E") center/100% 100% no-repeat}
+}
+.hero-read .score-cap{font:400 var(--fs-body)/var(--lh-body) var(--sans);color:var(--ink2);max-width:52ch;text-wrap:pretty;margin:0}
+
+/* the calibration band between the instruments and the readouts: the fit line, then the quality
+   position, its bar beside its note on wide screens */
+.hero-under{grid-column:1/-1;margin:0;padding:var(--sp-5) var(--sp-5) var(--sp-6);
+  background:linear-gradient(90deg,transparent,rgba(160,180,230,.16) 8% 92%,transparent) top/100% 1px no-repeat}
+@media(min-width:821px){
+  .hero-under .qband{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:auto auto auto 1fr auto;
+    column-gap:var(--sp-6);align-items:start}
+  .hero-under .qband .qhd{grid-column:1/-1;grid-row:1}
+  .hero-under .qband .qtrack{grid-column:1;grid-row:2;margin-top:14px}
+  .hero-under .qband .qends{grid-column:1;grid-row:3}
+  .hero-under .qband .qnote{grid-column:2;grid-row:2/5;margin-top:var(--sp-2)}
+  .hero-under .qband details.more{grid-column:2;grid-row:5}
+}
+@container (min-width:248px) and (max-width:299px){
+  .scores{--dial:100px}
+  .sc .score-wrap{width:100px;height:100px}
+  .sc .score-wrap .score{font-size:34px}
+}
+@container (max-width:247px){
+  .scores{--dial:92px}
+  .sc .score-wrap{width:92px;height:92px}
+  .sc .score-wrap .score{font-size:30px}
+}
+@media(max-width:1180px){ .hero-read{padding:var(--sp-6) var(--sp-5)!important} }
+.hero-under .conf{display:flex!important;align-items:flex-start;gap:10px;margin:0;padding:0;border:0;border-radius:0;
+  font:400 var(--fs-ui)/1.5 var(--sans);color:var(--ink2)}
+.hero-under .conf .dot{flex:0 0 7px;width:7px;height:7px;margin-top:6px;background:var(--tier-f)!important;
+  box-shadow:0 0 6px rgba(94,224,168,.6)}
+#o_conf .nw{white-space:nowrap}
+.hero-under .qband{margin:var(--sp-4) 0 0;padding:var(--sp-4) 0 0;border:0;border-radius:0;
+  background:linear-gradient(90deg,transparent,rgba(160,180,230,.18) 10% 90%,transparent) top/100% 1px no-repeat}
+.qband .qhd{font:400 var(--fs-cap)/var(--lh-cap) var(--sans)!important;color:var(--ink3)}
+.qband .qhd b{font:600 13px/1.35 var(--sans)!important;color:var(--ink-title)}
+.qband .qends{font:500 var(--fs-cap)/1.3 var(--fig);color:var(--ink3)}
+.qnote{font:400 var(--fs-ui)/var(--lh-note) var(--sans);color:var(--ink2);margin:var(--sp-3) 0 0;text-wrap:pretty}
+.qband details.more{margin-top:var(--sp-1)}
+.qband .more-body{margin-top:0}
+.hero-under #o_xwarn:not(:empty){margin-top:var(--sp-4)}
+/* the extrapolation notice warns in rose, not in a tier colour */
+.xwarn{border-radius:var(--r-card);border-color:rgba(255,180,171,.38);background:rgba(255,180,171,.06)}
+.xwarn .xh{color:#ffb4ab}
+
+/* ------------------------------------------------------------- KPI grid
+   a star chart, not a spreadsheet: hairlines that fade at their ends, a star
+   at each inner crossing, and a lead row in key-figure ink */
+.hero-stats{border-top:0!important;
+  background:linear-gradient(90deg,transparent,rgba(160,180,230,.18) 8% 92%,transparent) top/100% 1px no-repeat}
+.hero-stats .big{--vl:linear-gradient(180deg,transparent,rgba(160,180,230,.18) 18% 82%,transparent);
+  --hl:linear-gradient(90deg,transparent,rgba(160,180,230,.18) 18% 82%,transparent);
+  position:relative;border:0!important;display:grid!important;grid-row:span 2;grid-template-rows:subgrid;row-gap:var(--sp-3);
+  align-content:start;padding:20px var(--sp-5)!important}
+.hero-stats .big::after{content:none;position:absolute;right:-3px;bottom:-3px;width:7px;height:7px;border-radius:50%;z-index:2;
+  pointer-events:none;background:radial-gradient(circle,#fff 0 1px,rgb(var(--h-ice) / .9) 1.6px,transparent 3.5px);
+  box-shadow:0 0 6px rgb(var(--h-ice) / .6)}
+@media(min-width:1181px){
+  .hero-stats .big{background:var(--vl) right/1px 100% no-repeat}
+  .hero-stats .big:nth-child(4n){background:none}
+  .hero-stats .big:nth-child(n+5){background:var(--vl) right/1px 100% no-repeat,var(--hl) top/100% 1px no-repeat}
+  .hero-stats .big:nth-child(8){background:var(--hl) top/100% 1px no-repeat}
+  .hero-stats .big:nth-child(-n+3)::after{content:""}
+}
+@media(max-width:1180px){
+  .hero-stats .big:nth-child(odd){background:var(--vl) right/1px 100% no-repeat}
+  .hero-stats .big:nth-child(even){background:none}
+  .hero-stats .big:nth-child(odd):nth-child(n+3){background:var(--vl) right/1px 100% no-repeat,var(--hl) top/100% 1px no-repeat}
+  .hero-stats .big:nth-child(even):nth-child(n+3){background:var(--hl) top/100% 1px no-repeat}
+  .hero-stats .big:nth-child(odd):not(:nth-last-child(-n+2))::after{content:""}
+}
+/* one structure in every tile: label, then the badge on its own line, then the figure */
+.hero-stats .big .k{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:flex-start!important;
+  justify-content:flex-start!important;gap:4px!important;min-height:0!important;margin:0!important;
+  font:500 var(--fs-cap)/var(--lh-cap) var(--sans)!important;color:var(--ink2)!important}
+.hero-stats .big .k .pv{margin:0!important;font-size:var(--fs-cap)!important;line-height:var(--lh-cap)!important;white-space:nowrap}
+.hero-stats .big .n,.hero-stats .big .n.sm{align-self:start;font:600 var(--fs-fig-m)/1.2 var(--fig)!important;color:var(--ink)!important;
+  letter-spacing:-.01em!important}
+/* the lead row: the four figures a seller reads first */
+.hero-stats .big:nth-child(-n+4) .n{font-size:clamp(24px,1.9vw,28px)!important;line-height:1.1!important}
+.hero-stats .big:nth-child(-n+4) .n:not(:has(.kfig)),.hero-stats .big .n .kfig{
+  background:linear-gradient(180deg,#fff 15%,#d8ecff 85%);-webkit-background-clip:text;background-clip:text;color:transparent!important;
+  filter:drop-shadow(0 0 16px rgb(var(--h-ice) / .30))!important}
+.hero-stats .big .n .kfig{display:inline-block}
+.hero-stats .big .n#o_bb{font-size:var(--fs-fig-m)!important;line-height:1.2!important;color:var(--ink)!important;text-wrap:balance}
+.hero-stats .big .n .unit{font-size:.62em;font-weight:500;color:var(--ink2)}
+.hero-stats .big .n .sub2,.hero-stats .big .n .muted{display:block;margin-top:6px;font:400 var(--fs-cap)/1.45 var(--sans)!important;
+  letter-spacing:0!important;color:var(--ink3)!important;text-wrap:pretty}
+.hero-stats .big .n details.more{margin-top:2px}
+@media(min-width:821px){ .hero-stats .big .n details.more>summary{min-height:28px} }
+.hero-stats .big .n .more-body .sub2{margin-top:2px}
+@media (forced-colors:active){
+  .hero-stats .big .n,.hero-stats .big .n .kfig,.masthead h1 .h1-ink{color:CanvasText!important;background:none!important;filter:none!important}
+}
+
+/* ============================================================ PHONE HERO */
+@media(max-width:560px){
+  .hero{--hero-pad:24px}
+  .hero-orbit{padding:var(--sp-4) var(--hero-pad) 0!important}
+  #focal{width:calc(100% + 2*var(--hero-pad));max-width:none;margin:0 calc(-1*var(--hero-pad))}
+  .hero-read{padding:var(--sp-5) var(--hero-pad) var(--sp-5)!important}
+  .hero-under{padding:var(--sp-5) var(--hero-pad) var(--sp-6)}
+  .hero-stats .big{padding:20px var(--hero-pad)!important}
+  #focal_legend{gap:0 var(--sp-3)!important}
+}
+
+/* ========================================================== MASTHEAD, PHONE */
+@media(max-width:560px){
+  .masthead{padding:var(--sp-5) 0!important;min-height:0}
+  .orrery3d{aspect-ratio:auto!important;height:clamp(200px,56vw,240px);margin:0 0 var(--sp-2)!important}
+  .mast-eyebrow{margin-bottom:var(--sp-3)!important}
+  .mast-sub{margin-top:var(--sp-4)!important}
+  .mast-status{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 var(--sp-4)!important;margin-top:var(--sp-5)!important}
+  .mast-status dt{font-size:var(--fs-cap);line-height:var(--lh-cap);margin-bottom:2px}
+  .mast-status dd{font-size:15px;line-height:1.3}
+  .mast-status dd .dot{left:-11px;width:6px;height:6px;margin-top:-3px}
+  .nav{margin:-22px 0 var(--sp-5)}
+}
+
+/* =================================================================== SKY */
+/* the sky drifts with the stage: four washes in the section hues cross-fade (opacity only) */
+.v8-wash{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 1.8s ease;will-change:opacity}
+.v8-wash.w-a{background:radial-gradient(42% 46% at 90% 26%,rgb(var(--h-teal) / .12),transparent 70%),
+  radial-gradient(40% 44% at 72% 84%,rgb(var(--h-iris) / .14),transparent 70%)}
+.v8-wash.w-b{background:radial-gradient(42% 46% at 88% 30%,rgb(var(--h-pink) / .11),transparent 70%),
+  radial-gradient(42% 44% at 70% 86%,rgb(var(--h-azure) / .14),transparent 70%)}
+.v8-wash.w-c{background:radial-gradient(42% 46% at 90% 24%,rgb(var(--h-cyan) / .13),transparent 70%),
+  radial-gradient(40% 44% at 74% 84%,rgb(var(--h-pink) / .10),transparent 70%)}
+.v8-wash.w-d{background:radial-gradient(44% 48% at 88% 28%,rgb(var(--h-indigo) / .16),transparent 70%),
+  radial-gradient(40% 44% at 70% 86%,rgb(var(--h-star) / .10),transparent 70%)}
+html[data-stage="3"] .v8-wash.w-a,html[data-stage="4"] .v8-wash.w-a,
+html[data-stage="5"] .v8-wash.w-b,html[data-stage="6"] .v8-wash.w-b,
+html[data-stage="7"] .v8-wash.w-c,html[data-stage="8"] .v8-wash.w-c,
+html[data-stage="9"] .v8-wash.w-d,html[data-stage="10"] .v8-wash.w-d{opacity:1}
+
+/* on one column, a dotted flight path joins each section's planet to the one before,
+   and a probe runs down it once when the section arrives */
+@media(max-width:1080px){
+  #view-console .sec:not(:first-of-type)::after{content:"";position:absolute;left:15px;width:1px;pointer-events:none;
+    top:calc(-1*var(--sec-gap) + 8px);height:calc(var(--sec-gap) - 16px);
+    background:repeating-linear-gradient(to bottom,rgb(var(--hue) / .34) 0 2px,transparent 2px 9px)}
+  #view-console .sec:not(:first-of-type) .sec-head::before{content:""!important;display:block!important;position:absolute;
+    left:14px;top:calc(-1*var(--sec-gap) + 8px);width:3px;height:3px;border-radius:50%;background:#fff;
+    box-shadow:0 0 6px 1px rgb(var(--hue));opacity:0;pointer-events:none;flex:none}
+  html.v8-reveal #view-console .sec.landed:not(:first-of-type) .sec-head::before{animation:v8probe 1.2s cubic-bezier(.45,0,.25,1) .15s 1 both}
+}
+@keyframes v8probe{0%{opacity:0;transform:translateY(0)}12%{opacity:1}88%{opacity:1}
+  100%{opacity:0;transform:translateY(calc(var(--sec-gap) - 16px))}}
+
+/* deep-field objects in open sky (moved by v8-hero-js; their tilt uses rotate, which the parallax transform leaves alone) */
+.interlude .edge-gal{position:absolute;left:auto;right:3%;top:7%;width:min(24vw,320px);height:min(7.2vw,92px);rotate:-14deg;opacity:.7}
+.horizon .iceworld{position:absolute;left:auto;right:11%;top:24%;width:min(9vw,124px);z-index:1;
+  box-shadow:inset -12px -10px 24px rgba(0,0,0,.75),0 0 40px rgba(110,170,255,.2)}
+/* its ring passes behind the planet and only the near half crosses in front */
+.horizon .iceworld::before{z-index:-1;border-width:3px;box-shadow:0 0 0 1px rgba(190,220,255,.06),inset 0 0 0 5px rgba(190,220,255,.04)}
+.horizon .iceworld::after{content:"";position:absolute;left:50%;top:50%;width:190%;height:46%;border-radius:50%;pointer-events:none;
+  transform:translate(-50%,-50%) rotate(-20deg);border:3px solid rgba(190,220,255,.16);clip-path:inset(50% 0 0 0)}
+@media(max-width:820px){ .interlude .edge-gal,.horizon .iceworld{display:none} }
+
+/* the probe's tail on the mission line stops short of the masthead's status row */
+@media(min-width:1081px){ .probe::before{height:110px} }
+
+/* =============================================================== HORIZON */
+.horizon canvas.aurora-c{-webkit-mask-image:linear-gradient(transparent,#000 45%);mask-image:linear-gradient(transparent,#000 45%)}
+
+/* ======================================================== REDUCED MOTION */
+@media(prefers-reduced-motion:reduce){
+  #focal,.v8-wash,.nav .tab::before,.nav .tab::after,details.more>summary,details.more>summary::before,
+  .score-wrap .score-dial,.score-wrap .score-moon,.sec-head::after,.sec .sec-head::before,
+  #view-console .sec .sec-head::after,#view-data .sec .sec-head::after{animation:none!important;transition:none!important}
+}
 </style>
 <!-- ======== end v8-hero ======== -->
 <!-- (separator) -->
@@ -8147,10 +8643,11 @@ function aurora(){
   h.insertBefore(c,h.firstChild);
   var rnd=G.seeded(29), bands=[];
   for(var i=0;i<5;i++) bands.push({x:rnd(),w:.18+rnd()*.25,ph:rnd()*TAU,sp:.15+rnd()*.25,
-    hue:i%2?"120,255,200":"170,140,255",h:.45+rnd()*.4});
+    hue:i%2?"111,242,220":"170,140,255",h:.45+rnd()*.4});
   function frame(t){
     var b=c.getBoundingClientRect(),W=b.width,H=b.height; if(W<10) return;
-    var g=G.fit(c,W,H,1); g.clearRect(0,0,W,H);
+    /* drawn at quarter resolution and scaled up by the browser, which fuses the strips into soft curtains */
+    var g=G.fit(c,W/4,H/4,1); g.scale(.25,.25); g.clearRect(0,0,W,H);
     for(var k=0;k<bands.length;k++){ var B=bands[k], N=90;
       for(var j=0;j<N;j++){ var u=j/N, x=(B.x+(u-.5)*B.w+.02*Math.sin(t*B.sp+u*6+B.ph))*W;
         var top=H*(1-B.h*(.55+.45*Math.sin(u*9+t*B.sp*2+B.ph))), a=.17*Math.sin(u*Math.PI);
@@ -8200,7 +8697,142 @@ window.OMNI_V4=function(){ if(prevV4) prevV4(); aurora(); };
 })();
 </script>
 <script id="v8-hero-js">
-/* v8-hero-js: hero, masthead, nav, input rail, footer, horizon (Phase 4 round 0) */
+/* v8-hero-js: the shared reveal hook, the table fades, section emblems and
+   watermarks, compound provenance dots, the masthead limb and the stage sky.
+   Decoration only: nothing here reads or writes a model figure. No animation
+   loop and no scroll listener except the .tw fade toggle. */
+
+/* ---- the shared reveal hook (one copy runs; other lanes may paste the same guarded snippet) ---- */
+(function(){ if(window.__v8reveal) return; window.__v8reveal=1;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window)) return;
+  document.documentElement.classList.add('v8-reveal');
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('landed'); io.unobserve(e.target); } });},{rootMargin:'0px 0px -15% 0px'});
+  function arm(){ document.querySelectorAll('#view-console .sec:not(.landed),#view-data .sec:not(.landed)').forEach(function(s){ io.observe(s); }); }
+  arm(); var dv=document.getElementById('dataviews'); if(dv) new MutationObserver(arm).observe(dv,{childList:true});
+})();
+
+(function(){
+"use strict";
+var raf=window.requestAnimationFrame.bind(window);
+
+/* ---- .tw: fade only the edge that has more content, and cue the first scroll ---- */
+function twFades(){
+  if(!('ResizeObserver' in window)) return;
+  var q=new Set(), pending=0;
+  function upd(tw){ var max=tw.scrollWidth-tw.clientWidth, x=tw.scrollLeft;
+    var r=max>2&&x<max-2, l=max>2&&x>2;
+    if(tw.classList.contains('fade-r')!==r) tw.classList.toggle('fade-r',r);
+    if(tw.classList.contains('fade-l')!==l) tw.classList.toggle('fade-l',l); }
+  function flush(){ pending=0; q.forEach(upd); q.clear(); }
+  function ask(tw){ if(!tw) return; q.add(tw); if(!pending) pending=raf(flush); }
+  var ro=new ResizeObserver(function(es){ es.forEach(function(e){ var t=e.target; ask(t.classList.contains('tw')?t:t.parentElement); }); });
+  function onScroll(e){ var tw=e.currentTarget; if(tw.scrollLeft>2&&!tw.classList.contains('v8-seen')) tw.classList.add('v8-seen'); ask(tw); }
+  function arm(){ document.querySelectorAll('.tw').forEach(function(tw){ if(tw.__v8f) return; tw.__v8f=1;
+    tw.addEventListener('scroll',onScroll,{passive:true}); ro.observe(tw);
+    var t=tw.firstElementChild; if(t) ro.observe(t); ask(tw); }); }
+  arm();
+  var dv=document.getElementById('dataviews'); if(dv) new MutationObserver(arm).observe(dv,{childList:true});
+}
+
+/* ---- section emblems: each glyph moves into its chip, recoloured to the section hue,
+        and its watermark goes in the first panel where it clears every line of text ---- */
+function emblems(){
+  document.querySelectorAll('#view-console .sec').forEach(function(sec){
+    var g=sec.querySelector('.sec-head>.sec-glyph'), ref=sec.querySelector('.sec-head>.ref'); if(!g||!ref) return;
+    var hue=getComputedStyle(sec).getPropertyValue('--hue').trim().split(/\s+/);
+    if(hue.length!==3) return;
+    var rgb='rgb('+hue.join(',')+')';
+    [].forEach.call(g.querySelectorAll('[stroke],[fill]'),function(n){
+      ['stroke','fill'].forEach(function(a){ var v=n.getAttribute(a); if(v&&v!=='none') n.setAttribute(a,rgb); }); });
+    g.setAttribute('aria-hidden','true'); g.setAttribute('focusable','false');
+    ref.insertBefore(g,ref.firstChild);
+    var panel=sec.querySelector(':scope>.panel'); if(!panel) return;
+    var svg=g.outerHTML.replace(/\sclass="[^"]*"/,' xmlns="http://www.w3.org/2000/svg"')
+      .replace(/\s(aria-hidden|focusable)="[^"]*"/g,'');
+    panel.style.setProperty('--glyph','url("data:image/svg+xml,'+encodeURIComponent(svg)+'")');
+    panel.classList.add('v8-wm-cand');
+  });
+}
+/* the watermark box is 120px at 32px from the top right; drop it from any panel where a
+   line of text (measured with ranges, not boxes) comes within 12px of it */
+function placeWatermarks(){
+  if(innerWidth<1081) return;
+  var rg=document.createRange();
+  function meets(r,box){ return r.width>0&&r.right>box.l&&r.left<box.r&&r.bottom>box.t&&r.top<box.b; }
+  document.querySelectorAll('#view-console .sec>.panel.v8-wm-cand').forEach(function(p){
+    var pr=p.getBoundingClientRect(); if(!pr.width) return;
+    var box={l:pr.right-32-120-12,r:pr.right-32+12,t:pr.top+32-12,b:pr.top+32+120+12}, hit=false;
+    /* only the blocks that reach the corner are inspected */
+    [].forEach.call(p.children,function(c){
+      if(hit||!meets(c.getBoundingClientRect(),box)) return;
+      /* charts, tables and equations are drawn, not set as lines: keep the plate clear of them */
+      if(c.matches('svg,canvas,.eq,.tw')||[].some.call(c.querySelectorAll('svg,canvas,.eq,.tw,.bar-row,.cat-row'),function(e){
+        return meets(e.getBoundingClientRect(),box); })){ hit=true; return; }
+      var w=document.createTreeWalker(c,NodeFilter.SHOW_TEXT,null), n;
+      while(!hit&&(n=w.nextNode())){ if(!n.nodeValue.trim()) continue;
+        rg.selectNodeContents(n); var rs=rg.getClientRects();
+        for(var i=0;i<rs.length;i++) if(meets(rs[i],box)){ hit=true; break; } }
+    });
+    p.classList.toggle('v8-wm',!hit);
+  });
+}
+
+/* ---- compound badges ("fitted × judgment", "aggregate × judgment") carry both dots ---- */
+function pvCompound(){
+  function scan(){ document.querySelectorAll('.pv').forEach(function(p){ var t=p.textContent||'';
+    var fj=/fitted\s*×\s*judg/.test(t), aj=/aggregate\s*×\s*judg/.test(t);
+    if(p.classList.contains('fj')!==fj) p.classList.toggle('fj',fj);
+    if(p.classList.contains('aj')!==aj) p.classList.toggle('aj',aj); }); }
+  var pending=0; function later(){ if(!pending) pending=raf(function(){ pending=0; scan(); }); }
+  scan();
+  ['.hero-stats','#srcs','#dataviews'].forEach(function(s){ var el=document.querySelector(s);
+    if(el) new MutationObserver(later).observe(el,{subtree:true,childList:true,attributes:true,attributeFilter:['class']}); });
+}
+
+/* ---- the masthead ends on a planet's limb ---- */
+function limb(){
+  var m=document.querySelector('.masthead'); if(!m||m.querySelector('.v8-limb')) return;
+  var d=document.createElement('div'); d.className='v8-limb'; d.setAttribute('aria-hidden','true'); m.appendChild(d);
+}
+
+/* ---- the sky drifts with the stage: the section crossing the middle of the view picks a wash ---- */
+function stages(){
+  var secs=[].slice.call(document.querySelectorAll('#view-console .sec')), html=document.documentElement;
+  if(!secs.length||!('IntersectionObserver' in window)) return;
+  var host=document.querySelector('.cosmos-fixed');
+  if(host&&!host.querySelector('.v8-wash')) ['a','b','c','d'].forEach(function(k){
+    var d=document.createElement('i'); d.className='v8-wash w-'+k; host.appendChild(d); });
+  var io=new IntersectionObserver(function(es){ es.forEach(function(e){ var i=secs.indexOf(e.target)+1;
+    if(e.isIntersecting) html.dataset.stage=String(i);
+    /* back above the first section: the base sky again */
+    else if(i===1&&e.rootBounds&&e.boundingClientRect.top>e.rootBounds.bottom&&html.dataset.stage==='1') delete html.dataset.stage; }); },
+    {rootMargin:'-40% 0px -55% 0px'});
+  secs.forEach(function(s){ io.observe(s); });
+  var vc=document.getElementById('view-console');
+  if(vc) new MutationObserver(function(){ if(vc.hidden) delete html.dataset.stage; }).observe(vc,{attributes:true,attributeFilter:['hidden']});
+}
+
+/* ---- the edge-on galaxy and the ice world sat behind opaque panels for their whole scroll
+        range; they move to open sky: the black hole's empty corner and the closing horizon.
+        Depth 0 parks them in the cosmos parallax, which keeps writing their transform. ---- */
+function deepField(){
+  var gal=document.querySelector('.deepfield>.edge-gal'), ice=document.querySelector('.deepfield>.iceworld');
+  var bh=document.querySelector('.interlude:not(.ringworld)'), hz=document.querySelector('.horizon');
+  [[gal,bh],[ice,hz]].forEach(function(m){ if(!m[0]||!m[1]) return;
+    m[0].setAttribute('data-depth','0'); m[0].style.transform=''; m[0].setAttribute('aria-hidden','true'); m[1].appendChild(m[0]); });
+}
+
+function boot(){
+  twFades(); emblems(); pvCompound(); limb(); stages(); deepField();
+  /* the watermark check needs the final layout: after the fonts, after the boot screen, on resize */
+  var t=0, again=function(){ clearTimeout(t); t=setTimeout(placeWatermarks,180); };
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(again);
+  new MutationObserver(function(){ if(!document.documentElement.classList.contains('booting')) again(); })
+    .observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+  addEventListener('resize',again); again();
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
 </script>
 <!-- ======== end v8-hero-js ======== -->
 <!-- (separator) -->
