@@ -751,7 +751,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const row=b=>A.sensitivity({...ex,buyers:b}).find(v=>v.k==="buyers"); let okAll=true; const dps=[];
     for(const b of [5,10,20,30,40,44,46,48,50,52,54,56,60,65,80,120,300,600]){ const v=row(b); if(!(v.dP>=-1e-12&&v.dE>=-1e-6&&isFinite(v.dE))) okAll=false; if(b>=44&&b<=56) dps.push(v.dP); }
     ok(okAll,"buyer-pool sensitivity row: more buyers never lower P_C or proceeds");
-    ok(dps.every((v,j)=>j===0||v<=dps[j-1]+1e-12)&&dps.every((v,j)=>j===0||Math.abs(v-dps[j-1])<.012),`buyer-pool row changes smoothly through the typical pool (${dps.map(v=>v.toFixed(4))})`);
+    /* the row is the step it names, 25% more buyers (R5-2): monotone and continuous through the typical pool, and zero for
+       P_C once the pool is typical or deeper */
+    const cont=[44,46,48,49.5,50,52].every(b=>Math.abs(row(b+.01).dP-row(b).dP)<1e-3);
+    ok(dps.every((v,j)=>j===0||v<=dps[j-1]+1e-12)&&cont&&row(52).dP<1e-9,`buyer-pool row changes smoothly through the typical pool (${dps.map(v=>v.toFixed(4))})`);
     const t=A.model({...ex,buyers:50}), h=1e-4, f=b=>A.model({...ex,buyers:b}).thinF;
     ok(Math.abs((f(50)-f(50-h))/h-(f(50+h)-f(50))/h)<1e-3,"thinF has no kink at the typical pool"); }
   /* BUYERS unchanged (judgment); the strategic-over-financial premium with both present stays inside Pepperdine/GF's range */
@@ -1130,7 +1133,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     /* round 4 splits the 22 by reach: 19 quality-dimension scales, medians and sizeRefs; 3 size and buyer-pool scales */
     ok(nCat===38&&nConf===8&&nPeer===22&&HTML.includes("+ nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1")&&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>"),
        `R3-4: ledger counts ${nCat}/${nConf}/${nPeer}`); }
-  /* R3-5: the loan-size gap is read at the hazard pieces' start ages: x0.89 per tenfold before month 72, x1.16 from it */
+  /* R3-5: the loan-size gap is read at the hazard pieces' start ages: x0.26 per tenfold at month 6, rising to x0.89 in
+     months 60-72, and x1.16 from month 72 (R5-7) */
   { const R=A.MODELS.risk, c=R.co.coef.lnamt, a=R.co.age_coef.lnamt, hr=m=>Math.exp(R.co.lp_shrink*(c+a*(Math.min(m,R.co.age_cap_months)/12-R.co.age_center_years))*Math.LN10);
     const starts=R.age_edges.filter(m=>m<=R.co.age_cap_months), flip=starts.find(m=>hr(m)>=1);
     ok(flip===72&&hr(60).toFixed(2)==="0.89"&&hr(72).toFixed(2)==="1.16"&&!HTML.includes("the gap closes at about")&&!HTML.includes("hazard gap closes at about 5.4"),"R3-5: size gap flips at month 72"); }
@@ -1163,13 +1167,20 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(pk(sz)===pk(base)&&pk(by)===pk(base)&&JSON.stringify(sz.cats)!==JSON.stringify(base.cats)&&rc.V!==base.V
        &&HTML.includes("Only the category sub-scores and the confidence figure: the quality position does not read them."),"R4-2: peer scales split by reach (19 + 3)"); }
   /* R4-3: the staffing row states the measured relation, not 'several times fewer' */
-  ok(!HTML.includes("several times fewer than the firm's Census employees")&&HTML.includes("runs from about a third of SBA's figure to several times it"),"R4-3: staffing wording");
-  { const med=A.MODELS.risk.staffing.sba_jobs_median_by_loan_band, rat=[];
-    for(const ind of Object.keys(A.IND)) for(const ern of [1e5,1.6e5,3e5,6e5,1.45e6]){ const r=A.model({...FX,ind,ern,rev:ern/.21,ask:1e6}); if(med[r.risk.empBandKey]) rat.push(r.jobs/med[r.risk.empBandKey]); }
-    ok(Math.min(...rat)<.5&&Math.min(...rat)>.25&&Math.max(...rat)>2,`R4-3: Census/SBA ratio ${Math.min(...rat).toFixed(2)}-${Math.max(...rat).toFixed(2)}`); }
-  /* R4-4: the ledger note is computed from the rows: 104 inert of 432 */
-  ok(HTML.includes("const inert=nDelta+Object.keys(B).length+Object.keys(NL).length+Object.keys(G).length;")&&!HTML.includes("made most of this table inert")
-     &&HTML.includes("Superseded by the fitted time-to-close curve."),"R4-4: ledger note from the counts");
+  ok(!HTML.includes("several times fewer than the firm's Census employees")&&!HTML.includes("runs from about a third of SBA's figure to several times it")
+     &&HTML.includes("limit the head count runs from about a fifth of SBA's figure to about six times it, and past the limit SBA's band median stays at")
+     &&!A.MODELS.risk.staffing.note.includes("several times it"),"R4-3/R5-6: staffing wording");
+  /* over the console's whole size range (revenue $100k-$200M, each industry at its typical margin), split at the 7(a) limit */
+  { const R=A.MODELS.risk, med=R.staffing.sba_jobs_median_by_loan_band, un=[], ca=[];
+    for(const ind of Object.keys(A.IND)) for(let i=0;i<=40;i++){ const rev=1e5*Math.pow(2000,i/40); let ern=rev*.2;
+      for(let k=0;k<30;k++) ern=rev*A.typMargin(ind,ern);
+      const r=A.model({...FX,ind,rev,ern:Math.min(ern,rev*.85),ask:1e6}), m=med[r.risk.empBandKey]; if(!m) continue;
+      (R.loan_share*r.V>R.loan_range[1]?ca:un).push(r.jobs/m); }
+    ok(Math.min(...un)>.15&&Math.min(...un)<.3&&Math.max(...un)>4.5&&Math.max(...un)<7.5&&Math.max(...ca)>50&&Math.max(...Object.values(med))===14,
+       `R4-3/R5-6: Census/SBA ratio ${Math.min(...un).toFixed(2)}-${Math.max(...un).toFixed(2)} within the limit, up to ${Math.max(...ca).toFixed(0)} past it`); }
+  /* R4-4: the ledger note is computed from the rows; round 5 adds the IND anchors and PMIN, PMAX, LAM0, KW (124 inert of 432) */
+  ok(HTML.includes("const inert=nDelta+Object.keys(IND).length+Object.keys(B).length+Object.keys(NL).length+2+Object.keys(G).length+2;")&&!HTML.includes("made most of this table inert")
+     &&HTML.includes("Superseded by the fitted time-to-close curve."),"R4-4/R5-1: ledger note from the counts");
   /* R4-5: the GM salary row names its size rank as judgment */
   ok(HTML.includes("the rank is Census&rsquo;s share of the industry&rsquo;s employment in smaller firms at this revenue (SUSB 2022), a labelled"),"R4-5: GM rank labelled judgment");
   /* R4-6: the budget box shows two decimals in millions, as the optimiser cards echo it */
@@ -1182,6 +1193,54 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      eq_ds's 'largest lever' (ranked by value) */
   ok(HTML.includes("the quality lever that moves expected proceeds most (")&&!HTML.includes("the largest quality response (")
      &&HTML.includes("top=qs.slice().sort((a,b)=>Math.abs(b.dE)-Math.abs(a.dE))[0]"),"R4-8: sensitivity note names its ranking measure");
+}
+
+/* ---- 35. round-5 findings: AUDIT_FINDINGS round 5 ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  /* R5-1: the IND anchors and the judgment bounds have their own 'Nothing' rows; the Bounds row keeps ALPHA, AMAX, PHI, clamps */
+  { const dsrc=String(A.model).match(/const d=\{[\s\S]*?let sum=0/);
+    ok(HTML.includes("<code>IND</code> anchors<div")&&HTML.includes("${Object.keys(IND).length*(nIndF-1)}</td>")
+       &&HTML.includes("ALPHA, AMAX, PHI, clamps</div></td>\n            <td class=\"n\" style=\"padding-right:18px\">7</td>")
+       &&HTML.includes("and their bounds PMIN, PMAX")&&HTML.includes("scale LAM0 and shape KW")&&!!dsrc,"R5-1: inert rows split out"); }
+  /* R5-1: the 20 numbers really are inert: scaling the IND anchors and moving PMIN/PMAX/LAM0/KW changes no reported figure */
+  { const B=A.loadWith([["const fInd=1+(I.anchor/2.65-1)*w;","const fInd=1+(I.anchor*1.8/2.65-1)*w;"],["const PMIN=.05, PMAX=.93;","const PMIN=.20, PMAX=.70;"],["const LAM0=250, KW=1.42,","const LAM0=600, KW=3.0,"]]);
+    let same=true, judg=false;
+    for(const ind of ["medical","saas","rest","constr"]) for(const k of [.8,1,1.3]){ const s={...FX,ind}; s.ask=A.model(s).V*k;
+      const a=A.model(s), b=B.model(s);
+      for(const f of ["V","M","PC","EVp","tMed","tMean","Vreal","Vmean","conf"]) if(Math.abs(a[f]-b[f])>1e-9*Math.max(1,Math.abs(a[f]))) same=false;
+      if(a.risk.p!==b.risk.p||A.omniScore(a)!==B.omniScore(b)) same=false;
+      if(Math.abs(a.Mjudg-b.Mjudg)>1e-3&&Math.abs(a.PCjudg-b.PCjudg)>1e-3) judg=true; }
+    ok(same&&judg,"R5-1: the IND anchors, PMIN, PMAX, LAM0 and KW move only the judgment panels"); }
+  /* R5-2: the ask and buyer-pool rows are the steps they name, so a cut at the recommended ask shows as a loss */
+  { const V=A.model(FX).V, s={...FX,ask:V*A.bestRatio(FX,0,0)}, sn=A.sensitivity(s), ask=sn.find(o=>o.k==="ask"), buy=sn.find(o=>o.k==="buyers");
+    const e0=A.model(s).EVp, eA=A.model({...s,ask:s.ask*.95}).EVp, eB=A.model({...s,buyers:s.buyers*1.25}).EVp;
+    const s5={...s,buyers:500}, b5=A.sensitivity(s5).find(o=>o.k==="buyers");
+    ok(Math.abs(ask.dE-(eA-e0))<1e-6&&ask.dE<0&&Math.abs(buy.dE-(eB-e0))<1e-6&&!buy.back&&b5.back
+       &&Math.abs(b5.dE-(A.model(s5).EVp-A.model({...s5,buyers:400}).EVp))<1e-6&&HTML.includes("How each row is measured"),
+       `R5-2: the ask and pool rows are the named steps (a 5% cut at the best ask: ${ask.dE.toFixed(0)})`); }
+  /* R5-3: the competition premium's dollar effect goes through the ceiling, as P(W) does */
+  { const s={...FX,buyers:5}; s.ask=A.model(s).V*.95; const r=A.model(s);
+    const capped=A.softMin(r.V*r.anchorF*(1+r.compPrem),r.ceil)-A.softMin(r.V*r.anchorF,r.ceil), raw=r.V*r.anchorF*r.compPrem;
+    const Z=A.loadWith([["out.compPrem=clamp(","out.compPrem=0*clamp("]]).model(s);
+    ok(HTML.includes("const compAt=softMin(r.V*r.anchorF*(1+r.compPrem),r.ceil)-softMin(r.V*r.anchorF,r.ceil),")&&!r.askBinds
+       &&Math.abs(capped)<.5*Math.abs(raw)&&Math.abs((r.Vreal-Z.Vreal)/capped-1)<.25,
+       `R5-3: capped premium ${capped.toFixed(0)} against uncapped ${raw.toFixed(0)}; median moves ${(r.Vreal-Z.Vreal).toFixed(0)}`); }
+  /* R5-4: the old build's swing is computed: the nine inputs from the worse to the better end of their controls */
+  { const lo={...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95}, hi={...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.92,ret:.99,plt:.05};
+    const a=A.model(lo), b=A.model(hi);
+    ok(!HTML.includes("2.38&times; to 3.02&times;")&&HTML.includes("swings the old judgement build&rsquo;s multiple from ${xx(rl.Mjudg)} to ${xx(rh.Mjudg)}")
+       &&b.Mjudg/a.Mjudg>b.M/a.M&&b.M>a.M,`R5-4: judgement build ${a.Mjudg.toFixed(2)}-${b.Mjudg.toFixed(2)}, fitted ${a.M.toFixed(2)}-${b.M.toFixed(2)}`); }
+  /* R5-5: owner pay is read from the wedge the console uses: smaller at $3M of SDE than at $200K, and not negligible */
+  { const share=sde=>Object.keys(A.IND).map(k=>A.sdeEbitdaWedge(A.naicsFor(k),sde/A.typMargin(k,sde))).filter(w=>w).map(w=>1-1/w);
+    const a=share(2e5), b=share(3e6);
+    ok(!HTML.includes("it is a rounding error")&&HTML.includes("In the wedge the console uses it is")&&Math.min(...b)>.1&&Math.max(...b)<Math.max(...a)&&Math.min(...b)<Math.min(...a),
+       `R5-5: owner pay ${Math.round(Math.min(...a)*100)}-${Math.round(Math.max(...a)*100)}% of SDE at $200K, ${Math.round(Math.min(...b)*100)}-${Math.round(Math.max(...b)*100)}% at $3M`); }
+  /* R5-7: AUDIT.md states the size gap by piece and the head-count relation the right way round */
+  { const AM=require("fs").readFileSync(require("path").join(__dirname,"..","AUDIT.md"),"utf8");
+    ok(AM.includes("×0.26 per tenfold at 6 months, rising to ×0.89 in months 60–72")&&!AM.includes("×0.89 per tenfold before month 72")
+       &&AM.includes("The Census head count runs from about a fifth of SBA's jobs count")&&!AM.includes("SBA's jobs count runs from about a third of the Census head count"),"R5-7: AUDIT.md record lines"); }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

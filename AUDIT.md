@@ -627,7 +627,9 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   instead of 1-43 (median drop 21), at three quarters 19-43 instead of 27-48. The score moves more than P_C because peers
   are all marketed to a typical pool; it rests on the judgment typical pool `IND` buyers (example at 40 buyers: 43 / 33
   / 27 for a typical pool of 40 / 50 / 60). The 'Qualified buyer pool' sensitivity row is positive everywhere and
-  changes smoothly through the typical pool (dP 0.032 / 0.028 / 0.023 at 48 / 50 / 52 buyers).
+  changes smoothly through the typical pool (dP 0.032 / 0.028 / 0.023 at 48 / 50 / 52 buyers). Round 5 replaced that
+  central difference with the step the row names, 25% more buyers from the current pool, which is zero for P_C at a
+  typical pool or deeper (R5-2).
 - **Unchanged (judgment):** BUYERS mf / syn and PHI. The Pepperdine 2016 / 2025 strategic-over-financial premium (pooled
   13.7%, se 3.1) against the model's 10.7% with both present, GF Data's add-on / platform 1.08 against 1.09, and Stanford
   2024 are stored as a consistency check (`strategic_premium`, `addon_over_platform_gf`) and shown in the Data tab.
@@ -717,7 +719,7 @@ Full verdicts, reproductions and rejections are in `AUDIT_FINDINGS.md`.
     - the judgment multiple stack (68);
     - category (38) and confidence (8);
     - quality-dimension peer scales (19) and size and buyer-pool scales (3).
-  - The note under the ledger is computed from the rows: 104 of the 432 are inert (R4-4).
+  - The note under the ledger is computed from the rows: 124 of the 432 are inert, counting the `IND` anchors and the judgment bounds PMIN, PMAX, LAM0 and KW, which reach only the unused judgment panels (R4-4, R5-1).
   - The aggregate count includes IBBA's cash at close and DealStats' deal structure, but not the prime rate, which moves no figure (R2-8, R3-2).
   - The masthead and footer no longer call timing an aggregate (R2-10, R3-1).
 - P_C is described as having no quality term, reached by quality only through the gap.
@@ -742,13 +744,13 @@ These were hand-typed and had gone stale:
 - `money(x,0)` kept no decimals in millions, so $1.30M of costs showed as "$1M" and a $1.5M budget as "$2M"; it now keeps two (R3-6).
 - The star-map tooltip shows the price at this ask (R3-7).
 - The printed point-estimate anchoring reads the effective ask, as the fan does (R3-8).
-- The SBA loan-size gap is described at the hazard pieces' start ages: ×0.89 per tenfold before month 72, ×1.16 from it; it is not "closing at 5.4 years" (R3-5).
+- The SBA loan-size gap is described at the hazard pieces' start ages: larger loans are charged off less often through month 72 (×0.26 per tenfold at 6 months, rising to ×0.89 in months 60–72) and more often from it (×1.16); it is not "closing at 5.4 years" (R3-5, R5-7).
 - The TermInMonths leak is measured on the hazard model's own loans by the new `fit/sba_term_trap.py`: 84% of paid-in-full loans carry a standard term against 11% of charged-off ones, and the field alone gives AUC 0.825. The old figures (86.9%, 13.0%, AUC 0.957) came from the superseded logistic (R3-9).
 - Pepperdine's resolved termination range is read from the series: 33–41% (R3-10).
 
 **Round 4**
 - `TermInMonths` is not the time to charge-off (within 3 months for 2.5% of charged-off loans), so the page no longer says SBA overwrites it with that.
-- SBA's jobs count runs from about a third of the Census head count to several times it, not "several times fewer".
+- The Census head count runs from about a fifth of SBA's jobs count to about six times it for loans within the $5M 7(a) limit, and keeps growing with revenue past the limit, where SBA's band median stays at 14; it is not "several times fewer" (R4-3, R5-6).
 - The GM salary's firm-size rank is labelled judgment.
 - The budget box shows two decimals in millions.
 - The binding-ask note names the measure it ranks by.
