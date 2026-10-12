@@ -443,7 +443,7 @@ with the data that would fit it:
   table above); only the effect of quality and of the ask on time remain unfitted (the ask's effect is now a
   labelled judgment, T_ELAST 0.10: see "Overpricing costs time" below).
   ~~Open follow-up: refit the time-to-close band medians to the 2020–25 histograms.~~ *Done (October 2026):*
-  `fit/time_to_close_medians.py`; see "Logic audits (rounds 0 to 6) and the time-to-close median refit, October 2026" at the end of this file.
+  `fit/time_to_close_medians.py`; see "Logic audits (rounds 0 to 7) and the time-to-close median refit, October 2026" at the end of this file.
   The size-order exception shrinks from 1.4 to 0.7 pts and now starts past about 18 months.
 - **Anchoring:** fitting the sale price against the ask needs deal-level pairs of asking and
   sale prices. The model's expected price sits 8 to 14 points below IBBA's average above $1M,
@@ -672,7 +672,7 @@ businesses, 0 of 28,000 numeric fields differ).
   banned wording and the rendered evidence template); tests/fuzz.test.js 7h (qz is the signed weighted z over the norm;
   QW reads only the fitted weights; growth moves qz by w/norm).
 
-## Logic audits (rounds 0 to 6) and the time-to-close median refit, October 2026
+## Logic audits (rounds 0 to 7) and the time-to-close median refit, October 2026
 
 ### How the audits ran
 
@@ -694,6 +694,7 @@ Full verdicts, reproductions and rejections are in `AUDIT_FINDINGS.md`.
 | 4 | a7346a7 | 7 (2 of 4 auditors finished) | 7 verified by hand, plus 1 from a hand-run numbers pass | 0 | f3c3f87, 79a18c0 |
 | 5 | 706a61c | 12 (4 auditors; the invariants auditor found nothing) | 9 (7 distinct; 2 medium) | 3 | eec0ddd |
 | 6 | eec0ddd | 8 (3 auditors) | 4 (3 distinct, all in round-5 fix text) | 4 | ba01aba |
+| 7 | 9d7e9d9 | 1 (1 auditor, closing check of the round-6 fixes) | 1 (the staffing sentence again) | 0 | 268e4b6 |
 
 ### What changed
 
@@ -769,6 +770,9 @@ These were hand-typed and had gone stale:
 - The staffing range is stated at each industry's typical margin, and is larger at lower margins (R6-2; round 7 replaced the range with the mechanism, R7-1).
 - eq_comp's general form is the capped price P(W), as in eq_a; the substituted line says which figure is before the ceiling and which after it (R6-3).
 
+**Round 7** (closing check)
+- The staffing sentence states the mechanism instead of a bounded head-count range. Each range given (R4-3, R5-6, R6-2) had failed along another input: the loan cap, then the margin, then quality (R7-1).
+
 **Competition**
 - The held-out benchmark is labelled correctly: a Poisson at its own refitted scale (0.255).
 - The pairing the thin-pool factor actually uses (Poisson shape at the NB's scale) is now scored: −1.778 per deal, no better than the old 0.34 judgment (−1.773). So the scale is calibrated and the shape stays judgment (`fit/competition_heldout_poisson.py`).
@@ -808,7 +812,7 @@ Each item is on the Data tab's "Still judgement" ledger with the data that would
 
 ### Where the audit loop stands, and the dated sections above
 
-- **Rounds.** The confirmed defects fell from 25 and 34 (rounds 0–1) to 11, 10, 8, 7 and 3 (rounds 2–6).
+- **Rounds.** The confirmed defects fell from 25 and 34 (rounds 0–1) to 11, 10, 8, 7, 3 and 1 (rounds 2–7).
 - **Remaining defects are textual.** After round 2 they are almost all low-severity wording and count defects; the one medium was R3-6's rounding of millions.
 - **No defect since round 2 has changed a model output** (value, prices, P_C, time, risk, proceeds, the recommended asks or the scores).
   - Round 3's R3-6 and R3-8 corrected how figures were displayed: rounding of millions, and the printed point-estimate anchoring factor.
@@ -816,8 +820,10 @@ Each item is on the Data tab's "Still judgement" ledger with the data that would
   - Round 4's value auditor found only a ledger count, and the hand-run numbers pass (about 14,240 checks across 33 states) found one ambiguous sentence.
   - Round 5's two medium findings were display computations: the sensitivity panel's ask and buyer-pool rows, and the competition premium's dollar figure. The rest were typed figures and counts.
   - Round 6 found only wording in round 5's own fixes; its auditor of the arithmetic the render code does itself had all four findings refuted.
-- **The loop is not formally closed.**
-  - Round 4 lost its claims and numbers auditors and both verifiers to the subagent usage cap. Round 5 re-audited the claims and numbers with full two-lens verification and confirmed 7 defects; round 6 confirmed 3, all in round 5's own fix text. A seventh round reviews only the round-6 fixes.
+  - Round 7 found one: the same staffing sentence, along a third input.
+- **Where the loop stopped.**
+  - Round 4 lost its claims and numbers auditors and both verifiers to the subagent usage cap. Round 5 re-audited the claims and numbers with full two-lens verification and confirmed 7 defects; round 6 confirmed 3, all in round 5's own fix text; round 7, a closing check of those fixes, confirmed 1.
+  - The loop stops at round 7. Its one finding was the same sentence again, and the fix states no bound, so it has no further input to fail along. The last two rounds found nothing outside the previous round's own fix text, and no figure the model computes has been wrong since round 2.
 - **The dated sections above are records at the time of integration.** On the shipped model, for the framework example:
   - the median time to close is 277 / 281 / 287 / 295 days at 1 / 1.2 / 1.5 / 2× value (248 / 252 / 257 / 265 before the median refit);
   - the walk-away ask (75% kept) is 1.13 / 1.14 / 1.15 / 1.15 at $900 a day and 1.09 / 1.12 / 1.14 / 1.14 at $4,000;
