@@ -468,8 +468,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(r.Vmean/r.inputs.ask<=pr*(1+1e-9),`${t.ind} rho=${rho.toFixed(2)}: E[P|close]/ask rose with the ask`);
       pv=r.Vmean; pr=r.Vmean/r.inputs.ask; } }
   /* 24h. optimiser: theta = 0 does not move. At theta = .75 (the default) the utility has two near-equal peaks, near
-          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.92 at $900/day, 0.866 with no delay
-          cost) and theta (0.772 at $900/day, 0.763 with no delay cost; pinned in 28), so the
+          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.94 at $900/day, 0.88 with no delay
+          cost) and theta (0.776 at $900/day, 0.766 with no delay cost; pinned in 28), so the
           WINNER is not pinned: it must be one of the two peaks, and the peaks must lie within 1% of value (the page
           then shows the patient-seller price as a range) */
   { const b0=A.bestRatio(EXF,0,900), b75=A.bestRatio(EXF,.75,900);
@@ -519,7 +519,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&HTML.includes("const mktTxt=`${(0.09*(1-loiMed)).toFixed(2)}&ndash;${(0.10*(1-loiMed)).toFixed(2)}`;")&&!HTML.includes("36% of it), which the analogs")
      &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
-  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1\s+\+ 1\s+\/\* the SBA tail factor[^*]*\*\/\s+\+ 4;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ nCat \+ nConf \+ nPeer \+ 11 \+ 2 \+ 1\s+\+ 1\s+\/\* the SBA tail factor[^*]*\*\/\s+\+ 4;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
     const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
@@ -973,7 +973,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const B=A.loadWith([['"prime":7.0,','"prime":9.0,']]);
     ok(B.model(FX).risk.p===A.model(FX).risk.p&&HTML.includes("so the prime level moves no figure"),"R1-7: prime cancels and the Data tab says so"); }
   /* R1-8, R1-30: the level's position and the loan-size reversal are generated, not asserted */
-  ok(!/upper part of the combined|shipped level is in the upper part/.test(HTML)&&HTML.includes("cross=4-c/a, late=c+a*(cap-4)")
+  ok(!/upper part of the combined|shipped level is in the upper part/.test(HTML)&&HTML.includes("starts=R.age_edges.filter(m=>m<=capM)")
      &&!HTML.includes("the hazard gap closes by year 6"),"R1-8/R1-30: SBA level and size-gap wording");
   /* R1-9: the corpus AUC is labelled as the admin-window metric */
   ok(HTML.includes("admin-window CV AUC 0.820 &rarr; 0.828 with 6-digit and state effects together"),"R1-9: admin-window AUC labelled");
@@ -1092,8 +1092,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* R2-8, R2-9: tallies counted from the tables */
   { const C=A.MODELS.close_and_timing, V=A.MODELS.value;
     const nAgg=2+Object.keys(C.close_probability.valuation_gap_distribution).length+C.time_to_close.bands.length+Object.keys(V.price_realisation_by_industry.factor).length
-              +C.ibba_cash_at_close.by_band.length+(C.dvi_consideration?4:0)+3;
-    ok(nAgg===39&&HTML.includes("+ ((C.ibba_cash_at_close||{}).by_band||[]).length"),"R2-8: the aggregate tally counts cash at close and deal structure (39)");
+              +C.ibba_cash_at_close.by_band.length+(C.dvi_consideration?4:0)+2;
+    ok(nAgg===38&&HTML.includes("+ ((C.ibba_cash_at_close||{}).by_band||[]).length"),"R2-8, R3-2: the aggregate tally counts cash at close and deal structure, not the prime (38)");
     const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
     const numLeaves=o=>typeof o==="function"?numLits(o):typeof o==="number"?1:o&&typeof o==="object"?Object.values(o).reduce((a,v)=>a+numLeaves(v),0):0;
     const grp={ind:1,str:1,adj:1,pep:1,add:1,fo:1};
@@ -1103,6 +1103,49 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* R2-10, R2-11: provenance wording */
   ok(HTML.includes("and time to close to IBBA&rsquo;s per-band histograms of closed deals")&&!HTML.includes("closing probability and timing are market aggregates"),"R2-10: footer");
   ok(!HTML.includes("never on business quality")&&!HTML.includes("&mdash; not on business quality")&&HTML.includes("It has no quality term"),"R2-11: P_C's quality claims");
+}
+
+/* ---- 33. round-3 audit fixes (AUDIT_FINDINGS round 3, verified at 3d53b6f) ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  const V0=A.model({...FX,ask:1}).V;
+  /* R3-1: no provenance label files timing as an aggregate; the masthead total is the two fitted samples */
+  ok(!HTML.includes("<dt>Close and timing</dt>")&&HTML.includes("<dt>Value, risk, timing</dt>")&&HTML.includes("<dt>Closing odds</dt>")
+     &&HTML.includes("<dd>"+(A.MODELS.value.n_fit+A.MODELS.risk.n_fit).toLocaleString("en-US")+"</dd>"),"R3-1: masthead provenance");
+  /* R3-2: the prime moves no figure, is not said to set a shown rate, and is not counted */
+  ok(!HTML.includes("sets the SBA note rate shown beside the survival risk")&&HTML.includes("SBA spread over prime by loan size (the survival risk reads only the spread)")
+     &&/\+ \(C\.dvi_consideration\?4:0\)\s+\/\*[^*]*\*\/\s+\+ 2;/.test(HTML),"R3-2: prime wording and count");
+  { const B=A.loadWith([['"prime":7.0,','"prime":3.0,']]), a=A.model(FX), b=B.model(FX);
+    ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&Math.abs(a.risk.p-b.risk.p)<1e-12,"R3-2: the prime level moves no figure"); }
+  /* R3-3: the employee count is described as reaching no figure (it still exists for fitRisk's signature) */
+  { const B=A.loadWith([["function jobsFor(rev,ind){ const J","function jobsFor(rev,ind){ return 1e9; const J"]]), a=A.model({...FX,jobs:undefined}), b=B.model({...FX,jobs:undefined});
+    ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&a.risk.p===b.risk.p&&A.gmSalary(FX)===B.gmSalary(FX)&&HTML.includes("is still computed but reaches no figure"),"R3-3: the head count reaches no figure, and the page says so"); }
+  /* R3-4: the ledger counts the category formulas (38), the confidence formula (8) and the peer scales (22) */
+  { const src=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+    const sl=(a,b)=>{ const i=src.indexOf(a); return src.slice(i,src.indexOf(b,i)); };
+    const mults=t=>(t.match(/(?<![\w.])(\d+\.\d*|\.\d+|\d+)\*/g)||[]).length;
+    const cat=sl("out.cats={","const catMean"), conf=sl("const conf=","out.conf=conf"), z=sl("const z={","const emRaw");
+    const nCat=mults(cat)+(cat.match(/-\.\d+\)/g)||[]).length+4, nConf=mults(conf)+4, nPeer=(z.match(/\/\.\d+/g)||[]).length+(z.match(/-\.\d+\)\//g)||[]).length+1+8;
+    ok(nCat===38&&nConf===8&&nPeer===22&&HTML.includes("+ nBuy + nInt + 13 + nCat + nConf + nPeer + 11 + 2 + 1")&&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>"),
+       `R3-4: ledger counts ${nCat}/${nConf}/${nPeer}`); }
+  /* R3-5: the loan-size gap is read at the hazard pieces' start ages: x0.89 per tenfold before month 72, x1.16 from it */
+  { const R=A.MODELS.risk, c=R.co.coef.lnamt, a=R.co.age_coef.lnamt, hr=m=>Math.exp(R.co.lp_shrink*(c+a*(Math.min(m,R.co.age_cap_months)/12-R.co.age_center_years))*Math.LN10);
+    const starts=R.age_edges.filter(m=>m<=R.co.age_cap_months), flip=starts.find(m=>hr(m)>=1);
+    ok(flip===72&&hr(60).toFixed(2)==="0.89"&&hr(72).toFixed(2)==="1.16"&&!HTML.includes("the gap closes at about")&&!HTML.includes("hazard gap closes at about 5.4"),"R3-5: size gap flips at month 72"); }
+  /* R3-6: money(x,0) keeps two decimals in millions */
+  ok(A.money(1296559,0)==="$1.30M"&&A.money(1.5e6,0)==="$1.50M"&&A.money(255000,0)==="$255k"&&A.money(1.5e6,1)==="$1.5M","R3-6: money() in millions");
+  /* R3-7: the star tooltip shows the capped price beside V_j */
+  ok(HTML.includes("price it would pay ${money(b.Vj)}${b.Pj<b.Vj*.995?` (${money(b.Pj)} at this ask)`")&&!HTML.includes("value to buyer ${money(b.Vj)}"),"R3-7: star tooltip");
+  /* R3-8: the printed point-estimate anchoring is the W = E[V|X] slice's factor */
+  ok([1,1.3,1.5,2,5].every(m=>{ const r=A.model({...FX,ask:V0*m}); return Math.abs(r.rho-Math.min(Math.max(r.askEff/r.V,.35),1e9))<.02&&r.askEff<=1.5*r.V*(1+1e-9); })
+     &&Math.abs(A.model({...FX,ask:V0*2}).anchorF-A.model({...FX,ask:V0*5}).anchorF)<1e-9,"R3-8: point-estimate anchoring reads the effective ask");
+  /* R3-9: the TermInMonths leak is quoted from the shipped population */
+  { const T=A.MODELS.risk.term_trap;
+    ok(T&&T.n>41000&&T.by_status.PIF.standard_term_share>.8&&T.by_status.CHGOFF.standard_term_share<.15&&!HTML.includes("<b>86.9%</b>")&&!HTML.includes("86.9% of paid-in-full")&&!HTML.includes("AUC <b>0.957</b>")&&!HTML.includes("42, 49, 50, 53"),"R3-9: trap statistics from the hazard population"); }
+  /* R3-10: Pepperdine's resolved termination range is read from the series */
+  { const S=A.MODELS.close_and_timing.close_probability.broker_resolved_by_year, t=Object.values(S).map(v=>1-v);
+    ok(Math.round(Math.min(...t)*100)===33&&Math.round(Math.max(...t)*100)===41&&!HTML.includes("gives 32&ndash;39%"),"R3-10: termination range computed"); }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

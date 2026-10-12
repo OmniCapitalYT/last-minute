@@ -1754,8 +1754,9 @@ JS_FITRISK = r'''/* ---- Model V: post-acquisition survival risk (FITTED, SBA 7(
    failures and early payoffs and gave 5.7% with no horizon. Reported: within 5 years (fitted on loans
    observed that long), and within 10 years (fitted to 8 years; years 9-10 borrowed from mature 7(a)
    vintages, x tail_factor, a labelled judgment). The note is 85% of the price (as in sbaRate), held inside
-   the 7(a) range. Larger loans are charged off less often early on: the hazard gap closes at about 5.4 years and
-   reverses slightly after it (about x1.16 per tenfold loan size in years 6-8) (larger
+   the 7(a) range. Larger loans are charged off less often through month 72 (x0.89 per tenfold loan size in the
+   piece starting at month 60); from month 72 the sign reverses (about x1.16 per tenfold, held there): the hazard
+   reads years on book at each piece's start, so the effect moves in steps (larger
    SBA acquisition notes are more often 25-year real-estate notes, which may simply take longer to liquidate).
    Out of time, risk differences held at about three quarters of their fitted size, so every loan-level
    effect is shrunk by co.lp_shrink toward the average loan. co.lp_shift is solved so that this function,
