@@ -8,7 +8,7 @@ metrics, what changed, and what was deliberately left alone.
 Run the checks:
 
 ```
-node tests/model.test.js       # model checks and pinned figures, no browser needed (7,423 at commit 0f1fa9b)
+node tests/model.test.js       # model checks and pinned figures, no browser needed (7,458 at commit 79a18c0)
 node tests/fuzz.test.js 1500   # property invariants on 1,500 seeded random businesses
 node tests/browser.inputs.js   # typed inputs, validation, tabs and the Data tab in a real browser (needs Playwright)
 node tests/browser.sweep.js    # every select and slider at 1440px and 390px (needs Playwright)
@@ -255,7 +255,8 @@ spec. Each finding was reproduced before it was fixed.
   Each now tests exactly what it prints, so two rows honestly read "off": the
   fitted multiple of 2.35× at the BizBuySell median profile (against 2.0×), and a
   judgment-stack anchor of 6.77×, which the reported value does not
-  use.
+  use. (A third, the BizBuySell days-on-market row, has read off since the October 2026
+  median refit; see the last section.)
 - **The Data tab showed stale figures:**
   - pooled close rates instead of the recent ones the model uses;
   - σ 0.485 "lognormal" and an 80% interval of 0.52–1.82×;
@@ -442,7 +443,7 @@ with the data that would fit it:
   table above); only the effect of quality and of the ask on time remain unfitted (the ask's effect is now a
   labelled judgment, T_ELAST 0.10: see "Overpricing costs time" below).
   ~~Open follow-up: refit the time-to-close band medians to the 2020–25 histograms.~~ *Done (October 2026):*
-  `fit/time_to_close_medians.py`; see "Logic audits, round 0 to round 2, and the median refit" at the end of this file.
+  `fit/time_to_close_medians.py`; see "Logic audits (rounds 0 to 4) and the time-to-close median refit, October 2026" at the end of this file.
   The size-order exception shrinks from 1.4 to 0.7 pts and now starts past about 18 months.
 - **Anchoring:** fitting the sale price against the ask needs deal-level pairs of asking and
   sale prices. The model's expected price sits 8 to 14 points below IBBA's average above $1M,
