@@ -1168,7 +1168,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        &&HTML.includes("Only the category sub-scores and the confidence figure: the quality position does not read them."),"R4-2: peer scales split by reach (19 + 3)"); }
   /* R4-3: the staffing row states the measured relation, not 'several times fewer' */
   ok(!HTML.includes("several times fewer than the firm's Census employees")&&!HTML.includes("runs from about a third of SBA's figure to several times it")
-     &&HTML.includes("limit the head count runs from about a fifth of SBA's figure to about six times it, and past the limit SBA's band median stays at")
+     &&HTML.includes("at each industry's typical margin and within the $${(R.loan_range[1]/1e6).toFixed(0)}M 7(a) limit the head count runs from about a fifth of SBA's figure to about six times it, more at lower margins, and past the limit SBA's band median stays at")
      &&!A.MODELS.risk.staffing.note.includes("several times it"),"R4-3/R5-6: staffing wording");
   /* over the console's whole size range (revenue $100k-$200M, each industry at its typical margin), split at the 7(a) limit */
   { const R=A.MODELS.risk, med=R.staffing.sba_jobs_median_by_loan_band, un=[], ca=[];
@@ -1231,7 +1231,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const lo={...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95}, hi={...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.92,ret:.99,plt:.05};
     const a=A.model(lo), b=A.model(hi);
     ok(!HTML.includes("2.38&times; to 3.02&times;")&&HTML.includes("swings the old judgement build&rsquo;s multiple from ${xx(rl.Mjudg)} to ${xx(rh.Mjudg)}")
-       &&b.Mjudg/a.Mjudg>b.M/a.M&&b.M>a.M,`R5-4: judgement build ${a.Mjudg.toFixed(2)}-${b.Mjudg.toFixed(2)}, fitted ${a.M.toFixed(2)}-${b.M.toFixed(2)}`); }
+       &&b.Mjudg/a.Mjudg>b.M/a.M&&b.M>a.M,`R5-4: judgement build ${a.Mjudg.toFixed(2)}-${b.Mjudg.toFixed(2)}, console multiple ${a.M.toFixed(2)}-${b.M.toFixed(2)}`); }
   /* R5-5: owner pay is read from the wedge the console uses: smaller at $3M of SDE than at $200K, and not negligible */
   { const share=sde=>Object.keys(A.IND).map(k=>A.sdeEbitdaWedge(A.naicsFor(k),sde/A.typMargin(k,sde))).filter(w=>w).map(w=>1-1/w);
     const a=share(2e5), b=share(3e6);
@@ -1241,6 +1241,25 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const AM=require("fs").readFileSync(require("path").join(__dirname,"..","AUDIT.md"),"utf8");
     ok(AM.includes("×0.26 per tenfold at 6 months, rising to ×0.89 in months 60–72")&&!AM.includes("×0.89 per tenfold before month 72")
        &&AM.includes("The Census head count runs from about a fifth of SBA's jobs count")&&!AM.includes("SBA's jobs count runs from about a third of the Census head count"),"R5-7: AUDIT.md record lines"); }
+}
+
+/* ---- 36. round-6 findings: AUDIT_FINDINGS round 6 ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  /* R6-1: the quality sweep moves the console's multiple through the judgment quality position; the fitted multiple stays */
+  { const a=A.model({...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95}), b=A.model({...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.92,ret:.99,plt:.05});
+    ok(!HTML.includes("here the same sweep moves the fitted multiple from")&&HTML.includes("here the same sweep moves the console&rsquo;s multiple from ${xx(rl.M)} to ${xx(rh.M)}: the fitted")
+       &&Math.abs(a.fv.mult-b.fv.mult)<1e-12&&Math.abs(b.M/a.M-b.qFactor/a.qFactor)<1e-9,
+       `R6-1: fitted ${a.fv.mult.toFixed(2)} at both ends; quality position x${a.qFactor.toFixed(2)}-x${b.qFactor.toFixed(2)}`); }
+  /* R6-2: the staffing range is stated at the typical margin it was measured at, and is larger at lower margins */
+  { const R=A.MODELS.risk, med=R.staffing.sba_jobs_median_by_loan_band, r=A.model({...FX,ind:"staff",rev:1e7,ern:1e6}), m=med[r.risk.empBandKey];
+    ok(HTML.includes("at each industry's typical margin and within the")&&R.staffing.note.includes("at each industry's typical margin")&&R.staffing.note.includes("more at lower margins")
+       &&R.loan_share*r.V<=R.loan_range[1]&&r.jobs/m>8,`R6-2: a $10M staffing firm at a 10% margin, inside the limit: ${r.jobs}/${m} = ${(r.jobs/m).toFixed(1)}x`); }
+  /* R6-3: eq_comp's general form is the capped price, as in eq_a; the substituted line says which side of the ceiling each figure is */
+  { const line=HTML.split("\n").find(l=>l.includes('eq("eq_comp",'))||"", i=HTML.indexOf('eq("eq_comps",'), sub=HTML.slice(i,i+700);
+    ok(line.includes("operatorname{softmin}")&&line.includes("bar a")&&!line.includes("propto(1+")&&sub.includes("text{ before the ceiling}")&&sub.includes("text{ at the point estimate after it}"),
+       "R6-3: eq_comp states the capped relation"); }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

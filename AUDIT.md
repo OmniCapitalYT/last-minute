@@ -751,7 +751,7 @@ These were hand-typed and had gone stale:
 
 **Round 4**
 - `TermInMonths` is not the time to charge-off (within 3 months for 2.5% of charged-off loans), so the page no longer says SBA overwrites it with that.
-- The Census head count runs from about a fifth of SBA's jobs count to about six times it for loans within the $5M 7(a) limit, and keeps growing with revenue past the limit, where SBA's band median stays at 14; it is not "several times fewer" (R4-3, R5-6).
+- The Census head count runs from about a fifth of SBA's jobs count to about six times it for loans within the $5M 7(a) limit, at each industry's typical margin; it is more at lower margins (a $10M staffing firm at a 10% margin is 11×), and keeps growing with revenue past the limit, where SBA's band median stays at 14. It is not "several times fewer" (R4-3, R5-6, R6-2).
 - The GM salary's firm-size rank is labelled judgment.
 - The budget box shows two decimals in millions.
 - The binding-ask note names the measure it ranks by.
@@ -760,7 +760,7 @@ These were hand-typed and had gone stale:
 - The sensitivity panel's ask and buyer-pool rows show the step they name, a 5% lower ask and 25% more buyers, from the current state. The central difference they used straddled the proceeds peak and the typical pool: at the recommended ask it showed +$51k for a 5% cut that the model prices at −$34k (R5-2).
 - The competition premium's dollar figure at the point estimate goes through the ask ceiling, as P(W) does; it overstated the effect by up to 4× just short of the median binding (R5-3).
 - The judgment ledger counts the `IND` anchors and PMIN, PMAX, LAM0 and KW as inert: 124 of 432, not 104 (R5-1).
-- The Data tab computes the old judgement build's swing (1.47× to 6.06× on the framework example, against 1.75× to 3.17× fitted) and the owner-pay share of SDE (37–64% at $200K, 18–58% at $3M), instead of typing figures the model contradicts (R5-4, R5-5).
+- The Data tab computes the old judgement build's swing (1.47× to 6.06× on the framework example, against 1.75× to 3.17× for the console's multiple, all of it the judgment quality position on the fitted 2.41×; R6-1) and the owner-pay share of SDE (37–64% at $200K, 18–58% at $3M), instead of typing figures the model contradicts (R5-4, R5-5).
 - The staffing comparison is scoped to the $5M 7(a) limit (R5-6), and two lines of this section are corrected (R5-7).
 
 **Competition**
