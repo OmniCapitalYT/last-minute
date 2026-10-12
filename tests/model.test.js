@@ -518,7 +518,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(/b = \$\{T_ELAST\.toFixed\(2\)\}<\/b>, set by judgment/.test(HTML)&&/about 0\.09 on the time-given-sale scale \(about 0\.06&ndash;0\.07 if only the marketing leg\s+were stretched\) and 0\.15 on the sale-clock scale/.test(HTML)
      &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
-  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1\s+\+ 1;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ 13 \+ 9 \+ 11 \+ 2 \+ 1\s+\+ 1\s+\/\* the SBA tail factor[^*]*\*\/\s+\+ 4;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
     const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
@@ -935,7 +935,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const m=Object.keys(A.IND).map(k=>A.typMargin(k,2e5)); ok(!HTML.includes("18&ndash;35%")&&Math.round(Math.min(...m)*100)===20&&Math.round(Math.max(...m)*100)===30,"#20: margin range live, 20-30%"); }
   /* #21: one aggregate count for the tally and the badge; the tail factor counted as judgment */
   ok((HTML.match(/\$\{nAgg\}/g)||[]).length===2&&!HTML.includes("17 parameters</span>")&&/\+ 2   \/\* the size x age interaction/.test(HTML)
-     &&/\+ 1;   \/\* the SBA tail factor/.test(HTML)&&HTML.includes("<tr><td>SBA tail factor<div"),"#21: tallies agree");
+     &&/\+ 1    \/\* the SBA tail factor/.test(HTML)&&/\+ 4;   \/\* the price-gap penalty scale PEN_MAX/.test(HTML)&&HTML.includes("<tr><td>SBA tail factor<div"),"#21: tallies agree");
   /* #22: the centring row at a business actually at its peer medians reads in range */
   { const I=A.IND.prof, R=A.sizeRefs(158950), p={ind:"prof",rev:158950/A.typMargin("prof",158950),ern:158950,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,
       own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)}, V=A.model({...p,ask:1}).V, d=A.model({...p,ask:V}).dsum;
@@ -944,6 +944,77 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(!/2020Q1(&ndash;|-|–)2023Q3/.test(HTML)&&A.MODELS.fitted.ttc_shape.source.includes("2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4"),"#23: quarter labels");
   /* #24: the value equation states its units */
   ok(HTML.includes("\\\\ln\\\\hat P_{\\\\$000}")&&HTML.includes("ln(price, $000)"),"#24: eq_v in thousands");
+}
+
+/* 30. round-1 logic-audit fixes (AUDIT_FINDINGS.md, R1-n), one pin each */
+{ const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,
+            buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  const V=A.model({...FX,ask:1}).V;
+  /* R1-1: PEN_MAX is labelled judgment where it acts, and it is load-bearing: the walk-away flip sits near 0.43 */
+  ok(/thin=r\.thinF<\.9995, gap=r\.fc\.pen>0, j=thin\|\|gap;/.test(HTML)&&HTML.includes("<b>The ${PEN_MAX} scale is a judgment</b>")
+     &&HTML.includes("<tr><td>Price-gap penalty and base-rate ramp")&&HTML.includes("Size of the price-gap penalty (PEN_MAX = ${PEN_MAX})")
+     &&HTML.includes("and on the size of the price-gap penalty (a judgment scale)"),"R1-1: PEN_MAX and the size ramp labelled judgment");
+  { const at=pm=>A.loadWith([["const PEN_MAX=.45;","const PEN_MAX="+pm+";"]]).bestRatio(FX,.75,900);
+    ok(at(.42)>1.45&&at(.43)<1.25&&A.PEN_MAX===.45,"R1-1: the walk-away ask flips to the cap between PEN_MAX 0.42 and 0.43 (text: about 0.43)"); }
+  /* R1-2: scenarios are prices if it closes, with the no-sale chance beside them */
+  ok(HTML.includes("Price if it closes · ${pc(1-r.PC)} chance of no sale")&&(HTML.match(/percentile of closings/g)||[]).length===3
+     &&HTML.includes('row("Bear sale"')&&!HTML.includes("Outcome distribution"),"R1-2: scenario labels");
+  /* R1-3, R1-18: badges say when judgment enters the value, the multiple and the risk */
+  ok(/const j=Math\.abs\(r\.qFactor-1\)>\.005/.test(HTML)&&HTML.includes('id="o_msv_pv"')&&HTML.includes('id="o_mult_pv"')
+     &&HTML.includes('pv.innerHTML="<i></i>fitted × judgment";')&&HTML.includes("× the average acquisition loan"),"R1-3/R1-18: dynamic provenance badges");
+  /* R1-4, R1-5: buyers paid at most the ask ceiling and closing on the gap to their own value */
+  { const r=A.model(FX);
+    ok(r.buyers.every(b=>b.Pj<=Math.min(b.Vj,r.ceil)*(1+1e-9))&&r.best.k==="eta"&&r.top.k==="str","R1-4/R1-5: the search fund is pursued first at the default (the strategic premium sits above the ask)"); }
+  /* R1-6: the 7(a) cap is named above $5M / 0.85 of model value */
+  ok(HTML.includes("const capped=R.loan_share*r.V>R.loan_range[1];")&&HTML.includes("the risk shown is for that note, not for financing the whole price"),"R1-6: capped SBA note named");
+  /* R1-7: the prime level moves no risk figure, and the page says so */
+  { const B=A.loadWith([['"prime":7.0,','"prime":9.0,']]);
+    ok(B.model(FX).risk.p===A.model(FX).risk.p&&HTML.includes("so the prime level moves no figure"),"R1-7: prime cancels and the Data tab says so"); }
+  /* R1-8, R1-30: the level's position and the loan-size reversal are generated, not asserted */
+  ok(!/upper part of the combined|shipped level is in the upper part/.test(HTML)&&HTML.includes("cross=4-c/a, late=c+a*(cap-4)")
+     &&!HTML.includes("the hazard gap closes by year 6"),"R1-8/R1-30: SBA level and size-gap wording");
+  /* R1-9: the corpus AUC is labelled as the admin-window metric */
+  ok(HTML.includes("admin-window CV AUC 0.820 &rarr; 0.828 with 6-digit and state effects together"),"R1-9: admin-window AUC labelled");
+  /* R1-10: the default-off case where the retained value works against the walk-away programme */
+  { const s={...FX,theta:.3,lamT:4000}; s.rhoSell=A.bestRatio(s,0,0); s.optRho=A.bestRatio(s,.3,4000);
+    const r=A.model(s), b=A.optimize(s,r,s.budget,s.lamT,s.theta), u=b.U.keys.includes("reprice")?s.optRho:s.rhoSell, n=A.optCardNote(s,b,s.rhoSell,u);
+    const ret=x=>(1-x.PC)*s.theta*x.r.V, dRet=ret(b.U)-ret(b.V);
+    ok(dRet<0?(/works against it/.test(n.text)&&!/pays only through the 30% of value retained/.test(n.text)):true,`R1-10: retained value named in its true direction (dRet ${Math.round(dRet)}): ${n.text}`); }
+  /* R1-11: the coin-toss rule is 1% of value, not of |U| */
+  { const s={ind:"prof",rev:6e5,ern:1.5e5,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,theta:.5};
+    const Vp=A.model({...s,ask:1}).V;
+    ok([1000,1200,1400].every(l=>{ const t={...s,lamT:l}; t.rhoSell=A.bestRatio(t,0,0); t.optRho=A.bestRatio(t,.5,l);
+      const n=A.optNote(t,Vp,A.model({...t,ask:Vp*t.rhoSell}),A.model({...t,ask:Vp*t.optRho})); return n.coin===(n.kind!=="same"&&n.gain<.01*Vp); }),"R1-11: coin flag follows 1% of value at $1,000-$1,400 a day"); }
+  /* R1-12: the binding-ask note is quantitative and keyed on the ceiling, not the sign of the gap */
+  ok(HTML.includes("if(r.askBinds&&share<.25){")&&HTML.includes("passes through '+(share<.005?'almost none (under 1%)':'only about '+pc(share))")&&!HTML.includes("if(r.askBinds&&over<0){"),"R1-12: binding-ask note");
+  /* R1-13: net days on the mean time to close */
+  { const s={...FX,rhoSell:A.bestRatio(FX,0,0)}, r=A.model(s), it=A.interventionTable(s,r), rep=it.find(o=>o.k==="reprice"), r1=A.model(A.applyAll(s,r,["reprice"]));
+    ok(Math.abs(rep.dTnet-(rep.days+r1.tMean-r.tMean))<1e-9,"R1-13: the reprice row's net days use E[T]"); }
+  /* R1-14: inverted sensitivity rows named for their direction */
+  ok(A.sensitivity(FX).map(o=>o.n).filter(n=>/Less customer concentration|Less channel concentration|Asking price, 5% lower/.test(n)).length===3,"R1-14: sensitivity row names");
+  /* R1-15: the earnings input is SDE; EBITDA benchmarks are converted */
+  ok(HTML.includes(">Normalized earnings (SDE)</label>")&&!HTML.includes("SDE / EBITDA")&&HTML.includes('const lmmS=e2s("mfg",1.5e6), ulmmS=e2s("mfg",3.5e6);'),"R1-15: SDE input and converted benchmarks");
+  /* R1-16, R1-17, R1-19, R1-20: accessible shares, honest interval label, precise k, valued terms */
+  ok(HTML.includes("${pc(r.t90)} close within 90 days")&&HTML.includes("fitted residual band, 80")&&HTML.includes("k=${GAP_TAIL_K.toPrecision(3)}")
+     &&HTML.includes("e_i=${r.fv.indEff.toFixed(4)}")&&HTML.includes("A_{\\\\max}=${AMAX.toFixed(2)}")&&HTML.includes("\\\\kappa=${r.compK.toFixed(2)}"),"R1-16/17/19/20: equation and label precision");
+  { const r=A.model(FX), co=A.MODELS.value.coefficients, m=FX.ern/FX.rev;
+    const lp=A.MODELS.value.intercept+co.ln_sde*Math.log(FX.ern/1e3)+co.hinge_sde*r.fv.hinge+co.ln_gross*Math.log(FX.rev/1e3)+co.margin_c*m+co.yr_c*(2026-2015)+co.ind_eff*r.fv.indEff;
+    ok(Math.abs(Math.exp(lp)*1e3/r.fv.rawPoint-1)<1e-9,"R1-20: eq_v with the printed h, m, e_i and y reproduces the raw point"); }
+  /* R1-21/24: the stack-bounds row names the floor that binds */
+  ok(HTML.includes("multiple held to max(0.90×, 0.42× base)–1.85× base"),"R1-21/24: stack-bounds row");
+  /* R1-22/29: no 'risen every year'; the trend is generated from the series */
+  ok(!/risen every year/.test(HTML)&&HTML.includes("const dips=ys.filter((y,i)=>i>0&&+y>2021&&TS[y]<TS[ys[i-1]]);"),"R1-22/29: termination trend from the series");
+  /* R1-25, R1-26, R1-27, R1-28, R1-33, R1-34 */
+  ok(!HTML.includes('"below the middle"')&&HTML.includes('"lower part of the range"'),"R1-25: quality-band grammar");
+  ok(!HTML.includes("Conditions on deal size and price gap only")&&!HTML.includes("conditions on price gap and nothing else"),"R1-26: P_C conditioning claims");
+  ok(!HTML.includes("28% above the median from $500K"),"R1-27: E[T] premium is interpolated");
+  ok(HTML.includes("the hinge alone improved both cross-validated fit and error")&&HTML.includes("${V.v2_comparison.cv_r2_log}"),"R1-28: hinge credited with its own gain");
+  ok(HTML.includes("one of the calibration's sources: BizBuySell")&&!HTML.includes("the fit's own target"),"R1-33: self-audit target label");
+  ok(!HTML.includes("The two agree: <b>r = +0.887</b>")&&HTML.includes("const D={23:2.30,42:3.00,51:2.70,54:2.30,62:2.20,71:2.00,72:1.80,81:2.10}"),"R1-34: cross-check computed live");
+  /* R1-31, R1-32: tallies */
+  ok(HTML.includes("Object.values(V.fan_quantiles||{}).filter(v=>v!==1).length")&&HTML.includes("new Set(Object.values(R.pif.sector||{})).size")
+     &&HTML.includes('filter(v=>typeof v==="number").length')&&HTML.includes("estimated from data: transactions, plus listing and survey tables"),"R1-31/32: tallies");
 }
 
 console.log(`${pass} passed, ${fail} failed`);
