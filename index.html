@@ -7307,8 +7307,9 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
 <script id="v9-intro-js">
 /* ═════════════════════════════════════════════════════════════════════════
    v9: the opening. The whole universe in about twelve seconds, drawn in WebGL
-   over the loading screen; then the v5 jump to light speed (OMNI_WARP) carries
-   the viewer into the console, and reveal and arrive run at its drop-out.
+   over the loading screen, then the new frontier of brokerage; then the v5 jump
+   to light speed (OMNI_WARP) carries the viewer into the console, and reveal and
+   arrive run at its drop-out.
 
    Timeline. t counts seconds from page load; c counts from the Big Bang, which
    waits until the boot steps have finished (OMNI_WARP is called), t >= 1.9 and the
@@ -7329,9 +7330,17 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
      home          6.6 - 8.45   a dive into one spiral, through an arm, to the
                                 Sun and its planets (an echo of the masthead orrery)
      title         8.3 - 9.45   "The Omni Method" resolves under the Sun
-     jump          9.45 -       the v5 jump, on its own clock; reveal + arrive 1.85 s in
+     frontier      9.45 - 13.7  the camera pulls away, speed lines run in and a shockwave
+                                rings out; a gate ignites where the Sun was (a razor-thin
+                                ring round a plasma vortex, arcs crawling on its rim, the
+                                stars lensed round it); the title lifts into an eyebrow;
+                                thousands of particles stream out of the vortex onto the
+                                letterforms of "The new frontier of brokerage" and the
+                                crisp headline takes their place; a light sweep, a flare
+                                and sparks ignite it; the gate swallows the words
+     jump          13.7 -       the v5 jump, on its own clock; reveal + arrive 1.85 s in
    (c is film time: it runs 6% faster than the wall clock.) With a fast boot the
-   reveal lands at t = 12.7 s.
+   reveal lands at t = 16.7 s.
 
    Every frame is a pure function of the clock and seeded data, so a dropped
    frame skips ahead instead of slowing the film down. The particles carry seeds,
@@ -7342,7 +7351,9 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
    half-resolution buffer, compiled as two programs (the bang and first light;
    the galaxies and home) so that neither pays for the other's noise on a
    renderer that runs every branch; between them the buffer is only cleared.
-   While the boot runs (phase 0) only one small quad is drawn.
+   The frontier has programs of its own (its field, the gate, the particle
+   headline), drawn only while it runs. While the boot runs (phase 0) only one
+   small quad is drawn.
 
    Debug hook, for contact sheets and tests:
      window.OMNI_INTRO = { active, T, at(t), play(), skip(), phase(t), stats() }
@@ -7354,7 +7365,8 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
      ?introAt=7.5 in the URL freezes at 7.5 s on load; ?introAt and ?introQ=1 keep
      full quality on a software renderer.
    Without WebGL (or if a shader fails) this layer stands aside and the v5 drift
-   and jump run as before; under prefers-reduced-motion the plain fade runs.
+   and jump run as before; under prefers-reduced-motion the plain fade runs, and
+   its loader carries the frontier's headline, still, under the title as eyebrow.
    A small script just before #boot marks <html> with .v9-film when the film is
    likely to run, which keeps the old title, bar and drift hidden from the first
    paint until the film takes over; every path where this layer stands aside or
@@ -7368,11 +7380,20 @@ try{(function(){
 var box=document.getElementById("boot"), H5=window.OMNI_INTRO2D;
 var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 window.OMNI_INTRO={active:false};
-if(!box||reduce||!H5||!window.Float32Array||!window.requestAnimationFrame){ unmark(); return; }
+if(!box||reduce||!H5||!window.Float32Array||!window.requestAnimationFrame){ if(box&&reduce) still(); unmark(); return; }
+/* reduced motion: no film; the plain loader carries the frontier's words, still - its title as the eyebrow */
+function still(){
+  var t=box.querySelector(".bt"); if(!t||!t.parentNode) return;
+  var h=document.createElement("p"); h.className="v9-still-h"; h.setAttribute("aria-hidden","true"); h.textContent="The new frontier of brokerage";
+  box.classList.add("v9-still"); t.parentNode.insertBefore(h,t.nextSibling);
+}
 var qs=location.search||"", qAt=/[?&]introAt=([0-9.]+)/.exec(qs), FULL=!!qAt||/[?&]introQ=1/.test(qs);
 
 /* ---- timeline (seconds; P0 and PRE in t, the rest in c) ------------------- */
-var TL={P0:1.9,SEEN:1.3,PRE:.32,LIGHT:1.15,WEB:2.85,GAL:4.8,HOME:6.6,TITLE:8.3,JUMP:9.45,FADE:.85,REVEAL:1.85};
+var TL={P0:1.9,SEEN:1.3,PRE:.32,LIGHT:1.15,WEB:2.85,GAL:4.8,HOME:6.6,TITLE:8.3,FRONT:9.45,JUMP:13.7,FADE:.85,REVEAL:1.85};
+/* the frontier, in film seconds from TL.FRONT: the pull-away and the gate's ignition, the title becoming an
+   eyebrow, the particles' launches and flights, the headline locking in, its ignition sweep, the collapse */
+var FX={PULL:.8,GATE:.5,EYE0:.5,EYE1:1.1,LAUNCH:.9,SPREAD:.5,FLY:.7,FLYV:.25,LOCK:2.2,OUT:2.65,IGN:2.5,SWEEP:.72,COLL:3.7,END:4.25};
 /* the film runs a touch fast: c = (t - bang) * SPEED; the v5 jump keeps its own real-time clock */
 var SPEED=1.06;
 var CAPS=[["13.8 billion years ago",.1,1.05],["380,000 years · first light",1.3,2.75],
@@ -7785,6 +7806,161 @@ void main(){
   gl_FragColor=vec4(col*a*u_q.y,a*u_q.y);
 }`;
 
+/* ---- the frontier's own programs ------------------------------------------------------ */
+/* its field, at half resolution: speed lines running in, the shockwave and the gate's flash (XF_PULL); the
+   anamorphic flare that rides the headline's light sweep and the bloom as the gate swallows it (XF_GLOW) */
+var XF=FH+`uniform vec2 u_res; uniform float u_asp;
+uniform vec4 u_fr;   /* film seconds into the frontier, -, -, - */
+uniform vec4 u_pc;   /* the gate's centre and radius (short-side units), -, - */
+uniform vec4 u_sl;   /* speed lines: light, -, -, - */
+uniform vec4 u_sk;   /* shockwave: radius, width, light, red-blue split */
+uniform vec4 u_fl;   /* ignition flash, -, collapse bloom, - */
+uniform vec4 u_af;   /* anamorphic flare: x, first line y, second line y, light */
+float hs1(float n){ return fract(sin(n*12.9898)*43758.5453); }
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_res, nd=uv*2.-1., sp=vec2(nd.x*u_asp,nd.y)/min(u_asp,1.);
+  vec2 d=sp-u_pc.xy; float r=length(d), Rp=max(u_pc.z,1e-3), f=u_fr.x;
+  vec3 col=vec3(0.);
+#ifdef XF_PULL
+  if(u_sl.x>.001){
+    /* thin wedges round the gate, their dashes running in toward it */
+    float a=atan(d.y,d.x)*(120./6.2831853), id=mod(floor(a),120.), fa=fract(a);
+    float h1=hs1(id), h2=hs1(id+57.3), h3=hs1(id+113.1);
+    float x=(fa-.5-(h1-.5)*.5)/(.028+.05*h2);
+    float s=r*(.9+1.6*h3)+f*(2.1+2.6*h2)+h1*9.;
+    float dash=smoothstep(0.,.08,fract(s))*(1.-smoothstep(.18+.5*h3,.97,fract(s)));
+    col+=mix(vec3(.6,.58,1.),vec3(.88,.93,1.),h3)*exp(-x*x)*dash*smoothstep(.15,.85,r)*step(.42,h1)*(.3+.9*h2*h2)*u_sl.x;
+  }
+  if(u_sk.z>.001){
+    /* a thin bright ring, red a pixel or two ahead of blue at its front, and a soft wake inside it */
+    float R=u_sk.x, w=u_sk.y, e=u_sk.w;
+    float eg=exp(-pow((r-R)/w,2.)), an=atan(d.y,d.x);
+    vec3 ring=vec3(eg)+vec3(exp(-pow((r-R-e)/w,2.))-eg,0.,exp(-pow((r-R+e)/w,2.))-eg)*.45;
+    float wake=exp(-max(R-r,0.)/(w*7.))*step(r,R), vr=.78+.22*sin(an*5.+f*3.)*sin(an*3.-f*2.);
+    col+=(ring*vec3(.92,.94,1.)+vec3(.5,.44,1.)*wake*.28)*vr*u_sk.z;
+  }
+  col+=vec3(.78,.74,1.)*u_fl.x*(exp(-r*r/(Rp*Rp*.6))*1.1+exp(-r/(Rp*1.8))*.35);
+#endif
+#ifdef XF_GLOW
+  col+=vec3(.82,.78,1.)*u_fl.z*(exp(-r*r/(Rp*Rp*1.6))*.9+exp(-r/(Rp*3.))*.25);
+  if(u_af.w>.001){
+    float dx=sp.x-u_af.x, l1=sp.y-u_af.y, l2=sp.y-u_af.z;
+    float vy=exp(-l1*l1/.00004)+exp(-l2*l2/.00004), core=exp(-dx*dx/.0009)*(exp(-l1*l1/.0012)+exp(-l2*l2/.0012));
+    col+=(vec3(.62,.74,1.)*vy*(exp(-abs(dx)/.5)*.55+exp(-abs(dx)/.07)*.9)+vec3(.92,.9,1.)*core*.9)*u_af.w;
+  }
+#endif
+  gl_FragColor=vec4(1.-exp(-col*1.05),1.);
+}`;
+/* the gate, at full resolution over a box round it: the frame behind it (copied) bent by a point lens,
+   the vortex, the razor-thin ring, the arcs on its rim, and the flare as it swallows the words */
+var XPF=FH+`varying vec2 v_p;
+uniform sampler2D u_bt;
+uniform vec4 u_pt;   /* ring radius, half box (device px), lens strength, device px per css px */
+uniform vec4 u_pl;   /* ring, vortex, arcs, core flare */
+uniform vec4 u_pm;   /* film seconds, spin, halo, - */
+`+NOISE+`
+float fb(vec3 p){ return .55*vn(p)+.3*vn(p*2.03+vec3(1.7,9.2,3.1))+.15*vn(p*4.07+vec3(5.3,1.1,7.7)); }
+void main(){
+  vec2 d=v_p; float r=length(d), Rp=max(u_pt.x,.5), B=u_pt.y, px=u_pt.w, rr=r/Rp;
+  float k=u_pt.z*Rp*Rp*1.2/max(r*r,1.)*smoothstep(B,B*.6,r)*smoothstep(Rp*.82,Rp*1.01,r);   /* outside the ring only */
+  vec3 bg=texture2D(u_bt,clamp(d*(1.-k)/(2.*B)+.5,0.,1.)).rgb;
+  bg*=1.-.88*smoothstep(1.03,.88,rr)*min(1.,u_pl.y*1.3);
+  vec3 col=vec3(0.);
+  float an=atan(d.y,d.x);
+  if(u_pt.z>.001){
+    /* faint stars behind the gate, drifting slowly round it, bent into arcs near the ring; they thin out
+       well inside the box */
+    vec2 sv=d*(1.-k); float cr=cos(u_pm.x*.12), sr=sin(u_pm.x*.12);
+    sv=vec2(cr*sv.x-sr*sv.y,sr*sv.x+cr*sv.y)/(9.*px);
+    vec2 gi=floor(sv), gf=fract(sv);
+    float h=fract(sin(dot(gi,vec2(127.1,311.7)))*43758.5453);
+    vec2 so=vec2(fract(h*13.7),fract(h*71.3))*.6+.2;
+    float sd=length(gf-so)*9.;
+    float win=smoothstep(B*.86,B*.42,r)*smoothstep(Rp*.98,Rp*1.08,r);
+    col+=mix(vec3(.75,.8,1.),vec3(1.),fract(h*7.3))*step(.8,h)*exp(-sd*sd/.8)*(.45+1.*fract(h*3.1))*win*u_pt.z;
+  }
+  if(u_pl.y>.001&&rr<1.12){
+    /* log-spiral arms of polar noise, turning and falling inward, white-hot at the core */
+    float lr=log(max(rr,.012)), a=an+u_pm.y-2.4*lr;
+    vec3 q=vec3(cos(a)*1.9,sin(a)*1.9,lr*1.4-u_pm.x*1.7);
+    float n1=fb(q), n2=vn(q*2.6+vec3(4.1,1.7,u_pm.x*.8)), arms=.5+.5*sin(a*3.+n1*5.);
+    vec3 pal=mix(vec3(.722,.643,1.),vec3(.302,.639,1.),smoothstep(.36,.64,n1));
+    pal=mix(pal,vec3(1.,.478,.784),smoothstep(.58,.82,n2)*.75);
+    float body=(.25+1.5*n1*n1*(.4+.6*arms)+.3*n2)*smoothstep(1.04,.6,rr);
+    col+=(pal*body+vec3(1.,.97,1.)*(exp(-rr*rr/.018)*1.9+exp(-rr*rr/.1)*.45))*u_pl.y;
+  }
+  float dr=r-Rp, w0=.65*px, w1=3.6*px;
+  float ring=exp(-dr*dr/(w0*w0))*2.1+exp(-dr*dr/(w1*w1))*.5+exp(-abs(dr)/(24.*px))*.13;
+  col+=mix(vec3(.8,.76,1.),vec3(1.),exp(-dr*dr/(w0*w0*2.)))*ring*u_pl.x;
+  if(u_pl.z>.001){
+    /* each arc crawls along the rim and re-forms many times a second */
+    for(int i=0;i<3;i++){
+      float fi=float(i), sg=i==1?-1.:1.;
+      float ca=fi*2.094+sg*u_pm.x*(.9+.35*fi), da=atan(sin(an-ca),cos(an-ca));
+      float hl=.36+.2*sin(u_pm.x*1.9+fi*2.3), win=smoothstep(hl,hl*.4,abs(da));
+      float tq=floor(u_pm.x*24.+fi*7.);
+      float j1=vn(vec3(cos(an)*7.,sin(an)*7.,tq*1.37+fi*9.))-.5, j2=vn(vec3(cos(an)*24.,sin(an)*24.,tq*.71+fi*5.))-.5;
+      float ra=Rp*(1.+.12*j1+.05*j2+.03*sin(da*6.+fi));
+      float dd=r-ra, fl=smoothstep(.28,.42,vn(vec3(u_pm.x*15.+fi*7.,fi*3.1,.5)));
+      col+=(vec3(.86,.88,1.)*exp(-dd*dd/(.55*px*px))*1.5+vec3(.55,.45,1.)*exp(-dd*dd/(22.*px*px))*.38)*win*fl*u_pl.z;
+    }
+  }
+  col+=vec3(1.,.95,1.)*u_pl.w*(exp(-rr*rr/.07)*1.8+exp(-rr/.7)*.45);
+  col+=vec3(.5,.42,1.)*u_pm.z*exp(-max(r-Rp,0.)/(Rp*.5))*smoothstep(Rp*.6,Rp*1.04,r)*.34;   /* a violet halo */
+  col*=smoothstep(B,B*.72,r);
+  gl_FragColor=vec4(bg+(1.-bg)*(1.-exp(-col)),1.);
+}`;
+/* the particle headline: each particle a velocity-stretched streak (as the bang's debris) that leaves the
+   vortex on a swirling path and settles onto a point of the headline's letterforms; mode 1 is the sparks
+   that burst from the letters' edges as the light sweep passes */
+var TV=`precision highp float;
+attribute vec4 a_s; attribute vec4 a_g; attribute vec2 a_k;
+uniform vec4 u_f;    /* frontier seconds, mode (0 stream, 1 sparks), light, device px per css px */
+uniform vec4 u_o;    /* gate centre (css px from the screen centre, y up), gate radius, swirl */
+uniform vec4 u_tt;   /* launch, launch spread, flight, flight spread */
+uniform vec4 u_tk;   /* lock, shimmered out, sparks start, sweep length */
+uniform vec4 u_hx;   /* the headline's left and right edges (css px from the centre), -, - */
+uniform vec2 u_vs;   /* canvas size, device px */
+varying vec3 v_c; varying float v_a; varying vec4 v_g;
+vec2 spos(float f,vec2 G,vec4 s){
+  float u=clamp((f-u_tt.x-u_tt.y*s.x)/(u_tt.z+u_tt.w*s.y),0.,1.), e=1.-(1.-u)*(1.-u)*(1.-u);
+  vec2 O=u_o.xy, dG=G-O; float an=u_o.w*(.35+.75*s.z)*(dG.x<0.?-1.:1.), ca=cos(an), sa=sin(an);
+  vec2 rt=vec2(ca*dG.x-sa*dG.y,sa*dG.x+ca*dG.y);
+  vec2 P0=O+rt/max(length(rt),.001)*u_o.z*.3*s.w, C=O+rt*(.4+.3*s.w);
+  return (1.-e)*(1.-e)*P0+2.*(1.-e)*e*C+e*e*G;
+}
+vec2 kpos(float tau,vec4 s){
+  vec2 v=(a_g.zw*(.45+.9*s.z)+(vec2(s.w,fract(s.x*91.7))-.5)*.7)*230.;
+  return a_g.xy+v*(1.-exp(-3.2*max(tau,0.)))/3.2;
+}
+void main(){
+  float f=u_f.x, px=u_f.w, b; vec4 s=a_s; vec2 h, q; vec3 c;
+  float xn=clamp((a_g.x-u_hx.x)/max(u_hx.y-u_hx.x,1.),0.,1.);
+  if(u_f.y<.5){
+    float u=(f-u_tt.x-u_tt.y*s.x)/(u_tt.z+u_tt.w*s.y);
+    h=spos(f,a_g.xy,s); q=spos(f-.035,a_g.xy,s);
+    vec3 ink=mix(vec3(1.),vec3(.722,.643,1.),smoothstep(.55,1.,xn));      /* the masthead's starlight to violet */
+    vec3 hot=mix(vec3(.722,.643,1.),vec3(.302,.639,1.),step(.5,s.w)); hot=mix(hot,vec3(1.,.478,.784),step(.82,s.z));
+    c=mix(mix(vec3(1.,.97,1.),hot,smoothstep(0.,.3,u)),ink,smoothstep(.55,1.,u));
+    float fo=smoothstep(u_tk.x+.08*s.w,u_tk.y-.12+.12*s.w,f);
+    float tw=mix(1.,.55+.45*sin(f*34.+s.z*60.),smoothstep(u_tk.x-.15,u_tk.x+.1,f));
+    b=step(0.,u)*smoothstep(0.,.05,u)*(1.-fo)*tw*(.55+.45*s.z);
+  } else {
+    float tau=f-u_tk.z-u_tk.w*xn-.05*s.x, life=.28+.32*s.y;
+    h=kpos(tau,s); q=kpos(tau-.03,s);
+    c=mix(vec3(1.,.97,1.),mix(mix(vec3(.722,.643,1.),vec3(.302,.639,1.),step(.45,s.z)),vec3(1.,.478,.784),step(.78,s.z)),smoothstep(0.,life*.7,tau));
+    b=step(0.,tau)*pow(max(1.-tau/life,0.),1.4)*(.75+.5*s.w);
+  }
+  v_c=c; v_a=b*u_f.z; v_g=vec4(0.);
+  if(b<=0.){ gl_Position=vec4(0.,0.,2.,1.); return; }
+  h*=px; q*=px;
+  vec2 dv=h-q; float L=length(dv); vec2 ax=L>.01?dv/L:vec2(1.,0.), nx=vec2(-ax.y,ax.x);
+  float rad=(.75+.8*s.w*s.w)*px;
+  vec2 P=mix(q,h,a_k.x)+nx*a_k.y*rad+ax*(a_k.x*2.-1.)*rad;
+  gl_Position=vec4(P/(u_vs*.5),0.,1.);
+  v_g=vec4(a_k.x*(L+2.*rad)-rad,a_k.y*rad,L,rad);
+}`;
+
 function shader(type,src){ var s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
   if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){ if(!gl.isContextLost()) console.warn("v9 intro: shader",gl.getShaderInfoLog(s)); return null; }
   return s; }
@@ -7801,9 +7977,11 @@ function program(vs,fs,attrs){
 }
 var PP=program(PV,PF,["a_s","a_w","a_l"]), BP=program(BV,BF,["a_s","a_k"]), OP=program(OV,OF,["a_o"]),
     FPA=program(SV,"#define V9_EARLY 1\n"+FF,["a_q"]), FPB=program(SV,"#define V9_LATE 1\n"+FF,["a_q"]),
-    CP=program(SV,CF,["a_q"]), QP=program(QV,QF,["a_q"]);
+    CP=program(SV,CF,["a_q"]), QP=program(QV,QF,["a_q"]),
+    XFA=program(SV,"#define XF_PULL 1\n"+XF,["a_q"]), XFG=program(SV,"#define XF_GLOW 1\n"+XF,["a_q"]),
+    XPP=program(QV,XPF,["a_q"]), TPP=program(TV,BF,["a_s","a_g","a_k"]);
 function lose(){ try{ var x=gl.getExtension("WEBGL_lose_context"); if(x) x.loseContext(); }catch(e){} }
-if(!PP||!BP||!OP||!FPA||!FPB||!CP||!QP){ lose(); unmark(); return; }
+if(!PP||!BP||!OP||!FPA||!FPB||!CP||!QP||!XFA||!XFG||!XPP||!TPP){ lose(); unmark(); return; }
 
 /* ---- vectors ------------------------------------------------------------------ */
 function d2(a,b){ var x=a[0]-b[0],y=a[1]-b[1],z=a[2]-b[2]; return x*x+y*y+z*z; }
@@ -7997,6 +8175,11 @@ function upload(){
 bufT=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,bufT); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
 bufQ=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,bufQ); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 tex=gl.createTexture(); fbo=gl.createFramebuffer();
+/* the frontier: its particle buffer (built from the headline's layout) and the lens's copy of the frame */
+var bufX=null, ltex=gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D,ltex);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
 function sizes(){
   /* at most ~4.2 million device pixels, and a field buffer no wider than ~820 px: it is all soft light */
   var w=Math.max(1,innerWidth), h=Math.max(1,innerHeight), dpr=Math.min(Q.dpr,Math.sqrt(4.2e6/(w*h))), fs=Math.min(Q.fs,820/Math.max(w,h));
@@ -8019,15 +8202,90 @@ var title=box.querySelector(".bt"), trackEl=box.querySelector(".track"), stepEl=
 var capBox=document.createElement("div"); capBox.className="v9-cap"; capBox.setAttribute("aria-hidden","true");
 var capEls=CAPS.map(function(c){ var s=document.createElement("span"); s.textContent=c[0]; capBox.appendChild(s); return s; });
 var btn=document.createElement("button"); btn.type="button"; btn.className="v9-skip"; btn.textContent="Skip intro";
+/* the frontier's headline (aria-hidden, like the captions); the title becomes its eyebrow */
+var head=document.createElement("div"); head.className="v9-head"; head.setAttribute("aria-hidden","true");
+var ink=document.createElement("span"); ink.className="v9-ink";
+var hl1=document.createElement("span"), hl2=document.createElement("span");
+hl1.textContent="The new frontier"; hl2.textContent="of brokerage";
+ink.appendChild(hl1); ink.appendChild(document.createTextNode(" ")); ink.appendChild(hl2); head.appendChild(ink);
 var last={};
 function setStyle(el,key,prop,val){ if(!el||last[key]===val) return; last[key]=val; el.style.setProperty(prop,val,"important"); }
 function op(el,key,v){ setStyle(el,key,"opacity",v<=.001?"0":v>=.999?"1":v.toFixed(3)); }
+var LT={fs:0,ty:0};
 function layout(){
   /* the title sits under the Sun's widest orbit, which spans 0.84 of the short side */
   var M=Math.min(VW,VH), fs=cl(Math.min(VW*.092,VH*.085),30,78), ty=VH/2+M*.42*Math.sin(24*Math.PI/180)+Math.max(26,M*.05)+fs*.55;
-  box.style.setProperty("--v9-fs",fs.toFixed(1)+"px");
-  box.style.setProperty("--v9-ty",Math.min(ty,VH-fs*1.6-40).toFixed(0)+"px");
+  LT.fs=+fs.toFixed(1); LT.ty=+Math.min(ty,VH-fs*1.6-40).toFixed(0);
+  box.style.setProperty("--v9-fs",LT.fs+"px");
+  box.style.setProperty("--v9-ty",LT.ty+"px");
   box.style.setProperty("--v9-hy",Math.round(Math.max(64,M*.1))+"px");
+  frontLayout();
+}
+
+/* ---- the frontier: its layout, and the headline's letterforms as the particles' targets ---- */
+var FR={cx:0,cy:0,R:0,hs:0,two:false,hy:0,ey:0,ef:0,L:0,Rt:0,lines:[],key:"",lk:"",n:0,ns:0,relayout:false};
+var MC=document.createElement("canvas").getContext("2d"), FAM="sans-serif";
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){ FR.relayout=true; });
+function textW(txt,size){ MC.font="600 "+size+"px "+FAM; try{ MC.letterSpacing=(-.03*size).toFixed(2)+"px"; }catch(e){} return MC.measureText(txt).width; }
+function frontLayout(){
+  /* the gate sits where the Sun was, at the centre (the v5 jump starts there); the eyebrow and the headline
+     under it, on one line, or on two ("The new frontier" / "of brokerage") when one would be under 34 px */
+  var M=Math.min(VW,VH), tall=VH>VW*1.15;
+  FAM=getComputedStyle(ink).fontFamily||"sans-serif";
+  var w1=textW(hl1.textContent+" "+hl2.textContent,100)/100, w2=Math.max(textW(hl1.textContent,100),textW(hl2.textContent,100))/100;
+  var s1=Math.min(VW*.86/w1,VH*.085,84), two=s1<34, hs=two?Math.min(VW*.86/w2,VH*.062,54):s1;
+  FR.cx=VW/2; FR.cy=VH/2; FR.R=Math.round(M*(tall?.2:.15)); FR.two=two; FR.hs=hs; FR.ef=cl(hs*.2,11.5,15.5);
+  var ey=FR.cy+FR.R+Math.max(22,FR.R*.28)+FR.ef*.5, ht=ey+FR.ef*.5+Math.max(10,hs*.26), hh=(two?2:1)*hs*1.04;
+  var over=ht+hh-(VH-Math.max(56,VH*.08)); if(over>0){ ey-=over; ht-=over; }
+  FR.ey=ey; FR.hy=ht+hh/2;
+  head.classList.toggle("two",two);
+  box.style.setProperty("--v9-hs",hs.toFixed(2)+"px"); box.style.setProperty("--v9-hcy",FR.hy.toFixed(1)+"px");
+  /* the targets follow the page's layout (a change of buffer resolution alone keeps them) */
+  var lk=VW+"x"+VH+":"+hs.toFixed(2)+":"+FAM+":"+(document.fonts?document.fonts.status:""); if(lk!==FR.lk){ FR.lk=lk; FR.key=""; }
+}
+/* render the headline's real line boxes (measured from the page, in its own font, size and tracking) into
+   a canvas and sample its alpha: the interior gives the particles' targets, the edge the sparks' origins */
+function sampleHead(){
+  FR.key=VW+"x"+VH+":"+FR.hs.toFixed(2)+":"+(document.fonts?document.fonts.status:"");
+  FR.n=FR.ns=0;
+  var tr=head.style.getPropertyValue("transform"), tp=head.style.getPropertyPriority("transform");
+  head.style.removeProperty("transform");
+  var rects=[];
+  [hl1,hl2].forEach(function(sp){ var rg=document.createRange(); rg.selectNodeContents(sp); var rs=rg.getClientRects();
+    for(var i=0;i<rs.length;i++) if(rs[i].width>0) rects.push({t:sp.textContent,r:rs[i]}); });
+  if(tr) head.style.setProperty("transform",tr,tp);
+  if(!rects.length) return;
+  var L=1e9, T=1e9, Rr=-1e9, Bt=-1e9;
+  rects.forEach(function(o){ L=Math.min(L,o.r.left); T=Math.min(T,o.r.top); Rr=Math.max(Rr,o.r.right); Bt=Math.max(Bt,o.r.bottom); });
+  FR.L=L; FR.Rt=Rr; FR.lines=rects.map(function(o){ return o.r.top+o.r.height/2; });
+  var cs=getComputedStyle(ink), size=parseFloat(cs.fontSize)||FR.hs, ls=parseFloat(cs.letterSpacing)||0;
+  var SS=VW*VH<7e5?2:1, pad=4, W=Math.ceil(Rr-L+2*pad), H=Math.ceil(Bt-T+2*pad), ww=W*SS, hh=H*SS;
+  var c2=document.createElement("canvas"); c2.width=ww; c2.height=hh;
+  var g=c2.getContext("2d"); if(!g) return;
+  g.font=(cs.fontWeight||"600")+" "+size+"px "+cs.fontFamily; try{ g.letterSpacing=ls.toFixed(2)+"px"; }catch(e){}
+  g.textBaseline="alphabetic"; g.fillStyle="#fff";
+  rects.forEach(function(o){ var m=g.measureText(o.t), asc=m.fontBoundingBoxAscent, dsc=m.fontBoundingBoxDescent;
+    if(!(asc>0)){ asc=size*.8; dsc=size*.22; }
+    var base=o.r.top+(o.r.height-(asc+dsc))/2+asc, sx=o.r.width/Math.max(m.width,1);
+    g.setTransform(SS*sx,0,0,SS,SS*(o.r.left-L+pad),SS*(base-T+pad)); g.fillText(o.t,0,0); });
+  var D=g.getImageData(0,0,ww,hh).data, inP=[], edP=[], x, y;
+  for(y=1;y<hh-1;y++) for(x=1;x<ww-1;x++){ var a=D[(y*ww+x)*4+3];
+    if(a>=140) inP.push(x,y);
+    else if(a>=30){ var gx=D[(y*ww+x+1)*4+3]-D[(y*ww+x-1)*4+3], gy=D[((y+1)*ww+x)*4+3]-D[((y-1)*ww+x)*4+3], gn=Math.hypot(gx,gy)||1;
+      edP.push(x,y,-gx/gn,gy/gn); } }
+  if(!inP.length) return;
+  /* counts follow the area: about 8-11k on a desktop, 4k on a phone */
+  var NT=Math.round(cl(Math.sqrt(VW*VH)*7.6,3000,12000)), NSP=edP.length?Math.round(NT*.12):0, R=rng(0x7E57F00D);
+  var A=new Float32Array((NT+NSP)*60), CO=[0,-1,1,-1,1,1,0,-1,1,1,0,1];
+  function put(i,gx,gy,nx,ny){ var s0=R(),s1=R(),s2=R(),s3=R();
+    for(var v=0;v<6;v++){ var o=(i*6+v)*10; A[o]=s0; A[o+1]=s1; A[o+2]=s2; A[o+3]=s3; A[o+4]=gx; A[o+5]=gy; A[o+6]=nx; A[o+7]=ny;
+      A[o+8]=CO[v*2]; A[o+9]=CO[v*2+1]; } }
+  var X0=L-pad-VW/2, Y0=VH/2-(T-pad), k, j;
+  for(k=0;k<NT;k++){ j=Math.floor(R()*inP.length/2)*2; put(k,X0+(inP[j]+R())/SS,Y0-(inP[j+1]+R())/SS,0,0); }
+  for(k=0;k<NSP;k++){ j=Math.floor(R()*edP.length/4)*4; put(NT+k,X0+(edP[j]+.5)/SS,Y0-(edP[j+1]+.5)/SS,edP[j+2],edP[j+3]); }
+  if(!bufX) bufX=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufX); gl.bufferData(gl.ARRAY_BUFFER,A,gl.STATIC_DRAW);
+  FR.n=NT; FR.ns=NSP;
 }
 function overlays(t,c){
   var ti=st.frozen?t:t-TINIT;   /* seconds since this layer took the screen over */
@@ -8035,12 +8293,29 @@ function overlays(t,c){
   op(stepEl,"st",sm(.15,.6,ti)*(1-sm(-.25,.05,c)));
   for(var i=0;i<CAPS.length;i++){ var C=CAPS[i]; op(capEls[i],"c"+i,sm(C[1],C[1]+.35,c)*(1-sm(C[2]-.35,C[2],c))); }
   op(btn,"bt",sm(.5,1.1,ti)*(1-sm(TL.JUMP-.2,TL.JUMP+.25,c))*(st.skipReq?0:1));
-  var k=sm(TL.TITLE,TL.TITLE+.85,c);
-  op(title,"ti",k);
-  setStyle(title,"tf","filter",k>=.999?"none":"blur("+(14*(1-k)*(1-k)).toFixed(2)+"px)");
-  setStyle(title,"tl","letter-spacing",(.36*Math.pow(1-k,1.6)-.02*k).toFixed(3)+"em");
+  var k=sm(TL.TITLE,TL.TITLE+.85,c), f=c-TL.FRONT, em=sm(FX.EYE0,FX.EYE1,f), kc=sm(FX.COLL,FX.END-.05,f), k2=kc*kc;
+  op(title,"ti",k*(1-.12*em)*(1-sm(.5,.95,kc)));
+  setStyle(title,"tf","filter",k>=.999&&k2<=.001?"none":"blur("+(14*(1-k)*(1-k)+9*k2).toFixed(2)+"px)");
+  setStyle(title,"tl","letter-spacing",(.36*Math.pow(1-k,1.6)-.02*k+.32*em).toFixed(3)+"em");
   /* a sheen crosses the letters as they settle */
   setStyle(title,"ts","--v9-sx",(115-130*sm(TL.TITLE+.3,TL.TITLE+1.15,c)).toFixed(1)+"%");
+  /* the frontier: the title lifts and shrinks into the eyebrow; the gate swallows both at the end */
+  setStyle(title,"tfs","font-size",em>0?mix(LT.fs,FR.ef,em).toFixed(2)+"px":"");
+  setStyle(title,"tty","top",em>0?mix(LT.ty,FR.ey,em).toFixed(1)+"px":"");
+  setStyle(title,"ttr","transform",k2>.001?"translateY(calc(-50% + "+((FR.cy-FR.ey)*k2).toFixed(1)+"px)) scale("+(1-.97*k2).toFixed(3)+")":"");
+  /* the headline: it locks in under its particles with a soft glow, the light sweep and a brief chromatic
+     shimmer cross it, and it is drawn into the gate */
+  var hv=sm(FX.LOCK-.05,FX.LOCK+.22,f)*(1-sm(.45,.9,kc));
+  op(head,"hd",hv);
+  if(hv>0){
+    var gw=Math.exp(-Math.pow((f-FX.LOCK-.18)/.22,2)), ch=.5*Math.exp(-Math.pow((f-FX.IGN-FX.SWEEP*.62)/.1,2));
+    var flt="drop-shadow(0 0 "+(26+22*gw).toFixed(1)+"px rgba(158,186,255,"+(.2+.45*gw).toFixed(3)+")) drop-shadow(0 0 2px rgba(216,236,255,.25))";
+    if(ch>.01) flt+=" drop-shadow(-1.2px 0 0 rgba(255,122,200,"+ch.toFixed(3)+")) drop-shadow(1.2px 0 0 rgba(77,163,255,"+ch.toFixed(3)+"))";
+    if(k2>.001) flt+=" blur("+(9*k2).toFixed(2)+"px)";
+    setStyle(head,"hf","filter",flt);
+    setStyle(ink,"hx","--v9-hx",(100-100*sm(FX.IGN,FX.IGN+FX.SWEEP,f)).toFixed(1)+"%");
+    setStyle(head,"htr","transform",k2>.001?"translateY(calc(-50% + "+((FR.cy-FR.hy)*k2).toFixed(1)+"px)) scale("+(1-.97*k2).toFixed(3)+")":"");
+  }
 }
 
 /* ---- one frame -------------------------------------------------------------------- */
@@ -8055,6 +8330,7 @@ function render(t,c,prog){
   if(!gl||gl.isContextLost()) return;
   sizes();
   overlays(t,c);
+  if(c>=TL.FRONT-.3) frontPrep();
   var cam=camera(c), M=Math.min(VW,VH), asp=VW/VH, pre=c<0?sm(-TL.PRE,0,c):1, px=DPR, u, u2;
   var o=project(cam,[0,0,0]);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cv.width,cv.height);
@@ -8080,16 +8356,18 @@ function render(t,c,prog){
   var fire=.9*sm(.06,.3,c)*(1-sm(.9,1.4,c)), plasma=.85*sm(.5,1.2,c)*(1-sm(1.9,2.5,c)), cool=sm(.3,2.6,c);
   var cmb=.75*sm(1.85,2.35,c)*(1-sm(2.45,2.88,c));
   var hgt=Math.abs(dot([cam.pos[0]-HOME[0],cam.pos[1]-HOME[1],cam.pos[2]-HOME[2]],cross(HE1,HE2)));
-  var neb=.65*sm(5,6.2,c)*(1-sm(7,7.9,c)), band=.9*sm(7.4,8.5,c), hd=.9*sm(5.0,6.2,c)*sm(.015,.12,hgt);
+  var fq=c-TL.FRONT;   /* the frontier's seconds: the band and the Sun go as the camera pulls away */
+  var neb=.65*sm(5,6.2,c)*(1-sm(7,7.9,c)), band=.9*sm(7.4,8.5,c)*(1-sm(.1,.6,fq)), hd=.9*sm(5.0,6.2,c)*sm(.015,.12,hgt);
   var S=sunAt(c), ps=project(cam,S), dS=Math.max(1e-4,Math.hypot(S[0]-cam.pos[0],S[1]-cam.pos[1],S[2]-cam.pos[2]));
-  var sunI=sm(6.9,8.2,c), sunR=cl(.62*Math.pow(.08/dS,.6),.02,.85);
+  var sunI=sm(6.9,8.2,c)*(1-sm(.42,.6,fq)), sunR=cl(.62*Math.pow(.08/dS,.6),.02,.85);
   var jumpFade=1-sm(TL.JUMP+.12,TL.JUMP+TL.FADE,c);
   /* --- field pass, half resolution: the early program, the late one, or (between them) a clear --- */
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbo); gl.viewport(0,0,FBW,FBH); gl.disable(gl.BLEND);
   var early=bloom>1e-4||streak>1e-4||shellI>1e-4||fire>1e-4||plasma>1e-4||cmb>1e-4,
       late=neb>1e-4||hd>1e-4||band>1e-4||(ps.z>0&&sunI>1e-4);
+  var front=c>=TL.FRONT?frontNeeds(c):0;
   gl.bindBuffer(gl.ARRAY_BUFFER,bufT); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);   /* the composite draws it too */
-  if(!early&&!late){ gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); }
+  if(!early&&!late&&!front){ gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); }
   [early&&FPA,late&&FPB].forEach(function(F,k){ if(!F) return;
     if(k&&early){ gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE); }   /* never both, but they would add */
     gl.useProgram(F.p); u=F.u;
@@ -8109,6 +8387,7 @@ function render(t,c,prog){
     gl.uniform4f(u.u_sun,ps.z>0?ps.x*asp*ss:0,ps.z>0?ps.y*ss:-9,sunR,ps.z>0?sunI:0);
     gl.drawArrays(gl.TRIANGLES,0,3);
   });
+  if(front) frontField(c,asp,M,jumpFade,front,early||late);
   gl.disable(gl.BLEND);
   /* --- composite to the screen --- */
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cv.width,cv.height);
@@ -8139,14 +8418,21 @@ function render(t,c,prog){
     }
   }
   /* --- the Sun's system --- */
-  var po=sm(7.95,8.75,c)*(1-sm(TL.JUMP,TL.JUMP+.35,c)), list=[];
+  /* the frontier: the solar system recedes into a point at the centre (the gate ignites there), leaving
+     fading copies of itself behind as it shrinks, so it streaks inward */
+  function sse(q){ return SSS*Math.exp(-3.3*sm(0,FX.PULL,q)); }
+  var SSE=sse(fq), po=sm(7.95,8.75,c)*(1-sm(.3,.62,fq)), list=[], ghosts=[], NGH=fq>0&&fq<FX.PULL+.1?5:0;
   if(po>.001&&BUILT){
     gl.useProgram(OP.p); u=OP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufO); only(1); gl.vertexAttribPointer(0,4,gl.FLOAT,false,16,0);
     gl.uniformMatrix4fv(u.u_vp,false,cam.vp); gl.uniform3fv(u.u_S,S); gl.uniform3fv(u.u_e1,ECL.e1); gl.uniform3fv(u.u_e2,ECL.e2);
-    gl.uniform3fv(u.u_F,cam.F); gl.uniform4f(u.u_o,SSS,po,px,c*.012);
+    gl.uniform3fv(u.u_F,cam.F);
+    for(var gk=NGH;gk>=1;gk--){ gl.uniform4f(u.u_o,sse(fq-gk*.035),po*.3*(1-gk/(NGH+1)),px,c*.012); gl.drawArrays(gl.POINTS,0,W.NO); }
+    gl.uniform4f(u.u_o,SSE,po,px,c*.012);
     gl.drawArrays(gl.POINTS,0,W.NO);
-    PLAN.forEach(function(p){ var th=p.ph+c*p.sp*.25, wpos=add(add(S,ECL.e1,SSS*p.a*Math.cos(th)),ECL.e2,SSS*p.a*Math.sin(th));
-      var pp=project(cam,wpos); if(pp.z>0) list.push({p:p,pp:pp}); });
+    var plist=function(sc,li,out){ PLAN.forEach(function(p){ var th=p.ph+c*p.sp*.25, wpos=add(add(S,ECL.e1,sc*p.a*Math.cos(th)),ECL.e2,sc*p.a*Math.sin(th));
+      var pp=project(cam,wpos); if(pp.z>0) out.push({p:p,pp:pp,sc:sc,li:li}); }); };
+    plist(SSE,po,list);
+    for(gk=NGH;gk>=1;gk--) plist(sse(fq-gk*.035),po*.35*(1-gk/(NGH+1)),ghosts);
     list.sort(function(a,b){ return b.pp.z-a.pp.z; });
   }
   /* --- the bang's first instant, the Sun and its planets, back to front --- */
@@ -8157,22 +8443,86 @@ function render(t,c,prog){
     gl.uniform4f(u2.u_q,0,br2,(.3+.6*pre)*(1-sm(-.09,.01,c)),.16); gl.uniform3f(u2.u_c1,.95,.97,1); gl.uniform3f(u2.u_c2,.7,.75,1);
     quad(u2,o.x,o.y,cr2*14,14);
   }
-  function planet(it){ var p=it.p, pp=it.pp, rad=SSS*p.sz*1.3*cam.foc/pp.z*DPR, lx=(ps.x-pp.x)*asp, ly=ps.y-pp.y, ll=Math.hypot(lx,ly)||1;
+  function planet(it){ var p=it.p, pp=it.pp, rad=it.sc*p.sz*1.3*cam.foc/pp.z*DPR, lx=(ps.x-pp.x)*asp, ly=ps.y-pp.y, ll=Math.hypot(lx,ly)||1;
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
-    gl.uniform4f(u2.u_q,1,po,0,p.ring?1:0); gl.uniform3fv(u2.u_c1,p.cc[0]); gl.uniform3fv(u2.u_c2,p.cc[1]); gl.uniform3fv(u2.u_c3,p.cc[2]);
+    gl.uniform4f(u2.u_q,1,it.li,0,p.ring?1:0); gl.uniform3fv(u2.u_c1,p.cc[0]); gl.uniform3fv(u2.u_c2,p.cc[1]); gl.uniform3fv(u2.u_c3,p.cc[2]);
     gl.uniform3fv(u2.u_at,p.ac); gl.uniform2f(u2.u_ld,lx/ll,ly/ll); gl.uniform1f(u2.u_bd,p.bd);
     var span=p.ring?2.3:1.42; quad(u2,pp.x,pp.y,rad*span,span); }
+  ghosts.forEach(planet);
   var li=0;
   while(li<list.length&&list[li].pp.z>ps.z){ planet(list[li]); li++; }
   if(sunI>.001&&ps.z>0){
-    var scr=cl(.17*SSS*cam.foc/ps.z,1.6,40)*DPR;
+    var scr=cl(.17*SSE*cam.foc/ps.z,1.6,40)*DPR;
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_COLOR);
     gl.uniform4f(u2.u_q,0,sunI*(.92+.08*Math.sin(t*1.7))*jumpFade,.2,.12); gl.uniform3f(u2.u_c1,1,.96,.86); gl.uniform3f(u2.u_c2,1,.62,.28);
     quad(u2,ps.x,ps.y,scr*12,12);
   }
   for(;li<list.length;li++) planet(list[li]);
+  if(c>=TL.FRONT) frontier(c,jumpFade);
   gl.disable(gl.BLEND);
   cv.style.opacity=c>TL.JUMP?jumpFade.toFixed(3):"";
+}
+/* ---- the frontier's draws ------------------------------------------------------------- */
+/* its layout follows the fonts; its targets are sampled once the title has settled, before the frontier */
+function frontPrep(){ if(FR.relayout){ FR.relayout=false; frontLayout(); } if(!FR.key) sampleHead(); }
+function sp2(x,y){ var asp=VW/VH, s=1/Math.min(asp,1); return [(2*x/VW-1)*asp*s,(1-2*y/VH)*s]; }
+function gateR(f){ var ig=sm(FX.GATE,FX.GATE+.55,f), ob=ig<=0?0:1+2.70158*Math.pow(ig-1,3)+1.70158*Math.pow(ig-1,2);
+  return FR.R*ob*(1+.1*sm(FX.COLL,FX.END,f)); }
+/* 1: the pull-away's field (until the shockwave has gone), 2: the glows (the sweep's flare, the collapse) */
+function frontNeeds(c){ var f=c-TL.FRONT;
+  return (f<FX.GATE+1.55?1:0)|((f>FX.IGN&&f<FX.IGN+FX.SWEEP)||f>FX.COLL?2:0); }
+function frontField(c,asp,M,jf,need,drawn){
+  if(need&1){ if(drawn){ gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE); } frontPass(XFA,c,asp,M,jf); drawn=true; }
+  if(need&2){ if(drawn){ gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE); } frontPass(XFG,c,asp,M,jf); }
+}
+function frontPass(P,c,asp,M,jf){
+  var f=c-TL.FRONT, u=P.u, half=M/2, kc=sm(FX.COLL,FX.END,f), fs=f-FX.GATE-.04, pc=sp2(FR.cx,FR.cy);
+  gl.useProgram(P.p);
+  gl.uniform2f(u.u_res,FBW,FBH); gl.uniform1f(u.u_asp,asp);
+  gl.uniform4f(u.u_fr,f,0,0,0);
+  gl.uniform4f(u.u_pc,pc[0],pc[1],Math.max(gateR(f),FR.R*.2)/half,0);
+  gl.uniform4f(u.u_sl,1.1*sm(.04,.42,f)*(1-sm(.62,1.05,f)),0,0,0);
+  gl.uniform4f(u.u_sk,fs>0?.04+2.6*(1-Math.exp(-2.6*fs)):0,(.01+.04*sm(0,1,fs))*(480/half),fs>0?1.3*Math.exp(-1.7*fs)*sm(0,.05,fs)*(1-sm(1.,1.5,fs)):0,1.2/half);
+  gl.uniform4f(u.u_fl,Math.exp(-Math.pow((f-FX.GATE-.04)/.06,2)),0,.9*kc*kc*(1-.7*sm(FX.END-.1,FX.END+.35,f))*jf,0);
+  var p=sm(FX.IGN,FX.IGN+FX.SWEEP,f), bx=FR.L+(1.5-2*(1-p))*(FR.Rt-FR.L), l1=sp2(bx,FR.lines[0]||0), l2=FR.lines.length>1?sp2(bx,FR.lines[1])[1]:-99;
+  gl.uniform4f(u.u_af,l1[0],l1[1],l2,f>FX.IGN&&f<FX.IGN+FX.SWEEP?.95*Math.pow(Math.sin(Math.PI*p),1.5):0);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+function frontier(c,jf){
+  var f=c-TL.FRONT, px=DPR, cw=cv.width, ch=cv.height, kc=sm(FX.COLL,FX.END,f), u;
+  /* the gate: a box round it, snapped to device pixels, holding a copy of the frame behind it */
+  if(f>FX.GATE-.02&&jf>.001){
+    var Rg=gateR(f), B=Math.min(FR.R*1.9,FR.cx-2,FR.cy-2,VW-FR.cx-2,VH-FR.cy-2), w=Math.max(2,Math.round(2*B*px));
+    var x0=cl(Math.round(FR.cx*px-w/2),0,cw-w), y0=cl(Math.round((VH-FR.cy)*px-w/2),0,ch-w);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,ltex);
+    gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGB,x0,y0,w,w,0);
+    gl.disable(gl.BLEND);
+    gl.useProgram(XPP.p); u=XPP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufQ); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+    gl.uniform1i(u.u_bt,0);
+    gl.uniform4f(u.u_box,(x0+w/2)/cw*2-1,(y0+w/2)/ch*2-1,w/cw,w/ch); gl.uniform1f(u.u_span,w/2);
+    gl.uniform4f(u.u_pt,Rg*px,w/2,.85*sm(FX.GATE,FX.GATE+.6,f),px);
+    gl.uniform4f(u.u_pl,sm(FX.GATE-.02,FX.GATE+.06,f)*(1+1.8*Math.exp(-Math.pow((f-FX.GATE-.07)/.07,2)))*(1+1.1*kc)*jf,
+      sm(FX.GATE+.1,FX.GATE+.65,f)*(.9+.7*kc)*jf,1.7*sm(FX.GATE+.3,FX.GATE+.6,f)*(1-.4*sm(FX.LOCK-.1,FX.LOCK+.2,f))*(1+1.2*kc)*jf,
+      1.4*kc*kc*(1-.7*sm(FX.END-.1,FX.END+.35,f))*jf);
+    gl.uniform4f(u.u_pm,f,f*1.3+2.5*kc*kc,sm(FX.GATE+.05,FX.GATE+.7,f)*(1+1.3*kc)*jf,0);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  }
+  /* the particle headline, then the sparks of its ignition */
+  if(bufX&&FR.n&&jf>.001){
+    var ds=f>FX.LAUNCH-.05&&f<FX.OUT+.05, dk=FR.ns&&f>FX.IGN+FX.SWEEP*.3&&f<FX.IGN+FX.SWEEP+.9;
+    if(ds||dk){
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_COLOR);
+      gl.useProgram(TPP.p); u=TPP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufX); only(3);
+      gl.vertexAttribPointer(0,4,gl.FLOAT,false,40,0); gl.vertexAttribPointer(1,4,gl.FLOAT,false,40,16); gl.vertexAttribPointer(2,2,gl.FLOAT,false,40,32);
+      gl.uniform2f(u.u_vs,cw,ch);
+      gl.uniform4f(u.u_o,FR.cx-VW/2,VH/2-FR.cy,gateR(f),1.);
+      gl.uniform4f(u.u_tt,FX.LAUNCH,FX.SPREAD,FX.FLY,FX.FLYV);
+      gl.uniform4f(u.u_tk,FX.LOCK,FX.OUT,FX.IGN+FX.SWEEP*.33,FX.SWEEP*.34);
+      gl.uniform4f(u.u_hx,FR.L-VW/2,FR.Rt-VW/2,0,0);
+      if(ds){ gl.uniform4f(u.u_f,f,0,1.15*jf,px); gl.drawArrays(gl.TRIANGLES,0,FR.n*6); }
+      if(dk){ gl.uniform4f(u.u_f,f,1,1.2*jf,px); gl.drawArrays(gl.TRIANGLES,FR.n*6,FR.ns*6); }
+    }
+  }
 }
 
 /* ---- running the film ------------------------------------------------------------- */
@@ -8229,8 +8579,8 @@ function finish(){
   document.removeEventListener("visibilitychange",onVis); removeEventListener("resize",onResize);
   cv.removeEventListener("webglcontextlost",onLost,false);
   if(gl&&!gl.isContextLost()){
-    [bufP,bufL,bufO,bufT,bufQ].forEach(function(b){ if(b) gl.deleteBuffer(b); });
-    if(tex) gl.deleteTexture(tex); if(fbo) gl.deleteFramebuffer(fbo);
+    [bufP,bufL,bufO,bufT,bufQ,bufX].forEach(function(b){ if(b) gl.deleteBuffer(b); });
+    if(tex) gl.deleteTexture(tex); if(ltex) gl.deleteTexture(ltex); if(fbo) gl.deleteFramebuffer(fbo);
     PROGS.forEach(function(o){ gl.deleteProgram(o.p); o.s.forEach(function(s){ gl.deleteShader(s); }); });
     lose(); }
   gl=null; if(cv.parentNode) cv.parentNode.removeChild(cv);
@@ -8243,8 +8593,8 @@ function revealed(){
 /* the GPU went away: give the loading screen back, as it was, to the v5 drift and jump */
 function giveUp(){
   if(dead||st.ended) return; dead=true; if(raf){ cancelAnimationFrame(raf); raf=0; }
-  unmark(); box.classList.remove("v9"); [cv,capBox,btn].forEach(function(el){ if(el.parentNode) el.parentNode.removeChild(el); });
-  [title,trackEl,stepEl].forEach(function(el){ if(el) ["opacity","filter","letter-spacing"].forEach(function(k){ el.style.removeProperty(k); }); });
+  unmark(); box.classList.remove("v9"); [cv,capBox,btn,head].forEach(function(el){ if(el.parentNode) el.parentNode.removeChild(el); });
+  [title,trackEl,stepEl].forEach(function(el){ if(el) ["opacity","filter","letter-spacing","font-size","top","transform"].forEach(function(k){ el.style.removeProperty(k); }); });
   window.OMNI_SKY_PAUSE=false;
   removeEventListener("keydown",onKey); box.removeEventListener("pointerdown",onDown);
   if(st.skipReq) H5.skip();
@@ -8268,7 +8618,7 @@ window.OMNI_SKY_PAUSE=true;
 box.classList.add("v9");
 var warpC=box.querySelector("canvas.warp"); if(warpC) warpC.setAttribute("aria-hidden","true");
 box.insertBefore(cv,warpC?warpC.nextSibling:box.firstChild);
-box.appendChild(capBox); box.appendChild(btn);
+box.appendChild(head); box.appendChild(capBox); box.appendChild(btn);
 btn.addEventListener("click",skip);
 addEventListener("keydown",onKey); box.addEventListener("pointerdown",onDown);
 document.addEventListener("visibilitychange",onVis); addEventListener("resize",onResize);
@@ -8284,8 +8634,8 @@ window.OMNI_WARP=function(boxEl,done){
 setTimeout(function(){ if(!dead&&!st.ended){ upload(); st.builtAt=+clock(performance.now()).toFixed(3); go(); } },0);
 
 function phaseOf(t){ var c=cAt(t); return c<-TL.PRE?"before time":c<TL.LIGHT?"big bang":c<TL.WEB?"first light":c<TL.GAL?"cosmic web":
-  c<TL.HOME?"galaxies":c<TL.TITLE?"home":c<TL.JUMP?"title":"jump"; }
-window.OMNI_INTRO={active:true,T:TL.P0+TL.JUMP/SPEED+TL.REVEAL,TL:TL,SPEED:SPEED,phase:phaseOf,
+  c<TL.HOME?"galaxies":c<TL.TITLE?"home":c<TL.FRONT?"title":c<TL.JUMP?"frontier":"jump"; }
+window.OMNI_INTRO={active:true,T:TL.P0+TL.JUMP/SPEED+TL.REVEAL,TL:TL,FX:FX,SPEED:SPEED,phase:phaseOf,
   at:function(t){ if(dead||st.ended) return "ended"; st.frozen=true; st.frozenAt=+t||0; if(raf){ cancelAnimationFrame(raf); raf=0; }
     upload(); render(st.frozenAt,cAt(st.frozenAt),Math.min(1,st.frozenAt/1.6)); return phaseOf(st.frozenAt); },
   play:function(){ if(!st.frozen) return; st.frozen=false; T0=performance.now()-st.frozenAt*1000; hiddenMs=0; st.lastNow=0;
@@ -8293,7 +8643,8 @@ window.OMNI_INTRO={active:true,T:TL.P0+TL.JUMP/SPEED+TL.REVEAL,TL:TL,SPEED:SPEED
     if(st.bootDone&&st.skipReq) quick(); else go(); },
   skip:skip,
   stats:function(){ return {N:W.N,glints:W.NG,glows:W.NW,sparks:W.NS,orbit:W.NO,dpr:Q.dpr,fieldScale:Q.fs,frac:Q.frac,soft:soft,
-    steps:steps,gl2:GL2,init:+TINIT.toFixed(3),bootAt:st.bootAt,builtAt:st.builtAt,tBang:st.tBang,hiddenMs:Math.round(hiddenMs),frames:st.frames}; }};
+    steps:steps,gl2:GL2,init:+TINIT.toFixed(3),bootAt:st.bootAt,builtAt:st.builtAt,tBang:st.tBang,hiddenMs:Math.round(hiddenMs),frames:st.frames,
+    textParticles:FR.n,sparks2:FR.ns,headLines:FR.two?2:1,headPx:+FR.hs.toFixed(1)}; }};
 if(qAt) window.OMNI_INTRO.at(+qAt[1]);
 else go();
 })();}catch(e){ unmark(); throw e; }   /* a failure while taking over must not leave the loading screen hidden */
@@ -8346,8 +8697,8 @@ canvas.burst{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none
    v9: the opening (see #v9-intro-js). While #boot carries .v9 a WebGL universe
    (canvas.v9-gl) plays over the loading screen; the v5 starfield (canvas.warp)
    waits underneath for the jump. The title, the progress hairline, the step
-   label, a cosmic clock and a Skip button sit on top; the script sets their
-   opacity from the same clock as the frames.
+   label, a cosmic clock, the frontier's headline and a Skip button sit on top;
+   the script sets their opacity from the same clock as the frames.
    ═════════════════════════════════════════════════════════════════════════ */
 #boot.v9{background:#020309}
 #boot.v9 canvas.v9-gl{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;pointer-events:none}
@@ -8381,6 +8732,24 @@ canvas.burst{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none
 #boot.v9 .v9-skip:focus-visible{color:#eef2ff;border-color:rgba(200,190,255,.7);box-shadow:0 0 0 3px rgba(150,130,255,.32)}
 #boot.v9.v9-jump .v9-skip{pointer-events:none}
 #boot.v9-quick.done{transition:opacity .4s ease,visibility .4s ease}
+/* the frontier's headline, under the gate (the title above it becomes its eyebrow): the display face in the
+   masthead's starlight-to-violet, with a light-sweep layer the script moves along (--v9-hx) */
+#boot.v9 .v9-head{position:absolute;left:0;right:0;top:var(--v9-hcy,70%);transform:translateY(-50%);z-index:3;margin:0;
+  text-align:center;white-space:nowrap;opacity:0;pointer-events:none;will-change:opacity,filter,transform}
+#boot.v9 .v9-ink{display:inline-block;font-family:var(--display);font-weight:600;font-size:var(--v9-hs,64px);
+  line-height:1.04;letter-spacing:-.03em!important;color:#eef2ff}
+#boot.v9 .v9-head.two .v9-ink span{display:block}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  #boot.v9 .v9-ink{color:transparent;-webkit-text-fill-color:transparent;background-repeat:no-repeat;
+    background-image:linear-gradient(100deg,rgba(158,203,255,0) 40%,rgba(255,122,200,.5) 44%,rgba(158,203,255,.95) 47%,#fff 50%,rgba(184,164,255,.95) 53%,rgba(77,163,255,.5) 56%,rgba(184,164,255,0) 60%),
+      linear-gradient(100deg,#fff 0%,#eef4ff 40%,#e3ecff 74%,#cfc2ff 84%,#b8a4ff 100%);
+    background-size:300% 100%,100% 100%;background-position:var(--v9-hx,100%) 0,0 0;-webkit-background-clip:text;background-clip:text}
+}
+@media (forced-colors:active){ #boot.v9 .v9-ink{color:CanvasText;-webkit-text-fill-color:CanvasText;background:none} }
+/* reduced motion: no film; the plain loader carries the frontier's words, still, its title as the eyebrow */
+#boot.v9-still .bt{font-size:12.5px;letter-spacing:.3em!important;color:#aab6d6;margin:0 0 12px}
+#boot.v9-still .v9-still-h{margin:0 0 24px;font-family:var(--display);font-weight:600;font-size:clamp(28px,4.2vw,40px);
+  line-height:1.06;letter-spacing:-.03em!important;color:#eef2ff}
 @media(max-width:520px){
   #boot.v9 .v9-cap span{font-size:10px;letter-spacing:.2em!important}
   #boot.v9 .v9-skip{font-size:11.5px;padding:7px 12px}
