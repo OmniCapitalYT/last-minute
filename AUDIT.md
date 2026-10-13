@@ -891,3 +891,85 @@ At the owner's request the full loop ran once more, aimed at making the page "ev
 A last round on the finished build (55d0c17), recorded in AUDIT_FINDINGS.md: a numbers auditor found every figure on both tabs equal to the model in more than ten varied states, including every figure the UI work repeats; a claims auditor's one confirmed finding was the optimizer card folding away the walk-away price's "range / close to a tie" and "test the market" qualifiers (the note is no longer folded); a fresh-eyes UI review found an invisible Tab stop, the focal label overhanging the planet on phones and a reference pill past the phone gutter. All fixed in 381ba6c; the stale "allow these hosts" note in the still-judgment ledger was corrected in 61c642e. A frame-timing comparison in this GPU-less container found the final build within noise of the original page (both 2–4 fps headless with software rendering), so the UI work added no material rendering cost; smoothness on real devices, and Safari and Firefox, are untested here.
 
 Tests at 381ba6c: `node tests/model.test.js` 7,468 pass; `node tests/browser.inputs.js` and `node tests/browser.sweep.js` pass. `node tests/fuzz.test.js 1500` last passed at 77c65b3 (173,364 checks); no model code has changed since.
+
+## The owner's four requests after the UI work, October 2026
+
+The owner sent four requests, with screenshots of the probe and the status row:
+- "make the two tabs look visually different. colors are enough but maybe some other stuff too"
+- "if i scroll quickly, the scroll indicator on the left side should always keep up smoothly- it should not lag behind or teleport"
+- "make the opening animation absolutely brilliant and stunning- it should be an entire universe animation and last 10+ seconds. (although just keep the current animation when travelling between tabs)"
+- "remove this block of text entirely" (the masthead status row)
+
+No number, model equation or existing sentence changed. The model source the tests load is byte-for-byte the same as at a884f41.
+
+### The masthead status row (712e4b7)
+The row under the masthead is removed, together with every rule that styled it, in eleven places in the stylesheets, including the phone layouts from UI round 3. The row read "Value, risk, timing · Fitted", "Transactions fitted · 60,141" and "Closing odds · Market aggregate". The tab bar keeps a clear gap under the masthead's last line at 1440, 1100, 820, 390 and 360 px.
+
+The R3-1 test pinned the row's labels and its typed total. It now checks that the row, the old "Close and timing" label and the typed total stay gone. The same total is still on the page, computed from the two fitted samples, in the Data tab's tally.
+
+### The probe on the mission line (712e4b7)
+- **Cause.** A scroll listener moved the probe with a transform on the main thread. Browsers scroll on the compositor thread, so in a fast scroll the page moved first and carried the probe with it. The probe was corrected only on the next main-thread frame, and after a busy frame it jumped back.
+- **Fix.** The probe is now `position:sticky` (top 42vh) inside a rail as tall as the column. The compositor holds it at the reading position in the same frame as the scroll, and there is no scroll listener.
+- **Checks.**
+  - At 41 scroll offsets from top to bottom, the sticky probe sits where the old formula placed it, including the bottom clamp. The largest difference is 0.00 px.
+  - With the main thread blocked for 2.5 s during a wheel scroll, the old probe was carried 300 px off its line and then snapped back. The new one stayed at the reading position in all 56 compositor frames.
+
+### Two tabs, two places (611419f)
+- **Console.** Unchanged. With the animated canvases hidden it is pixel-identical at 1440, 390 and 360 px, both on first load and after a round trip to the Data tab. The computed styles of 11,389 elements and pseudo-elements are unchanged.
+- **Data & parameters becomes the observatory.**
+  - **Sky:** a deep blue-teal sky with a cyan-teal nebula, and a faint RA/Dec graticule that turns slowly. It is drawn in the existing sky shader, with no new loop. The drawn sky layers are seen through a cold filter.
+  - **Masthead and tab bar:** an ice-cyan accent on the title's last word, a cold monochrome orrery and a cyan limb under the tabs. The tab bar is teal with a cyan active pill.
+  - **Panels and section heads:** blue-teal glass panels with corner registration marks like a photographic star plate. The section heads get reticles round their planets, graduated rules and squared catalogue labels.
+  - **Other details:** a ruler scale replaces the dashed gutter line, equation plates sit on plotting paper, and the foot of the page has a cold dawn.
+- **Provenance colours keep their meaning.** No new decoration uses green, amber or coral. No badge, dot, tally figure, tally bar, tier planet or tier rim is recoloured.
+- **Switching.**
+  - The tab handler sets `html[data-tab]` in the same step that swaps the views, at the flash of the tab warp; the warp itself is unchanged.
+  - The sky shader eases between the two skies over about a second. Under reduced motion it draws the new sky once.
+  - Quick back-and-forth clicks always land on the tab clicked last.
+
+### The opening: an entire universe (babf090, 20a2e30)
+A WebGL film plays over the loading screen on every load, then hands over to the existing jump into the console.
+
+The film, in film time (which runs 6% faster than the wall clock):
+- **Before time** (while the console boots): a breathing point of light that brightens with the loading progress. Only one small quad is drawn while the boot runs. The bang waits for three things: the boot to finish, 1.9 s from navigation, and 1.3 s of the point on screen.
+- **Big Bang** (0–1.15 s):
+  - The point swells into a brief, soft white-out, never a disc.
+  - A thin, turbulent shell sweeps past the frame edges in about half a second. It is brightest at its rim and runs white-hot to gold to orange, with red leading blue by at most 3 device px.
+  - Hot debris streaks outward and past the camera, cooling from blue-white to red.
+- **First light** (1.15–2.85 s): three smooth layers of plasma drift outward at different rates, from crimson to white-gold. They resolve into a fine speckle like the cosmic microwave background, which fades as the universe turns transparent.
+- **Cosmic web and first stars** (2.85–4.8 s): matter slides onto filaments and nodes in 3D. The nodes have halos, there is a faint azure-violet gas glow, and the first stars ignite with glints.
+- **Galaxies** (4.8–6.6 s): spirals and ellipticals form and turn, nebulae bloom, and the camera flies past two galaxies.
+- **Home** (6.6–8.45 s): a dive into one spiral and through an arm to the Milky Way band. There, the Sun and five planets on thin orbits echo the masthead's solar system.
+- **Title** (8.3–9.45 s): "The Omni Method" resolves under the Sun.
+- **Jump:** the unchanged hyperspace jump, with the Sun as its core star. Reveal and arrival run 1.85 s in, as before, onto the masthead's solar system. With a quick boot the console is revealed about 12.7 s after navigation.
+
+Captions mark the time:
+- "13.8 billion years ago"
+- "380,000 years · first light"
+- "200 million years · the first stars"
+- "1 billion years · galaxies"
+- "9.2 billion years · the Sun"
+- "13.8 billion years · today"
+
+They are hidden from screen readers. The loading steps are still announced.
+
+How it is built:
+- **Rendering.** Every frame is a pure function of time, so a dropped frame skips ahead instead of slowing the film. Particles carry seeds and are moved in the vertex shader by a time uniform, so no per-particle work runs on the CPU after setup. The plasma, nebulae, galactic disc and Milky Way are an fbm pass into a half-resolution buffer, compiled as two programs (bang and first light; galaxies and home) so that neither pays for the other's branches. Composite, point sprites, spark lines, orbit points and quads for the Sun and planets follow.
+- **Load.** Stars scale with the viewport: 88,128 at 1440×900, 96,000 at 1920×1080 and 30,000 on phones. Resolution is capped at a pixel ratio of 1.5 and about 4.2 M device pixels. If the median frame exceeds 26 ms, quality steps down twice: to 60% of the particles, then to pixel ratio 1 with a smaller field.
+- **The app behind it.** The boot steps run unchanged behind the first phase. The page's own sky (the v3 loop driver and the render code's WebGL sky) stands still while the film covers it, and resumes at the jump. At the end the film releases its GPU context, buffers and programs.
+- **Skip.** A "Skip intro" button, Esc, Enter, Space or a click. A skip before the boot ends waits for it, then fades out in 0.4 s. Reveal and arrival run exactly once on every path.
+- **Fallbacks.**
+  - Without WebGL, after a shader failure, or on a lost GPU context, the previous drift and jump run.
+  - Under reduced motion, a plain fade.
+  - The tab-switch, reset and industry-change warps are untouched.
+- **First paint.** A mark set before the loading screen first paints keeps the old title, bar and drift hidden until the film takes over, so a load opens on the dark void. The film removes the mark wherever it stands aside. Where a browser offers the WebGL API but refuses a context, the old loader therefore appears about half a second later than before.
+- **Checks.**
+  - Frozen frames at 1440×900 and 390×844, every 0.5 s through the film, every 0.15 s through the bang and first light, and every 0.03 s through the bang.
+  - Real-time runs with WebGL2, WebGL1, no WebGL, reduced motion, skip (early, mid-film and during the jump) and a lost context (early and mid-film). All had no errors, one reveal and one arrival.
+  - 16 shaders compile and 8 programs link with empty logs.
+  - A screencast from navigation shows no loader flash.
+  - The frozen-frame hook is `window.OMNI_INTRO.at(t)` or `?introAt=t`.
+- **Not measured here.** This container has no GPU: WebGL runs on a software renderer at 2–4 fps (140–370 ms per frame at full quality). So the frame rate on real hardware, and the behaviour in Safari and Firefox, are untested. The adaptive steps above are the safeguard.
+
+### Tests
+At 49f3969: `node tests/model.test.js` 7,468 pass; `node tests/browser.inputs.js` (15 checks) and `node tests/browser.sweep.js` (118 input states at 1440 and 390 px, no horizontal overflow, no NaN) pass; `node tests/fuzz.test.js 1500` 173,364 checks pass. One test changed: R3-1, as above. The browser tests now wait about 13 s longer per page load while the film plays; their 90 s boot timeout is unchanged.
