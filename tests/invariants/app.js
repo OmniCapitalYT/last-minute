@@ -88,7 +88,7 @@ function expect(s0){
   const rRep=A.model(A.applyAll(t,r,["reprice"]));
   return {s,t,r,optRho,rhoSell,bs,rA,rq,askOpt,sA,askPts,poolPts,loss,poolLoss,rSell,rKeep,note,best,uRho,cnote,sn,it,allKeys,rAll,cAll,gap,rRep};
 }
-const intRow=(o,V)=>({c:o.c?money(o.c,0):"no capital",
+const intRow=(o,V)=>({c:o.c?A.moneyIn(o.c):"no capital",
   dV:Math.abs(o.dV)<V*1e-4?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2),
   dE:(o.dE>=0?"+":"−")+money(Math.abs(o.dE),2),
   dP:Math.abs(o.dP)<5e-4?"—":pp(o.dP),
@@ -516,7 +516,7 @@ function checkState(name,st,askTyped,S,E){
       &&tx.o_gapu.startsWith("from "+tx.o_msv),ctx({eq:e,o_gap:tx.o_gap,o_gapu:tx.o_gapu,gap:g})); }
   { const bi=E.it.find(o=>o.c>0), e=eq.eq_rs||"", row=S.intbl.find(x=>x[0]===bi.n)||[];
     const want=(bi.roi<0?"-":"")+Math.abs(bi.roi*100).toFixed(0)+"%";
-    const sq=seqIn(e,[bi.n,dm(money(bi.dE,2)),dm(money(bi.c,2)),dm(money(bi.c,2)),"="+want]);
+    const sq=seqIn(e,[bi.n,dm(money(bi.dE,2)),dm(A.moneyIn(bi.c)),dm(A.moneyIn(bi.c)),"="+want]);
     ok("eq-roi-substitution",sq.ok&&dm(row[6]||"")===want&&E.it.filter(o=>o.c>0)[0]===bi,ctx({missing:sq.missing,eq:e,row})); }
   { const eo=eq.eq_os||"", eu=eq.eq_us||"", bV=E.best.V, bU=E.best.U, c1=S.cards[0], c2=S.cards[1];
     const sqo=seqIn(eo,["B="+dm(A.moneyIn(s.budget)),"2^{11}=2,048","commits "+dm(A.moneyIn(bV.c)),"proceeds "+dm(money(bV.proceeds))]);

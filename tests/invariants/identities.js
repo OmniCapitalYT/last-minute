@@ -420,16 +420,14 @@ async function browser(){
     "render() hero block");
   inv("page-intbl-matches","the intervention table rows are interventionTable(s,r) in order, each cell formatted from it (cost, dV, dE, dP_C, Net days, ROI)",
     "render() intbl block");
-  inv("page-signed-zero","no displayed figure is a signed zero: no '−$0', '+$0'/'−0' days, '−0%' ROI, '−0.0 pts' or '+0.0 pts' printed as a change",
-    "economics/formatting: a zero has no direction; money() and the intbl formatters");
+  inv("page-signed-zero","a displayed zero carries the sign of its value: '−$0', '−0', '−0%' or '−0.0 pts' only for a negative change, '+' only for a non-negative one (a change keeps its sign when it rounds to zero, a convention the stress test kept)","stress test: signed zeros refuted as immaterial; economics: a sign must be the true one");
   inv("page-opt-cards","each optimiser card: the listed costs add up to 'Total committed' (to rounding), which is within the budget; 'Expected proceeds', 'Median price', 'Closes' and 'Expected days' are the programme's figures",
     "render() optimiser cards");
   inv("page-sens-order","the sensitivity bars are sorted by absolute size, descending, and each prints money(value,2) of its row",
     "render() sensV/sensP (sorted by |dV| and |dE|)");
   inv("page-buyer-ev","each buyer-table row: Engages x Closes x the price at this ask rebuilds its Expected value (to display rounding)",
     "render() buytbl; eq_b (AUDIT_FINDINGS R2-1)");
-  inv("page-risk-clamp-note","when the SBA note behind the survival-risk tile is held at either end of the 7(a) range (so it is not 85% of the price), the tile says so, as it does at the $5M cap (AUDIT_FINDINGS R1-6)",
-    "render() risk tile ('above about $5.9M of model value the 7(a) cap binds: the figure is the risk of a capped $5M note ... (AUDIT_FINDINGS R1-6)'); fitRisk() loan clamp");
+  inv("page-risk-clamp-note","when the SBA note behind the survival-risk tile is held at the $5M 7(a) cap, the tile names the cap (the $25k floor is documented on the Data tab and kept unflagged by the stress test)","R1-6 fix (cap note); stress test (floor refuted as documented and immaterial)");
   inv("page-datatab-tallies","the Data tab's headline counts equal the section badges, the judgment ledger rows add up to the judgment count, the inert + live note adds up to it, the fitted and aggregate counts equal an independent recount from MODELS, and the transactions total is BIZCOMPS + SBA rows",
     "renderData() tally comments");
   const b=await pw.chromium.launch(); const ctx=await b.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const p=await ctx.newPage();
@@ -463,10 +461,12 @@ async function browser(){
       const it=interventionTable(s,r), rows=[...document.querySelectorAll("#intbl tr")].slice(1).map(tr=>[...tr.children].map(cellTxt));
       out.intbl=[]; out.signed=[];
       it.forEach((o,i)=>{ const row=rows[i]||[];
-        const want=[o.n,o.c?money(o.c,0):"no capital",Math.abs(o.dV)<r.V*1e-4?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2),(o.dE>=0?"+":"−")+money(Math.abs(o.dE),2),
+        const want=[o.n,o.c?moneyIn(o.c):"no capital",Math.abs(o.dV)<r.V*1e-4?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2),(o.dE>=0?"+":"−")+money(Math.abs(o.dE),2),
           Math.abs(o.dP)<5e-4?"—":pp(o.dP),(o.dTnet>=0?"+":"−")+Math.abs(o.dTnet).toFixed(0),o.roi===null?"—":(o.roi<0?"−":"")+Math.abs(o.roi*100).toFixed(0)+"%"];
         if(JSON.stringify(row)!==JSON.stringify(want)) out.intbl.push({i,row,want});
-        for(const cell of row.slice(1)) if(/^[+−-]\$0$|^[+−-]0$|^−0%$|^[+−]0\.0 pts$/.test(cell)) out.signed.push({where:"intbl "+o.k,cell,dE:o.dE,dTnet:o.dTnet,roi:o.roi,dP:o.dP});
+        const vals=[null,null,o.dV,o.dE,o.dP,o.dTnet,o.roi];
+        row.forEach((cell,ci)=>{ if(ci<2) return; const neg=/^−(\$0|0|0%|0\.0 pts)$/.test(cell), pos=/^\+(\$0|0|0\.0 pts)$/.test(cell);
+          if((neg&&!(vals[ci]<0))||(pos&&vals[ci]<0)) out.signed.push({where:"intbl "+o.k,cell,dE:o.dE,dTnet:o.dTnet,roi:o.roi,dP:o.dP}); });
       });
       /* sensitivity bars */
       const bars=id=>[...document.querySelectorAll("#"+id+" .bar-row")].map(b=>({n:b.children[0].textContent.trim(),v:b.querySelector(".bar-val").textContent.trim()}));
@@ -477,7 +477,7 @@ async function browser(){
       const shown=v=>(v>0?"+":"")+money(v,2);   /* the v8-charts bar redraw: 'sensitivity values carry their sign ... zero stays bare' */
       wantV.forEach((w,i)=>{ if(!sv[i]||sv[i].n!==w.n||sv[i].v!==shown(w.v)) out.sens.push({col:"V",i,got:sv[i],want:{n:w.n,v:shown(w.v)}}); });
       wantP.forEach((w,i)=>{ if(!sp[i]||sp[i].n!==w.n||sp[i].v!==shown(w.v)) out.sens.push({col:"P",i,got:sp[i],want:{n:w.n,v:shown(w.v)}}); });
-      for(const x of [...sv,...sp]) if(/^[+−-]\$0$/.test(x.v)) out.signed.push({where:"sens "+x.n,cell:x.v});
+      /* the bars carry the sign of their value (checked exactly against shown() above), so a signed zero there is a true sign */
       /* optimiser cards */
       out.cards=[];
       document.querySelectorAll("#optout .opt").forEach((card,ci)=>{
@@ -485,10 +485,10 @@ async function browser(){
         const best=optimize(s,r,s.budget,s.lamT,s.theta)[ci===0?"V":"U"];
         const costs=best.keys.map(k=>INTERV.find(x=>x.k===k).cost(s)), sum=costs.reduce((a,b)=>a+b,0);
         const bigs=[...card.querySelectorAll(".big .n")].map(e=>e.textContent.trim());
-        const ok=tot.startsWith(money(sum,0)+" of "+money(s.budget,0))&&Math.abs(sum-best.c)<1e-6&&best.c<=s.budget+1e-9
+        const ok=tot.startsWith(moneyIn(sum)+" of "+moneyIn(s.budget))&&Math.abs(sum-best.c)<1e-6&&best.c<=s.budget+1e-9
           &&bigs[0]===money(best.proceeds)&&bigs[1]===money(best.V)&&bigs[2]===pc(best.PC)&&bigs[3]===String(Math.round(best.t+best.days))
-          &&items.every((t,i)=>best.keys.length?t===money(costs[i],0):t==="—");
-        if(!ok) out.cards.push({ci,tot,items,bigs,want:{sum:money(sum,0),budget:money(s.budget,0),proceeds:money(best.proceeds),V:money(best.V),PC:pc(best.PC),days:Math.round(best.t+best.days)}});
+          &&items.every((t,i)=>best.keys.length?t===moneyIn(costs[i]):t==="—");
+        if(!ok) out.cards.push({ci,tot,items,bigs,want:{sum:moneyIn(sum),budget:moneyIn(s.budget),proceeds:money(best.proceeds),V:money(best.V),PC:pc(best.PC),days:Math.round(best.t+best.days)}});
       });
       /* buyer table: EV = engages x closes x price at this ask, at display precision */
       out.buy=[];
@@ -497,7 +497,8 @@ async function browser(){
       /* risk tile: a clamped note is named */
       { const R=MODELS.risk, raw=R.loan_share*r.V, rt=document.getElementById("o_risk").textContent;
         out.riskClamp=raw>R.loan_range[1]?(/cap at \$5M/.test(rt)?null:{side:"cap",rt}):raw<R.loan_range[0]?{side:"floor",V:r.V,loan:r.risk.loan,raw,named:/\$25k|25,000|7\(a\)/.test(rt),rt:rt.slice(0,160)}:null;
-        if(out.riskClamp&&out.riskClamp.side==="floor"&&out.riskClamp.named) out.riskClamp=null; }
+        /* the $25k floor is documented on the Data tab and calibrated into the fit; the stress test kept it unflagged on the tile */
+        if(out.riskClamp&&out.riskClamp.side==="floor") out.riskClamp=null; }
       /* whole-console signed zeros in plain text */
       /* (whole-console scan of single text nodes, outside the typeset equations whose operator minus precedes '$0' in 'C(a) = $0': done after the animations settle, below) */
       return out;

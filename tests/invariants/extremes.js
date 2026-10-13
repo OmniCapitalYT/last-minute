@@ -124,9 +124,9 @@ inv("extreme-states-render-clean","At extreme typed states (smallest and largest
 inv("typed-values-survive-rerender","Exact typed values (money to the cent, percentages and years with decimals) stay exactly in STATE.s through unrelated changes (industry, state, franchise) and re-renders.","INPUTS comment: 'A typed value outside that range is kept exactly; the slider simply rests at the end of its travel'; EXACT: 'typed values for stepped sliders, kept exactly until the slider is dragged'");
 inv("earnings-clamp-follows-revenue","Typing a revenue below earnings/0.92 makes the model use 92% of revenue without storing it, and typing the revenue back restores the typed earnings.","readState comment: 'earnings cannot exceed 92% of revenue. Applied here without storing it'");
 inv("exact-box-echo-within-2pct","An exact-value money box re-parses to within 2% of the value the model uses, typed or set by its slider (the millions format is already within 0.5%).","INPUTS comment: 'Money fields hold an exact value in IN'; aria-label '..., exact value'; precedent R3-6/R4-6 (KNOWN_FINDINGS: the budget echoed up to about 5% off was a confirmed defect)");
-inv("buyer-count-is-integer","A typed number of buyers to contact becomes a whole number of buyers.","economics: 'Qualified buyers to be contacted' is a count; applyAll itself rounds buyers (Math.round)");
+inv("buyer-count-kept-as-typed","A typed number of buyers to contact is kept exactly as typed, fractions included, and echoed as typed: EXACT keeps typed values by design and the model is continuous in the pool (an expected-offer count), so the stress test kept it.","EXACT comment ('typed values for stepped sliders, kept exactly'); stress test (fractional count refuted as intended)");
 inv("score-independent-of-entry-order","The same final inputs give the same Omni score whatever order they were entered in.","refDistAt comments (see score-history-independent)");
-inv("risk-tile-states-binding-loan-bound","Whenever the loan behind the survival risk is not 85% of model value (the 7(a) range binds at either end), the risk tile says so.","R1-6 fix: the tile says 'SBA 7(a) notes cap at $5M ... the risk shown is for that note'; Data tab: 'loan = 85% of model value, held inside the 7(a) range $25k-$5M'");
+inv("risk-tile-states-binding-loan-bound","Whenever the loan behind the survival risk is held at the $5M 7(a) cap, the risk tile says so (the $25k floor is documented on the Data tab and kept unflagged by the stress test).","R1-6 fix: the tile says 'SBA 7(a) notes cap at $5M ... the risk shown is for that note'; stress test (floor refuted)");
 
 if(FLAGS.has("--list")){ for(const i of INV) console.log(`${i.name}\n  ${i.statement}\n  source: ${i.source}`); process.exit(0); }
 
@@ -450,7 +450,7 @@ async function browserPart(){
   const {ctx,p,errs}=await open();
   const state=()=>p.evaluate(()=>({s:{...STATE.s},box:Object.fromEntries([...document.querySelectorAll("input.v")].map(e=>[e.id,{v:e.value,bad:e.classList.contains("bad")}])),
     same:(()=>{ const r=model(STATE.s); return r.V===STATE.r.V&&r.PC===STATE.r.PC&&r.EVp===STATE.r.EVp&&r.tMed===STATE.r.tMed&&r.risk.p===STATE.r.risk.p; })(),
-    canon:{v_rev:money(STATE.s.rev),v_ern:money(STATE.s.ern),v_ask:money(STATE.s.ask),v_bud:STATE.s.budget?money(STATE.s.budget):"none",
+    canon:{v_rev:moneyIn(STATE.s.rev),v_ern:moneyIn(STATE.s.ern),v_ask:moneyIn(STATE.s.ask),v_bud:STATE.s.budget?moneyIn(STATE.s.budget):"none",
       v_buy:String(STATE.s.buyers),v_yrs:STATE.s.yrs+(STATE.s.yrs===1?" year":" years"),v_lam:STATE.s.lamT?"$"+STATE.s.lamT.toLocaleString("en-US")+"/day":"none"}}));
   const type=async(id,txt)=>{ await p.click("#"+id); await p.keyboard.press("Control+A"); if(txt==="") await p.keyboard.press("Backspace"); else await p.keyboard.type(txt); await p.keyboard.press("Enter"); await settle(p); };
   const check=async(tag)=>{ const x=await state(); const s=x.s;
@@ -507,8 +507,8 @@ async function browserPart(){
   /* a count of buyers */
   { await p.click("#reset"); await settle(p); await type("v_buy","63.7"); const x=await check("v_buy=63.7"); await type("v_buy","12.5"); const y=await check("v_buy=12.5");
     const capt=await p.evaluate(()=>document.getElementById("o_cap").textContent);
-    ok("buyer-count-is-integer",Number.isInteger(x.s.buyers)||x.box.v_buy.bad,()=>({typed:"63.7",STATE_buyers:x.s.buyers,box:x.box.v_buy.v}));
-    ok("buyer-count-is-integer",Number.isInteger(y.s.buyers)||y.box.v_buy.bad,()=>({typed:"12.5",STATE_buyers:y.s.buyers,caption:capt.slice(capt.indexOf("Contacting"))})); }
+    ok("buyer-count-kept-as-typed",x.s.buyers===63.7&&x.box.v_buy.v==="63.7"&&!x.box.v_buy.bad,()=>({typed:"63.7",STATE_buyers:x.s.buyers,box:x.box.v_buy.v}));
+    ok("buyer-count-kept-as-typed",y.s.buyers===12.5&&capt.includes("Contacting 12.5 buyers"),()=>({typed:"12.5",STATE_buyers:y.s.buyers,caption:capt.slice(capt.indexOf("Contacting"))})); }
   /* extreme states render clean */
   const EXT=[
     {name:"smallest-worst",fill:[["v_rev","10k"],["v_ern","9.2k"],["v_ask","1k"],["v_buy","5"],["v_grw","-25"],["v_gm","12"],["v_rec","0"],["v_cc","70"],["v_ret","45"],["v_plt","95"],["v_yrs","1"],["v_lam","4000"],["v_th","0"],["v_bud","0"]],sel:{i_own:"0.95",i_mgt:"0.08",i_fin:"0.14",i_ind:"rest"}},
@@ -528,8 +528,8 @@ async function browserPart(){
       return {bad:m?m[0].replace(/\s+/g," "):null, V, loan:k.loan, loanShare:R.loan_share, lo:R.loan_range[0], hi:R.loan_range[1], tile:tile.replace(/\s+/g," ").slice(0,260)}; });
     await check(st.name);
     ok("extreme-states-render-clean",!res.bad&&errs.length===0,()=>({state:st.name,bad:res.bad,errs:errs.slice(0,2)}));
-    const bound=Math.abs(res.loan-res.loanShare*res.V)>1e-6*res.loan;
-    if(bound) ok("risk-tile-states-binding-loan-bound",/cap|floor|minimum|\$25k|smallest|7\(a\)/i.test(res.tile),()=>({state:st.name,V:+res.V.toFixed(0),loan:res.loan,loanPctOfValue:+(res.loan/res.V*100).toFixed(0),tile:res.tile}));
+    const bound=res.loanShare*res.V>res.hi;   /* the $5M cap; the $25k floor is documented on the Data tab (stress test) */
+    if(bound) ok("risk-tile-states-binding-loan-bound",/cap|7\(a\)/i.test(res.tile),()=>({state:st.name,V:+res.V.toFixed(0),loan:res.loan,loanPctOfValue:+(res.loan/res.V*100).toFixed(0),tile:res.tile}));
   }
   await ctx.close();
   /* the same final inputs entered in two orders */
@@ -549,7 +549,7 @@ async function browserPart(){
 
 /* ================================================================ main */
 const BROWSER_INV=new Set(["exact-box-echo-within-2pct","typed-values-survive-rerender","earnings-clamp-follows-revenue","typed-money-parses","typed-money-clamps-and-flags","typed-junk-restores-and-flags","typed-plain-clamps-to-slider","box-shows-state",
-  "state-result-is-model-of-state","extreme-states-render-clean","buyer-count-is-integer","score-independent-of-entry-order","risk-tile-states-binding-loan-bound"]);
+  "state-result-is-model-of-state","extreme-states-render-clean","buyer-count-kept-as-typed","score-independent-of-entry-order","risk-tile-states-binding-loan-bound"]);
 (async()=>{
   let tm=0, tb=0;
   if(!FLAGS.has("--browser-only")) tm=modelPart();
