@@ -1557,6 +1557,10 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
 }
 </style>
 
+<!-- v9 opening: mark <html> before the loading screen first paints, so its old title, bar and drift stay
+     hidden until the film (#v9-intro-js) takes over; that script takes the mark off wherever it stands aside -->
+<style id="v9-film">html.v9-film #boot:not(.v9) .bx,html.v9-film #boot:not(.v9) canvas.warp{visibility:hidden}</style>
+<script id="v9-film-js">try{if(window.WebGLRenderingContext&&!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches))document.documentElement.classList.add("v9-film")}catch(e){}</script>
 <div id="boot" role="status" aria-live="polite"><div class="bx">
   <p class="bt">The Omni Method</p>
   <div class="track"><div class="fill" id="boot-bar"></div></div>
@@ -7311,10 +7315,13 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
    singularity has been on screen for 1.3 s.
      before time   phase 0      a breathing singularity with a faint gravitational
                                 shimmer; it gathers light with the loading bar
-     big bang      c 0 - 1.15   flare, white-hot flash, spherical shock, sparks;
-                                blue-white cooling through gold and orange to red
-     first light   1.15 - 2.85  the plasma fills the frame, mottled like the
-                                microwave background, and cools to darkness
+     big bang      c 0 - 1.15   a point of extreme light whose bloom swells and fades,
+                                a turbulent incandescent shell sweeping past the frame,
+                                hot debris streaking out in perspective past the lens,
+                                cooling from blue-white through gold and orange to red
+     first light   1.15 - 2.85  layers of plasma swelling outward as space expands round
+                                the camera; they resolve into a fine microwave-background
+                                speckle, which turns transparent onto the first faint web
      cosmic web    2.85 - 4.8   matter slides onto filaments and nodes (a slowly
                                 turning web); the first stars ignite with glints
      galaxies      4.8 - 6.6    the nodes fall into turning spirals and
@@ -7330,9 +7337,12 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
    frame skips ahead instead of slowing the film down. The particles carry seeds,
    a place on the cosmic web and a place in their galaxy; the vertex shader moves
    them between those with the time uniform, so nothing is done per particle on
-   the CPU after the world is built. Plasma, nebulae, the home galaxy's disc, the
-   Milky Way band and the Sun's glow are one fbm pass into a half-resolution
-   buffer. While the boot runs (phase 0) only one small quad is drawn.
+   the CPU after the world is built. The bang, the plasma, nebulae, the home
+   galaxy's disc, the Milky Way band and the Sun's glow are one noise pass into a
+   half-resolution buffer, compiled as two programs (the bang and first light;
+   the galaxies and home) so that neither pays for the other's noise on a
+   renderer that runs every branch; between them the buffer is only cleared.
+   While the boot runs (phase 0) only one small quad is drawn.
 
    Debug hook, for contact sheets and tests:
      window.OMNI_INTRO = { active, T, at(t), play(), skip(), phase(t), stats() }
@@ -7345,13 +7355,20 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
      full quality on a software renderer.
    Without WebGL (or if a shader fails) this layer stands aside and the v5 drift
    and jump run as before; under prefers-reduced-motion the plain fade runs.
+   A small script just before #boot marks <html> with .v9-film when the film is
+   likely to run, which keeps the old title, bar and drift hidden from the first
+   paint until the film takes over; every path where this layer stands aside or
+   gives up takes the mark off again (unmark), so the old loader shows as before.
    ═════════════════════════════════════════════════════════════════════════ */
 (function(){
+/* the loading screen shows as before: the old title, bar and drift are no longer held back for the film */
+function unmark(){ try{ document.documentElement.classList.remove("v9-film"); }catch(e){} }
+try{(function(){
 "use strict";
 var box=document.getElementById("boot"), H5=window.OMNI_INTRO2D;
 var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 window.OMNI_INTRO={active:false};
-if(!box||reduce||!H5||!window.Float32Array||!window.requestAnimationFrame) return;
+if(!box||reduce||!H5||!window.Float32Array||!window.requestAnimationFrame){ unmark(); return; }
 var qs=location.search||"", qAt=/[?&]introAt=([0-9.]+)/.exec(qs), FULL=!!qAt||/[?&]introQ=1/.test(qs);
 
 /* ---- timeline (seconds; P0 and PRE in t, the rest in c) ------------------- */
@@ -7370,7 +7387,7 @@ var cv=document.createElement("canvas"); cv.className="v9-gl"; cv.setAttribute("
 var CA={alpha:false,antialias:false,depth:false,stencil:false,premultipliedAlpha:true,preserveDrawingBuffer:false};
 var gl=null;
 try{ gl=cv.getContext("webgl2",CA)||cv.getContext("webgl",CA)||cv.getContext("experimental-webgl",CA); }catch(e){ gl=null; }
-if(!gl) return;
+if(!gl){ unmark(); return; }
 var GL2=typeof WebGL2RenderingContext!=="undefined"&&gl instanceof WebGL2RenderingContext, soft=false;
 try{ var dbg=gl.getExtension("WEBGL_debug_renderer_info");
   soft=/swiftshader|llvmpipe|software|basic render/i.test(dbg?gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL):""); }catch(e){}
@@ -7447,11 +7464,15 @@ void main(){
     col=mix(col,mix(vec3(.86,.92,1.),col,.35*kg),on);
     g=on*(.55+1.8*fl);
     sz=mix(sz,(6.+18.*fl+5.*s3)*u_px.x*clamp(sqrt(u_px.w/d),.8,2.2),on);
+    b*=1.+.35*(1.-kg)*on; g*=1.+.3*(1.-kg);                /* a touch brighter while the web stands */
   }
   b*=dim;
   if(kind>1.5){
-    /* soft glows: web-node halos, galaxy bulges, spiral-arm clouds, sized by their width in the world */
-    float wr=a_l.w>1.5?.42:.5, ga=(a_l.w>1.5?.06:.10)*kc*(1.-kg);
+    /* soft glows: web-node halos (larger round the best-connected nodes), gas along the filaments,
+       galaxy bulges, spiral-arm clouds; all sized by their width in the world */
+    float wr=.3+.55*a_l.x, ga=(.035+.12*a_l.x*a_l.x*a_l.x)*kc*(1.-kg);
+    if(a_l.w>1.5){ wr=.42; ga=.06*kc*(1.-kg); }
+    if(a_l.w>2.5){ wr=.5; ga=.028*kc*(1.-kg); }
     col=mix(vec3(.46,.40,1.),vec3(.30,.56,1.),s1);
     if(cls>5.5){ wr=g0.w*(a_l.w>3.5?.8:.46); ga=.30*kg; col=a_l.w>3.5?vec3(1.,.78,.55):vec3(1.,.84,.64); }
     if(cls>6.5){ wr=g0.w*.2; ga=.12*kg; col=a_l.w>2.5?vec3(1.,.42,.74):vec3(.48,.60,1.); }
@@ -7479,22 +7500,51 @@ void main(){
   } else a=exp(-r2*3.2)*(1.-r2);
   gl_FragColor=vec4(v_c*(a*v_a),1.);
 }`;
-/* sparks of the bang: short streaks, tail to head */
-var LV=`precision highp float;
-attribute vec4 a_s; attribute float a_e;
-uniform mat4 u_vp; uniform vec4 u_t;
-varying vec3 v_c; varying float v_a;
+/* the bang's debris: hot matter flying out in perspective, each piece a velocity-stretched streak (two
+   triangles from where it was a short shutter ago to where it is, as wide as the piece looks at its
+   distance), so the fast ones smear, the near ones swell, and some pass the lens */
+var BV=`precision highp float;
+attribute vec4 a_s; attribute vec2 a_k;
+uniform mat4 u_vp; uniform vec4 u_t;   /* c, light, device px per css px, focal (device px) */
+uniform vec2 u_vs;                     /* canvas size, device px */
+uniform float u_sr;                    /* the shell's radius on screen, in half short sides */
+varying vec3 v_c; varying float v_a; varying vec4 v_g;
 `+HEAT+`
+float hs(float n){ return fract(sin(n*12.9898)*43758.5453); }
+vec3 at(vec3 p0,vec3 dir,float sp,float t){ return p0+dir*(sp/1.6)*(1.-exp(-1.6*t)); }
 void main(){
-  float c=u_t.x, ct=a_s.y*2.-1., ph=a_s.x*6.2831853, st=sqrt(max(0.,1.-ct*ct));
-  float sp=6.+23.*a_s.z*a_s.z, tl=max(c-(1.-a_e)*(.025+.07*a_s.z*a_s.w),0.);
-  float rr=sp*(1.-exp(-tl*1.5))/1.5;
-  v_c=heat(exp(-max(c,0.)*(1.5+1.2*a_s.w)));
-  v_a=(.1+.9*a_e)*(.45+.55*a_s.w)*smoothstep(0.,.03,c)*(1.-smoothstep(.45,1.+.3*a_s.w,c))*u_t.y;
-  gl_Position=u_vp*vec4(vec3(st*cos(ph),ct,st*sin(ph))*rr,1.);
+  float c=u_t.x, s0=a_s.x, s1=a_s.y, s2=a_s.z, s3=a_s.w;
+  float ct=s1*2.-1., ph=s0*6.2831853, st=sqrt(max(0.,1.-ct*ct));
+  vec3 dir=vec3(st*cos(ph),ct,st*sin(ph));
+  /* most of it leaves in ragged jets rather than an even spray, a share comes straight at the lens,
+     and the pieces leave a fireball over a few hundredths of a second, not a point at one instant */
+  float ci=floor(s0*48.);
+  if(fract(s0*48.)<.65){ float jc=hs(ci)*2.-1., jp=hs(ci+.37)*6.2831853, js=sqrt(max(0.,1.-jc*jc));
+    dir=normalize(vec3(js*cos(jp),jc,js*sin(jp))+(vec3(s1,fract(s1*17.3),fract(s2*29.7))-.5)*.38); }
+  if(s3<.22) dir=normalize(dir+vec3(0.,.05,1.7));
+  float sp=3.+27.*s2*s2, f7=fract(s3*13.7), te=c-.07*f7*f7;
+  vec3 p0=dir*(.1+.3*fract(s3*7.31));
+  float t1=max(te,0.), t0=max(te-.03,0.);
+  vec4 h=u_vp*vec4(at(p0,dir,sp,t1),1.), q=u_vp*vec4(at(p0,dir,sp,t0),1.);
+  v_c=vec3(0.); v_a=0.; v_g=vec4(0.);
+  if(te<=0.||h.w<.06||q.w<.06){ gl_Position=vec4(0.,0.,2.,1.); return; }
+  vec2 hp=h.xy/h.w*u_vs*.5, qp=q.xy/q.w*u_vs*.5, dv=hp-qp;
+  float L=length(dv); vec2 ax=L>.01?dv/L:vec2(1.,0.), nx=vec2(-ax.y,ax.x);
+  float rad=clamp(.011*u_t.w/h.w,.8*u_t.z,30.*u_t.z);
+  vec2 P=mix(qp,hp,a_k.x)+nx*a_k.y*rad+ax*(a_k.x*2.-1.)*rad;
+  gl_Position=vec4(P/(u_vs*.5),0.,1.);
+  v_g=vec4(a_k.x*(L+2.*rad)-rad,a_k.y*rad,L,rad);
+  v_c=heat(exp(-1.6*t1)*(.72+.32*s3));                 /* it cools as it slows */
+  /* the near pieces carry the light; the far ones are a fine dust, and none crowd the core */
+  float rc=length(hp)/(.5*min(u_vs.x,u_vs.y));
+  v_a=u_t.y*(.06+1.5*s2*s2*s2*s2)*sqrt(2.*rad/(2.*rad+L))*clamp(16./(h.w*h.w),.12,3.)*smoothstep(.1,.42,rc)
+     *smoothstep(.08,.2,c)*(1.-smoothstep(.5,1.1+.25*s3,c))*max(smoothstep(.75*u_sr,1.05*u_sr,rc),.22*smoothstep(.35,.7,c));
 }`;
-var LF=FH+`varying vec3 v_c; varying float v_a;
-void main(){ gl_FragColor=vec4(v_c*v_a,1.); }`;
+var BF=FH+`varying vec3 v_c; varying float v_a; varying vec4 v_g;
+void main(){
+  float s=clamp(v_g.x,0.,v_g.z), dd=length(vec2(v_g.x-s,v_g.y))/max(v_g.w,.001);
+  gl_FragColor=vec4(v_c*(v_a*exp(-dd*dd*2.6)*(.3+.7*(v_g.z>.5?s/v_g.z:1.))),1.);
+}`;
 /* the Sun's system: thin orbits and the belt, sampled as fine points */
 var OV=`precision highp float;
 attribute vec4 a_o;
@@ -7517,14 +7567,17 @@ void main(){ vec2 p=gl_PointCoord*2.-1.; float r2=dot(p,p); if(r2>1.) discard;
 var SV=`precision highp float;
 attribute vec2 a_q; varying vec2 v_uv;
 void main(){ v_uv=a_q*.5+.5; gl_Position=vec4(a_q,0.,1.); }`;
-/* the field: flash and shock, plasma, nebulae, the home galaxy's disc, the Milky Way band, the Sun's glow */
+/* the field: the bang's bloom and shell, plasma and its last light (V9_EARLY); nebulae, the home galaxy's
+   disc, the Milky Way band and the Sun's glow (V9_LATE) */
 var FF=FH+`uniform vec2 u_res; uniform float u_asp;
 uniform vec3 u_R; uniform vec3 u_U; uniform vec3 u_F; uniform vec2 u_tan;
 uniform vec4 u_tm;   /* c, clock, -, - */
 uniform vec2 u_ctr;
-uniform vec4 u_bang; /* flash, shock radius, shock light, fireball */
-uniform vec3 u_shc; uniform float u_strk;
+uniform vec4 u_bang; /* bloom energy, shell radius, shell light, fireball light */
+uniform vec4 u_bl;   /* bloom radii (middle, wide), colour split, refraction */
+uniform float u_strk;
 uniform vec4 u_pl;   /* plasma light, cooling, -, - */
+uniform vec4 u_cmb;  /* microwave-background light, -, -, - */
 uniform vec4 u_neb;
 uniform vec4 u_hd;   /* home disc light, its turn (spin), -, - */
 uniform vec3 u_hp; uniform vec3 u_h1; uniform vec3 u_h2;
@@ -7536,35 +7589,82 @@ float fbm(vec3 p){ float s=.5*vn(p); p=p*2.03+vec3(1.7,9.2,3.1); s+=.25*vn(p); p
   s+=.125*vn(p); p=p*2.02+vec3(2.9,4.4,.6); return s+.0625*vn(p); }
 float fb3(vec3 p){ float s=.5*vn(p); p=p*2.03+vec3(1.7,9.2,3.1); s+=.25*vn(p); p=p*2.01+vec3(5.3,1.1,7.7);
   return (s+.125*vn(p))*1.0667; }
-vec3 heatc(float x){ vec3 c=vec3(.10,.008,.004);
-  c=mix(c,vec3(.55,.06,.025),smoothstep(0.,.32,x));
-  c=mix(c,vec3(1.,.30,.06),smoothstep(.28,.58,x));
-  c=mix(c,vec3(1.,.64,.24),smoothstep(.55,.82,x));
-  return mix(c,vec3(1.,.9,.72),smoothstep(.8,1.,x)); }
+/* the bang and first light use gradient noise with a quintic fade, octaves turned against each other:
+   smooth, with no lattice showing */
+vec3 hg(vec3 p){ p=fract(p*vec3(.1031,.1030,.0973)); p+=dot(p,p.yxz+33.33); return fract((p.xxy+p.yxx)*p.zyx)*2.-1.; }
+float gn(vec3 p){ vec3 i=floor(p), f=fract(p), u=f*f*f*(f*(f*6.-15.)+10.);
+  return mix(mix(mix(dot(hg(i),f),dot(hg(i+vec3(1.,0.,0.)),f-vec3(1.,0.,0.)),u.x),
+                 mix(dot(hg(i+vec3(0.,1.,0.)),f-vec3(0.,1.,0.)),dot(hg(i+vec3(1.,1.,0.)),f-vec3(1.,1.,0.)),u.x),u.y),
+             mix(mix(dot(hg(i+vec3(0.,0.,1.)),f-vec3(0.,0.,1.)),dot(hg(i+vec3(1.,0.,1.)),f-vec3(1.,0.,1.)),u.x),
+                 mix(dot(hg(i+vec3(0.,1.,1.)),f-vec3(0.,1.,1.)),dot(hg(i+vec3(1.,1.,1.)),f-vec3(1.,1.,1.)),u.x),u.y),u.z); }
+const mat3 ROT=mat3(.00,.80,.60,-.80,.36,-.48,-.60,-.48,.64);
+float fg2(vec3 p){ return .5*gn(p)+.25*gn(ROT*p*2.02); }
+float fg3(vec3 p){ float s=.5*gn(p); p=ROT*p*2.02; s+=.25*gn(p); return s+.125*gn(ROT*p*2.03); }
+/* a spherical shell seen from outside: the light along each line of sight, brightest at its inner limb */
+float shl(float r,float ro,float ri){ return (sqrt(max(ro*ro-r*r,0.))-sqrt(max(ri*ri-r*r,0.)))/sqrt(max(ro*ro-ri*ri,1e-6)); }
+/* plasma by temperature: crimson, orange, gold, white-gold */
+vec3 plc(float T){ vec3 c=vec3(.42,.03,.04);
+  c=mix(c,vec3(.95,.2,.05),smoothstep(.05,.32,T));
+  c=mix(c,vec3(1.,.5,.12),smoothstep(.28,.56,T));
+  c=mix(c,vec3(1.,.76,.3),smoothstep(.52,.82,T));
+  return mix(c,vec3(1.,.92,.72),smoothstep(.8,1.1,T)); }
 void main(){
   /* sp: screen position in half-widths of the short side, so the flash and the Sun keep their size in portrait */
   vec2 uv=gl_FragCoord.xy/u_res, nd=uv*2.-1., sp=vec2(nd.x*u_asp,nd.y)/min(u_asp,1.);
   vec3 dir=normalize(u_F+nd.x*u_tan.x*u_R+nd.y*u_tan.y*u_U);
   vec3 col=vec3(0.);
+#ifdef V9_EARLY
   vec2 d=sp-u_ctr; float r=length(d), c=u_tm.x;
-  if(u_strk>.001) col+=vec3(.78,.86,1.)*exp(-abs(d.y)*90.)*exp(-abs(d.x)*1.6)*u_strk;
-  if(u_bang.x>.001) col+=(vec3(1.,.97,.94)*exp(-r*r*30.)*1.4+vec3(.82,.87,1.)*exp(-r*2.9)*.62+vec3(.7,.78,1.)*exp(-r*.9)*.2)*u_bang.x;
-  float R=u_bang.y, inside=0.;
-  if(u_bang.z>.001){
-    float a=atan(d.y,d.x);
-    float j=(vn(vec3(cos(a)*2.5,sin(a)*2.5,c*1.7))-.5)*.10*R, w=.012+.05*R, dr=r-R-j;
-    float e1=dr-.018*R, e3=dr+.02*R;
-    col+=vec3(exp(-e1*e1/(w*w)),exp(-dr*dr/(w*w)),exp(-e3*e3/(w*w)))*u_shc*u_bang.z;
+  /* the bang and first light gather in hot and are tone-mapped together, so nothing clips to an edge */
+  vec3 hot=vec3(0.);
+  /* the core: a point of extreme light whose bloom swells (three falloffs at very different radii) */
+  if(u_bang.x>.001) hot+=(vec3(.92,.95,1.)*2.4*exp(-r/.011)+vec3(1.,.95,.86)*.95*exp(-r/u_bl.x)
+                         +vec3(1.,.84,.62)*1.3*exp(-r/u_bl.y))*u_bang.x;
+  if(u_strk>.001) hot+=vec3(.78,.86,1.)*exp(-abs(d.y)*130.)*exp(-abs(d.x)*1.8)*u_strk;
+  float inside=0.; vec2 rs=sp;
+  if(u_bang.z>.001&&u_bang.y>.001){
+    /* the shell: a thin turbulent front, brightest at its limb, white-hot on the inside through gold
+       to orange on the outside; red leads blue by a pixel or two at the very edge, and the light
+       behind the front bends a little as it passes */
+    vec2 ad=d/max(r,1e-4);
+    float R0=u_bang.y;
+    /* the point on the front of the sphere this pixel looks at (on the rim beyond it): the turbulence
+       lives on the shell itself, so its face is mottled rather than spoked */
+    vec3 nf=r<R0?vec3(d/R0,sqrt(max(1.-r*r/(R0*R0),0.))):vec3(ad,0.), tq=vec3(c*.7,-c*.5,c*1.3);
+    float R1=R0*(1.+.12*fg2(nf*1.5+tq+vec3(3.1,0.,0.))+.06*fg2(nf*4.4-tq+vec3(0.,5.7,0.)));
+    float Ri=R1*(1.-mix(.07,.17,exp(-R0*1.4))*(.55+1.1*(gn(nf*3.6+tq*1.4+vec3(7.,0.,0.))+.5)));
+    float x=clamp((r-Ri)/max(R1-Ri,1e-4),0.,1.);
+    vec3 sc=r<Ri?mix(vec3(1.,.48,.17),vec3(1.,.84,.58),smoothstep(Ri*.8,Ri,r)):mix(vec3(1.,.9,.7),mix(vec3(1.,.74,.32),vec3(1.,.46,.14),smoothstep(.45,1.,x)),smoothstep(0.,.45,x));
+    float tb=.25+1.3*smoothstep(-.3,.32,fg3(nf*3.3+tq+vec3(d*1.5,0.)))*(.55+.45*pow(1.-abs(gn(nf*5.5+tq*1.2+vec3(d*3.,0.))*2.),3.));   /* the front burns unevenly */
+    hot+=vec3(shl(r,R1+u_bl.z,Ri),shl(r,R1,Ri),shl(r,R1-u_bl.z,Ri))*sc*tb*u_bang.z;
+    hot+=vec3(1.,.6,.25)*exp(-max(r-R1,0.)/(.06+.12*R1))*smoothstep(Ri*.6,R1,r)*.14*u_bang.z;   /* light just ahead of it */
+    inside=smoothstep(R1*1.1,R1*.4,r);
+    rs=sp-ad*.03*u_bang.y*exp(-pow((r-R1)/(.05*u_bang.y+.012),2.))*u_bl.w;
   }
-  if(u_bang.w>.001) inside=smoothstep(R*1.04,R*.72,r)*u_bang.w;
-  float pl=max(inside,u_pl.x);
+  float pl=max(inside*u_bang.w,u_pl.x);
   if(pl>.001){
-    /* the plasma expands, so its mottling grows as it cools */
-    vec3 q=dir*8.5/(1.+.3*max(c-.6,0.))+vec3(0.,0.,c*.12);
-    float v=fbm(q)*.7+fbm(q*.3+5.1)*.45;
-    /* a glow that fills the frame, mottled; as it cools it reddens and the dim spots go out first */
-    col+=heatc(clamp(.56+(v-.54)*1.7-u_pl.y*.62,0.,1.))*pl;
+    /* first light: three layers of plasma, each swelling outward at its own rate as space expands
+       round the camera - a warped glowing body, its filaments, and finer filaments */
+    vec2 q0=rs-u_ctr;
+    vec3 p1=vec3(q0*1.3*exp(-.25*c),1.7+.07*c), p2=vec3(q0*2.8*exp(-.45*c),4.3+.1*c), p3=vec3(q0*6.*exp(-.7*c),9.1+.13*c);
+    vec2 w=vec2(gn(p1+vec3(0.,0.,5.)),gn(p1*1.3+vec3(5.2,1.3,2.8)));
+    float g1=fg3(p1+vec3(w*1.4,0.)), g2=fg3(p2+vec3(w,0.)), g3=gn(p3+vec3(w*.7,0.));
+    float body=smoothstep(-.28,.32,g1);                   /* luminous clouds with deep gaps between */
+    float fil=pow(1.-abs(g2*2.),4.), wisp=pow(1.-abs(g3*2.),6.);
+    float e=body*(.5+.5*smoothstep(-.25,.3,g2))+body*(.55*fil+.25*wisp);
+    float T=clamp(e*(1.-.5*u_pl.y),0.,1.25);
+    hot+=plc(T)*(.12+1.3*T*T)*pl;                         /* brightness climbs with temperature */
   }
+  if(u_cmb.x>.001){
+    /* then the plasma turns transparent: its last light as a fine, faintly uneven speckle, then darkness */
+    vec2 q0=sp-u_ctr; float zc=exp(-.2*c);
+    float v=clamp(.5+.8*gn(vec3(q0*24.*zc,7.7))+.42*gn(vec3(q0*47.*zc,2.9))+.3*gn(vec3(q0*1.3,3.3)),0.,1.);
+    hot+=mix(vec3(.5,.07,.03),vec3(1.,.52,.17),v)*(.5+.5*v)*u_cmb.x;
+  }
+  float hm=max(max(hot.r,hot.g),hot.b);
+  col+=mix(hot*(1.-exp(-hm))/max(hm,1e-4),1.-exp(-hot),smoothstep(1.,3.2,hm));   /* keeps the colour; only the hottest light whitens */
+#endif
+#ifdef V9_LATE
   if(u_neb.x>.001){
     vec3 q=dir*1.7;
     float m=smoothstep(.40,.68,fb3(q*.8+vec3(3.1,7.7,1.3)));
@@ -7615,6 +7715,7 @@ void main(){
     col+=(vec3(1.,.97,.9)*exp(-rs*rs*900.)*1.1+vec3(1.,.8,.45)*exp(-rs*rs*140.)*.75
          +vec3(1.,.58,.22)*exp(-rs*6.)*.38+vec3(.6,.42,1.)*exp(-rs*2.4)*.06)*u_sun.w;
   }
+#endif
   gl_FragColor=vec4(col,1.);
 }`;
 /* composite: the half-resolution field, upscaled, over deep space, with a vignette and dither */
@@ -7698,10 +7799,11 @@ function program(vs,fs,attrs){
   for(var k=0;k<n;k++){ var nm=gl.getActiveUniform(p,k).name; if(nm.slice(-3)==="[0]") nm=nm.slice(0,-3); U[nm]=gl.getUniformLocation(p,nm); }
   var o={p:p,u:U,s:[v,f]}; PROGS.push(o); return o;
 }
-var PP=program(PV,PF,["a_s","a_w","a_l"]), LP=program(LV,LF,["a_s","a_e"]), OP=program(OV,OF,["a_o"]),
-    FP=program(SV,FF,["a_q"]), CP=program(SV,CF,["a_q"]), QP=program(QV,QF,["a_q"]);
+var PP=program(PV,PF,["a_s","a_w","a_l"]), BP=program(BV,BF,["a_s","a_k"]), OP=program(OV,OF,["a_o"]),
+    FPA=program(SV,"#define V9_EARLY 1\n"+FF,["a_q"]), FPB=program(SV,"#define V9_LATE 1\n"+FF,["a_q"]),
+    CP=program(SV,CF,["a_q"]), QP=program(QV,QF,["a_q"]);
 function lose(){ try{ var x=gl.getExtension("WEBGL_lose_context"); if(x) x.loseContext(); }catch(e){} }
-if(!PP||!LP||!OP||!FP||!CP||!QP){ lose(); return; }
+if(!PP||!BP||!OP||!FPA||!FPB||!CP||!QP){ lose(); unmark(); return; }
 
 /* ---- vectors ------------------------------------------------------------------ */
 function d2(a,b){ var x=a[0]-b[0],y=a[1]-b[1],z=a[2]-b[2]; return x*x+y*y+z*z; }
@@ -7737,7 +7839,7 @@ function track(c){
 var VW=Math.max(1,innerWidth), VH=Math.max(1,innerHeight), DPR=1;
 function camera(c){
   var k=track(Math.max(c,-1)), T=[k[0],k[1],k[2]], lnD=k[3], az=k[4], el=k[5], roll=k[6];
-  if(c>0&&c<.6){ var a=.05*Math.exp(-c*6); T=[T[0]+a*Math.sin(c*53),T[1]+a*Math.sin(c*71+1),T[2]]; }   /* the bang shakes the lens */
+  if(c>0&&c<.6){ var a=.016*Math.exp(-c*6); T=[T[0]+a*Math.sin(c*53),T[1]+a*Math.sin(c*71+1),T[2]]; }   /* the bang shakes the lens, under 2 px */
   if(c>TL.JUMP){ var uj=sm(TL.JUMP,TL.JUMP+1.1,c); lnD-=4.2*uj*uj; }                                 /* the jump: into the Sun */
   var D=Math.exp(lnD), ce=Math.cos(el);
   var pos=[T[0]+D*ce*Math.sin(az),T[1]+D*Math.sin(el),T[2]+D*ce*Math.cos(az)];
@@ -7827,10 +7929,13 @@ function build(N){
   /* counts */
   var spirals=GAL.filter(function(G){ return !G.type; }).length;
   var longE=E.filter(function(e){ return e.len>2; });
-  var NG=Math.round(N*.013), NW=nodes.length+longE.length*3+GAL.length+(spirals-1)*4, tot=N+NG+NW;
+  /* faint gas along the densest filaments: those of the home node and of the best-connected pairs */
+  var denseE=E.filter(function(e){ return e.a===0||e.b===0||deg[e.a]+deg[e.b]>=9; }), nGas=0;
+  denseE.forEach(function(e){ e.ng=Math.max(2,Math.round(e.len/.65)); nGas+=e.ng; });
+  var NG=Math.round(N*.013), NW=nodes.length+longE.length*3+nGas+GAL.length+(spirals-1)*4, tot=N+NG+NW;
   var A=new Float32Array(tot*12), at=0;
-  function put(Wp,gi,cls,L){ var o=at*12; at++;
-    A[o]=R(); A[o+1]=R(); A[o+2]=R(); A[o+3]=R();
+  function put(Wp,gi,cls,L,rr){ var o=at*12; at++; rr=rr||R;
+    A[o]=rr(); A[o+1]=rr(); A[o+2]=rr(); A[o+3]=rr();
     A[o+4]=Wp[0]; A[o+5]=Wp[1]; A[o+6]=Wp[2]; A[o+7]=gi+32*cls;
     A[o+8]=L[0]; A[o+9]=L[1]; A[o+10]=L[2]; A[o+11]=L[3]; }
   /* stars: shuffled classes, so any prefix of the buffer is a fair sample (quality steps draw fewer) */
@@ -7850,9 +7955,13 @@ function build(N){
     if(R()<.5){ var n2=pick(dcum,dt); wp=clump(n2,.35); g2=hostOf[n2]; } else { var e2=onEdge(E[pick(cum,tl)]); wp=e2.p; g2=hostOf[e2.end]; }
     var Lg=GAL[g2].type?ellipL():spiralL(GAL[g2].arms,1,.14,0); Lg[3]=5; put(wp,g2,4,Lg); }
   /* glows: web-node halos, bulges, a few arm clouds on the other spirals (the home disc is drawn in the field) */
-  nodes.forEach(function(n,i){ put(n,hostOf[i],5,[0,0,0,1]); });
+  nodes.forEach(function(n,i){ put(n,hostOf[i],5,[Math.min(deg[i],8)/8,0,0,1]); });
   longE.forEach(function(e){ for(var m=0;m<3;m++){ var s=(m+.5+(R()-.5)*.5)/3, A0=nodes[e.a], B0=nodes[e.b];
     put([A0[0]+(B0[0]-A0[0])*s,A0[1]+(B0[1]-A0[1])*s,A0[2]+(B0[2]-A0[2])*s],hostOf[s<.5?e.a:e.b],5,[0,0,0,2]); } });
+  /* (a random stream of its own, so every other star in the world stays where it was) */
+  var R2=rng(0x6A5C0DE);
+  denseE.forEach(function(e){ for(var m=0;m<e.ng;m++){ var s=(m+.5+(R2()-.5)*.6)/e.ng, A0=nodes[e.a], B0=nodes[e.b];
+    put([A0[0]+(B0[0]-A0[0])*s,A0[1]+(B0[1]-A0[1])*s,A0[2]+(B0[2]-A0[2])*s],hostOf[s<.5?e.a:e.b],5,[0,0,0,3],R2); } });
   GAL.forEach(function(G,kk){ put(G.c,kk,6,[0,0,0,G.type?4:0]); });
   GAL.forEach(function(G,kk){ if(G.type||kk===0) return; for(var m=0;m<4;m++){ var L=spiralL(G.arms,1,.12,0); L[3]=R()<.35?3:1; put(G.c,kk,7,L); } });
   /* galaxy uniforms */
@@ -7861,9 +7970,10 @@ function build(N){
     U[o]=G.c[0]; U[o+1]=G.c[1]; U[o+2]=G.c[2]; U[o+3]=G.R;
     U[o+4]=G.e1[0]; U[o+5]=G.e1[1]; U[o+6]=G.e1[2]; U[o+7]=G.spin;
     U[o+8]=G.e2[0]; U[o+9]=G.e2[1]; U[o+10]=G.e2[2]; U[o+11]=G.base; });
-  /* sparks: two vertices each */
-  var NS=Math.round(N*.045), SA=new Float32Array(NS*10);
-  for(k=0;k<NS;k++){ var s0=R(),s1=R(),s2=R(),s3=R(); SA.set([s0,s1,s2,s3,0,s0,s1,s2,s3,1],k*10); }
+  /* the bang's debris: six vertices (two triangles) each; corners run tail 0 to head 1, and across -1 to 1 */
+  var NS=Math.round(N*.045), SA=new Float32Array(NS*36), CO=[0,-1,1,-1,1,1,0,-1,1,1,0,1];
+  for(k=0;k<NS;k++){ var s0=R(),s1=R(),s2=R(),s3=R();
+    for(var v=0;v<6;v++) SA.set([s0,s1,s2,s3,CO[v*2],CO[v*2+1]],(k*6+v)*6); }
   /* orbits and the belt */
   var OA=[];
   PLAN.forEach(function(p){ var n=Math.round(1500*p.a/4.35)+200; for(var m=0;m<n;m++) OA.push(p.a,m/n*6.2831853,0,0); });
@@ -7961,35 +8071,45 @@ function render(t,c,prog){
   }
   /* --- scene values (pure functions of t and c) --- */
   var expand=c<=0?0:(1-Math.exp(-c*2.4))*(1+.03*c);
-  var flash=c<-.02?0:1.8*sm(-.02,.08,c)*Math.exp(-Math.max(c-.08,0)*7);
-  var shockR=c<.05?0:2.3*(1-Math.exp(-(c-.05)*2.1)), shockI=1.3*sm(.04,.1,c)*Math.exp(-Math.max(c-.1,0)*1.6);
-  var hs=Math.exp(-Math.max(c,0)*1.4), shc=[mix(1,.8,hs),mix(.55,.88,hs),mix(.25,1,hs)];
-  var streak=1.4*Math.exp(-Math.pow((c-.03)/.07,2))*sm(-.1,-.03,c);
-  var fire=.8*sm(.04,.25,c)*(1-sm(.9,1.4,c)), plasma=.62*sm(.55,1.25,c)*(1-sm(1.85,2.75,c)), cool=sm(.6,2.6,c);
+  /* the bang: a bloom that swells as it fades (the white-out lasts under 150 ms), then a shell that
+     sweeps past the frame edges in about half a second, with the plasma blooming inside it */
+  var bloom=6*sm(-.03,.025,c)*Math.exp(-Math.max(c-.025,0)*20)+.25*sm(-.02,.05,c)*Math.exp(-Math.max(c,0)*4);
+  var bR2=.05+.15*sm(0,.15,c), bR3=.35+.5*sm(0,.12,c);
+  var shellR=c<=0?0:3*(1-Math.exp(-c*2)), shellI=1.7*sm(.08,.17,c)*Math.exp(-Math.max(c-.17,0)*1.3)*(1-sm(2.4,2.9,c));
+  var refr=sm(.03,.1,c)*(1-sm(.35,.7,c)), streak=.6*Math.exp(-Math.pow((c-.02)/.06,2))*sm(-.1,-.03,c);
+  var fire=.9*sm(.06,.3,c)*(1-sm(.9,1.4,c)), plasma=.85*sm(.5,1.2,c)*(1-sm(1.9,2.5,c)), cool=sm(.3,2.6,c);
+  var cmb=.75*sm(1.85,2.35,c)*(1-sm(2.45,2.88,c));
   var hgt=Math.abs(dot([cam.pos[0]-HOME[0],cam.pos[1]-HOME[1],cam.pos[2]-HOME[2]],cross(HE1,HE2)));
   var neb=.65*sm(5,6.2,c)*(1-sm(7,7.9,c)), band=.9*sm(7.4,8.5,c), hd=.9*sm(5.0,6.2,c)*sm(.015,.12,hgt);
   var S=sunAt(c), ps=project(cam,S), dS=Math.max(1e-4,Math.hypot(S[0]-cam.pos[0],S[1]-cam.pos[1],S[2]-cam.pos[2]));
   var sunI=sm(6.9,8.2,c), sunR=cl(.62*Math.pow(.08/dS,.6),.02,.85);
   var jumpFade=1-sm(TL.JUMP+.12,TL.JUMP+TL.FADE,c);
-  /* --- field pass, half resolution --- */
+  /* --- field pass, half resolution: the early program, the late one, or (between them) a clear --- */
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbo); gl.viewport(0,0,FBW,FBH); gl.disable(gl.BLEND);
-  gl.useProgram(FP.p); u=FP.u;
-  gl.uniform2f(u.u_res,FBW,FBH); gl.uniform1f(u.u_asp,asp);
-  gl.uniform3fv(u.u_R,cam.R); gl.uniform3fv(u.u_U,cam.U); gl.uniform3fv(u.u_F,cam.F); gl.uniform2f(u.u_tan,1/cam.fx,1/cam.fy);
-  gl.uniform4f(u.u_tm,c,t,0,0);
-  var ss=1/Math.min(asp,1);
-  gl.uniform2f(u.u_ctr,o.z>0?o.x*asp*ss:0,o.z>0?o.y*ss:0);
-  gl.uniform4f(u.u_bang,flash,shockR,shockI,fire); gl.uniform3fv(u.u_shc,shc); gl.uniform1f(u.u_strk,streak);
-  gl.uniform4f(u.u_pl,plasma,cool,0,0); gl.uniform4f(u.u_neb,neb,0,0,0);
-  gl.uniform4f(u.u_hd,hd,SPIN_HOME*spinAt(c),0,0);
-  gl.uniform3f(u.u_hp,cam.pos[0]-HOME[0],cam.pos[1]-HOME[1],cam.pos[2]-HOME[2]); gl.uniform3fv(u.u_h1,HE1); gl.uniform3fv(u.u_h2,HE2);
-  gl.uniform4f(u.u_hk,HB,Math.log(.07),IT,RH);
-  var hn=norm(cross(HE1,HE2)), hc=norm([HOME[0]-cam.pos[0],HOME[1]-cam.pos[1],HOME[2]-cam.pos[2]]);
-  gl.uniform4f(u.u_band,hn[0],hn[1],hn[2],band); gl.uniform4f(u.u_hc,hc[0],hc[1],hc[2],0);
-  gl.uniform3fv(u.u_b1,BAND.b1); gl.uniform3fv(u.u_b2,BAND.b2);
-  gl.uniform4f(u.u_sun,ps.z>0?ps.x*asp*ss:0,ps.z>0?ps.y*ss:-9,sunR,ps.z>0?sunI:0);
-  gl.bindBuffer(gl.ARRAY_BUFFER,bufT); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-  gl.drawArrays(gl.TRIANGLES,0,3);
+  var early=bloom>1e-4||streak>1e-4||shellI>1e-4||fire>1e-4||plasma>1e-4||cmb>1e-4,
+      late=neb>1e-4||hd>1e-4||band>1e-4||(ps.z>0&&sunI>1e-4);
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufT); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);   /* the composite draws it too */
+  if(!early&&!late){ gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT); }
+  [early&&FPA,late&&FPB].forEach(function(F,k){ if(!F) return;
+    if(k&&early){ gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE); }   /* never both, but they would add */
+    gl.useProgram(F.p); u=F.u;
+    gl.uniform2f(u.u_res,FBW,FBH); gl.uniform1f(u.u_asp,asp);
+    gl.uniform3fv(u.u_R,cam.R); gl.uniform3fv(u.u_U,cam.U); gl.uniform3fv(u.u_F,cam.F); gl.uniform2f(u.u_tan,1/cam.fx,1/cam.fy);
+    gl.uniform4f(u.u_tm,c,t,0,0);
+    var ss=1/Math.min(asp,1);
+    gl.uniform2f(u.u_ctr,o.z>0?o.x*asp*ss:0,o.z>0?o.y*ss:0);
+    gl.uniform4f(u.u_bang,bloom,shellR,shellI,fire); gl.uniform4f(u.u_bl,bR2,bR3,3/M,refr); gl.uniform1f(u.u_strk,streak);
+    gl.uniform4f(u.u_pl,plasma,cool,0,0); gl.uniform4f(u.u_cmb,cmb,0,0,0); gl.uniform4f(u.u_neb,neb,0,0,0);
+    gl.uniform4f(u.u_hd,hd,SPIN_HOME*spinAt(c),0,0);
+    gl.uniform3f(u.u_hp,cam.pos[0]-HOME[0],cam.pos[1]-HOME[1],cam.pos[2]-HOME[2]); gl.uniform3fv(u.u_h1,HE1); gl.uniform3fv(u.u_h2,HE2);
+    gl.uniform4f(u.u_hk,HB,Math.log(.07),IT,RH);
+    var hn=norm(cross(HE1,HE2)), hc=norm([HOME[0]-cam.pos[0],HOME[1]-cam.pos[1],HOME[2]-cam.pos[2]]);
+    gl.uniform4f(u.u_band,hn[0],hn[1],hn[2],band); gl.uniform4f(u.u_hc,hc[0],hc[1],hc[2],0);
+    gl.uniform3fv(u.u_b1,BAND.b1); gl.uniform3fv(u.u_b2,BAND.b2);
+    gl.uniform4f(u.u_sun,ps.z>0?ps.x*asp*ss:0,ps.z>0?ps.y*ss:-9,sunR,ps.z>0?sunI:0);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  });
+  gl.disable(gl.BLEND);
   /* --- composite to the screen --- */
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cv.width,cv.height);
   gl.useProgram(CP.p); u=CP.u;
@@ -8001,7 +8121,7 @@ function render(t,c,prog){
   var foc=cam.foc*DPR;
   if(BUILT){
     gl.useProgram(PP.p); u=PP.u; attribsP();
-    var vb=.18+1.1*Math.exp(-Math.max(c,0)*2.2), vw=1.15, vg=mix(.8,.9,sm(6.6,8.4,c));
+    var vb=.16+.22*Math.exp(-Math.max(c,0)*2), vw=1.3-.15*sm(4.4,5.2,c), vg=mix(.8,.9,sm(6.6,8.4,c));
     var nearD=Math.exp(mix(Math.log(2.6),Math.log(.13),sm(6.7,8.4,c))), dimD=Math.exp(mix(Math.log(9),Math.log(.5),sm(6.7,8.4,c)));
     gl.uniformMatrix4fv(u.u_vp,false,cam.vp);
     gl.uniform4f(u.u_t,c,spinAt(c),expand,t);
@@ -8011,11 +8131,11 @@ function render(t,c,prog){
     gl.uniform4f(u.u_m,2,fl,dimD,og); gl.uniform1f(u.u_kind,2); gl.drawArrays(gl.POINTS,W.N+W.NG,W.NW);
     gl.uniform4f(u.u_m,0,fl,dimD,og); gl.uniform1f(u.u_kind,0); gl.drawArrays(gl.POINTS,0,Math.round(W.N*Q.frac));
     gl.uniform4f(u.u_m,1,fl,dimD,og); gl.uniform1f(u.u_kind,1); gl.drawArrays(gl.POINTS,W.N,Math.round(W.NG*Q.frac));
-    if(c<1.6){
-      gl.useProgram(LP.p); u=LP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufL); only(2);
-      gl.vertexAttribPointer(0,4,gl.FLOAT,false,20,0); gl.vertexAttribPointer(1,1,gl.FLOAT,false,20,16);
-      gl.uniformMatrix4fv(u.u_vp,false,cam.vp); gl.uniform4f(u.u_t,c,1,0,0);
-      gl.drawArrays(gl.LINES,0,Math.round(W.NS*Q.frac)*2);
+    if(c>0&&c<1.5){
+      gl.useProgram(BP.p); u=BP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufL); only(2);
+      gl.vertexAttribPointer(0,4,gl.FLOAT,false,24,0); gl.vertexAttribPointer(1,2,gl.FLOAT,false,24,16);
+      gl.uniformMatrix4fv(u.u_vp,false,cam.vp); gl.uniform4f(u.u_t,c,1.6,px,foc); gl.uniform2f(u.u_vs,cv.width,cv.height); gl.uniform1f(u.u_sr,shellR);
+      gl.drawArrays(gl.TRIANGLES,0,Math.round(W.NS*Q.frac)*6);
     }
   }
   /* --- the Sun's system --- */
@@ -8031,10 +8151,10 @@ function render(t,c,prog){
   }
   /* --- the bang's first instant, the Sun and its planets, back to front --- */
   gl.useProgram(QP.p); u2=QP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufQ); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-  if(c<.35&&o.z>0){
-    /* continues the singularity of the cheap path (c < -0.1) without a step */
-    var cr2=(3+2*prog+6*pre*pre+4*sm(-.04,.08,c))*px, br2=(.34+.66*prog)*(1+3*pre*pre)*mix(.9,1.3,sm(-.1,.02,c))*(1-sm(.04,.35,c));
-    gl.uniform4f(u2.u_q,0,br2,.3+.6*pre,.16); gl.uniform3f(u2.u_c1,.95,.97,1); gl.uniform3f(u2.u_c2,.7,.75,1);
+  if(c<.2&&o.z>0){
+    /* continues the singularity of the cheap path (c < -0.1) without a step; its cross goes as the bloom takes over */
+    var cr2=(3+2*prog+6*pre*pre)*px, br2=(.34+.66*prog)*(1+3*pre*pre)*mix(.9,1.3,sm(-.1,.02,c))*(1-sm(0,.16,c));
+    gl.uniform4f(u2.u_q,0,br2,(.3+.6*pre)*(1-sm(-.09,.01,c)),.16); gl.uniform3f(u2.u_c1,.95,.97,1); gl.uniform3f(u2.u_c2,.7,.75,1);
     quad(u2,o.x,o.y,cr2*14,14);
   }
   function planet(it){ var p=it.p, pp=it.pp, rad=SSS*p.sz*1.3*cam.foc/pp.z*DPR, lx=(ps.x-pp.x)*asp, ly=ps.y-pp.y, ll=Math.hypot(lx,ly)||1;
@@ -8123,7 +8243,7 @@ function revealed(){
 /* the GPU went away: give the loading screen back, as it was, to the v5 drift and jump */
 function giveUp(){
   if(dead||st.ended) return; dead=true; if(raf){ cancelAnimationFrame(raf); raf=0; }
-  box.classList.remove("v9"); [cv,capBox,btn].forEach(function(el){ if(el.parentNode) el.parentNode.removeChild(el); });
+  unmark(); box.classList.remove("v9"); [cv,capBox,btn].forEach(function(el){ if(el.parentNode) el.parentNode.removeChild(el); });
   [title,trackEl,stepEl].forEach(function(el){ if(el) ["opacity","filter","letter-spacing"].forEach(function(k){ el.style.removeProperty(k); }); });
   window.OMNI_SKY_PAUSE=false;
   removeEventListener("keydown",onKey); box.removeEventListener("pointerdown",onDown);
@@ -8176,6 +8296,7 @@ window.OMNI_INTRO={active:true,T:TL.P0+TL.JUMP/SPEED+TL.REVEAL,TL:TL,SPEED:SPEED
     steps:steps,gl2:GL2,init:+TINIT.toFixed(3),bootAt:st.bootAt,builtAt:st.builtAt,tBang:st.tBang,hiddenMs:Math.round(hiddenMs),frames:st.frames}; }};
 if(qAt) window.OMNI_INTRO.at(+qAt[1]);
 else go();
+})();}catch(e){ unmark(); throw e; }   /* a failure while taking over must not leave the loading screen hidden */
 })();
 </script>
 <style id="v6">
