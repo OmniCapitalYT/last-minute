@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="booting">
+<html lang="en" class="booting" data-tab="console">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Omni Method</title>
@@ -5747,6 +5747,7 @@ $("reset").addEventListener("click",reset);
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));
   const d=t.dataset.v==="data";
+  document.documentElement.dataset.tab=d?"data":"console";   /* v9: each tab's theme (sky, chrome, panels) follows */
   $("view-console").hidden=d; $("view-data").hidden=!d;
   if(d&&!$("dataviews").innerHTML) renderData();
   window.scrollTo(0,0);
@@ -5801,6 +5802,7 @@ document.querySelectorAll("input,select").forEach(el=>{
   if(gl){
     const vs=`attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
     const fs=`precision highp float;uniform float u_t;uniform vec2 u_r;uniform vec2 u_m;
+    uniform float u_tab;   /* v9: 0 the Console's sky, 1 the Data tab's (eased between in draw) */
     vec3 h3(vec3 p){p=vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),
       dot(p,vec3(113.5,271.9,124.6)));return -1.+2.*fract(sin(p)*43758.5453123);}
     float n(vec3 p){vec3 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
@@ -5830,7 +5832,7 @@ document.querySelectorAll("input,select").forEach(el=>{
       float rad=sz*(0.55+0.85*h2);
       float tw=0.42+0.58*sin(tm*(0.55+1.9*hb)+h*62.83);
       vec3 tint=mix(mix(vec3(0.72,0.84,1.00),vec3(0.95,0.97,1.00),hb),
-                    vec3(1.00,0.82,0.62), step(0.88,hb));
+                    mix(vec3(1.00,0.82,0.62),vec3(0.80,0.94,1.00),u_tab), step(0.88,hb));
       float core=smoothstep(rad,0.,length(g));
       float glow=smoothstep(rad*3.4,0.,length(g))*0.22;
       float sp=0.;
@@ -5863,19 +5865,34 @@ document.querySelectorAll("input,select").forEach(el=>{
       return tot;
     }
 
+    /* v9: the Data tab's sky is an observatory plate. A faint equatorial graticule: declination
+       circles round a pole off the top left of the frame, hour circles 10 degrees apart converging
+       on it, graduation ticks every 2 degrees, all turning slowly with the sky. */
+    float grat(vec2 p,float tm){
+      float px=1.0/min(u_r.x,u_r.y);
+      vec2 hf=0.5*u_r*px, d=p-vec2(0.35-hf.x,hf.y+0.28);
+      float r=length(d), a=atan(d.y,d.x)+tm*0.0012;
+      float S=0.165, dr=abs(fract(r/S+0.5)-0.5)*S;
+      float A=0.17453293, da=abs(fract(a/A+0.5)-0.5)*A*r;
+      float B=A*0.2, db=abs(fract(a/B+0.5)-0.5)*B*r;
+      float line=max(smoothstep(px*1.1,0.,dr),smoothstep(px*1.1,0.,da));
+      float tick=smoothstep(px*1.1,0.,db)*smoothstep(0.011,0.007,dr);
+      return max(line,tick*0.8);
+    }
+
     void main(){
       vec2 uv=gl_FragCoord.xy/u_r.xy;
       float asp=u_r.x/max(u_r.y,1.);
       vec2 su=vec2(uv.x*asp,uv.y);              /* square cells, so stars stay round */
       vec2 p=(gl_FragCoord.xy-.5*u_r.xy)/min(u_r.x,u_r.y);
       float t=u_t*0.035;
-      vec3 col=vec3(0.011,0.021,0.050);
+      vec3 col=mix(vec3(0.011,0.021,0.050),vec3(0.003,0.030,0.042),u_tab);
 
       /* ---- galactic band: a diagonal river of unresolved stars ---- */
       float bd=(p.y*0.86-p.x*0.46+0.06);
       float band=exp(-bd*bd/0.075);
       float grain=fbm(vec3(p*7.0,t*0.5));
-      col+=vec3(0.062,0.092,0.178)*band*(0.45+0.55*grain)*0.92;
+      col+=mix(vec3(0.062,0.092,0.178),vec3(0.030,0.118,0.160),u_tab)*band*(0.45+0.55*grain)*0.92;
 
       /* ---- nebula: domain-warped ridged noise, so it has strands and voids ----
          Deep sky is overwhelmingly black with a few concentrated bright regions.
@@ -5888,16 +5905,22 @@ document.querySelectorAll("input,select").forEach(el=>{
       float mask=smoothstep(-0.10,0.38,fbm(vec3(p*0.75+vec2(1.7,-0.9),t*0.10)));
       float neb=smoothstep(0.50,0.96,ridge(vec3(p*2.3+w*1.5,t*0.22)))*mask;
       float neb2=smoothstep(0.62,1.00,ridge(vec3(p*4.1-w*0.9,t*0.17+3.1)))*mask;
-      col+=vec3(0.055,0.175,0.430)*neb*0.56;          /* cold blue body */
-      col+=vec3(0.130,0.330,0.610)*neb2*0.40;         /* brighter inner strands */
-      col+=vec3(0.300,0.130,0.360)*neb*neb2*0.44;     /* a little magenta where they cross */
+      /* (v9: on the Data tab a cyan-teal body, ice strands and ice-white crossings) */
+      col+=mix(vec3(0.055,0.175,0.430),vec3(0.018,0.215,0.300),u_tab)*neb*0.56;       /* cold blue body */
+      col+=mix(vec3(0.130,0.330,0.610),vec3(0.110,0.380,0.480),u_tab)*neb2*0.40;      /* brighter inner strands */
+      col+=mix(vec3(0.300,0.130,0.360),vec3(0.190,0.300,0.330),u_tab)*neb*neb2*0.44;  /* a little magenta where they cross */
 
       /* ---- dust: dark lanes that occlude, so the gas has depth ---- */
       float dust=smoothstep(0.34,0.86,fbm(vec3(p*2.9+w*0.6,t*0.13+9.4)));
       col*=1.0-dust*0.34*mask;
 
       /* a warm horizon low in the frame, the one complement to all that blue */
-      col+=vec3(0.95,0.72,0.30)*smoothstep(0.85,-0.6,p.y+fbm(vec3(p*1.5,t))*0.3)*0.030;
+      col+=mix(vec3(0.95,0.72,0.30),vec3(0.36,0.80,0.95),u_tab)*smoothstep(0.85,-0.6,p.y+fbm(vec3(p*1.5,t))*0.3)*0.030;
+
+      /* v9: the graticule, under the stars (skipped entirely on the Console's sky); lighter on a
+         phone, where one buffer pixel of line is a larger share of the screen */
+      if(u_tab>0.) col+=vec3(0.30,0.70,0.92)*grat(p,u_t)*0.19*u_tab*(0.55+0.45*smoothstep(-0.6,0.5,p.y))
+                       *clamp(min(u_r.x,u_r.y)/420.,0.6,1.);
 
       /* ---- five depth layers. Pointer parallax scales with depth, so moving the
          mouse separates them the way real parallax would. ---- */
@@ -5924,6 +5947,8 @@ document.querySelectorAll("input,select").forEach(el=>{
       gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
       const uT=gl.getUniformLocation(pr,"u_t"), uR=gl.getUniformLocation(pr,"u_r"),
             uM=gl.getUniformLocation(pr,"u_m");
+      /* v9: the tab theme (html[data-tab]) eases over a second, so the sky turns rather than snaps */
+      const uTab=gl.getUniformLocation(pr,"u_tab"); let tab=0, tabT=0;
       /* pointer parallax, heavily damped: the sky should lag the cursor like
          something far away, not track it like a cursor effect */
       let mx=0,my=0,tx=0,ty=0;
@@ -5937,12 +5962,17 @@ document.querySelectorAll("input,select").forEach(el=>{
           mx+=(tx-mx)*0.07; my+=(ty-my)*0.07;
           gl.uniform1f(uT,reduce?0:t*0.001); gl.uniform2f(uR,c.width,c.height);
           gl.uniform2f(uM,-mx,my);
+          { const want=document.documentElement.dataset.tab==="data"?1:0, st=Math.min(.15,(t-tabT)/1000); tabT=t;
+            tab=reduce?want:tab+Math.max(-st,Math.min(st,want-tab)); gl.uniform1f(uTab,tab*tab*(3-2*tab)); }
           gl.drawArrays(gl.TRIANGLE_STRIP,0,4); }
         if(!reduce&&!document.hidden) requestAnimationFrame(draw); else running=false;};
       draw(0);
       // resume after the tab returns to the foreground
       document.addEventListener("visibilitychange",()=>{
         if(!document.hidden&&!reduce&&!running) requestAnimationFrame(draw);});
+      /* v9: under reduced motion the loop is idle, so a tab switch draws its sky once, unanimated */
+      if(reduce) new MutationObserver(()=>requestAnimationFrame(draw))
+        .observe(document.documentElement,{attributes:true,attributeFilter:["data-tab"]});
       return;
     }
   }
@@ -11117,4 +11147,166 @@ if(dv){ new MutationObserver(decorate).observe(dv,{childList:true}); decorate();
 </script>
 <!-- ======== end v8-data-js ======== -->
 <!-- (separator) -->
+<style id="v9-tabs">
+/* ═════════════════════════════════════════════════════════════════════════
+   v9-tabs: the two tabs are two places in one sky. The Console keeps its violet,
+   azure and pink nebula. Data & parameters is the observatory: a star catalogue
+   in a colder cyan-ice light, with an RA/Dec graticule in the sky (drawn by the
+   sky shader, which eases between the two skies through its u_tab uniform).
+   The tab handler sets html[data-tab] at the warp's flash, so the colours below
+   change behind it. Every rule is scoped to html[data-tab="data"]: nothing on
+   the Console changes.
+   Provenance colours keep their meaning: nothing here decorates in green, amber
+   or coral, and no tier-coloured element (badge, dot, tally, tier planet, tier
+   rim or rule) is recoloured. Tier sections keep their hue; the neutral second
+   hue, the glass and the instruments around them turn cold. New marks are
+   backgrounds and pseudo-elements: decorative, never read, no layout moves.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ---------------------------------------------------------------- the sky */
+/* the CSS washes over the shader: cyan, ice and a deep azure-teal for the violet, the
+   amber and the steel-blue blooms and the violet, pink and teal nebulae */
+html[data-tab="data"] .aurora.a{background:radial-gradient(circle,rgba(56,198,244,.24),transparent 68%)}
+html[data-tab="data"] .aurora.b{background:radial-gradient(circle,rgba(127,227,255,.09),transparent 70%)}
+html[data-tab="data"] .aurora.c{background:radial-gradient(circle,rgba(28,134,198,.17),transparent 72%)}
+html[data-tab="data"] .cosmos-fixed .neb.v{background:radial-gradient(closest-side,rgba(40,170,235,.26),transparent)}
+html[data-tab="data"] .cosmos-fixed .neb.m{background:radial-gradient(closest-side,rgba(127,227,255,.13),transparent)}
+html[data-tab="data"] .cosmos-fixed .neb.t{background:radial-gradient(closest-side,rgba(30,120,210,.16),transparent)}
+html[data-tab="data"] body::after{background:radial-gradient(ellipse 120% 80% at 50% 0%,transparent 40%,rgba(2,13,22,.6) 100%)}
+/* the drawn layers (constellation lines, the spiral galaxy, the horizon's aurora; the orrery below
+   is the fourth) seen through a cold filter: one composited colour matrix per layer (sepia, then
+   the hue turned to 183-204deg, ice to cyan, whatever the source colour) */
+html[data-tab="data"] #plexus,html[data-tab="data"] .cosmos-fixed canvas.galaxy,
+html[data-tab="data"] .horizon canvas.aurora-c{filter:sepia(1) hue-rotate(155deg) saturate(1.6)}
+
+/* ------------------------------------------------------------ the masthead */
+html[data-tab="data"] .mast-eyebrow{color:#8fdcf5}
+/* the title's last word catches ice-cyan instead of violet (the first-light layer keeps its place) */
+html[data-tab="data"] .masthead h1 .h1-ink{background-image:
+  linear-gradient(100deg,rgba(127,227,255,0) 43%,rgba(127,227,255,.95) 47%,#fff 50%,rgba(56,198,244,.95) 53%,rgba(56,198,244,0) 57%),
+  linear-gradient(100deg,#fff 0%,#f0fcff 40%,#dcf6ff 70%,#a3ebff 84%,#7fe3ff 100%)}
+html[data-tab="data"] body .masthead h1{filter:drop-shadow(0 0 28px rgba(56,198,244,.24)) drop-shadow(0 0 2px rgba(230,251,255,.28))!important}
+/* the same solar system, catalogued: the orrery as a cold plate (!important: the arrival
+   animation holds its filter at its last keyframe) */
+html[data-tab="data"] .masthead .orrery3d{filter:sepia(1) hue-rotate(155deg) saturate(1.5) brightness(.96)!important}
+/* the atmosphere and the planet's limb under the tabs glow cyan */
+html[data-tab="data"] .masthead::after{background:radial-gradient(120% 100% at 50% 100%,rgba(56,198,244,.18),transparent 60%)}
+html[data-tab="data"] .v8-limb::before{border-top-color:rgba(200,246,255,.72);
+  background:linear-gradient(180deg,rgba(60,200,255,.12),rgba(3,14,24,.8) 28px,rgba(2,10,18,.72) 60%,rgba(2,10,18,0));
+  box-shadow:0 -2px 10px rgba(95,215,255,.42),0 -14px 44px rgba(56,198,244,.24),inset 0 8px 18px -8px rgba(127,227,255,.34)}
+
+/* ------------------------------------------------------------------ the tabs */
+html[data-tab="data"] .nav{background:rgba(4,15,25,.82);border-color:rgba(127,227,255,.13)}
+html[data-tab="data"] .nav::before{background:linear-gradient(120deg,rgba(230,251,255,.46),rgba(127,227,255,.10) 40%,rgba(56,198,244,.30))}
+html[data-tab="data"] .nav::after{box-shadow:0 14px 34px -16px rgba(0,0,0,.9),0 10px 28px -18px rgba(56,198,244,.5)}
+html[data-tab="data"] .nav .tab.on{color:#effcff;background:linear-gradient(180deg,rgba(56,198,244,.30),rgba(127,227,255,.10));
+  box-shadow:inset 0 0 0 1px rgba(127,227,255,.48),0 0 18px rgba(56,198,244,.32)}
+html[data-tab="data"] .nav .tab::after{background:linear-gradient(90deg,transparent,#c8f4ff)}
+html[data-tab="data"] .nav-ind{background:linear-gradient(90deg,transparent,rgba(160,236,255,.9) 70%,#fff);box-shadow:0 0 8px rgba(56,198,244,.8)}
+html[data-tab="data"] .nav-ind-h{box-shadow:0 0 6px 1px rgba(200,246,255,.9),0 0 14px 2px rgba(56,198,244,.6)}
+
+/* ------------------------------------------------- the catalogue: tokens */
+/* the neutral second hue of every section turns cyan; the two sections without a tier
+   (the badges and the self-audit) take ice-white and ice-cyan; the hairlines go cold */
+html[data-tab="data"] #view-data{--hair:rgba(127,227,255,.12);--hue2:56 198 244}
+html[data-tab="data"] #view-data .sec{--hue2:56 198 244}
+html[data-tab="data"] #view-data .sec:nth-of-type(1){--hue:230 251 255}
+html[data-tab="data"] #view-data .sec:nth-of-type(7){--hue:127 227 255}
+/* caution panels keep a neutral accent, here the instrument's cyan rather than violet */
+html[data-tab="data"] #view-data .sec>.panel.v8d-caution{--hue:127 227 255;--v8d-tier:127 227 255;border-color:rgba(127,227,255,.32)!important;
+  --v8d-star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 0C5.4 3.2 6.8 4.6 10 5C6.8 5.4 5.4 6.8 5 10C4.6 6.8 3.2 5.4 0 5C3.2 4.6 4.6 3.2 5 0Z' fill='%237fe3ff'/%3E%3Ccircle cx='5' cy='5' r='.9' fill='%23fff'/%3E%3C/svg%3E")}
+
+/* ------------------------------------------------- the catalogue: plates */
+/* deep blue-teal glass instead of indigo; the tier wash in the corner stays */
+html[data-tab="data"] #view-data .sec>.panel{
+  background:radial-gradient(60% 50% at 0% 0%,rgb(var(--hue,158 203 255)/.08),transparent 70%),
+    radial-gradient(40% 40% at 100% 100%,rgb(var(--hue2)/.07),transparent 70%),
+    linear-gradient(170deg,rgba(7,25,37,.94),rgba(2,11,20,.96))!important;
+  border-color:rgba(127,227,255,.13)!important}
+html[data-tab="data"] #view-data .sec:is(:nth-of-type(2),:nth-of-type(3),:nth-of-type(4),:nth-of-type(5),:nth-of-type(6))>.panel:nth-child(odd){
+  background:radial-gradient(46% 58% at 100% 0%,rgb(var(--v8d-tier,216 236 255)/.06),transparent 70%),
+    radial-gradient(60% 50% at 0% 0%,rgb(var(--hue,158 203 255)/.08),transparent 70%),
+    radial-gradient(40% 40% at 100% 100%,rgb(var(--hue2)/.07),transparent 70%),
+    linear-gradient(170deg,rgba(7,25,37,.94),rgba(2,11,20,.96))!important}
+/* registration marks in each plate's corners, as on a photographic star plate (the tally's too;
+   position:relative without offsets moves nothing, and its cells already position against themselves) */
+html[data-tab="data"] #view-data .tally{position:relative}
+html[data-tab="data"] #view-data .sec>.panel::after{inset:12px;--rm:rgba(127,227,255,.5);--rl:14px}
+html[data-tab="data"] #view-data .tally::after{inset:8px;--rm:rgba(127,227,255,.42);--rl:10px}
+html[data-tab="data"] #view-data .sec>.panel::after,html[data-tab="data"] #view-data .tally::after{content:"";display:block;position:absolute;pointer-events:none;
+  border-radius:0;opacity:1;box-shadow:none;
+  background:linear-gradient(var(--rm),var(--rm)) left top/var(--rl) 1px no-repeat,linear-gradient(var(--rm),var(--rm)) left top/1px var(--rl) no-repeat,
+    linear-gradient(var(--rm),var(--rm)) right top/var(--rl) 1px no-repeat,linear-gradient(var(--rm),var(--rm)) right top/1px var(--rl) no-repeat,
+    linear-gradient(var(--rm),var(--rm)) left bottom/var(--rl) 1px no-repeat,linear-gradient(var(--rm),var(--rm)) left bottom/1px var(--rl) no-repeat,
+    linear-gradient(var(--rm),var(--rm)) right bottom/var(--rl) 1px no-repeat,linear-gradient(var(--rm),var(--rm)) right bottom/1px var(--rl) no-repeat}
+@media(max-width:560px){ html[data-tab="data"] #view-data .sec>.panel::after{inset:8px;--rl:10px} }
+/* the tally: the same glass; its Fitted wash and tier figures are untouched */
+html[data-tab="data"] #view-data .tally{background:radial-gradient(70% 120% at 0% 0%,rgba(94,224,168,.06),transparent 60%),
+  radial-gradient(60% 120% at 100% 100%,rgba(56,198,244,.07),transparent 60%),linear-gradient(170deg,rgba(7,25,37,.92),rgba(2,11,20,.94))}
+@media(min-width:761px){ html[data-tab="data"] #view-data .tally>div+div:not(.v8d-spec){
+  background:linear-gradient(180deg,transparent,rgba(127,227,255,.2) 18% 82%,transparent) left/1px 100% no-repeat} }
+@media(max-width:760px){ html[data-tab="data"] #view-data .tally>div:nth-child(n+3):not(.v8d-spec){box-shadow:inset 0 1px 0 rgba(127,227,255,.12)} }
+
+/* --------------------------------------- the catalogue: section heads */
+/* each planet is seen through a reticle (drawn behind it, inside its own box) */
+html[data-tab="data"] #view-data .sec-head>.waypoint{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' fill='none' stroke='%237fe3ff'%3E%3Ccircle cx='22' cy='22' r='20.5' stroke-opacity='.5' stroke-width='.8'/%3E%3Cpath d='M22 .5v5M22 38.5v5M.5 22h5M38.5 22h5' stroke-opacity='.85'/%3E%3Cpath d='M7.6 7.6l1.8 1.8M36.4 7.6l-1.8 1.8M7.6 36.4l1.8-1.8M36.4 36.4l-1.8-1.8' stroke-opacity='.45' stroke-width='.8'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+/* the rule after the title is graduated, a scale in the instrument's cyan */
+html[data-tab="data"] #view-data .sec .sec-head::after{
+  background:radial-gradient(circle at 3.5px 50%,rgb(var(--hue)) 1.6px,rgb(var(--hue) / .35) 2.4px,transparent 3.5px),
+    linear-gradient(90deg,rgb(var(--hue) / .55),rgb(var(--hue) / .12) 60%,transparent) 0 50%/100% 1px no-repeat,
+    repeating-linear-gradient(90deg,rgba(127,227,255,.42) 0 1px,transparent 1px 9px) 12px 50%/100% 5px no-repeat;
+  -webkit-mask:linear-gradient(90deg,#000 55%,transparent);mask:linear-gradient(90deg,#000 55%,transparent)}
+/* the section tag becomes a catalogue label: squared, ruled in cyan, an index bar at its edge */
+html[data-tab="data"] #view-data .sec-head .ref{border-radius:4px!important;border-color:rgba(127,227,255,.26)!important;
+  background:linear-gradient(90deg,rgba(127,227,255,.10),rgba(127,227,255,0) 40%),rgba(3,16,26,.86)!important;
+  box-shadow:inset 2px 0 0 rgba(127,227,255,.5)!important}
+/* the mission line in the gutter becomes a graduated scale: a hairline, a tick every 12px,
+   a long tick every 60px (same colours, a mask instead of dashes) */
+@media(min-width:1081px){
+  html[data-tab="data"] #view-data .sec::after{left:calc(var(--gutter,57px)/-2 - 5.5px);width:11px;
+    -webkit-mask:linear-gradient(90deg,transparent 5px,#000 5px 6px,transparent 6px),
+      repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 12px) 3px 0/5px 100% no-repeat,
+      repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 60px);
+    mask:linear-gradient(90deg,transparent 5px,#000 5px 6px,transparent 6px),
+      repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 12px) 3px 0/5px 100% no-repeat,
+      repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 60px)}
+}
+/* the star-chart index: its rail in cyan (each star keeps its section's colour) */
+@media(min-width:1180px){
+  html[data-tab="data"] #view-data .v8d-chart ol::before{background:linear-gradient(180deg,transparent,rgba(127,227,255,.3) 14% 86%,transparent)}
+  html[data-tab="data"] #view-data .v8d-chart a>span{background:rgba(3,15,25,.94)}
+}
+
+/* ------------------------------------------- the catalogue: the inside */
+html[data-tab="data"] #view-data table thead{background:linear-gradient(90deg,transparent,rgba(127,227,255,.24) 4% 96%,transparent) bottom/100% 1px no-repeat}
+html[data-tab="data"] #view-data table tr:has(>th){background:linear-gradient(90deg,transparent,rgba(127,227,255,.24) 6% 94%,transparent) bottom/100% 1px no-repeat!important}
+html[data-tab="data"] #view-data tbody tr:hover,html[data-tab="data"] #view-data tbody tr:has(td b):hover{background:rgba(127,227,255,.04)}
+html[data-tab="data"] #view-data tr.v8d-hot{background:rgba(127,227,255,.06)}
+@media(max-width:700px){
+  html[data-tab="data"] #view-data table.wide th:first-child,html[data-tab="data"] #view-data table.wide td:first-child{background:#05141f}
+}
+html[data-tab="data"] #view-data .tw.fade-r:not(.v8-seen)::after{border-color:rgba(127,227,255,.45);background:rgba(4,18,28,.96);box-shadow:0 0 12px rgba(56,198,244,.25)}
+/* equation plates on plotting paper rather than a dot grid */
+html[data-tab="data"] #view-data .eq,html[data-tab="data"] #view-data .eq:hover{border-color:rgba(127,227,255,.15);
+  background:linear-gradient(rgba(127,227,255,.045) 1px,transparent 1px) 0 0/16px 16px,
+    linear-gradient(90deg,rgba(127,227,255,.045) 1px,transparent 1px) 0 0/16px 16px,rgba(2,14,24,.55)}
+html[data-tab="data"] #view-data code{background:rgba(127,227,255,.08)}
+html[data-tab="data"] #view-data .st.chip:not(.off):not(.v8d-ok){border-color:rgba(127,227,255,.2)!important;background:rgba(3,16,26,.85)!important}
+
+/* ---------------------------------------------- the horizon at the foot */
+html[data-tab="data"] .horizon .planet{background:radial-gradient(circle at 50% 0%,#0f3a52 0%,#072536 5%,#03121e 14%,#01060c 34%);
+  box-shadow:0 -2px 0 rgba(210,248,255,.6),0 -14px 40px rgba(70,200,250,.45),0 -60px 140px rgba(40,160,230,.26),0 -120px 260px rgba(127,227,255,.10)}
+html[data-tab="data"] .horizon .sunrise{background:radial-gradient(ellipse at 50% 60%,rgba(235,252,255,.85),rgba(127,227,255,.25) 30%,transparent 65%)}
+html[data-tab="data"] #foot{background:linear-gradient(180deg,rgba(3,15,25,.9),rgba(3,15,25,.72))}
+html[data-tab="data"] #foot::before{background:linear-gradient(90deg,transparent,rgba(127,227,255,.35) 30%,rgba(56,198,244,.25) 70%,transparent)}
+html[data-tab="data"] #foot .foot-mark ellipse{stroke:rgba(127,227,255,.6)}
+html[data-tab="data"] #foot .foot-mark .o{fill:rgba(127,227,255,.85)}
+html[data-tab="data"] #foot .foot-mark .s{filter:drop-shadow(0 0 2px #7fe3ff)}
+
+@media(forced-colors:active){
+  html[data-tab="data"] #view-data .sec>.panel::after,html[data-tab="data"] #view-data .tally::after{display:none}
+  html[data-tab="data"] #view-data .sec-head>.waypoint{background:none}
+}
+</style>
+<!-- ======== end v9-tabs ======== -->
 </html>
