@@ -994,3 +994,62 @@ Details:
 
 ### Tests
 At 9f94354: `node tests/model.test.js` 7,468 pass; `node tests/browser.inputs.js` (15 checks) and `node tests/browser.sweep.js` (118 input states at 1440 and 390 px, no horizontal overflow, no NaN) pass. `node tests/fuzz.test.js 1500` passed at 49f3969 (173,364 checks), and the model source is unchanged since. One test changed: R3-1, as above. The browser tests now wait about 17 s longer per page load while the film plays; their 90 s boot timeout is unchanged.
+
+## Stress test with invariants, October 2026
+
+The owner asked: "Go back and stress test the model with stress invariants. Have agents make assertions and test if they're true in the app. Make sure everything is logical."
+
+### How it ran
+- **Four lenses.** Four independent stress testers each wrote their own invariants, about 250 in all, and ran them against a frozen copy of the build (380a52f). Each invariant states where its expectation comes from: a code comment, a MODELS note, the Data tab, AUDIT.md, or economics. Together they go beyond the roughly 100 the fuzz suite already asserts.
+  - **Comparative statics (57).** Which way every input moves every headline output: value, price, closing odds, time to close, expected proceeds, survival risk, the scores, the proceeds-optimal ask, the optimiser, and the intervention and sensitivity rows.
+  - **Identities, bounds and units (60).** Shares that must sum, reported gains that must equal recomputed ones, sensitivity rows against the finite differences they describe, helper functions against their comments, money formatting, and the Data-tab tallies.
+  - **Extreme inputs (60).** The corners of the input space and beyond the sliders, fine scans across every cap and threshold, determinism, and how the exact-value boxes parse typed text.
+  - **The live page (76).** At least 25 stress states entered through the real controls. Every figure and every directional word is checked against the model, along with reset and tab switching.
+- **Verification.** For each lens with violations, one verifier reproduced every violation and then tried to refute it.
+- **Result.**
+  - **Every comparative-statics invariant held: no input moves any headline output the wrong way.**
+  - Twelve violations were raised in the other three lenses. Five were confirmed, all low severity, and fixed (S-1 to S-5 in AUDIT_FINDINGS.md). Seven were refuted.
+
+### What changed
+- **S-1, the score's reference population.**
+  - **Before:** where a peer median sits near a field's bound, the reference profiles were clamped off their stated quality composite. That lifted the bottom of the population, so weak small businesses scored 1-4 points low.
+  - **After:** each clamped draw is solved for the scale that restores its composite exactly, read through a new qualityZ() that equals the model's own composite. A restaurant at the 10.2nd quality percentile now scores 10, not 9.
+- **S-2, the GM salary.**
+  - **Before:** three Census tables (car wash, auto repair, fitness) list size classes whose receipts per firm fall out of order. The GM salary jumped up to 4.1% on a $1 change in revenue, which could flip both optimiser recommendations.
+  - **After:** out-of-order classes are pooled before interpolating. The salary is continuous and never falls with revenue.
+- **S-3, the score cache.** The reference population was cached on six significant digits of size, so identical inputs could score 50 or 51 depending on the order they were entered. It is now keyed on the exact size.
+- **S-4, the exact-value boxes.**
+  - **Before:** whole thousands misstated small values, by up to a third under $10k ($1,499 showed as "$1k").
+  - **After:** the boxes, the value table's "SDE × multiple" row, eq_vs, and the optimiser's money echoes (the intervention table's costs, both cards, the overall-outcome card's note, eq_rs, eq_os and eq_us) show three significant figures in thousands, as millions already did. Every box re-reads within 0.5% of the value the model uses.
+- **S-5, the "Do nothing" card.** It said "no combination clears its cost" when changes that do were only over the budget. It now says that nothing within the budget clears its cost, and names the cheapest over-budget change that would. The old wording remains only where the budget covers every change.
+- **Refuted, and left as they are.**
+  - The $25k SBA 7(a) floor is documented and calibrated, and binds only below about $29k of value.
+  - Signed zeros such as "−0%" are the sign-preserving rounding of tiny values. Red against green marks which side of break-even a row sits on.
+  - A typed fractional buyer count is kept by design. The model is continuous in the pool.
+  - The Bear scenario card collapses a sub-0.5% range to "the ask ceiling" by a documented rule.
+- **No other change.** Nothing else moved: every other test, pinned figure and invariant is unchanged.
+
+### Tests
+- **The suite.** The invariants are kept in tests/invariants/ and run by `node tests/invariants.test.js`:
+  - statics.js, identities.js and extremes.js hold the model parts, 154 invariants in about 3.5 minutes;
+  - `--browser` adds their in-page checks and app.js, the live page, for 253 in all.
+- **Assertions rewritten from the stress testers' copies.** Some assertions tested a pre-fix path or encoded the old formats, and some asserted behaviour the verification kept. They were rewritten to test what the page now reads, or to state the documented convention:
+  - the Census tables as pooled;
+  - the reference draws read from refDistAt;
+  - the head count growing over every tenfold step of revenue;
+  - the SBA loan rule with its floor, and the risk tile naming only the $5M cap;
+  - a zero carrying the true sign of its change;
+  - typed buyer counts kept as typed;
+  - the Bear card's documented collapse;
+  - the boxes and the optimiser's money echoes at moneyIn's precision;
+  - the new "Do nothing" wording.
+- **Regression tests.** model.test.js section 37 adds a test for each of S-1 to S-5; R4-6 now pins the budget box and the cards' budget echo to moneyIn.
+- **Results at 62afc61** (index.html unchanged since b92052b):
+
+  | Suite | Result |
+  |---|---|
+  | `node tests/model.test.js` | 7,473 pass |
+  | `node tests/fuzz.test.js 1500` | 173,364 checks pass |
+  | `node tests/browser.inputs.js` | 15 checks pass |
+  | `node tests/browser.sweep.js` | 118 input states at 1440 and 390 px pass |
+  | `node tests/invariants.test.js --browser` | 253 invariants pass: statics 57, identities 60, extremes 60, app 76 |
