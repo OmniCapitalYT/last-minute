@@ -892,7 +892,7 @@ A last round on the finished build (55d0c17), recorded in AUDIT_FINDINGS.md: a n
 
 Tests at 381ba6c: `node tests/model.test.js` 7,468 pass; `node tests/browser.inputs.js` and `node tests/browser.sweep.js` pass. `node tests/fuzz.test.js 1500` last passed at 77c65b3 (173,364 checks); no model code has changed since.
 
-## The owner's four requests after the UI work, October 2026
+## The owner's requests after the UI work, October 2026
 
 The owner sent four requests, with screenshots of the probe and the status row:
 - "make the two tabs look visually different. colors are enough but maybe some other stuff too"
@@ -941,7 +941,8 @@ The film, in film time (which runs 6% faster than the wall clock):
 - **Galaxies** (4.8–6.6 s): spirals and ellipticals form and turn, nebulae bloom, and the camera flies past two galaxies.
 - **Home** (6.6–8.45 s): a dive into one spiral and through an arm to the Milky Way band. There, the Sun and five planets on thin orbits echo the masthead's solar system.
 - **Title** (8.3–9.45 s): "The Omni Method" resolves under the Sun.
-- **Jump:** the unchanged hyperspace jump, with the Sun as its core star. Reveal and arrival run 1.85 s in, as before, onto the masthead's solar system. With a quick boot the console is revealed about 12.7 s after navigation.
+- **Frontier** (9.45–13.7 s, added in 9f94354): the finale described below.
+- **Jump:** the unchanged hyperspace jump. Reveal and arrival run 1.85 s in, as before, onto the masthead's solar system. With a quick boot the console is revealed about 16.7 s after navigation (12.7 s before the finale was added).
 
 Captions mark the time:
 - "13.8 billion years ago"
@@ -971,5 +972,25 @@ How it is built:
   - The frozen-frame hook is `window.OMNI_INTRO.at(t)` or `?introAt=t`.
 - **Not measured here.** This container has no GPU: WebGL runs on a software renderer at 2–4 fps (140–370 ms per frame at full quality). So the frame rate on real hardware, and the behaviour in Safari and Firefox, are untested. The adaptive steps above are the safeguard.
 
+### The finale: the new frontier of brokerage (9f94354)
+The owner asked: "After the universe animation, display something about how this is the new frontier of brokerage and some more crazy visual effects". A scene of about 4 s now sits between the title and the jump. Every frame before it is unchanged: frozen frames from 0 to 10.5 s match the previous version pixel for pixel.
+
+The scene, in wall time on a quick boot:
+- **Pull-away** (10.8–11.6 s): the solar system shrinks to a point, streaking inward. Speed lines run in, and a shockwave rings out with a faint red/blue split at its front.
+- **Gate** (11.3–11.9 s): where the Sun was, a razor-thin ring ignites around a turning vortex in violet, azure and pink with a white-hot core. Electric arcs crawl along the rim, and stars bend into small arcs around it. The title lifts and shrinks into a letter-spaced "The Omni Method" eyebrow.
+- **Particle headline** (11.7–13.1 s): thousands of particles pour out of the vortex and settle onto the letters of "The new frontier of brokerage". Their targets are sampled from the headline's real line boxes, so they land on the HTML text, including the two-line wrap on phones. The crisp headline then fades in, in the masthead's starlight-to-violet display type, and the particles shimmer out.
+- **Ignition** (13.2–13.9 s): a light sweep crosses the words with an anamorphic flare riding it. Sparks burst from the letter edges, followed by a brief chromatic shimmer.
+- **Collapse** (14.3–14.8 s): the headline and eyebrow are drawn into the gate as it flares, and the unchanged jump takes over.
+
+Details:
+- **Copy.** The eyebrow and the headline are the only new text, and both are hidden from screen readers, like the captions. The headline holds fully legible for 1.2 s.
+- **Reduced motion.** The plain loader now shows the eyebrow and headline, still. Without WebGL the previous drift and jump run, without the headline.
+- **Load.** Text particles and sparks number 8,652 + 1,038 at 1440×900, 10,944 + 1,313 at 1920×1080 and 4,360 + 523 at 390×844. The scene's GL work runs in its own programs, so the earlier phases cost what they did.
+- **Cost here.** In this container's software renderer the scene costs about what the title does: 212–335 ms against 249–304 ms per frame at 1440.
+- **Checks.**
+  - Real-time runs with WebGL2, WebGL1, no WebGL, reduced motion, and skips early, during the scene and during the jump; also a context lost during the scene. All had no errors, one reveal and one arrival.
+  - 24 shaders compile and 12 programs link with empty logs.
+  - Alignment overlays confirm the particles land on the text at 1440 and 390.
+
 ### Tests
-At 49f3969: `node tests/model.test.js` 7,468 pass; `node tests/browser.inputs.js` (15 checks) and `node tests/browser.sweep.js` (118 input states at 1440 and 390 px, no horizontal overflow, no NaN) pass; `node tests/fuzz.test.js 1500` 173,364 checks pass. One test changed: R3-1, as above. The browser tests now wait about 13 s longer per page load while the film plays; their 90 s boot timeout is unchanged.
+At 9f94354: `node tests/model.test.js` 7,468 pass; `node tests/browser.inputs.js` (15 checks) and `node tests/browser.sweep.js` (118 input states at 1440 and 390 px, no horizontal overflow, no NaN) pass. `node tests/fuzz.test.js 1500` passed at 49f3969 (173,364 checks), and the model source is unchanged since. One test changed: R3-1, as above. The browser tests now wait about 17 s longer per page load while the film plays; their 90 s boot timeout is unchanged.
