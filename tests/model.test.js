@@ -1124,7 +1124,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const B=A.loadWith([['"prime":7.0,','"prime":3.0,']]), a=A.model(FX), b=B.model(FX);
     ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&Math.abs(a.risk.p-b.risk.p)<1e-12,"R3-2: the prime level moves no figure"); }
   /* R3-3: the employee count is described as reaching no figure (it still exists for fitRisk's signature) */
-  { const B=A.loadWith([["function jobsFor(rev,ind){ const J","function jobsFor(rev,ind){ return 1e9; const J"]]), a=A.model({...FX,jobs:undefined}), b=B.model({...FX,jobs:undefined});
+  { const B=A.loadWith([["function jobsFor(rev,ind){ const K","function jobsFor(rev,ind){ return 1e9; const K"]]), a=A.model({...FX,jobs:undefined}), b=B.model({...FX,jobs:undefined});
     ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&a.risk.p===b.risk.p&&A.gmSalary(FX)===B.gmSalary(FX)&&HTML.includes("so the count reaches no figure")&&!HTML.includes("Employees for this revenue")&&!HTML.includes("<tr><td>Firm-size rank behind the GM salary</td>"),"R3-3 (+ round 4): the head count reaches no figure, and no public-data row claims it"); }
   /* R3-4: the ledger counts the category formulas (38), the confidence formula (8) and the peer scales (22) */
   { const src=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
@@ -1190,7 +1190,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* R4-5: the GM salary row names its size rank as judgment */
   ok(HTML.includes("the rank is Census&rsquo;s share of the industry&rsquo;s employment in smaller firms at this revenue (SUSB 2022), a labelled"),"R4-5: GM rank labelled judgment");
   /* R4-6: the budget box shows two decimals in millions, as the optimiser cards echo it */
-  ok(HTML.includes('setBox("v_bud",s.budget?money(s.budget):"none");')&&A.money(1.25e6)===A.money(1.25e6,0),"R4-6: budget box matches the echo");
+  ok(HTML.includes('setBox("v_bud",s.budget?moneyIn(s.budget):"none");')&&HTML.includes("of ${moneyIn(s.budget)}</td>")&&A.moneyIn(1.25e6)===A.money(1.25e6,0),
+     "R4-6: budget box matches the echo (both at moneyIn's precision since the stress test, S-4)");
   /* R4-7: the delta stack is counted from its source: 52 + 6 + 5 + 5 = 68 */
   { const src=String(A.model), i=src.indexOf("const d={"), dsrc=src.slice(i,src.indexOf("let sum=0",i));
     const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
@@ -1266,6 +1267,51 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const line=HTML.split("\n").find(l=>l.includes('eq("eq_comp",'))||"", i=HTML.indexOf('eq("eq_comps",'), sub=HTML.slice(i,i+700);
     ok(line.includes("operatorname{softmin}")&&line.includes("bar a")&&!line.includes("propto(1+")&&sub.includes("text{ before the ceiling}")&&sub.includes("text{ at the point estimate after it}"),
        "R6-3: eq_comp states the capped relation"); }
+}
+
+/* ---- 37. the stress test with invariants: AUDIT_FINDINGS "Stress test" (S-1..S-5) ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
+  let sd=97; const rn=()=>{ sd=(sd*16807)%2147483647; return (sd-1)/2147483646; };
+  /* S-1: every reference draw sits at its stated composite, as model() computes it, in every industry and size */
+  { let worst=0,n=0;
+    for(const ind of Object.keys(A.IND)) for(const e of [3e4,5e4,1e5,3e5,1e6,5e6]){ const R=A.refDistAt({ind,ern:e,rev:e/A.typMargin(ind,e)});
+      R.zq.forEach((z,i)=>{ worst=Math.max(worst,Math.abs(z-A.nqnt(Math.min(.996,Math.max(.004,(i+.5)/128))))); n++; }); }
+    let wq=0; const INDS=Object.keys(A.IND);
+    for(let i=0;i<400;i++){ const ern=1e4*Math.exp(rn()*7.5), t={ind:INDS[i%INDS.length],ern,rev:ern/(.05+rn()*.6),rec:rn(),cc:.005+rn()*.9,own:.02+rn()*.97,mgt:.02+rn()*.97,
+      grw:-.6+rn()*2.1,gm:.02+rn()*.95,ret:.05+rn()*.94,fin:.02+rn()*.98,plt:.02+rn()*.97,yrs:6,buyers:50,st:null,franchise:false,ask:1};
+      wq=Math.max(wq,Math.abs(A.qualityZ(t)-A.model(t).qz)); }
+    const w={ind:"rest",rev:1.5e6,ern:3e5,own:.95,mgt:.08,fin:.14,rec:.05,cc:.18,grw:-.05,gm:.62,ret:.45,plt:.40,yrs:6,buyers:41,st:null,franchise:false};
+    const V=A.model({...w,ask:1}).V, r=A.model({...w,ask:V*A.bestRatio(w,0,0)});
+    ok(n===12288&&worst<1e-9&&wq<1e-12&&A.omniScore(r)===10,
+       `S-1: ${n} reference draws at their composite (worst ${worst.toExponential(1)}), qualityZ = model qz (${wq}); the weak restaurant scores ${A.omniScore(r)}`); }
+  /* S-2: the Census tables are read on an increasing receipts scale, so the GM salary has no jump */
+  { let sorted=true; for(const ind of Object.keys(A.IND)){ const K=A.jobsKnots(ind); if(!K) continue;
+      for(let i=1;i<K.length;i++) if(!(K[i][0]>K[i-1][0])||K[i][3]<K[i-1][3]) sorted=false; }
+    let jump=0, fall=0; for(const ind of Object.keys(A.IND)) for(let x=Math.log(1e5);x<Math.log(2e8);x+=1e-4){
+      const a=A.gmSalary({ind,rev:Math.exp(x)}), b=A.gmSalary({ind,rev:Math.exp(x+1e-4)}); jump=Math.max(jump,Math.abs(b/a-1)); fall=Math.max(fall,a-b); }
+    ok(sorted&&jump<1e-3&&fall<=1e-9&&Math.abs(A.gmSalary({ind:"wash",rev:18652673})-A.gmSalary({ind:"wash",rev:18652672}))<1
+       &&Math.abs(A.gmSalary({ind:"fit",rev:27023030})-A.gmSalary({ind:"fit",rev:27023029}))<1,
+       `S-2: knots in order in every industry; the GM salary moves at most ${(jump*100).toFixed(3)}% per 0.01% of revenue and never falls`); }
+  /* S-3: the score reads no history: a neighbouring size built first does not stand in for this one */
+  { const B=A.loadWith([]), C=A.loadWith([]), s={...FX,ern:1450003.37}, s2={...FX,ern:1450000};
+    const fresh=JSON.stringify(B.refDistAt(s).xs); C.refDistAt(s2); const after=JSON.stringify(C.refDistAt(s).xs);
+    ok(fresh===after&&fresh!==JSON.stringify(C.refDistAt(s2).xs)&&HTML.includes('const key=(s.ind||"prof")+"|"+ern+"|"+rev;'),"S-3: the reference population is keyed on the exact size"); }
+  /* S-4: the exact-value boxes and the SDE x multiple echoes re-read within half a percent at every size */
+  { const parse=t=>{ const m=/^(\u2212?)\$([\d.]+)([kMB]?)$/.exec(t); return m?(m[1]?-1:1)*Number(m[2])*({k:1e3,M:1e6,B:1e9}[m[3]]||1):NaN; };
+    let worst=0; for(let x=Math.log(1e3);x<Math.log(2e9);x+=.003){ const v=Math.exp(x); worst=Math.max(worst,Math.abs(parse(A.moneyIn(v))/v-1)); }
+    ok(worst<=.005&&A.moneyIn(1499)==="$1.5k"&&A.moneyIn(2324)==="$2.32k"&&A.moneyIn(999499)==="$999k"&&A.moneyIn(1.25e6)===A.money(1.25e6)&&A.moneyIn(-2324)==="\u2212$2.32k"
+       &&HTML.includes('setBox("v_ern",moneyIn(s.ern))')&&HTML.includes("${tsub(`${moneyIn(s.ern)} × ${xx(r.M)}`)}")&&HTML.includes("=${tmi(s.ern)}"),
+       `S-4: boxes and echoes re-read within ${(worst*100).toFixed(2)}%`); }
+  /* S-5: an empty programme says what binds; a change the budget blocks is named, and it does beat doing nothing */
+  { const prep=s=>{ s.rhoSell=A.bestRatio(s,0,0); s.optRho=A.bestRatio(s,s.lamT,s.theta); return s; };
+    const s=prep({...FX,ask:4.7e6,budget:26e3}), b=A.optimize(s,A.model(s),s.budget,s.lamT,s.theta);
+    const s2=prep({...FX,ask:4.7e6,budget:27e3}), b2=A.optimize(s2,A.model(s2),s2.budget,s2.lamT,s2.theta);
+    const bl=b.U.blocked, ru=bl&&A.model(A.applyAll(s,A.model(s),[bl.k],s.optRho)), uBl=bl&&ru.EVp+(1-ru.PC)*s.theta*ru.V-s.lamT*(ru.tMean+A.daysOf(s,[bl.k]))-bl.c;
+    ok(!b.U.keys.length&&bl&&bl.k==="qoe"&&bl.c>s.budget&&uBl>b.U.U&&b2.U.keys.includes("qoe")&&!b.allIn
+       &&HTML.includes("Do nothing — nothing within the budget clears its cost; ${INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${moneyIn(sel.blocked.c)}"),
+       `S-5: the budget-bound programme names ${bl&&bl.k} at $${bl&&Math.round(bl.c)}`); }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

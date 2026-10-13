@@ -2179,8 +2179,26 @@ function sbaRate(price){ const R=MODELS.fitted.sba_rate;
    firm size. Was revenue / $150k for every industry and size. fitRisk accepts it and ignores it
    (SBA's jobs count is a different measure), so the count reaches no figure; the GM salary reads the same Census
    table's employment-share column directly, not this count (AUDIT_FINDINGS R3-3). */
-function jobsFor(rev,ind){ const J=MODELS.fitted.jobs.by_industry[ind]; if(!J) return Math.max(2,Math.round(rev/150000));
-  const x=Math.log(Math.max(rev,1e4)), rpe=Math.exp(lerpKnots(x,J.knots.map(k=>[k[0],Math.log(k[1])])));
+/* Census sizes firms by ENTERPRISE receipts, but each knot's x is this industry's own receipts per
+   firm in that size class, which need not rise from one class to the next: car wash and auto repair
+   (NAICS 8111) fall at two classes, fitness (7139) at one. lerpKnots needs x sorted, and reading those
+   classes out of order made the GM's employment rank, and with it the GM salary, jump by up to 4.1%
+   on a $1 change in revenue (stress test, October 2026). Adjacent classes that fall out of order are
+   pooled, their columns averaged, until x rises, so every table is read on an increasing scale and the
+   rank, a cumulative share, stays non-decreasing. The other 13 tables are in order and come back as
+   they are. */
+const JOBK={};
+function jobsKnots(ind){
+  if(JOBK[ind]) return JOBK[ind];
+  const J=MODELS.fitted.jobs.by_industry[ind]; if(!J) return null;
+  const B=[];
+  for(const k of J.knots){ B.push({n:1,s:k.slice()});
+    while(B.length>1){ const a=B[B.length-2], b=B[B.length-1]; if(a.s[0]/a.n<b.s[0]/b.n) break;
+      a.s=a.s.map((v,i)=>v+b.s[i]); a.n+=b.n; B.pop(); } }
+  return (JOBK[ind]=B.map(b=>b.s.map(v=>v/b.n)));
+}
+function jobsFor(rev,ind){ const K=jobsKnots(ind); if(!K) return Math.max(2,Math.round(rev/150000));
+  const x=Math.log(Math.max(rev,1e4)), rpe=Math.exp(lerpKnots(x,K.map(k=>[k[0],Math.log(k[1])])));
   return Math.max(1,Math.round(rev/rpe)); }
 /* typical SDE margin for this industry at these earnings, and its spread, from broker
    listings. Replaces the hand-set industry margin and the size curve applied to it. */
@@ -3106,7 +3124,8 @@ function model(s){
      quality  - the composite of the nine dimensions is standard normal by
                 construction, because each dimension is standardised against its
                 own peer median. Setting dimension k to z = Z*w_k/|w| puts the
-                weighted composite at exactly Z.
+                weighted composite at exactly Z (where a field's range clamps a
+                dimension, the draw is re-solved so that it still is; see atZ).
      price    - every reference business is priced at the ask that maximises its
                 expected proceeds, so a deal asking more (or less) than that scores
                 below where its quality alone would put it.
@@ -3117,6 +3136,18 @@ function model(s){
 /* a typical market ask (1.05x value): no longer the score's reference price (see refDistAt); kept as
    the market-priced benchmark the tests and the live self-audit price a median business at */
 const REF_RATIO=1.05;
+/* The composite quality z exactly as model() computes it (out.qz): each of the nine quality dimensions
+   standardised against its peer median, clamped to +-3.2 and weighted by QW. refDistAt solves its
+   reference draws against it; the tests check it equals model(s).qz. */
+function qualityZ(s){
+  const I=IND[s.ind]||IND.prof, RF=sizeRefs(s.ern);
+  const z={rec:(s.rec-I.rec)/.28, cc:(s.cc-.16)/.13, own:(s.own-RF.own)/.25, mgt:(s.mgt-RF.mgt)/.28,
+    grw:(s.grw-I.grw)/.13, gm:(s.gm-I.gm)/.13, ret:(s.ret-I.ret)/.13, fin:(s.fin-RF.fin)/.28, plt:(s.plt-.40)/.22};
+  let qs=0,qn=0;
+  for(const k of MODELS.value.quality_band.dimensions){ const w=QW.w[k], v=clamp(z[k],-3.2,3.2);
+    qs+=w*((k==="own"||k==="cc"||k==="plt")?-v:v); qn+=w*w; }
+  return qn?qs/Math.sqrt(qn):0;
+}
 const REFC=new Map();
 function refDistAt(s){
   const ern=Math.max(s.ern,1e3);
@@ -3135,7 +3166,10 @@ function refDistAt(s){
      revenue, so the score measures only what the quality inputs and the ask change. */
   const I=IND[s.ind]||IND.prof, RF=sizeRefs(ern);
   const rev=s.rev>0?s.rev:ern/typMargin(s.ind||"prof",ern);
-  const key=(s.ind||"prof")+"|"+ern.toPrecision(6)+"|"+rev.toPrecision(6);
+  /* the full numbers: a key of six significant digits was still a bucket ($10 wide at $1.45M of SDE),
+     reachable from the exact-value boxes, so identical inputs scored 50 or 51 by the order they were
+     entered in (stress test, October 2026) */
+  const key=(s.ind||"prof")+"|"+ern+"|"+rev;
   const hit=REFC.get(key); if(hit) return hit;
   /* ONE population for both scores: peers priced at their proceeds optimum. The business
      score prices the subject at its proceeds optimum, so its peers must be too - against
@@ -3148,7 +3182,7 @@ function refDistAt(s){
      The optimum depends on the gap curve and the ceiling, not on quality, so one ratio
      solved on the median profile serves the whole population. */
   /* Zc is the composite quality z; dimension k sits at Zc*w_k/|w|, which puts the
-     weighted composite at exactly Zc */
+     weighted composite at exactly Zc - unless a field clamp binds (atZ, below) */
   const mkT=Zc=>{ const z=k=>Zc*QW.w[k]/QW.norm;
     return {ind:s.ind||"prof", ern:ern, rev:rev, yrs:6,
       buyers:I.buyers||50, franchise:false, st:null,
@@ -3157,8 +3191,24 @@ function refDistAt(s){
       grw:clamp(I.grw+z("grw")*.13,-.6,1.5),  gm :clamp(I.gm+z("gm")*.13,.02,.97),
       ret:clamp(I.ret+z("ret")*.13,.05,.99),  fin:clamp(RF.fin+z("fin")*.28,.02,1),
       plt:clamp(.40-z("plt")*.22,.02,.999)}; };
+  /* mkT's field clamps bind wherever a peer median sits near a bound (recurring revenue in restaurants,
+     construction and auto repair; owner dependence and management depth at small sizes). A clamped
+     dimension falls short of its share of Zc, so those draws used to sit above their stated composite:
+     the bottom of the population was lifted, and a weak business beat fewer peers than its percentile
+     said, scoring 1-4 points low at small sizes (stress test, October 2026). Each draw is now solved
+     for the scale Z' at which its clamped profile has composite exactly Zc, as model() computes it
+     (qualityZ is non-decreasing in Z', so bisection finds it); unclamped draws keep Z'=Zc. */
+  const atZ=Zc=>{
+    const sg=Zc<0?-1:1, g=Z=>(qualityZ(mkT(Z))-Zc)*sg;
+    if(g(Zc)>=-1e-12) return mkT(Zc);
+    let lo=Zc, hi=Zc;
+    for(let j=0;j<12&&g(hi)<0;j++){ lo=hi; hi*=2; }
+    if(g(hi)<0) return mkT(hi);                 /* every dimension at its bound: as close as the fields allow */
+    for(let j=0;j<60;j++){ const m=(lo+hi)/2; if(g(m)<0) lo=m; else hi=m; }
+    return mkT(hi);
+  };
   const ratio=bestRatio(mkT(0),0,0);
-  const xs=[];
+  const xs=[], zq=[];
   for(let i=1;i<=128;i++){
     /* van der Corput: deterministic and evenly spread, so the score does not
        flicker between renders the way a pseudo-random draw would */
@@ -3173,14 +3223,14 @@ function refDistAt(s){
        the same business could score differently depending on what had been rendered
        before it. The population is now a pure function of the two things the key
        names, with revenue at the industry's typical margin for that size. */
-    const t=mkT(Z);
+    const t=atZ(Z); zq.push(qualityZ(t));
     const V=model({...t,ask:1}).V;
     xs.push(Math.log(Math.max(model({...t,ask:V*ratio}).EVp,1)));
   }
   const mu=xs.reduce((a,b)=>a+b,0)/xs.length;
   const sd=Math.sqrt(xs.reduce((a,b)=>a+(b-mu)*(b-mu),0)/xs.length)||1;
   xs.sort((a,b)=>a-b);
-  const out={mu,sd,xs};
+  const out={mu,sd,xs,zq};
   /* a slider drag walks through a lot of sizes; keep the recent ones and let the
      rest go rather than growing without bound for the life of the page */
   if(REFC.size>96) REFC.delete(REFC.keys().next().value);
@@ -3264,8 +3314,8 @@ const INTERV=[
    it is bridged from May 2021). No fallback to an older growth field: a stale table fails
    the tests instead of silently using the 2021 factor. */
 function gmSalary(s){
-  const F=MODELS.fitted, G=F.gm_wage.by_industry[s.ind]||F.gm_wage.by_industry.prof, J=F.jobs.by_industry[s.ind];
-  const pct=J?clamp(lerpKnots(Math.log(Math.max(s.rev,1e4)),J.knots.map(k=>[k[0],k[3]])),.1,.9):.5;
+  const F=MODELS.fitted, G=F.gm_wage.by_industry[s.ind]||F.gm_wage.by_industry.prof, K=jobsKnots(s.ind);
+  const pct=K?clamp(lerpKnots(Math.log(Math.max(s.rev,1e4)),K.map(k=>[k[0],k[3]])),.1,.9):.5;
   const w=lerpKnots(pct,[[.1,G.p10],[.25,G.p25],[.5,G.p50],[.75,G.p75],[.9,G.p90]]);
   return w*F.gm_wage.wage_growth;
 }
@@ -3443,7 +3493,7 @@ function optCardNote(s,best,rhoSell,uRho){
       +(pcTxt?` and is ${pcTxt}`:"")+` for a ${hi?"higher":"lower"} price if it closes`+(tTxt?`, and ${tTxt}`:"")+`.`+tail};
   }
   const diff=[];
-  if(Math.abs(dC)>=1) diff.push(`spends ${money(Math.abs(dC),0)} ${dC<0?"less":"more"}`);
+  if(Math.abs(dC)>=1) diff.push(`spends ${moneyIn(Math.abs(dC))} ${dC<0?"less":"more"}`);
   if(pcTxt) diff.push(`is ${pcTxt}`);
   if(tTxt) diff.push(tTxt);
   const list=diff.length>1?diff.slice(0,-1).join(", ")+" and "+diff[diff.length-1]:diff.join("");
@@ -3542,6 +3592,23 @@ function optimize(s0,r0,budget,lamT,theta){
       U:ru.EVp+(1-ru.PC)*theta*ru.V-lamT*(ru.tMean+days)-c};
     if(!best.U||recU.U>best.U.U)     best.U=recU;
   }
+  /* An empty programme means nothing beat doing nothing WITHIN THE BUDGET: the search skips every
+     combination that costs more. The cards used to say 'no combination clears its cost' even when the
+     intervention table beside them listed changes that do, all over the budget (stress test, October
+     2026). Name the cheapest single change (with the free reprice, if that helps) that would beat
+     doing nothing but is over the budget, and whether the budget covers every change at all. */
+  const blocked=(sel,obj)=>{ if(!sel||sel.keys.length) return null; let out=null;
+    for(const it of INTERV){ if(it.k==="reprice") continue;
+      const c=costOf(s0,[it.k]); if(c<=budget||(out&&c>=out.c)) continue;
+      for(const keys of [[it.k],["reprice",it.k]]){
+        const hasR=keys.length>1, rr=model(applyAll(s0,r0,keys,obj==="V"?s0.rhoSell:s0.optRho)), days=daysOf(s0,keys);
+        if(obj==="U"&&!hasR&&s0.ask>RHO_MAX*rr.V*(1+1e-9)) continue;
+        const val=obj==="V"?rr.EVp-c:rr.EVp+(1-rr.PC)*theta*rr.V-lamT*(rr.tMean+days)-c;
+        if(val>(obj==="V"?sel.net:sel.U)){ out={k:it.k,c}; break; } } }
+    return out; };
+  if(best.V) best.V.blocked=blocked(best.V,"V");
+  if(best.U) best.U.blocked=blocked(best.U,"U");
+  best.allIn=costOf(s0,INTERV.map(i=>i.k))<=budget;
   return best;
 }
 
@@ -3626,6 +3693,15 @@ function money(v,dp){
   if(a>=999.5) return (v<0?"−$":"$")+Math.round(a/1e3)+"k";
   return (v<0?"−$":"$")+Math.round(a);
 }
+/* the exact-value boxes and the 'SDE x multiple' echoes: three significant figures in thousands as in
+   millions, so a box re-reads to within 0.5% of the value the model uses. Whole thousands read $1,499
+   as '$1k' (33% low) and echoed the earnings slider's $2,324 as '$2k' (stress test, October 2026);
+   money() keeps whole thousands everywhere else. */
+function moneyIn(v){
+  const a=Math.abs(v);
+  if(!isFinite(v)||a>=999.5e3||a<999.5) return money(v);
+  return (v<0?"−$":"$")+Number((a/1e3).toPrecision(3))+"k";
+}
 const ordn=n=>{ const a=n%10,b=n%100; return n+((a===1&&b!==11)?"st":(a===2&&b!==12)?"nd":(a===3&&b!==13)?"rd":"th"); };
 const pc=(v,d)=>isFinite(v)?(v*100).toFixed(d===undefined?0:d)+"%":"—";
 const pp=v=>isFinite(v)?(v>=0?"+":"−")+Math.abs(v*100).toFixed(1)+" pts":"—";
@@ -3638,6 +3714,7 @@ const num=v=>v.toFixed(3);
 const T=v=>String(v).replace(/\$/g,"\\$").replace(/\u2212/g,"-")
                     .replace(/%/g,"\\%").replace(/,/g,"{,}");
 const tm=(v,d)=>"\\text{"+T(money(v,d))+"}";   // upright, not an italic variable
+const tmi=v=>"\\text{"+T(moneyIn(v))+"}";        // the same at the input boxes' precision (moneyIn)
 const tp=(v,d)=>"\\text{"+T(pc(v,d))+"}";
 const tpts=v=>T(pp(v)).replace(" pts","\\text{ pts}");
 const tn=v=>T(Math.round(v).toLocaleString());
@@ -4012,13 +4089,13 @@ const BOX={
 };
 function setBox(id,txt){ const e=$(id); if(e&&document.activeElement!==e) e.value=txt; }
 function labels(s){
-  setBox("v_rev",money(s.rev)); setBox("v_ern",money(s.ern)); setBox("v_ask",money(s.ask));
+  setBox("v_rev",moneyIn(s.rev)); setBox("v_ern",moneyIn(s.ern)); setBox("v_ask",moneyIn(s.ask));
   const p1=v=>{ const x=Math.round(v*1000)/10; return (Number.isInteger(x)?x.toFixed(0):x.toFixed(1))+"%"; };
   setBox("v_grw",p1(s.grw)); setBox("v_gm",p1(s.gm));
   setBox("v_rec",p1(s.rec)); setBox("v_cc",p1(s.cc));
   setBox("v_ret",p1(s.ret)); setBox("v_plt",p1(s.plt));
   setBox("v_yrs",s.yrs+(s.yrs===1?" year":" years"));
-  setBox("v_buy",String(s.buyers)); setBox("v_bud",s.budget?money(s.budget):"none");   /* two decimals in millions, as the optimiser cards echo it (AUDIT_FINDINGS round 4) */
+  setBox("v_buy",String(s.buyers)); setBox("v_bud",s.budget?moneyIn(s.budget):"none");   /* two decimals in millions, as the optimiser cards echo it (AUDIT_FINDINGS round 4) */
   setBox("v_lam",s.lamT?"$"+s.lamT.toLocaleString("en-US")+"/day":"none");
   setBox("v_th",p1(s.theta));
 }
@@ -4304,7 +4381,7 @@ function render(){
         <td class="n"><b>${xx(r.fv.mult)}</b></td></tr>
       <tr><td>Quality position: ${ordn(Math.min(99,Math.max(1,Math.round(r.qPct*100))))} percentile among peers, placed inside the measured ${MODELS.value.quality_band.lo.toFixed(2)}–${MODELS.value.quality_band.hi.toFixed(2)}× band <span class="st free">judgment</span></td>
         <td class="n ${r.qFactor>=1?"pos":"neg"}">×${r.qFactor.toFixed(3)}</td><td class="n">${xx(r.M)}</td></tr>
-      <tr class="sum"><td><b>Model-supported value</b> <span class="sym">E[V|X]</span>${tsub(`${money(s.ern)} × ${xx(r.M)}`)}</td>
+      <tr class="sum"><td><b>Model-supported value</b> <span class="sym">E[V|X]</span>${tsub(`${moneyIn(s.ern)} × ${xx(r.M)}`)}</td>
         <td class="n muted">—</td><td class="n"><b>${money(r.V)}</b></td></tr>
       <tr><td>Anchoring on an ask of ${r.priceRatio.toFixed(2)}× model value, at the point estimate <span class="st free">judgment</span>${tsub(`flat past ${RHO_MAX.toFixed(2)}×`)}</td>
         <td class="n ${r.anchorF>=1?"pos":"neg"}">×${r.anchorF.toFixed(3)}</td><td class="n muted">—</td></tr>
@@ -4336,7 +4413,7 @@ function render(){
     \\;\\Rightarrow\\;\\hat P=${tm(r.fv.rawPoint)}\\\\[4pt]
     E[V\\mid X]=${tm(r.fv.rawPoint)}\\times\\underbrace{${r.fv.calib.toFixed(3)}}_{\\text{median calib.}}
     \\times\\underbrace{${r.qFactor.toFixed(3)}}_{\\text{quality position}}=\\boxed{${tm(r.V)}}
-    =${tm(s.ern)}\\times${r.M.toFixed(2)}\\end{gathered}`);
+    =${tmi(s.ern)}\\times${r.M.toFixed(2)}\\end{gathered}`);
 
   eq("eq_a",`\\begin{aligned}A(\\rho)&=1+(A_{\\max}-1)\\tanh\\!\\Big(\\frac{\\alpha\\ln\\tilde\\rho}{A_{\\max}-1}\\Big),\\quad
     \\tilde\\rho=\\operatorname{softmin}\\big(\\max(\\rho,0.35),\\,${RHO_MAX.toFixed(1)}\\big),\\quad
@@ -4515,7 +4592,7 @@ function render(){
   $("intbl").innerHTML=
     `<tr><th>Intervention</th><th class="n">Cost</th><th class="n">ΔValue</th><th class="n">ΔE[proceeds]</th>
       <th class="n">ΔP<sub>C</sub></th><th class="n">Net days</th><th class="n">ROI</th></tr>`
-    +it.map(o=>`<tr><td>${o.n}</td><td class="n">${o.c?money(o.c,0):'<span class="muted">no capital</span>'}</td>
+    +it.map(o=>`<tr><td>${o.n}</td><td class="n">${o.c?moneyIn(o.c):'<span class="muted">no capital</span>'}</td>
       <td class="n ${Math.abs(o.dV)<r.V*1e-4?"muted":o.dV>=0?"pos":"neg"}">${Math.abs(o.dV)<r.V*1e-4?"—":(o.dV>=0?"+":"−")+money(Math.abs(o.dV),2)}</td>
       <td class="n ${o.dE>=0?"pos":"neg"}">${o.dE>=0?"+":"−"}${money(Math.abs(o.dE),2)}</td>
       <td class="n ${Math.abs(o.dP)<5e-4?"muted":o.dP>=0?"pos":"neg"}">${Math.abs(o.dP)<5e-4?"—":pp(o.dP)}</td>
@@ -4528,7 +4605,7 @@ function render(){
   eq("eq_r",`MV_i=\\frac{\\partial V}{\\partial a_i},\\qquad
     ROI(a)=\\frac{E[\\text{proceeds}\\mid X+\\Delta X(a),\\text{repriced}]-E[\\text{proceeds}\\mid X,\\text{repriced}]-C(a)}{C(a)}`);
   const bi=it.find(o=>o.c>0);
-  eq("eq_rs",`\\text{${tt(bi.n)}}:\\;\\frac{${tm(bi.dE,2)}-${tm(bi.c,2)}}{${tm(bi.c,2)}}
+  eq("eq_rs",`\\text{${tt(bi.n)}}:\\;\\frac{${tm(bi.dE,2)}-${tmi(bi.c)}}{${tmi(bi.c)}}
     =${bi.roi<0?"-":""}${Math.abs(bi.roi*100).toFixed(0)}\\%`);
 
   /* ---------- §18–19 optimizer ---------- */
@@ -4550,12 +4627,13 @@ function render(){
   const best=optimize(s,r,s.budget,s.lamT,s.theta);
   const card=(t,sel,sub,accent,rho)=>{
     const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:INTERV.find(i=>i.k===k).n)
-      :["Do nothing — no combination clears its cost"];
+      :[sel.blocked?`Do nothing — nothing within the budget clears its cost; ${INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${moneyIn(sel.blocked.c)}`
+        :best.allIn?"Do nothing — no combination clears its cost":"Do nothing — nothing within the budget clears its cost"];
     /* card titles share one style; the accent is carried by the orb of the matching decision above */
     return `<div class="opt" data-accent="${accent}"><p class="grp-title">${t}</p>
       <table><tr><th>Selected</th><th class="n">Cost</th></tr>
-      ${names.map((n,i)=>`<tr><td>${n}</td><td class="n">${sel.keys[i]?money(INTERV.find(x=>x.k===sel.keys[i]).cost(s),0):"—"}</td></tr>`).join("")}
-      <tr class="sum"><td><b>Total committed</b></td><td class="n"><b>${money(sel.c,0)}</b> of ${money(s.budget,0)}</td></tr>
+      ${names.map((n,i)=>`<tr><td>${n}</td><td class="n">${sel.keys[i]?moneyIn(INTERV.find(x=>x.k===sel.keys[i]).cost(s)):"—"}</td></tr>`).join("")}
+      <tr class="sum"><td><b>Total committed</b></td><td class="n"><b>${moneyIn(sel.c)}</b> of ${moneyIn(s.budget)}</td></tr>
       </table>
       <div class="big-row">
         <div class="big"><div class="k">Expected proceeds</div><div class="n sm">${money(sel.proceeds)}</div></div>
@@ -4567,19 +4645,19 @@ function render(){
   const uRho=best.U.keys.includes("reprice")?s.optRho:rhoSell;
   $("optout").innerHTML=
     card("Maximizing expected proceeds",best.V,
-      `Lifts expected proceeds ${money(best.V.proceeds-r.EVp)} over today's ${money(r.EVp)}, before the ${money(best.V.c,0)} spent.`,"var(--signal)",rhoSell)
+      `Lifts expected proceeds ${money(best.V.proceeds-r.EVp)} over today's ${money(r.EVp)}, before the ${moneyIn(best.V.c)} spent.`,"var(--signal)",rhoSell)
    +card("Maximizing the seller's overall outcome",best.U,optCardNote(s,best,rhoSell,uRho).text,"var(--mint)",uRho);
   eq("eq_o",`\\max_{a}\\;\\Big(P_C(a)\\,E[P_{\\text{real}}(a)]-C(a)\\Big)\\quad\\text{s.t.}\\quad C(a)\\le B,
     \\qquad \\mathcal{L}=P_C(a)\\,E[P_{\\text{real}}(a)]-C(a)-\\lambda\\big(C(a)-B\\big)`);
-  eq("eq_os",`B=${tm(s.budget,0)}:\\;\\text{searched }2^{${INTERV.length}}=${tn(1<<INTERV.length)}
-    \\text{ combinations},\\;\\text{optimum commits }${tm(best.V.c,0)}\\Rightarrow
+  eq("eq_os",`B=${tmi(s.budget)}:\\;\\text{searched }2^{${INTERV.length}}=${tn(1<<INTERV.length)}
+    \\text{ combinations},\\;\\text{optimum commits }${tmi(best.V.c)}\\Rightarrow
     \\text{proceeds }${tm(best.V.proceeds)}`);
   eq("eq_u",`U(a)=\\underbrace{P_C\\,E[P_{\\text{real}}]}_{\\text{sale}}
     +\\underbrace{(1-P_C)\\,\\theta\\,E[V\\mid X]}_{\\text{business retained if it fails}}
     -\\lambda_T\\big(E[T]+T_{\\text{exec}}\\big)-C(a)`);
   eq("eq_us",`U=${tp(best.U.PC)}\\!\\cdot\\!${tm(best.U.r.Vmean)}
     +${tp(1-best.U.PC)}\\!\\cdot\\!${tp(s.theta)}\\!\\cdot\\!${tm(best.U.r.V)}
-    -\\text{${T("$"+s.lamT.toLocaleString("en-US"))}}\\!\\cdot\\!${Math.round(best.U.t+best.U.days)}-${tm(best.U.c,0)}=\\boxed{${tm(best.U.U)}}`);
+    -\\text{${T("$"+s.lamT.toLocaleString("en-US"))}}\\!\\cdot\\!${Math.round(best.U.t+best.U.days)}-${tmi(best.U.c)}=\\boxed{${tm(best.U.U)}}`);
 
   /* ---------- §21 categories ---------- */
   $("cats").innerHTML=Object.entries(r.cats).map(([k,v])=>
