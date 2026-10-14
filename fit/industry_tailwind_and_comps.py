@@ -13,7 +13,9 @@ Why
   industries. tail is read only by two category sub-scores, Growth = 1.0 z.grw + .55 tail and Market position =
   .9 tail + .45 z.gm + .4 (comps - .65) (and by inert judgment terms). comps is read by Market position and by the
   confidence score, conf = .34 comps + .30 clamp(yrs/8) + .22 fin + .14 clamp(1 - typ/2.2) (High above .68, Moderate
-  above .46). The research round (/tmp/claude-0/fit6/research/D-tail-comps-strat-buyers.md) found a tested source for
+  above .46). (These are the readers on the page this script read, commit 56ba230. Since the second round's integration,
+  Market position reads comps against COMPS_MEAN, the mean of the 16 values, and the fitted confidence figure reads the
+  value model's own cell weight, n/(n+k), directly.) The research round (/tmp/claude-0/fit6/research/D-tail-comps-strat-buyers.md) found a tested source for
   each: BLS's ten-year industry projections, which in four past vintages predicted which industries actually grew
   faster, and the value model's own BIZCOMPS cell counts, whose shrinkage weight n/(n+k) is exactly how much the
   console's value rests on the industry's own comparables. The analyst fixed the construction of both tables; this script
