@@ -39,7 +39,7 @@ function sample(){
   const rev=corner?pick([1e4,1e5,2.5e5,1e6,2e8,5e9]):logU(1e4,5e9);
   let ern=rev*(corner?pick([.002,.02,.85,.92]):(.005+rnd()*.915)); ern=Math.max(1e3,Math.min(ern,rev*.92));
   const s={ind:pick(INDS),st:pick(STS),franchise:rnd()<.2,rev,ern,
-    grw:rnd()<.1?pick([-.25,.7,-.6,1.5]):-.25+rnd()*.95, gm:rnd()<.1?pick([.12,.92,.02,.97]):.12+rnd()*.8,
+    grw:rnd()<.1?pick([-.25,.7,-.6,1.5]):-.25+rnd()*.95, gm:rnd()<.1?pick([.12,.97,.02,.5]):.12+rnd()*.85,
     rec:rnd()<.1?pick([0,1]):rnd(), cc:rnd()<.1?pick([.01,.7,.005,.95]):.01+rnd()*.69,
     ret:rnd()<.1?pick([.45,.99,.05]):.45+rnd()*.54, plt:rnd()<.1?pick([.05,.95,.02,.999]):.05+rnd()*.9,
     own:rnd()<.8?pick([.95,.72,.42,.14]):.02+rnd()*.97, mgt:rnd()<.8?pick([.08,.36,.66,.92]):.02+rnd()*.97,

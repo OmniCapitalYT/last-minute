@@ -33,7 +33,7 @@ const Vof=s=>A.model({...s,ask:1}).V;
 
 /* quality corners: the console's control ends, and the model's own domain ends (FIELD_RANGE) */
 const Q_UI_WORST={grw:-.25,gm:.12,rec:0,cc:.70,ret:.45,plt:.95,own:.95,mgt:.08,fin:.14};
-const Q_UI_BEST ={grw:.70,gm:.92,rec:1,cc:.01,ret:.99,plt:.05,own:.14,mgt:.92,fin:.96};
+const Q_UI_BEST ={grw:.70,gm:.97,rec:1,cc:.01,ret:.99,plt:.05,own:.14,mgt:.92,fin:.96};
 const Q_DOM_WORST={grw:-.6,gm:.02,rec:0,cc:.95,ret:.05,plt:.999,own:.99,mgt:.02,fin:.02};
 const Q_DOM_BEST ={grw:1.5,gm:.97,rec:1,cc:.005,ret:.99,plt:.02,own:.02,mgt:.99,fin:1};
 const Q_MIX1={grw:1.5,gm:.02,rec:1,cc:.95,ret:.99,plt:.02,own:.99,mgt:.99,fin:.02};
@@ -102,7 +102,7 @@ inv("ceiling-share-continuous","The share of closings at the ceiling never moves
 inv("value-nondecreasing-in-earnings-extremes","At revenue $10k, $100k, $5B and $100B, model value never falls as earnings rise from $1k to 92% of revenue (fine grid).","fuzz 'more earnings never lowers value', extended to the extremes");
 inv("best-quality-beats-worst","At seven size corners ($1k-$100B revenue) in all 16 industries, every quality input at its best end gives a model value above that of every input at its worst end, and (for revenue $10k-$5B in five industries) a business score at least as high.","Data tab: the nine quality inputs decide where in the measured spread the business sits; economics");
 inv("value-reads-only-business-inputs","Model value, the fitted value and the multiple do not move with the ask, buyers, budget, cost of delay, share kept, years, state or franchise.","model(): 'E[V|X] is what the business supports; it cannot depend on what is asked'; Data tab");
-inv("years-move-only-confidence-and-categories","Changing years of history (0-50) moves only confidence, the category bars and the unused judgment panels: value, P_C, prices, proceeds, time, risk and buyers are unchanged.","Data tab: 'Years of clean history feeds only the confidence figure, the category bars and the judgment panels that are not used.'");
+inv("years-move-only-categories","Changing years of history (0-50) moves only the category bars and the unused judgment panels: value, P_C, prices, proceeds, time, risk, buyers and the confidence figure and its label are unchanged.","Data tab: 'Years of clean history feeds only the category bars and the judgment panels that are not used.'");
 inv("quality-never-moves-size-band","At a fixed ask at or below both values, changing every quality input leaves the time to close, the curve shape, the cash share and the base close rate unchanged.","Data tab: 'They do not move the size band: the base close rate, the time to close and the cash share are read at the fitted value before quality positioning'");
 inv("state-and-franchise-move-only-risk","State and franchise change only the survival-risk outputs, and a state's effect on the 10-year risk has the sign of its fitted state effect (every industry, size and franchise setting).","fitRisk (state and franchise enter only the charge-off hazard); OMNI_STLAB comment 'the label is the model's own difference'");
 /* --- optimiser termination at corners --- */
@@ -117,7 +117,7 @@ inv("intervention-table-finite-and-sorted","At every corner every intervention r
 inv("typed-money-parses","Typed money in every supported form ('$1.45M', '1,450,000', '1.45m', '450k', '2.5b', '1e6', '.5m', '1 000 000', '$1,234,567.89', ' 450 K ') lands in STATE.s exactly.","parseAmount comment ('\"$1.45M\", \"1,450,000\", \"1.45m\", \"450k\" ...')");
 inv("typed-money-clamps-and-flags","Typed money outside the hard range is clamped to it and the box is flagged; earnings above 92% of revenue are stored at 92% and flagged.","MONEY hard ranges and commit(): 'typed earnings above 92% of revenue are impossible: store the clamp here'");
 inv("typed-junk-restores-and-flags","Malformed or forbidden text ('abc', '1,5m', '12.3.4m', '-5', '14%' in money, 'Infinity', '1e999', '') restores the previous value and flags the box.","parseAmount: 'anything else is rejected rather than silently truncated'");
-inv("typed-plain-clamps-to-slider","Typed plain values are held to their slider's range and flagged (growth -90 -> -25%, margin 100 -> 92%, buyers 1000 -> 600 and 2 -> 5, years 0 -> 1 and 50 -> 12, delay 10000 -> $4,000, share kept 150 -> 100%); supported suffixes ('%', '/day', 'years', 'of value', 'none', unicode minus) parse.","commit(): 'held to the slider's range: say so'");
+inv("typed-plain-clamps-to-slider","Typed plain values are held to their slider's range and flagged (growth -90 -> -25%, margin 100 -> 97%, buyers 1000 -> 600 and 2 -> 5, years 0 -> 1 and 50 -> 12, delay 10000 -> $4,000, share kept 150 -> 100%); supported suffixes ('%', '/day', 'years', 'of value', 'none', unicode minus) parse.","commit(): 'held to the slider's range: say so'");
 inv("box-shows-state","After every Enter each exact-value box shows the canonical formatting of what STATE.s holds.","labels(): 'the next render rewrites the box in the canonical format'");
 inv("state-result-is-model-of-state","After every typed change STATE.r equals model(STATE.s) (value, P_C, proceeds, time, risk).","render(): r=model(readState())");
 inv("extreme-states-render-clean","At extreme typed states (smallest and largest business, $1k and $100B asks, 5 and 600 buyers, 0 and 100% kept, $0 and $4,000 a day, $0 and $1B budget) the console text carries no NaN, Infinity or undefined once every equation is typeset, and no page error is thrown.","browser.sweep.js criterion extended to the typed extremes");
@@ -180,10 +180,10 @@ function modelPart(){
     /* value reads only business inputs */
     { const alt={...s,ask:s.ask*7.3+11,buyers:(s.buyers+17)*3,budget:s.budget+5e5,lamT:s.lamT+333,theta:1-s.theta,yrs:s.yrs+4.5,st:pick(STS),franchise:!s.franchise};
       const ra=A.model(alt); ok("value-reads-only-business-inputs",ra.V===r.V&&ra.Vbase===r.Vbase&&ra.M===r.M,()=>({...ctx(),V:r.V,Va:ra.V})); }
-    /* years move only confidence and categories */
+    /* years move only the categories (and the unused judgment panels) */
     { const ry=A.model({...s,yrs:s.yrs>=10?s.yrs-9.5:s.yrs+9.5});
-      const same=["V","Vreal","Vmean","EVp","PC","tMed","tMean","ceil","capShare","compPrem","thinF"].every(k=>ry[k]===r[k])&&ry.risk.p===r.risk.p&&ry.buyers.every((b,j)=>b.EV===r.buyers[j].EV);
-      ok("years-move-only-confidence-and-categories",same,()=>({...ctx(),EVp:[r.EVp,ry.EVp]})); }
+      const same=["V","Vreal","Vmean","EVp","PC","tMed","tMean","ceil","capShare","compPrem","thinF","conf","confLabel","confSigma"].every(k=>ry[k]===r[k])&&ry.risk.p===r.risk.p&&ry.buyers.every((b,j)=>b.EV===r.buyers[j].EV);
+      ok("years-move-only-categories",same,()=>({...ctx(),EVp:[r.EVp,ry.EVp],conf:[r.conf,ry.conf]})); }
     /* state and franchise move only risk */
     { const st2=pick(STS), rs=A.model({...s,st:st2,franchise:!s.franchise});
       const same=["V","Vreal","Vmean","EVp","PC","tMed","tMean","conf"].every(k=>rs[k]===r[k]);
@@ -474,7 +474,7 @@ async function browserPart(){
     const sameState=JSON.stringify({...x.s,optRho:0,rhoSell:0})===JSON.stringify({...x0.s,optRho:0,rhoSell:0});
     ok("typed-junk-restores-and-flags",sameState&&x.box[id].bad,()=>({id,txt,bad:x.box[id].bad,sameState})); }
   /* plain fields: clamps and suffixes */
-  for(const [id,txt,key,want,bad] of [["v_grw","-90","grw",-.25,true],["v_gm","100","gm",.92,true],["v_buy","1000","buyers",600,true],["v_buy","2","buyers",5,true],
+  for(const [id,txt,key,want,bad] of [["v_grw","-90","grw",-.25,true],["v_gm","100","gm",.97,true],["v_buy","1000","buyers",600,true],["v_buy","2","buyers",5,true],
       ["v_yrs","0","yrs",1,true],["v_yrs","50","yrs",12,true],["v_lam","10000","lamT",4000,true],["v_th","150","theta",1,true],
       ["v_grw","−5%","grw",-.05,false],["v_lam","$1.2k/day","lamT",1200,false],["v_yrs","3 years","yrs",3,false],["v_th","60% of value","theta",.6,false],["v_lam","none","lamT",0,false],["v_cc","2.5","cc",.025,false]]){
     await p.click("#reset"); await settle(p); await type(id,txt); const x=await check(id+"="+txt);
@@ -514,7 +514,7 @@ async function browserPart(){
     {name:"smallest-worst",fill:[["v_rev","10k"],["v_ern","9.2k"],["v_ask","1k"],["v_buy","5"],["v_grw","-25"],["v_gm","12"],["v_rec","0"],["v_cc","70"],["v_ret","45"],["v_plt","95"],["v_yrs","1"],["v_lam","4000"],["v_th","0"],["v_bud","0"]],sel:{i_own:"0.95",i_mgt:"0.08",i_fin:"0.14",i_ind:"rest"}},
     {name:"smallest-ask-100B",fill:[["v_ask","100b"]]},
     {name:"slider-min-worst",fill:[["v_rev","100k"],["v_ern","2k"],["v_ask","15k"]]},
-    {name:"largest-best",fill:[["v_rev","5b"],["v_ern","4.6b"],["v_ask","1k"],["v_buy","600"],["v_grw","70"],["v_gm","92"],["v_rec","100"],["v_cc","1"],["v_ret","99"],["v_plt","5"],["v_yrs","12"],["v_lam","0"],["v_th","100"],["v_bud","1b"]],sel:{i_own:"0.14",i_mgt:"0.92",i_fin:"0.96",i_ind:"saas",i_st:"CA"},fr:true},
+    {name:"largest-best",fill:[["v_rev","5b"],["v_ern","4.6b"],["v_ask","1k"],["v_buy","600"],["v_grw","70"],["v_gm","97"],["v_rec","100"],["v_cc","1"],["v_ret","99"],["v_plt","5"],["v_yrs","12"],["v_lam","0"],["v_th","100"],["v_bud","1b"]],sel:{i_own:"0.14",i_mgt:"0.92",i_fin:"0.96",i_ind:"saas",i_st:"CA"},fr:true},
     {name:"largest-ask-100B",fill:[["v_ask","100b"],["v_bud","100k"]]},
     {name:"5B-revenue-1k-earnings",fill:[["v_ern","1k"],["v_ask","4m"]]}];
   for(const st of EXT){

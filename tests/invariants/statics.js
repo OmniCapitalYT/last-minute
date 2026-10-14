@@ -44,7 +44,7 @@ const U=(a,b)=>a+rnd()*(b-a);
 const logU=(lo,hi)=>Math.exp(Math.log(lo)+rnd()*(Math.log(hi)-Math.log(lo)));
 const INDS=Object.keys(A.IND), STS=[null,...Object.keys(A.MODELS.risk.state_effects)];
 const SEL={own:[.95,.72,.42,.14],mgt:[.08,.36,.66,.92],fin:[.14,.45,.74,.96]};          /* the rail's select options */
-const SL={grw:[-.25,.70],gm:[.12,.92],rec:[0,1],cc:[.01,.70],ret:[.45,.99],plt:[.05,.95]};   /* slider ranges; typed values are held to them */
+const SL={grw:[-.25,.70],gm:[.12,.97],rec:[0,1],cc:[.01,.70],ret:[.45,.99],plt:[.05,.95]};   /* slider ranges; typed values are held to them */
 const FR={own:[.02,.99],mgt:[.02,.99],fin:[.02,1]};                                        /* FIELD_RANGE: what interventions can produce */
 const sl=k=>{ const [a,b]=SL[k], u=rnd(); return u<.06?a:u<.12?b:U(a,b); };
 const typOf=s=>A.IND[s.ind].buyers||50;
@@ -91,9 +91,9 @@ const prep=s=>{ const t={...s}; t.rhoSell=A.bestRatio(t,0,0); t.optRho=A.bestRat
 /* ================= declarations ================= */
 /* R: what each output must NOT read */
 def("value-reads-no-process-or-preference-input","Model value, the fitted value, the quality percentile and the multiple are unchanged by the buyers contacted, years of history, state, franchise, cost of delay, share kept and budget",
-  "model(): 'E[V|X] is what the business supports; it cannot depend on what is asked'; sensitivity(): 'the ask and the buyer pool cannot move it'; Data tab: years feed only the confidence figure and category bars; z.buy is not a quality_band dimension");
+  "model(): 'E[V|X] is what the business supports; it cannot depend on what is asked'; sensitivity(): 'the ask and the buyer pool cannot move it'; Data tab: years feed only the category bars and the unused judgment panels; z.buy is not a quality_band dimension");
 def("sale-outputs-read-no-preference-or-risk-input","P_C, the price distribution, expected proceeds, cash share, both time figures and the Omni score are unchanged by years of history, state, franchise, cost of delay, share kept and budget",
-  "Model I/III/§23 read only size, the ask, the pool and the quality position; Data tab: 'Years of clean history feeds only the confidence figure, the category bars and the judgment panels'");
+  "Model I/III/§23 read only size, the ask, the pool and the quality position; Data tab: 'Years of clean history feeds only the category bars and the judgment panels that are not used'");
 def("time-reads-only-size-and-ask","Median and mean time to close are unchanged by the buyers contacted, and by quality at an ask at or below value",
   "Model III comment: 'nothing here has covariates beyond deal size. (The ask enters only in model(), through timeMult)'");
 def("risk-reads-only-value-industry-state-franchise","Survival risk (10-year, 5-year, expected loss) is unchanged by the ask, buyers, years, cost of delay, share kept and budget, and equals fitRisk at model value",
@@ -122,7 +122,7 @@ def("time-monotone-in-quality-at-fixed-ask","Improving any one quality input nev
 def("price-distribution-monotone-in-quality","At the same ask, improving any one quality input never lowers any quantile of the price if it closes, its median or its mean",
   "model() §23: P(W) increasing in W ('A's elasticity is < 1'), the ceiling reads softMin(ask,1.5V), the premium never falls with engagement");
 def("risk-never-rises-with-quality","Improving any one quality input never raises the 5-year or 8-year charge-off risk; the 10-year risk and the expected loss rise only where the fitted tail for years 9-10 rises with the note's size, and the 10-year risk by no more than the tail does (page path: no rate entered)",
-  "economics: a better-run business is not a worse credit; in the model quality reaches risk only through a larger loan at a lower table spread. Since October 2026 years 9-10 are fitted by note size (fit/sba_tail_factor.py: larger acquisition notes are more often 10-year notes still open at year 8), so the 10-year figure is p8 x tail(note) and may rise where the tail rises faster than p8 falls (notes of about $0.7M-$1.0M)");
+  "economics: a better-run business is not a worse credit; in the model quality reaches risk only through a larger loan at a lower table spread. Since October 2026 years 9-10 are fitted by note size (fit/sba_tail_factor.py: larger acquisition notes are more often 10-year notes still open at year 8), so the 10-year figure is p8 x tail(note) and may rise where the tail rises faster than p8 falls (on the page path, notes from about $0.60M to the $1.05M band centre)");
 def("competition-premium-monotone","The competition premium never falls with more buyers contacted or with any one better quality input",
   "§20: 'deeper than usual earns a premium'; offers = buyers x engagement x ENG_SHARE, and every archetype's fit is non-decreasing in quality");
 def("confidence-monotone-in-reporting-and-history","The analysis confidence does not move with financial reporting or years of clean history (since October 2026 it is the fitted chance of landing within 25% of the fitted value, which reads neither)",
@@ -145,7 +145,7 @@ def("base-close-rate-monotone-in-size","At a fair ask and a typical or deeper po
 def("earnings-raise-pc-and-proceeds-deep-pool","At fixed revenue and ask, with a typical or deeper pool, more earnings never lower the closing probability, the price if it closes or expected proceeds",
   "economics: same ask, more profit. Corrected scope: below a typical pool the thin-pool factor reads the typical pool's size-dependent engagement (search-fund window, SDE $3.2M-$8.3M), which the BUYERS ledger row documents");
 def("risk-non-increasing-in-size","Along fine scale paths (fixed margin, $10k-$5B of revenue, every industry) the 5-year and 8-year charge-off risk never rise as the business grows; the 10-year risk and the expected loss never rise except where the fitted tail for years 9-10 rises with the note's size, and the 10-year risk then by no more than the tail does",
-  "Model V: larger loans are charged off less often through month 72; the table spread never rises with loan size; severity barely moves with size (b_size +0.0104, se 0.0397; Data tab: 'Size matters little'); the month-72 size reversal never overturns the 8-year figure. Since October 2026 the tail is fitted by note size (MODELS.risk.tail.by_band), so the 10-year figure may rise slightly between the $513k and $1.05M band centres. tests/model.test.js allows 1% per ~10% step");
+  "Model V: larger loans are charged off less often through month 72; the table spread never rises with loan size; severity barely moves with size (b_size +0.0104, se 0.0397; Data tab: 'Size matters little'); the month-72 size reversal never overturns the 8-year figure. Since October 2026 the tail is fitted by note size (MODELS.risk.tail.by_band), so the 10-year figure may rise slightly from a note of about $0.60M, where the table spread stops falling, to the $1.05M band centre. tests/model.test.js allows 1% per ~10% step");
 def("franchise-never-raises-risk","A franchise never raises the 10-year or 5-year charge-off risk or the expected loss, and moves nothing else",
   "MODELS.risk: franchise lowers the charge-off hazard (-0.0167) and raises the payoff hazard (+0.1256), so both lower the cumulative charge-off");
 def("state-label-sign-matches-effect","Each state dropdown label's sign is the sign of that state's fitted charge-off effect",
@@ -341,7 +341,7 @@ for(let i=0;i<states.length;i++){
     let prev=-1, okB=true, atB=null; for(const b of pools){ const tb=prep({...s,buyers:b}), sb=A.businessScore(tb,A.model(tb),tb.rhoSell).score; if(sb<prev){okB=false; atB=atB||{b,prev,sb};} prev=sb; }
     ok("business-score-monotone-in-buyers",okB,()=>cx(s,atB));
     /* the proceeds optimum against the whole quality range */
-    const lo={...s,rec:0,cc:.7,ret:.45,plt:.95,grw:-.25,gm:.12,own:.95,mgt:.08,fin:.14}, hi={...s,rec:1,cc:.01,ret:.99,plt:.05,grw:.7,gm:.92,own:.14,mgt:.92,fin:.96};
+    const lo={...s,rec:0,cc:.7,ret:.45,plt:.95,grw:-.25,gm:.12,own:.95,mgt:.08,fin:.14}, hi={...s,rec:1,cc:.01,ret:.99,plt:.05,grw:.7,gm:.97,own:.14,mgt:.92,fin:.96};
     const qa=A.bestRatio(lo,0,0), qb=A.bestRatio(s,0,0), qc=A.bestRatio(hi,0,0);
     ok("proceeds-optimum-flat-in-quality",Math.abs(qc-qa)<.005&&qa<=qb+2e-4&&qb<=qc+2e-4,()=>cx(s,{worst:qa,actual:qb,best:qc}));
   }

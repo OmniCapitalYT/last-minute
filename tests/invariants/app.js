@@ -165,7 +165,7 @@ def("reset-restores-defaults","Reset restores STATE.s to the framework example e
 def("no-page-errors","No page errors and no console errors (WebGL driver warnings excluded).","tests/browser.inputs.js");
 def("data-tab-state-independent","The Data tab's text is the same in every state (it is built once, from the model and the framework example).","renderData() is called once; its live figures are computed at the framework example");
 def("data-tab-live-figures","The Data tab's live self-audit rows, the time-stretch sentence (277/.../...) and the quality-sweep sentence equal a fresh node recomputation.","renderCalib(); renderData() Model III and quality-sweep blocks (AUDIT_FINDINGS R5-4, R6-1)");
-def("yrs-moves-only-judgment-panels","Changing years of clean history moves only the confidence figure, the category bars and the unused judgment panels; every other figure stays.","Data tab: 'Years of clean history feeds only the confidence figure, the category bars and the judgment panels that are not used.'");
+def("yrs-moves-only-judgment-panels","Changing years of clean history moves only the category bars and the unused judgment panels; every other figure stays, the confidence figure, its label and its band included (it no longer reads years since October 2026).","Data tab: 'Years of clean history feeds only the category bars and the judgment panels that are not used.'");
 def("pc-quality-free-at-same-ratio","At the same ask relative to model value, changing a quality input leaves the chance of closing, its base rate and its gap penalty unchanged.","Console #srcs: 'At the same ask relative to its model value, the closing probability does not depend on quality'");
 def("quality-keeps-size-band","Changing a quality input leaves the fitted multiple, the fitted band median days, the base close rate and the cash share unchanged (with the ask below value, the median days too).","Data tab: 'They do not move the size band: the base close rate, the time to close and the cash share are read at the fitted value before quality positioning'; R6-1 'the fitted F, which the sliders do not touch'");
 /* node fine scans of render()'s display rules (Part A) */
@@ -291,7 +291,7 @@ const STATES=[
   {name:"patient-seller",typed:{lam:"none",th:"100"},ask:1.15},
   {name:"knife-edge-theta",typed:{th:"77.6"}},
   {name:"worst-quality",sel:{i_own:"0.95",i_mgt:"0.08",i_fin:"0.14"},typed:{rec:"0",cc:"70",ret:"45",plt:"95",grw:"-25",gm:"12",yrs:"1"},ask:1.1},
-  {name:"best-quality",sel:{i_own:"0.14",i_mgt:"0.92",i_fin:"0.96"},typed:{rec:"100",cc:"1",ret:"99",plt:"5",grw:"70",gm:"92",yrs:"12"},ask:.9},
+  {name:"best-quality",sel:{i_own:"0.14",i_mgt:"0.92",i_fin:"0.96"},typed:{rec:"100",cc:"1",ret:"99",plt:"5",grw:"70",gm:"97",yrs:"12"},ask:.9},
   {name:"earnings-above-92pct",typed:{rev:"1M",ern:"5M"},ask:1.0},
   {name:"half-percent-margin",typed:{rev:"200M",ern:"1M"},ask:1.1},
   {name:"sde-above-3M-cap",sel:{i_ind:"mfg"},typed:{rev:"60M",ern:"20M",bud:"2.5M"},ask:1.25},
@@ -331,9 +331,9 @@ function randomStates(n){
   return out;
 }
 const BOXES={rev:{money:1,hard:[1e4,5e9]},ern:{money:1,hard:[1e3,1e10]},ask:{money:1,hard:[1e3,1e11]},bud:{money:1,hard:[0,1e9]},
-  grw:{sl:[-25,70],f:"grw",div:100},gm:{sl:[12,92],f:"gm",div:100},rec:{sl:[0,100],f:"rec",div:100},cc:{sl:[1,70],f:"cc",div:100},ret:{sl:[45,99],f:"ret",div:100},
+  grw:{sl:[-25,70],f:"grw",div:100},gm:{sl:[12,97],f:"gm",div:100},rec:{sl:[0,100],f:"rec",div:100},cc:{sl:[1,70],f:"cc",div:100},ret:{sl:[45,99],f:"ret",div:100},
   plt:{sl:[5,95],f:"plt",div:100},yrs:{sl:[1,12],f:"yrs",div:1},buy:{sl:[5,600],f:"buyers",div:1},lam:{sl:[0,4000],f:"lamT",div:1},th:{sl:[0,100],f:"theta",div:100}};
-const KEYSL={i_grw:["grw",-25,70,100],i_gm:["gm",12,92,100],i_rec:["rec",0,100,100],i_cc:["cc",1,70,100],i_ret:["ret",45,99,100],i_plt:["plt",5,95,100],
+const KEYSL={i_grw:["grw",-25,70,100],i_gm:["gm",12,97,100],i_rec:["rec",0,100,100],i_cc:["cc",1,70,100],i_ret:["ret",45,99,100],i_plt:["plt",5,95,100],
   i_yrs:["yrs",1,12,1],i_buy:["buyers",5,600,1],i_lam:["lamT",0,4000,1],i_th:["theta",0,100,100]};
 const DEF_UI={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,budget:1e5,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,lamT:900,theta:.75};
 /* what the page should hold after the entry, by its own rules */
@@ -754,8 +754,8 @@ function checkState(name,st,askTyped,S,E){
 function yrsAllowedDiff(a,b){
   const diffs=[];
   const cmp=(lab,x,y)=>{ if(J(x)!==J(y)) diffs.push(lab); };
-  for(const k in a.txt) if(k!=="o_conf") cmp("txt."+k,a.txt[k],b.txt[k]);
-  for(const k in a.eq) if(!["eq_cs","eq_nls","eq_ps"].includes(k)) cmp("eq."+k,a.eq[k],b.eq[k]);
+  for(const k in a.txt) cmp("txt."+k,a.txt[k],b.txt[k]);
+  for(const k in a.eq) if(!["eq_nls","eq_ps"].includes(k)) cmp("eq."+k,a.eq[k],b.eq[k]);
   /* eq_ps: only the unused P_C^judg may move */
   cmp("eq_ps (used part)",(a.eq.eq_ps||"").split("P_C^")[0],(b.eq.eq_ps||"").split("P_C^")[0]);
   cmp("eq_cs interval",(a.eq.eq_cs||"").split("\\\\")[1],(b.eq.eq_cs||"").split("\\\\")[1]);
@@ -792,7 +792,7 @@ function dataTabChecks(dataText,calibRows){
   const sent=`For the framework example (model value ${money(Vx)}) the median is ${t[0]} days at value, ${t[1]} at 1.2×, ${t[2]} at 1.5× and ${t[3]} at 2×.`;
   ok("data-tab-live-figures",dataText.replace(/\s+/g," ").includes(sent),()=>J({want:sent}));
   const D={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75}, lo={...D}, hi={...D};
-  const ends={rec:[0,1],own:[.14,.95],mgt:[.08,.92],cc:[.01,.70],fin:[.14,.96],grw:[-.25,.70],gm:[.12,.92],ret:[.45,.99],plt:[.05,.95]};
+  const ends={rec:[0,1],own:[.14,.95],mgt:[.08,.92],cc:[.01,.70],fin:[.14,.96],grw:[-.25,.70],gm:[.12,.97],ret:[.45,.99],plt:[.05,.95]};
   for(const k in ends){ const inv=k==="own"||k==="cc"||k==="plt"; lo[k]=inv?ends[k][1]:ends[k][0]; hi[k]=inv?ends[k][0]:ends[k][1]; }
   const rl=A.model(lo), rh=A.model(hi);
   const sw=`multiple from ${xx(rl.Mjudg)} to ${xx(rh.Mjudg)} on coefficients nobody had estimated; here the same sweep moves the console’s multiple from ${xx(rl.M)} to ${xx(rh.M)}: the fitted ${xx(rl.fv.mult)}, which the sliders do not touch, times a quality position of ×${rl.qFactor.toFixed(2)} to ×${rh.qFactor.toFixed(2)}`;

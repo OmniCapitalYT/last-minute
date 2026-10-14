@@ -794,7 +794,7 @@ These were hand-typed and had gone stale:
 
 ### What remains judgment, and why
 
-Each item is on the Data tab's "Still judgement" ledger with the data that would fit it. None can be fitted from anything reachable here.
+Each item is on the Data tab's "Still judgement" ledger with the data that would fit it. None of the rows not struck through can be fitted from anything reachable here. The struck row was fitted in the second round (October 2026, below) from the same SBA files, once rewritten loan terms could be classified; rows marked October 2026 had parts read from public data.
 
 | Component | Why it is not fitted |
 |---|---|
@@ -1060,7 +1060,7 @@ The owner asked: "Find datasets for any of the parameters that are currently not
 
 ### How it ran
 - **Research.** Eight lanes searched for public data behind every number the Data tab's ledger still listed as judgment: the peer table's medians and spreads, the size references, the buyer factors, the SBA tail, the price mechanics, the intervention costs, the category weights and the confidence formula. Downloads were kept as untrusted data and read with `python3 -I`.
-- **Fits.** Ten scripts, now in `fit/` with their rows in `fit/README.md`. Each went through up to four rounds. After each round an adversarial reviewer re-ran the script, recomputed its numbers independently and listed blocking defects. The fixes were applied and verified again. In the last rounds every script reproduced its outputs byte for byte, and nothing blocking was left.
+- **Fits.** Ten scripts, now in `fit/` with their rows in `fit/README.md`. Eight went through up to four rounds. After each round an adversarial reviewer re-ran the script, recomputed its numbers independently and listed blocking defects. The fixes were applied and verified again. In the last rounds those scripts reproduced their outputs byte for byte, and nothing blocking was left. `industry_tailwind_and_comps.py` passed its own 22 checks and reproduced, but no reviewer re-ran it until the review after integration (below). `peer_checks.py`, a display-only record of the research round's checks that nothing reads, was not reviewed.
 - **Decisions on review.** Among the defects the reviews caught and the fits corrected:
   - a gross-margin definition that left out payroll costs;
   - a double count of paid leave in the employer-cost loading;
@@ -1077,27 +1077,27 @@ The owner asked: "Find datasets for any of the parameters that are currently not
 | retention, landscaping 0.74 and fitness 0.62 | 0.88 and 0.66 | Lawn & Landscape 2025–26 surveys; Health & Fitness Association 2025 | aggregate |
 | owner-dependence and management-depth slopes in size, −0.30 / +0.28 | −0.15 / +0.17 (levels 0.62 / 0.42 stay judgment) | Fed SSBF 2003 microdata, replicated by SSBF 1998, NSSBF 1993, SBO 2007 and listing text | fitted |
 | width of the size z-score 0.45 | 0.48 decades | 10,187 DealLedger listings | fitted |
-| industry tailwind, a hand-set 0–1 score | −1..1 around the all-industry average | BLS Employment Projections 2025–35, bridged to realised growth | aggregate |
+| industry tailwind, a hand-set score (−0.25 to 0.65) | −1..1 around the all-industry average | BLS Employment Projections 2025–35, bridged to realised growth | aggregate |
 | comparables depth, a hand-set score | n/(n+25) of the industry's BIZCOMPS cell, the value model's own weight | BIZCOMPS counts behind the value model | fitted |
 | individual buyer's multiple factor 0.90 | 0.97, so the buyer-type-weighted price averages to the fitted value | IBBA buyer mix and the BIZCOMPS-fitted value | calibrated |
 | SBA tail ×1.20 for every loan (SE 0.08) | ×1.21 (SE 0.06), ×1.08 under $150k to ×1.30 at $0.75–1.5M by the note's size; the average loan's 10-year base 5.64% → 5.73% | 152,121 SBA 7(a) loans approved FY2010–15, matched to the acquisition book | fitted |
 | QoE fee max($22,000, 0.45% of revenue) | max($16,400, 0.19% of revenue) | 33 published fee tiers from 15 sources | aggregate |
 | hire a GM: one year's wage; the wage off earnings | one year's wage × 1.24 + $10,625 to hire; the loaded wage off earnings | BLS ECEC June 2026; SHRM 2025 | aggregate |
 | sales-hire floor $55,000 everywhere | $27,200–$81,500 by industry | BLS OEWS May 2025 sales-rep wages × ECI × ECEC, SHRM | aggregate |
-| confidence index .34 comps + .30 years + .22 reporting + .14 typicality, cut at .68 / .46 | the chance the price lands within 25% of the fitted value; High / Moderate / Low = top quarter / middle half / bottom quarter of listed businesses; Low "outside the fitted data" past 3× | BIZCOMPS out-of-fold accuracy and fan; 2,710 DealLedger Main-Street asks; the value model's 6-digit effects | fitted (scale calibrated) |
+| confidence index .34 comps + .30 years + .22 reporting + .14 typicality, cut at .68 / .46 | the chance the price lands within 25% of the fitted value; High / Moderate / Low = top quarter / middle half / bottom quarter of listed businesses; Low "outside the fitted data" past 3× or with the earnings margin outside its 1st–99th percentile | BIZCOMPS out-of-fold accuracy and fan; 2,710 DealLedger Main-Street asks; the value model's 6-digit effects | fitted (scale calibrated) |
 
 **Checked and kept as judgment**, each with its evidence recorded in the table it would have come from:
 - strategic interest and typical buyer pools (`peer_checks`: vendor trackers see institutional deals only);
 - the search fund's window (`buyers.eta_check`: a measured curve fits IBBA worse and breaks the $2–5M pin);
 - recurring-revenue medians (`peer_rec_ret.not_shipped`, `flags`);
 - reporting's line and the peer spreads (`size_refs.checks`, `peer_rec_ret.spread_checks`);
-- the price mechanics, the category weights and every intervention effect and duration (`interventions.checks`).
+- three other intervention costs (SOPs, contracts, outreach), four durations (QoE, GM, sales hire, SOPs) and the QoE effect (`interventions.checks`). The diversification, margin, retention and channel programmes have no benchmark. The price mechanics, the category weights and the other effects were searched too. Nothing found identifies them (old IBBA termination rates give only the direction of the $1M–$5M base-rate ramp), and no table records them.
 
 ### What it changes on the console
 - **Peer comparisons.** A business entered at the old hand-set medians now sits off the fitted ones, so its quality position moves. At $300k of SDE the value moves −17% (e-commerce, whose margin is now measured on landed cost) to +3%; at $1.5M it moves −14% to +11%. A business at the new medians keeps the fitted value.
 - **Confidence.** The framework example reads 0.54 (High), and was an index of 0.70. Businesses at their industry's typical margin read 0.47–0.58 at $300k–$1.5M of SDE. Years in business and reporting no longer move it.
 - **Survival risk.** The 10-year figure is the fitted 8-year figure times the tail at the note's size. It falls about 0.5 pt at a $200k note and rises about 0.4 pt at $2M. The risk tile's badge now reads "fitted". The framework example reads 3.43%, and was 3.18%.
-  - Between the $513k and $1.05M band centres the tail rises faster than the 8-year figure falls. There, the 10-year figure and the expected loss can rise slightly with the note's size, and so with quality: about 0.65% per 10% step, 3.3% across the range. The 5- and 8-year figures never rise.
+  - From a note of about $0.60M to the $1.05M band centre the tail rises faster than the 8-year figure falls. There, the 10-year figure can rise slightly with the note's size, and so with quality: at most 0.67% per 10% step, 3.6–3.8% across the range, by industry and state. The expected loss rises by at most 1.1% over the same range. The 5- and 8-year figures never rise.
   - The invariant suite found this. Its risk-in-size and risk-in-quality invariants now allow the 10-year figure to rise only where the tail rises, and by no more than the tail does. model.test.js already allowed 1% per step.
 - **Interventions.**
   - The GM's cost and its charge on earnings rise by the 1.24 loading, and the cost adds the hire.
@@ -1107,11 +1107,63 @@ The owner asked: "Find datasets for any of the parameters that are currently not
   - The walk-away ask at $150k of SDE and $4,000 a day is 1.08×, and was 1.09×.
   - The weak restaurant in S-1 scores 7, and scored 10.
   - The framework example's Omni scores and time to close are unchanged.
-- **Tallies.** The Data tab's headline moves from 537 fitted, 38 aggregate and 432 judgment to 565, 147 and 354. The counts are computed from the tables:
-  - 78 numbers leave the judgment ledger: 64 peer-table cells, the QoE fee's floor and share, the $55,000 floor, the individual's multiple factor, Market position's .65 offset, five of the confidence formula's eight, the two hand-set size slopes, the size z-score's width and the SBA tail factor;
+- **Tallies.** The Data tab's headline moves from 537 fitted, 38 aggregate and 432 judgment to 565, 147 and 353. The counts are computed from the tables:
+  - 80 numbers leave the judgment ledger and one enters, 79 net. Out: 64 peer-table cells, the QoE fee's floor and share, the $55,000 floor, the individual's multiple factor, Market position's .65 offset, the tailwind delta's .30 offset, six of the confidence formula's eight (its four weights and two scales; the two label cut-offs stay, re-set to quartiles), the two hand-set size slopes, the size z-score's width and the SBA tail factor. In: the confidence label's extrapolation rule (Low past 3× the fitted data);
   - 28 are counted as fitted: the size slopes and width, comparables depth, e-commerce's margin, the tail's five band ratios and the confidence gradients and depth;
   - 109 are counted as aggregate: the margin curves' 56 knots, 15 growth medians, 2 retention medians, 16 tailwinds and 20 intervention benchmarks;
   - the individual's multiple factor and the confidence scale are calibrated and counted in no tally.
+
+### Review after integration
+Three reviewers read the integrated round against the page before it: the model and every reader of the changed tables, the Data tab, and the docs, tests and fit scripts. A verifier then re-checked each finding from scratch. Every confirmed finding is fixed:
+- **The judgment tally was one too high.** The ledger counts the typed numbers in the multiple stack from its source, and a comment that still named the removed tailwind offset (.30) was counted. Comments are now stripped before counting: 353, not 354.
+- **The confidence formula as printed did not reproduce the figure for large or tiny businesses.**
+  - It gave the window around V, but the figure is computed around the fitted value before the quality position (V/q).
+  - It also left out that SDE is held inside the value model's support ($13k–$1.70M). For home services at $5M of SDE, the printed formula gave 0.60 against the 0.56 shown.
+  - eq_c now prints V/q and SDE\*, with SDE\*'s definition on a key line under the formula, as eq_s's is, so the formula still fits mid-size cards. A test checks the printed σ against the computed one.
+- **Small software businesses could not be entered at their own median.** The fitted software margin is 93% below $316k of revenue, above the gross-margin slider's 92% cap. The slider now runs to 97%, the field's own limit, and the invariant suites' slider ranges moved with it.
+- **An unlisted industry had no margin median.** peerGm fell back to `IND.prof.gm`, which the round removed, so the quality composite came out NaN. No console path reached it. It now reads professional services' curve, as `peerMedians` does for the other medians.
+- **`buyer_factors.py` failed on the current page.** The page says to re-run it when the buyer factors change, but its probe built test businesses from `IND`'s gross margins, which gave NaN. It now reads the page's curve where the page has one. On the page it was fitted on, its results are unchanged.
+- **Page wording and labels:**
+  - the general-manager cost is set by four series, not two;
+  - the judgment lede notes that where data bound or dispute a hand-set number, the check is recorded;
+  - the extrapolation rule names its margin test;
+  - the tail row's top band is computed, as trap 4's is;
+  - the gross-margin definition is stated per industry;
+  - comparables depth is credited to BIZCOMPS, not public data;
+  - the intervention checks are listed as three other costs, four durations and the QoE effect;
+  - the GM's ECEC loading is labelled aggregate in the table and in `intervention_costs.py`;
+  - the risk tile's title gives its product to two and three digits, without claiming equality;
+  - the code comments that said the same things.
+- **This file and `fit/README.md`:**
+  - the "checked and kept" list claimed records no table holds;
+  - the old tailwind's range;
+  - where and by how much the 10-year figure can rise with the note;
+  - what left the ledger;
+  - which scripts were reviewed;
+  - an earlier section's "none can be fitted";
+  - 14 aggregate margin curves, not 15;
+  - README row 12's tail, and what to re-apply after re-running `sba_risk_refresh.py`;
+  - the buyers and peer-checks rows' inputs, and the EM's attribution;
+  - the harness, now shipped as `fit/harness.js`;
+  - a note that the earlier rounds' scripts are records whose anchors later rounds changed.
+- **Tests:**
+  - 38a's definitions check could not fail, and the margin curve between its knots was untested;
+  - the fitted 80% band was untested;
+  - the years invariants still listed confidence among what years may move. The browser check now also holds the confidence tile and eq_cs fixed when years change.
+
+**The tailwind fit, reviewed after integration.** `industry_tailwind_and_comps.py` had shipped on its own checks, so a reviewer re-ran it and recomputed it independently from the raw BLS files:
+- the bridge, 0.958 and 0.273 with sector-clustered SEs;
+- the anchors, 3.062 and 1.107 pp/yr;
+- all 16 tailwinds to four decimals;
+- the SEs;
+- the out-of-sample block;
+- the comparables weights.
+
+Every shipped number reproduces, and nothing blocking was found. Recorded, not changed:
+- **Two job counts in one map.** The jobs map compares industry lines that count wage-and-salary jobs with the all-jobs rate, which includes the self-employed. Made consistent, every tailwind moves by 0.004–0.006, and seven of them change by 0.01 after rounding. That is well inside their SEs (0.07–0.33).
+- **Restaurants map narrowly.** Restaurants read full-service restaurants only, following the value model's industry cell. All of food service (NAICS 722) would give +0.07 against −0.02, a gap larger than its SE of 0.08.
+- **Construction maps narrowly.** Construction reads the residual line of other specialty trades. All specialty trades would give −0.10 against −0.03, inside its SE of 0.29.
+- **The output map's zero.** It is the output-weighted mean of the bridge, so an industry growing exactly at the all-industry rate reads −0.02 on the tailwind.
 
 ### Tests
 - **Section 38** of model.test.js covers each new table:
@@ -1127,11 +1179,11 @@ The owner asked: "Find datasets for any of the parameters that are currently not
   - the two risk invariants above;
   - the Data-tab recount extended to the second-round tables;
   - the walk-away invariant's dollar check put on bestRatio's 2e-4 resolution. Its ratio check already used that resolution, but the dollar check used 1e-6, which failed by 3e-5 in two of 444 cases where value barely moved.
-- **Results:**
+- **Results**, on the final build, after the review fixes:
 
   | Suite | Result |
   |---|---|
-  | `node tests/model.test.js` | 7,507 pass |
+  | `node tests/model.test.js` | 7,512 pass |
   | `node tests/fuzz.test.js 1500` | 179,746 checks pass |
   | `node tests/browser.inputs.js` | 15 checks pass |
   | `node tests/browser.sweep.js` | 118 input states at 1440 and 390 px pass |
