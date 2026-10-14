@@ -151,7 +151,7 @@ function outputsOK(r,s){
   ok("corner-quantiles-ordered",qs.every((v,j)=>j===0||v>=qs[j-1]*(1-1e-12))&&Math.abs(r.q(.5)-r.Vreal)<=1e-9*r.Vreal&&r.Vmean>=r.q(.02)*(1-1e-9)&&r.Vmean<=r.ceil*(1+1e-9),()=>({...ctx(),qs}));
   ok("corner-proceeds-identities",Math.abs(r.EVp-r.PC*r.Vmean)<=1e-9*Math.max(1,r.EVp)&&Math.abs(r.EVcash-r.EVp*r.cashShare)<=1e-9*Math.max(1,r.EVp)&&r.EVcash<=r.EVp*(1+1e-12)&&r.deferred>=-1e-9,()=>({...ctx(),EVp:r.EVp,PC:r.PC,Vmean:r.Vmean}));
   const k=r.risk;
-  ok("corner-risk-horizons-ordered",k.p5>0&&k.p5<k.p8&&k.p8<k.pTerm&&k.pTerm<1&&k.p===k.pTerm&&Math.abs(k.pTerm-k.p8*A.MODELS.risk.tail_factor)<1e-12&&k.expLoss>0&&k.expLoss<k.pTerm&&k.lgd>0&&k.lgd<1,()=>({...ctx(),p5:k.p5,p8:k.p8,p:k.pTerm,el:k.expLoss}));
+  ok("corner-risk-horizons-ordered",k.p5>0&&k.p5<k.p8&&k.p8<k.pTerm&&k.pTerm<1&&k.p===k.pTerm&&Math.abs(k.pTerm-k.p8*k.tail)<1e-12&&k.tail===A.tailAt(k.loan)&&k.expLoss>0&&k.expLoss<k.pTerm&&k.lgd>0&&k.lgd<1,()=>({...ctx(),p5:k.p5,p8:k.p8,p:k.pTerm,el:k.expLoss}));
   const kk=(Math.PI/r.betaT)/Math.sin(Math.PI/r.betaT); let cdf=r.F(0)===0, prev=-1;
   for(const f of [.01,.1,.3,.5,.8,1,1.5,2,3,5,10,20,50]){ const v=r.F(f*r.tMed); if(!(v>=prev&&v<=1)) cdf=false; prev=v; }
   ok("corner-time-curve-sane",fin(r.tMed)&&r.tMed>0&&Math.abs(r.tMean/(r.tMed*kk)-1)<1e-12&&r.tMean>r.tMed&&Math.abs(r.F(r.tMed)-.5)<1e-12&&cdf,()=>({...ctx(),tMed:r.tMed,tMean:r.tMean}));

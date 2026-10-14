@@ -121,13 +121,13 @@ def("time-monotone-in-quality-at-fixed-ask","Improving any one quality input nev
   "fuzz comment 'a better business is never slower at a fixed ask' (fuzz tests only rec+mgt above 1.2x); timeMult reads ask/V");
 def("price-distribution-monotone-in-quality","At the same ask, improving any one quality input never lowers any quantile of the price if it closes, its median or its mean",
   "model() §23: P(W) increasing in W ('A's elasticity is < 1'), the ceiling reads softMin(ask,1.5V), the premium never falls with engagement");
-def("risk-never-rises-with-quality","Improving any one quality input never raises the 10-year charge-off risk, the 5-year risk or the expected loss (page path: no rate entered)",
-  "economics: a better-run business is not a worse credit; in the model quality reaches risk only through a larger loan at a lower table spread");
+def("risk-never-rises-with-quality","Improving any one quality input never raises the 5-year or 8-year charge-off risk; the 10-year risk and the expected loss rise only where the fitted tail for years 9-10 rises with the note's size, and the 10-year risk by no more than the tail does (page path: no rate entered)",
+  "economics: a better-run business is not a worse credit; in the model quality reaches risk only through a larger loan at a lower table spread. Since October 2026 years 9-10 are fitted by note size (fit/sba_tail_factor.py: larger acquisition notes are more often 10-year notes still open at year 8), so the 10-year figure is p8 x tail(note) and may rise where the tail rises faster than p8 falls (notes of about $0.7M-$1.0M)");
 def("competition-premium-monotone","The competition premium never falls with more buyers contacted or with any one better quality input",
   "§20: 'deeper than usual earns a premium'; offers = buyers x engagement x ENG_SHARE, and every archetype's fit is non-decreasing in quality");
-def("confidence-monotone-in-reporting-and-history","The analysis confidence never falls with better financial reporting or more years of clean history",
-  "eq_c: c = 0.34 comps + 0.30 min(1,yrs/8) + 0.22 reporting + 0.14 max(0,1-mean|z|/2.2) (reporting's own weight exceeds its typicality cost)");
-def("walkaway-monotone-in-quality","Improving any one quality input never lowers the walk-away (utility-optimal) ask, as a ratio to value or in dollars",
+def("confidence-monotone-in-reporting-and-history","The analysis confidence does not move with financial reporting or years of clean history (since October 2026 it is the fitted chance of landing within 25% of the fitted value, which reads neither)",
+  "confidenceOf (fit/confidence_accuracy.py): p reads size, the margin's distance from typical, comparables depth and the extrapolation; the hand-set index it replaced weighted reporting and years");
+def("walkaway-monotone-in-quality","Improving any one quality input never lowers the walk-away (utility-optimal) ask, as a ratio to value or in dollars, beyond bestRatio's resolution (2e-4 of value)",
   "U/V = P_C E[P]/V + (1-P_C) theta - lambda E[T]/V: quality scales V (shrinking the delay term) and raises the premium; economics: a better business can ask more");
 def("proceeds-optimum-flat-in-quality","The proceeds-optimal ask ratio moves by under 0.005 between the worst and the best quality profile, and never falls as quality rises",
   "refDistAt: 'The optimum depends on the gap curve and the ceiling, not on quality, so one ratio solved on the median profile serves the whole population'");
@@ -144,8 +144,8 @@ def("base-close-rate-monotone-in-size","At a fair ask and a typical or deeper po
   "fitClose: base interpolated in ln(size) from the broker 0.608 at $1M to the intermediated 0.697 at $5M");
 def("earnings-raise-pc-and-proceeds-deep-pool","At fixed revenue and ask, with a typical or deeper pool, more earnings never lower the closing probability, the price if it closes or expected proceeds",
   "economics: same ask, more profit. Corrected scope: below a typical pool the thin-pool factor reads the typical pool's size-dependent engagement (search-fund window, SDE $3.2M-$8.3M), which the BUYERS ledger row documents");
-def("risk-non-increasing-in-size","Along fine scale paths (fixed margin, $10k-$5B of revenue, every industry) the 10-year and 5-year charge-off risk and the expected loss never rise as the business grows",
-  "Model V: larger loans are charged off less often through month 72; the table spread never rises with loan size; severity barely moves with size (b_size +0.0104, se 0.0397; Data tab: 'Size matters little'). tests/model.test.js allows 1% per ~10% step; strictly, no rise occurs (the month-72 size reversal never overturns it)");
+def("risk-non-increasing-in-size","Along fine scale paths (fixed margin, $10k-$5B of revenue, every industry) the 5-year and 8-year charge-off risk never rise as the business grows; the 10-year risk and the expected loss never rise except where the fitted tail for years 9-10 rises with the note's size, and the 10-year risk then by no more than the tail does",
+  "Model V: larger loans are charged off less often through month 72; the table spread never rises with loan size; severity barely moves with size (b_size +0.0104, se 0.0397; Data tab: 'Size matters little'); the month-72 size reversal never overturns the 8-year figure. Since October 2026 the tail is fitted by note size (MODELS.risk.tail.by_band), so the 10-year figure may rise slightly between the $513k and $1.05M band centres. tests/model.test.js allows 1% per ~10% step");
 def("franchise-never-raises-risk","A franchise never raises the 10-year or 5-year charge-off risk or the expected loss, and moves nothing else",
   "MODELS.risk: franchise lowers the charge-off hazard (-0.0167) and raises the payoff hazard (+0.1256), so both lower the cumulative charge-off");
 def("state-label-sign-matches-effect","Each state dropdown label's sign is the sign of that state's fitted charge-off effect",
@@ -249,14 +249,16 @@ for(let i=0;i<states.length;i++){
     if(s.ask<=Math.min(r.V,r2.V)) ok("time-reads-only-size-and-ask",same(r2.tMed,r.tMed)&&same(r2.tMean,r.tMean),()=>cx(s,{k,v,a:r.tMed,b:r2.tMed}));
     ok("time-monotone-in-quality-at-fixed-ask",le(r2.tMed,r.tMed)&&le(r2.tMean,r.tMean)&&r2.t90>=r.t90-1e-12&&r2.t180>=r.t180-1e-12&&r2.t365>=r.t365-1e-12,()=>cx(s,{k,v,a:r.tMed,b:r2.tMed}));
     ok("price-distribution-monotone-in-quality",PS.every(p=>ge(r2.q(p),r.q(p)))&&ge(r2.Vreal,r.Vreal)&&ge(r2.Vmean,r.Vmean),()=>cx(s,{k,v,a:r.Vmean,b:r2.Vmean}));
-    ok("risk-never-rises-with-quality",le(r2.risk.p,r.risk.p)&&le(r2.risk.p5,r.risk.p5)&&le(r2.risk.expLoss,r.risk.expLoss),()=>cx(s,{k,v,a:r.risk.p,b:r2.risk.p}));
+    ok("risk-never-rises-with-quality",le(r2.risk.p5,r.risk.p5)&&le(r2.risk.p8,r.risk.p8)
+       &&(r2.risk.tail>r.risk.tail?r2.risk.p<=r.risk.p*(r2.risk.tail/r.risk.tail)*(1+1e-12):le(r2.risk.p,r.risk.p)&&le(r2.risk.expLoss,r.risk.expLoss)),
+       ()=>cx(s,{k,v,a:r.risk.p,b:r2.risk.p,tail:[r.risk.tail,r2.risk.tail]}));
     ok("competition-premium-monotone",r2.compPrem>=r.compPrem-1e-15,()=>cx(s,{k,v,a:r.compPrem,b:r2.compPrem}));
     ok("cash-share-reads-only-deal-size",r2.cashShare===r.cashShare,()=>cx(s,{k}));
   }
   { if(s.yrs<12){ const ry=A.model({...s,yrs:s.yrs+1});
       ok("category-scores-monotone-in-quality",CATS.every(c=>ry.cats[c]>=r.cats[c]),()=>cx(s,{k:"yrs",a:r.cats,b:ry.cats}));
-      ok("confidence-monotone-in-reporting-and-history",ry.conf>=r.conf-1e-12,()=>cx(s,{k:"yrs",a:r.conf,b:ry.conf})); }
-    if(s.fin<1){ const rf=A.model({...s,fin:Math.min(1,s.fin+.1)}); ok("confidence-monotone-in-reporting-and-history",rf.conf>=r.conf-1e-12,()=>cx(s,{k:"fin",a:r.conf,b:rf.conf})); }
+      ok("confidence-monotone-in-reporting-and-history",ry.conf===r.conf,()=>cx(s,{k:"yrs",a:r.conf,b:ry.conf})); }
+    if(s.fin<1){ const rf=A.model({...s,fin:Math.min(1,s.fin+.1)}); ok("confidence-monotone-in-reporting-and-history",rf.conf===r.conf,()=>cx(s,{k:"fin",a:r.conf,b:rf.conf})); }
     if(s.buyers<600){ const rb=A.model({...s,buyers:Math.min(600,s.buyers+Math.max(5,Math.round(s.buyers*.25)))});
       ok("competition-premium-monotone",rb.compPrem>=r.compPrem-1e-15,()=>cx(s,{k:"buyers",a:r.compPrem,b:rb.compPrem}));
       ok("prices-monotone-in-buyers",PS.every(p=>ge(rb.q(p),r.q(p)))&&ge(rb.Vmean,r.Vmean)&&ge(rb.Vreal,r.Vreal),()=>cx(s,{a:r.Vmean,b:rb.Vmean})); } }
@@ -312,7 +314,7 @@ for(let i=0;i<states.length;i++){
     if(i%6===0) for(const k of QK){ const v=BETTER[k](s); if(v===s[k]) continue;
       const t2=prep({...s,[k]:v}), r2=A.model(t2), b2=A.businessScore(t2,r2,t2.rhoSell);
       ok("business-score-monotone-in-quality",b2.score>=bs.score,()=>cx(s,{k,v,a:bs.score,b:b2.score,rs:[t.rhoSell,t2.rhoSell]}));
-      ok("walkaway-monotone-in-quality",t2.optRho>=t.optRho-2e-4&&r2.V*t2.optRho>=V*t.optRho*(1-1e-6),()=>cx(s,{k,v,a:t.optRho,b:t2.optRho,V:[V,r2.V]})); }
+      ok("walkaway-monotone-in-quality",t2.optRho>=t.optRho-2e-4&&r2.V*t2.optRho>=V*(t.optRho-2e-4),()=>cx(s,{k,v,a:t.optRho,b:t2.optRho,V:[V,r2.V]})); }
   }
   lap('prep+interv+caption+bizQ');
   if(i%10===0){ /* proceeds unimodal in the ask, and the Omni score with it */
@@ -386,7 +388,7 @@ TIME.stateLabels=Date.now()-_t0; }
     contracts2x:[["eff:{add:{rec:.13,ret:.03}}","eff:{add:{rec:.26,ret:.06}}"]],
     diversDeeper:[["eff:{mul:{cc:.62}}","eff:{mul:{cc:.40}}"]],
     outreachWider:[["eff:{mul:{buyers:2.2}}","eff:{mul:{buyers:3.5}}"]],
-    gmDearer:[["add:{ern:-gmSalary(s)}","add:{ern:-1.5*gmSalary(s)}"]],
+    gmDearer:[["add:{ern:-IVC.gm.loading*gmSalary(s)}","add:{ern:-1.5*IVC.gm.loading*gmSalary(s)}"]],
     contractsCostlier:[["cost:s=>Math.max(28000,.010*s.rev)","cost:s=>2*Math.max(28000,.010*s.rev)"]],
     contractsSlower:[['k:"contracts", n:"Convert customers to contracts and retainers", days:240','k:"contracts", n:"Convert customers to contracts and retainers", days:400']]};
   const AV={}; for(const k in VAR) AV[k]=A.loadWith(VAR[k]);
@@ -410,7 +412,9 @@ const _t2=Date.now();
   for(const ind of INDS) for(const m of [.03,.15,.45,.9]){ let pv=null, mn=Infinity, okV=true, okR=true, atV=null, atR=null;
     for(let j=0;j<=240;j++){ const rev=1e4*Math.pow(5e9/1e4,j/240), ern=Math.max(1e3,m*rev), x=A.model({...prof,ind,rev,ern,ask:rev*m*2});
       if(pv&&!(x.V>=pv.V*(1-1e-12)&&x.Vbase>=pv.Vbase*(1-1e-12))){ okV=false; atV=atV||{ind,m,rev,a:pv.V,b:x.V}; }
-      if(pv&&!(x.risk.p<=pv.risk.p*(1+1e-12)&&x.risk.p5<=pv.risk.p5*(1+1e-12)&&x.risk.expLoss<=pv.risk.expLoss*(1+1e-12))){ okR=false; atR=atR||{ind,m,rev,V:x.V,p:[pv.risk.p,x.risk.p],p5:[pv.risk.p5,x.risk.p5],el:[pv.risk.expLoss,x.risk.expLoss]}; }
+      if(pv&&!(x.risk.p5<=pv.risk.p5*(1+1e-12)&&x.risk.p8<=pv.risk.p8*(1+1e-12)
+            &&(x.risk.tail>pv.risk.tail?x.risk.p<=pv.risk.p*(x.risk.tail/pv.risk.tail)*(1+1e-12):x.risk.p<=pv.risk.p*(1+1e-12)&&x.risk.expLoss<=pv.risk.expLoss*(1+1e-12)))){
+        okR=false; atR=atR||{ind,m,rev,V:x.V,p:[pv.risk.p,x.risk.p],p8:[pv.risk.p8,x.risk.p8],tail:[pv.risk.tail,x.risk.tail],p5:[pv.risk.p5,x.risk.p5],el:[pv.risk.expLoss,x.risk.expLoss]}; }
       mn=Math.min(mn,x.risk.p); pv=x; }
     ok("value-monotone-in-scale",okV,()=>fmt(atV)); ok("risk-non-increasing-in-size",okR,()=>fmt(atR)); }
   for(const ind of INDS) for(const ern of [5e3,1.5e5,3e6,2e7]){ let pv=null, okV=true, at=null;

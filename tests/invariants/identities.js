@@ -203,7 +203,7 @@ inv("askBinds-vs-capShare","the ask binds at the median (askBinds: uncapped medi
   "model() comments on capShare ('read log-linearly between slice centres') and askBinds ('the ceiling binds at the median'); the realisation row 'most closings land at the ceiling' (capShare >= .5) and #sensflat (askBinds)");
 inv("risk-labels","risk tier matches rel's documented cut-offs; the observed size band matches the loan; lgd = expLoss/pTerm; rel = pTerm/base",
   "fitRisk() return block");
-inv("cats-conf","catMean is the mean of the nine category scores; conf in [0,1] with the High/Moderate/Low label at .68/.46",
+inv("cats-conf","catMean is the mean of the nine category scores; conf in (0,1) with the High/Moderate/Low label at the fitted quartile cut-offs (.49/.43), Low outside the fitted data",
   "model() §21/§24");
 for(const s of STATES){
   const r=A.model(s), k=r.risk, I=A.IND[s.ind];
@@ -248,7 +248,7 @@ for(const s of STATES){
     chk("risk-labels",k.tier===tier&&k.empBandKey===band&&rel(k.lgd,k.expLoss/k.pTerm)<1e-12&&rel(k.rel,k.pTerm/k.base)<1e-12
       &&k.loan===Math.max(M.risk.loan_range[0],Math.min(M.risk.loan_range[1],M.risk.loan_share*r.V)),()=>cx({s,tier:k.tier,rel:k.rel})); }
   { const cm=Object.values(r.cats).reduce((a,b)=>a+b,0)/9;
-    chk("cats-conf",Math.abs(r.catMean-cm)<1e-12&&r.conf>=0&&r.conf<=1&&r.confLabel===(r.conf>.68?"High":r.conf>.46?"Moderate":"Low"),()=>cx({s})); }
+    chk("cats-conf",Math.abs(r.catMean-cm)<1e-12&&r.conf>0&&r.conf<1&&r.confLabel===(r.confOutside?"Low":r.conf>=A.MODELS.fitted.confidence.cut_high?"High":r.conf>=A.MODELS.fitted.confidence.cut_moderate?"Moderate":"Low"),()=>cx({s})); }
 }
 console.error(`model outputs done ${(Date.now()-T0)/1000}s`);
 
@@ -534,9 +534,19 @@ async function browser(){
       +2+Object.keys(R.co.sector).length+Object.keys(R.naics6_effects).length+Object.keys(R.state_effects).length+F.sba_rate.spread_knots.length
       +2+Object.keys(F.sde_margin.ln_at_ref).length+F.quality_weights.fitted.length+F.buyer_mix.knots.length*2
       +Object.entries(V.fan_quantiles).filter(([k])=>k!=="p50").length+V.calibration.log_correction.length+new Set(Object.values(R.pif.sector)).size+3
-      +new Set(F.ttc_shape.beta).size+F.ttc_medians.listing.length;
+      +new Set(F.ttc_shape.beta).size+F.ttc_medians.listing.length
+      /* October 2026, second round: the size slopes and the size z-score's width, comparables depth per industry, e-commerce's
+         margin (a median of sold listings), the tail's band ratios, and confidence's two gradients and depth variance (its
+         scale K and fan approximation s_eq are calibrated: no tally) */
+      +2+1+Object.keys(IND).length+Object.values(F.peer_gm.by_industry).filter(g=>g.tier==="listing-level").length
+      +R.tail.by_band.ratio.length+["b_size","b_em","tau2"].filter(k=>typeof F.confidence[k]==="number").length;
     const agg=2+Object.keys(C.close_probability.valuation_gap_distribution).length+C.time_to_close.bands.length+Object.keys(V.price_realisation_by_industry.factor).length
-      +C.ibba_cash_at_close.by_band.length+4+2;
+      +C.ibba_cash_at_close.by_band.length+4+2
+      /* second round: the bridged margin curves' knots, growth, the benchmarked retention cells, the tailwind, the QoE fee's
+         floor and share, the GM's employer-cost loading and hire, the sales hire's floor by industry */
+      +Object.values(F.peer_gm.by_industry).filter(g=>g.tier!=="listing-level").reduce((a,g)=>a+g.gm.length,0)
+      +Object.keys(F.peer_grw.by_industry).length+Object.keys(F.peer_rec_ret.rec).length+Object.keys(F.peer_rec_ret.ret).length
+      +Object.keys(F.tailwind.by_industry).length+2+2+Object.keys(F.interventions.growth_floor.by_industry).length;
     return {tally,fitB:badge(/^Fitted/),aggB:badge(/^Aggregate/),judB:badge(/^Judgment/),ledger,note,fit,agg,tx:V.n_fit+R.n_fit};
   });
   { const n=dt.tally.map(x=>+String(x.n).replace(/[^\d]/g,"")), sum=dt.ledger.reduce((a,b)=>a+b,0);

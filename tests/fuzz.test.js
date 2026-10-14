@@ -90,16 +90,29 @@ for(let i=0;i<N;i++){
     ok([90,180,365].every(t=>Math.abs(ra.F(t*ra.tMult/r.tMult)-r.F(t))<1e-12),"curve rescaled exactly with the median",ctx(s,{a:r.tMult,b:ra.tMult})); }
 
   /* 7d. survival risk (fit/sba_risk_refresh.py): charged off within 5 < 8 < 10 years, headline = 10-year term
-     (8-year x tail factor), rel against base_cif.term, expected loss below the probability; it reads the value,
+     (8-year x the fitted tail at the note's size, fit/sba_tail_factor.py), rel against base_cif.term, expected loss
+     below the probability; it reads the value,
      not the ask, and ignores staffing; with no rate entered it prices at sbaRate(V) */
   { const k=r.risk, R=A.MODELS.risk;
     ok([k.p5,k.p8,k.pTerm,k.rel,k.lgd,k.expLoss].every(fin)&&k.p5>0&&k.p5<k.p8&&k.p8<k.pTerm&&k.pTerm<.5,"risk horizons ordered",ctx(s,{p5:k.p5,p8:k.p8,p:k.pTerm}));
-    ok(k.p===k.pTerm&&Math.abs(k.pTerm-k.p8*R.tail_factor)<1e-12&&Math.abs(k.rel-k.pTerm/R.base_cif.term)<1e-12,"risk headline is the 10-year term",ctx(s));
+    ok(k.p===k.pTerm&&Math.abs(k.pTerm-k.p8*k.tail)<1e-12&&k.tail===A.tailAt(k.loan)&&Math.abs(k.rel-k.pTerm/R.base_cif.term)<1e-12,"risk headline is the 10-year term",ctx(s));
+    { const B=R.tail.by_band, lo=Math.min(...B.ratio)*B.scale, hi=Math.max(...B.ratio)*B.scale;
+      ok(k.tail>=lo-1e-12&&k.tail<=hi+1e-12,"tail inside its band table",ctx(s,{tail:k.tail})); }
     ok(k.expLoss>0&&k.expLoss<k.pTerm&&k.lgd>.4&&k.lgd<.95,"expected loss below the charge-off probability",ctx(s,{lgd:k.lgd}));
     ok(A.model({...s,ask:s.ask*1.7}).risk.p===k.p,"risk independent of the ask",ctx(s));
     ok(A.model({...s,jobs:s.jobs*7+3}).risk.p===k.p,"risk ignores staffing",ctx(s));
     const rt=A.model({...s,rate:undefined});
     ok(rt.rate===A.sbaRate(rt.V)&&rt.risk.p===A.fitRisk(rt.V,s.ind,A.sbaRate(rt.V),null,!!s.franchise,s.st||null).p,"no rate entered prices at the table rate",ctx(s)); }
+
+  /* 7d2. analysis confidence (fit/confidence_accuracy.py): the fitted chance of landing within 25% of the fitted value;
+     the label follows the quartile cut-offs, Low outside the fitted data; it reads neither the ask, the years of history
+     nor reporting */
+  { const C=A.MODELS.fitted.confidence, c=A.confidenceOf(s,r);
+    ok(fin(r.conf)&&r.conf>0&&r.conf<1&&r.conf===c.p&&r.confLabel===c.label,"confidence is confidenceOf, inside (0,1)",ctx(s,{conf:r.conf}));
+    ok(r.confLabel===(r.confOutside?"Low":r.conf>=C.cut_high?"High":r.conf>=C.cut_moderate?"Moderate":"Low"),"confidence label follows its cut-offs",ctx(s,{conf:r.conf,l:r.confLabel}));
+    ok(r.confOutside===(r.extrapMax>C.extrap_x||s.ern/s.rev<A.MODELS.value.support.margin.p1||s.ern/s.rev>A.MODELS.value.support.margin.p99),"outside the fitted data exactly past 3x or with the margin outside",ctx(s));
+    if(i%4===0){ const ry=A.model({...s,yrs:s.yrs+3,fin:Math.min(1,s.fin+.1),ask:s.ask*1.3});
+      ok(ry.conf===r.conf,"confidence reads neither the years, reporting nor the ask",ctx(s)); } }
 
   /* 7e. realised-price fan (fit/anchoring_realization.py): the closing probability never reads the price block
      (P_C = fitClose x thin-pool factor), the expected price rises with the ask while its share of the ask falls,

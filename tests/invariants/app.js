@@ -108,7 +108,7 @@ def("focal-planet-equals-tile","The focal planet's canvas percentage equals the 
 def("focal-legend-equals-scenarios","Bear / Median / Bull sale equal the 8th, 50th and 94th percentiles of the price if it closes, which are also eq_ss's P_0.08/P_0.50/P_0.94 and the scenario cards' outer ends.","drawOrbit(): 'prices if it closes, like the scenario cards'");
 def("price-tile-subline-rules","The price tile's sub-line: 'nearly every closing at the ask ceiling' iff the 80% range is under 0.5% wide, otherwise '80% between q10 and q90'; '· X% at the ask ceiling' iff the ceiling share is at least 30% (X = that share), with 'of $ceiling' iff the ceiling sits more than 1% under the ask.","render(): o_val comment");
 def("risk-tile-consistent","The risk tile shows p (1 dp), the ratio to the average loan unless the 7(a) cap binds, the 5-year figure, and the cap note iff 85% of value exceeds $5M; displayed p / displayed ratio equals the displayed average-loan rate within rounding.","render() risk block; economics (rel = p/base)");
-def("badges-follow-rules","Provenance badges follow their rules: closing 'aggregate × judgment' iff thin pool or a gap penalty; value and multiple 'fitted × judgment' iff the quality factor is off 1 by >0.5%; time 'fitted × judgment' iff the time multiplier >1.0005; their tooltip figures equal the model's.","render() badge comments (AUDIT_FINDINGS R1-1, R1-3)");
+def("badges-follow-rules","Provenance badges follow their rules: closing 'aggregate × judgment' iff thin pool or a gap penalty; value and multiple 'fitted × judgment' iff the quality factor is off 1 by >0.5%; time 'fitted × judgment' iff the time multiplier >1.0005; risk 'fitted' with the note's tail in its tooltip; their tooltip figures equal the model's.","render() badge comments (AUDIT_FINDINGS R1-1, R1-3)");
 def("time-stretch-note","The time note appears iff the ask stretches the median; its 'N% above model value', band days and multiplier equal the model's, and band days x multiplier gives the tile's days.","render() o_tstretch; T_ELAST comment");
 def("scores-and-captions","Score captions name the ask and pool actually used: 'at your ask of money(ask)' (+ buyers when thin); 'at the optimal ask of money(V x rho)' (+ the typical pool when thin).","render() hero scores");
 def("business-score-not-below-omni","On the page the business score is never below the Omni score.","businessScore(): 'the business score still never falls below the Omni score'");
@@ -439,6 +439,7 @@ function checkState(name,st,askTyped,S,E){
     if(qj&&!S.titles.o_msv_pv[1].includes("("+money(r.Vbase)+")")) bad.push("msv title Vbase");
     const tj=r.tMult>1.0005; if(S.titles.o_t_pv[0]!==(tj?"fitted × judgment":"fitted")) bad.push("t badge");
     if(tj&&!S.titles.o_t_pv[1].includes(`Fitted band median ${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)}`)) bad.push("t title");
+    if(S.titles.o_risk_pv[0]!=="fitted"||!S.titles.o_risk_pv[1].includes("× "+r.risk.tail.toFixed(2)+" for years 9-10")) bad.push("risk badge");
     ok("badges-follow-rules",!bad.length,ctx({bad,pcTitle})); }
   { const tj=r.tMult>1.0005, t=tx.o_tstretch||"", m=/^Your ask is (\d+)% above model value, so the median here is the band's (\d+) days × ([\d.]+) /.exec(t);
     let good=tj?!!m:t==="";
@@ -526,10 +527,10 @@ function checkState(name,st,askTyped,S,E){
     ok("eq-optimizer-substitution",sqo.ok&&sqU.ok&&Math.abs(Ufresh-bU.U)<1e-6*Math.max(1,Math.abs(bU.U))&&!!card,ctx({mo:sqo.missing,mu:sqU.missing,eo,eu})); }
   { const ss=eq.eq_ss||"", cs=eq.eq_cs||"", P=A.MODELS.value.fan_quantiles;
     const sq1=seqIn(ss,["R(0.10)^{s}="+Math.pow(P.p10,A.FAN_S).toFixed(2),"R(0.90)^{s}="+Math.pow(P.p90,A.FAN_S).toFixed(2),dm(money(r.scen.bear[0])),dm(money(r.q(.5))),dm(money(r.scen.bull[1]))]);
-    const sq2=seqIn(cs,["c="+r.conf.toFixed(3),r.confLabel,dm(money(r.q(.10))),dm(money(r.q(.90))),dm(money(r.V*P.p10)),dm(money(r.V*P.p90))]);
+    const sq2=seqIn(cs,["c="+r.conf.toFixed(3),r.confLabel,r.confNote,dm(money(r.q(.10))),dm(money(r.q(.90))),dm(money(r.fv.point*r.confBand80[0])),dm(money(r.fv.point*r.confBand80[1]))]);
     const sub=S.kfig.o_val[1]||"", inSub=/80% between/.test(sub)?(sub.includes(money(r.q(.10)))&&sub.includes(money(r.q(.90)))):true;
     ok("eq-scenario-substitution",sq1.ok&&sq2.ok&&inSub,ctx({m1:sq1.missing,m2:sq2.missing,ss,cs})); }
-  { const zs=eq.eq_zs||"", nls=eq.eq_nls||"", zRaw=(s.rec-r.ind.rec)/.28;
+  { const zs=eq.eq_zs||"", nls=eq.eq_nls||"", zRaw=(s.rec-r.ind.rec)/A.PEER_SD.rec;
     const sq1=seqIn(zs,[s.rec.toFixed(3),r.ind.rec.toFixed(3),Math.abs(zRaw-r.z.rec)>1e-9?zRaw.toFixed(2):r.z.rec.toFixed(2),pc(r.pctile.rec)+" of peers"]);
     const C=r.contrib, sq2=seqIn(nls,["f_r="+r.fRec.toFixed(3),"f_c="+r.fCc.toFixed(3),"f_m("+r.emRaw.toFixed(2)+")="+(C["EBITDA margin (nonlinear)"]||0).toFixed(3),"f_z("+r.z.size.toFixed(2)+")="+(C["Earnings scale (saturating)"]||0).toFixed(3),"f_u="+r.fUnder.toFixed(3),"f_y="+(C["Years of clean history"]||0).toFixed(3)]);
     const zb=S.bars.zbars.find(x=>x[0]==="Recurring revenue"), pcb=n=>(S.bars.pcbars.find(x=>x[0]===n)||[])[1];
@@ -770,7 +771,7 @@ function firstDiff(a,b){ for(const k in a){ const x=J(a[k]), y=J(b[k]); if(x!==y
 
 /* ---------------------------------------------------------------- the Data tab's live figures */
 function dataTabChecks(dataText,calibRows){
-  const prof=(k,ern,rev)=>{ const I=A.IND[k],R=A.sizeRefs(ern); return {ind:k,rev:rev||ern/A.typMargin(k,ern),ern,ask:0,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)}; };
+  const prof=(k,ern,rev)=>{ const I=A.IND[k], r=rev||ern/A.typMargin(k,ern); return {ind:k,rev:r,ern,ask:0,...A.peerMedians(k,ern,r),yrs:6,buyers:(I.buyers||50)}; };
   const at=(k,e,rv,ask)=>{ const s=prof(k,e,rv); const V=A.model({...s,ask:1}).V; return A.model({...s,ask:ask||V}); };
   const mMed=at("prof",158950);
   const e2s=(k,e)=>{ let x=e; for(let i=0;i<20;i++){ const w=A.sdeEbitdaWedge(A.naicsFor(k),x/A.typMargin(k,x)); x=e*(w||1); } return x; };
@@ -778,9 +779,10 @@ function dataTabChecks(dataText,calibRows){
   const ms=at("prof",158950,703000), lmm=A.model({...prof("mfg",lmmS),chan:"intermediary",ask:A.model({...prof("mfg",lmmS),ask:1}).V}), ulmm=at("mfg",ulmmS);
   const msMkt=at("prof",158950,703000,350000/0.94);
   const msTyp=at("prof",158950,703000,A.model({...prof("prof",158950,703000),ask:1}).V*M_TYP), eTyp=msTyp.Vmean/msTyp.inputs.ask;
-  const q=e=>{ const I=A.IND.medical,R=A.sizeRefs(e),z=k=>A.QW.w[k]/A.QW.norm;
-    const t={ind:"medical",rev:e/A.typMargin("medical",e),ern:e,ask:1,grw:I.grw+z("grw")*.13,gm:I.gm+z("gm")*.13,rec:I.rec+z("rec")*.28,cc:.16-z("cc")*.13,
-      ret:I.ret+z("ret")*.13,plt:.40-z("plt")*.22,own:R.own-z("own")*.25,mgt:R.mgt+z("mgt")*.28,fin:R.fin+z("fin")*.28,yrs:6,buyers:(I.buyers||50)+10};
+  const q=e=>{ const I=A.IND.medical, rv=e/A.typMargin("medical",e), P=A.peerMedians("medical",e,rv);
+    /* one standard deviation better than the peers in composite: each dimension its weight's share of its own peer spread */
+    const t={ind:"medical",rev:rv,ern:e,ask:1,yrs:6,buyers:(I.buyers||50)+10};
+    for(const k of A.MODELS.value.quality_band.dimensions) t[k]=P[k]+(k==="own"||k==="cc"||k==="plt"?-1:1)*A.QW.w[k]/A.QW.norm*A.PEER_SD[k];
     const V=A.model(t).V; return A.omniScore(A.model({...t,ask:V*1.05})); };
   const want=[mMed.dsum.toFixed(3),xx(ms.M),money(msMkt.Vreal,2),Math.round(ms.tMed)+" days",pc(lmm.PC),pc(ulmm.PC),pc(eTyp,1),sizeAnchor(2e7).toFixed(2)+"×",sizeAnchor(1.4e6).toFixed(2)+"×",sizeAnchor(3.5e6).toFixed(2)+"×",q(1e5)+" → "+q(2e7)];
   const got=calibRows.map(x=>dm(x));

@@ -14,10 +14,8 @@ const finiteDeep=(o,seen=new Set())=>{
   return Object.values(o).every(v=>typeof v==="function"||finiteDeep(v,seen));
 };
 const median=(ind,ern)=>{
-  const I=A.IND[ind],RF=A.sizeRefs(ern),rev=ern/A.typMargin(ind,ern);
-  return {ind,ern,rev,yrs:6,buyers:I.buyers,franchise:false,st:null,
-    rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,
-    gm:I.gm,ret:I.ret,fin:RF.fin,plt:.40};
+  const I=A.IND[ind],rev=ern/A.typMargin(ind,ern);
+  return {ind,ern,rev,yrs:6,buyers:I.buyers,franchise:false,st:null,...A.peerMedians(ind,ern,rev)};
 };
 
 /* 1. structure */
@@ -114,9 +112,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6]){
   for(const perm of [[4,3,2,1,0],[1,0,3,2,4],[2,4,0,3,1]])
     ok(JSON.stringify(A.applyAll(EX,r0,perm.map(i=>ks[i])))===ref,"intervention order independence"); }
 
-/* 10. a general manager's salary comes off earnings */
-{ const r0=A.model(EX), s1=A.applyAll(EX,r0,["gm"]);
-  ok(near(s1.ern,EX.ern-A.gmSalary(EX),1e-6),"GM salary deducted from normalized earnings"); }
+/* 10. a general manager's loaded salary comes off earnings (BLS ECEC loading, fit/intervention_costs.py) */
+{ const r0=A.model(EX), s1=A.applyAll(EX,r0,["gm"]), G=A.MODELS.fitted.interventions.gm;
+  ok(near(s1.ern,EX.ern-G.loading*A.gmSalary(EX),1e-6),"GM's loaded salary deducted from normalized earnings"); }
 
 /* 11. optimiser bookkeeping, and more budget is never worse */
 { const r0=A.model(EX); let prev=-Infinity;
@@ -307,22 +305,38 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
 { const fs=require("fs"), path=require("path");
   const HTML=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
   const R=A.MODELS.risk, F=A.MODELS.fitted, PR=F.sba_rate.prime;
-  const PINS=[{"args": [1000000.0, "medical", null, 10, false, null], "p5": 0.013185443385233407, "p8": 0.034686887718461956, "pTerm": 0.04158610968566404, "lgd": 0.6008056544102781, "expLoss": 0.02498516984407299, "rel": 0.7373423703131923}, {"args": [300000.0, "rest", 10.5, 12, true, "TX"], "p5": 0.0648660194374464, "p8": 0.12852339606860294, "pTerm": 0.15408669954664808, "lgd": 0.6243882819012078, "expLoss": 0.09620992959375921, "rel": 2.7320336799051077}, {"args": [5000000.0, "home", null, 30, false, "CA"], "p5": 0.008145831324026047, "p8": 0.02969939541600232, "pTerm": 0.035606605164245186, "lgd": 0.5824328970421608, "expLoss": 0.02073845819964769, "rel": 0.631322786600092}, {"args": [40000000.0, "ecom", 9.0, 60, false, "NY"], "p5": 0.008755474177616511, "p8": 0.0330519726517333, "pTerm": 0.03962601001216305, "lgd": 0.5808520292789736, "expLoss": 0.023016848327793833, "rel": 0.702588830002891}, {"args": [764705.8823529412, "fit", null, 8, false, null], "p5": 0.029182196281486647, "p8": 0.07207561419593358, "pTerm": 0.08641145385950479, "lgd": 0.6054283974620153, "expLoss": 0.052315948032522853, "rel": 1.5321179762323545}, {"args": [150000.0, "auto", 12.0, 4, false, "FL"], "p5": 0.06543029305563433, "p8": 0.12369183373613088, "pTerm": 0.1482941394662473, "lgd": 0.6278803980961786, "expLoss": 0.0931109833233976, "rel": 2.6293287139405552}];
+  /* p5 and p8 are the Python mirror's (fit/sba_risk_refresh.py, on the shipped, rounded tables); pTerm, lgd, expLoss and
+     rel were re-pinned in October 2026, when years 9-10 became the fitted table read by loan size (fit/sba_tail_factor.py) */
+  const PINS=[{"args": [1000000, "medical", null, 10, false, null], "p5": 0.013185443385233407, "p8": 0.034686887718461956, "pTerm": 0.04401401309971775, "lgd": 0.5922204141277481, "expLoss": 0.026065997065338974, "rel": 0.7681328638694198}, {"args": [300000, "rest", 10.5, 12, true, "TX"], "p5": 0.0648660194374464, "p8": 0.12852339606860294, "pTerm": 0.14606022115553777, "lgd": 0.6344067939188496, "expLoss": 0.09266159662236284, "rel": 2.549043999224045}, {"args": [5000000, "home", null, 30, false, "CA"], "p5": 0.008145831324026047, "p8": 0.02969939541600232, "pTerm": 0.038412838668372876, "lgd": 0.5727074320950822, "expLoss": 0.021999318193246506, "rel": 0.6703811285928949}, {"args": [40000000, "ecom", 9, 60, false, "NY"], "p5": 0.008755474177616511, "p8": 0.0330519726517333, "pTerm": 0.04274902149888276, "lgd": 0.5712726084040274, "expLoss": 0.0244213450183866, "rel": 0.7460562216209906}, {"args": [764705.8823529412, "fit", null, 8, false, null], "p5": 0.029182196281486647, "p8": 0.07207561419593358, "pTerm": 0.08864061719953954, "lgd": 0.6013808133330445, "expLoss": 0.05330676646580214, "rel": 1.5469566701490323}, {"args": [150000, "auto", 12, 4, false, "FL"], "p5": 0.06543029305563433, "p8": 0.12369183373613088, "pTerm": 0.13618725561363315, "lgd": 0.6445559656203544, "expLoss": 0.08778030804723135, "rel": 2.3767409356655}];
   /* the average sector: fitRisk with every sector table emptied ("zzz" maps to 81, which then carries no effect) */
   const avgSector=fn=>{ const a=R.industry_effects,b=R.pif.sector; R.industry_effects={}; R.pif.sector={};
     try{ return fn(); } finally { R.industry_effects=a; R.pif.sector=b; } };
   /* 1. the console reproduces the fitted model exactly (Python mirror on the shipped, rounded tables) */
   for(const c of PINS){ const r=A.fitRisk(...c.args);
     for(const k of ["p5","p8","pTerm","lgd","expLoss","rel"]) ok(Math.abs(r[k]-c[k])<=1e-9*Math.max(1,Math.abs(c[k])),`pin ${JSON.stringify(c.args)} ${k}: ${r[k]} vs ${c[k]}`); }
-  /* 2. horizons: 0 < p5 < p8 < pTerm < 1, headline is the term, and the term uses the stated tail factor */
+  /* 2. horizons: 0 < p5 < p8 < pTerm < 1, headline is the term, and the term is p8 times the fitted tail at the note's size */
+  const TB=R.tail.by_band, tailRef=loan=>{ const x=Math.log(Math.max(loan,1)), c=TB.centres.map(Math.log), n=c.length;
+    if(x<=c[0]) return TB.scale*TB.ratio[0]; if(x>=c[n-1]) return TB.scale*TB.ratio[n-1];
+    let j=0; while(!(x>=c[j]&&x<=c[j+1])) j++; return TB.scale*(TB.ratio[j]+(TB.ratio[j+1]-TB.ratio[j])*(x-c[j])/(c[j+1]-c[j])); };
   for(const k of Object.keys(A.IND)) for(const v of [2e5,1e6,4e6]){ const r=A.fitRisk(v,k,null,10,false,null);
     ok(r.p5>0&&r.p5<r.p8&&r.p8<r.pTerm&&r.pTerm<0.5,`${k} ${v}: horizons ordered ${r.p5} ${r.p8} ${r.pTerm}`);
-    ok(r.p===r.pTerm&&Math.abs(r.pTerm-r.p8*R.tail_factor)<1e-12,`${k}: headline is the term`); }
+    ok(r.p===r.pTerm&&Math.abs(r.pTerm-r.p8*r.tail)<1e-12&&Math.abs(r.tail-tailRef(r.loan))<1e-12,`${k}: headline is the term, p8 x the tail at the note's size`); }
+  for(const c of PINS){ const r=A.fitRisk(...c.args); ok(Math.abs(r.pTerm-c.p8*tailRef(r.loan))<1e-12,`pin ${JSON.stringify(c.args)}: pTerm = pinned p8 x the tail`); }
   ok(R.horizon_months===60&&R.observed_months===96&&R.term_months===120,"horizons are 5 / 8 / 10 years");
-  /* the tail factor is a labelled transfer judgment: inside the loan-band range of mature vintages, with an SE that covers it */
-  ok(R.tail_factor>=1.1&&R.tail_factor<=1.3,"tail factor inside the 1.1-1.3 range mature vintages show");
-  ok(R.tail_factor_se>=0.07,"tail factor SE covers the loan-band range (>= 0.07)");
-  ok(R.tail_by_band["<150k"].ratio<R.tail_factor&&R.tail_factor<R.tail_by_band[">=1.5M"].ratio,"tail factor between the small- and large-loan ratios");
+  /* years 9-10 are FITTED (fit/sba_tail_factor.py): the pooled factor and its SE, the size table and its scale */
+  { const T=R.tail, E=T.estimates, r=TB.ratio.map(v=>v*TB.scale);
+    ok(R.tail_factor===undefined&&R.tail_by_band===undefined&&R.tail_note===undefined,"the judgment tail fields are gone");
+    ok(T.factor===1.21&&T.factor>=1.1&&T.factor<=1.3,"tail factor 1.21, inside the 1.1-1.3 range mature vintages show");
+    ok(near(T.factor_se,Math.round(E.se_total_measured*100)/100,1e-12)&&T.factor_se>=E.se_lower_no_drift,"tail SE = the measured parts in quadrature, rounded, above the no-drift lower bound");
+    ok(near(E.se_total_measured,Math.hypot(E.se_parts.estimation,E.se_parts.term_bracket,E.se_parts.transport,E.se_parts.drift),2e-4),"tail SE parts add in quadrature");
+    ok(Math.abs(E.midpoint-(E.two_class.ratio+E.three_class.ratio)/2)<1e-3&&Math.abs(T.factor-E.midpoint)<=0.005,"tail factor = the two- and three-class midpoint, rounded");
+    ok(r[0]<T.factor&&T.factor<Math.max(...r),"tail factor between the small- and large-loan ratios");
+    ok(TB.centres.every((v,i)=>i===0||v>TB.centres[i-1])&&r[0]===Math.min(...r),"band centres increasing, smallest loans lowest");
+    ok(Math.abs(TB.scale-1)<0.01,"the scale only carries the rounding of the factor");
+    ok(near(A.tailAt(1),r[0],1e-12)&&near(A.tailAt(1e8),r[r.length-1],1e-12),"flat beyond the outer band centres");
+    let mono=true; for(let i=0;i<=60;i++){ const L=5e4*Math.pow(2e8/5e4,i/60); if(!(A.tailAt(L)>=Math.min(...r)-1e-12&&A.tailAt(L)<=Math.max(...r)+1e-12)) mono=false; }
+    ok(mono,"the tail stays inside its band table");
+    ok(T.late_hazard_by_term.n120.q.every((q,i)=>q>T.late_hazard_by_term.long.q[i]),"late charge-offs: 10-year notes above longer notes in every band"); }
   /* 3. larger loans are no riskier at the table rate over 5 years; flat beyond the 7(a) cap */
   for(const k of Object.keys(A.IND)){ let prev=1;
     for(const v of [5e4,1e5,3e5,1e6,3e6,5.8e6]){ const p=A.fitRisk(v,k,null,10,false,null).p5; ok(p<=prev+1e-12,`${k}: 5-year risk falls with size at ${v}`); prev=p; }
@@ -342,7 +356,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* 6. population anchors: base and observed 5-year rate are the same order; reference loan near the base */
   ok(R.base_cif.h60>0.01&&R.base_cif.h60<0.035,"population 5-year charge-off between 1% and 3.5%");
   ok(Math.abs(R.base_cif.h60-R.aj_pooled.cif60)<3*R.aj_pooled.cif60_se+0.003,"model population average near the Aalen-Johansen 5-year rate");
-  ok(Math.abs(R.base_cif.term-R.base_cif.h96*R.tail_factor)<1e-3,"population term = 8-year x tail factor");
+  ok(Math.abs(R.base_cif.term-R.base_cif.h96*R.tail.by_band.book_tail)<1e-4,"population term = 8-year x the book's tail");
+  ok(Math.abs(R.base_cif.se.term-Math.hypot(R.base_cif.se.h96*R.tail.by_band.book_tail,R.base_cif.h96*R.tail.factor_se))<1e-4
+     &&Math.abs(R.base_cif.level_range.term[0]-R.base_cif.level_range.h96[0]*R.tail.by_band.book_tail)<1e-4
+     &&Math.abs(R.base_cif.level_range.term[1]-R.base_cif.level_range.h96[1]*R.tail.by_band.book_tail)<1e-4,"term SE and range follow the 8-year level and the tail");
   ok(R.base_cif.spec_range.h96[0]<=R.base_cif.h96+1e-4&&R.base_cif.h96<=R.base_cif.spec_range.h96[1]+1e-4,"shipped 8-year level inside its specification range");
   /* the stated level uncertainty includes the reference period: 2025-26 ran below 2023-24, and the range brackets the shipped level */
   ok(R.base_cif.conditions.ratio<1&&R.base_cif.conditions_range.h96[0]<R.base_cif.h96&&R.base_cif.h96<R.base_cif.conditions_range.h96[1],"reference-period range brackets the shipped 8-year level");
@@ -415,7 +432,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(i>0&&j>i&&/conditions hold/.test(H),"hero says 'if 2023-26 conditions hold'");
     ok(!/-yr term/.test(H)&&/charged off within /.test(H),"hero says 'within 10 yrs', not 'the 10-yr term'");
     ok(/conditions_range/.test(H),"hero tooltip shows the reference-period range"); }
-  for(const f of ["vintage_oe","cal_holdout_slope","lp_shrink","spec_range","conditions_range","level_range","through_cycle","rate_level.uplift_range","tail_by_band","real_estate","spread_channel","staffing"])
+  for(const f of ["vintage_oe","cal_holdout_slope","lp_shrink","spec_range","conditions_range","level_range","through_cycle","rate_level.uplift_range","tail.factor","tail.by_band","real_estate","real_estate.business_only","spread_channel","staffing"])
     ok(HTML.indexOf("R."+f)>=0||HTML.indexOf("R.validation."+f)>=0||HTML.indexOf("R.co."+f)>=0||HTML.indexOf("R.base_cif."+f)>=0,`Data tab shows ${f}`);
   ok(HTML.indexOf("pts default risk")<0&&HTML.indexOf("pts charge-off risk, 10 yr")>=0,"state dropdown labels the 10-year charge-off risk");
 }
@@ -480,9 +497,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       if(m<1.35) ui=Math.max(ui,u); else uc=Math.max(uc,u); }
     ok(Math.abs(ui-uc)<.01*V,`theta=.75: the two peaks differ by ${(100*(ui-uc)/V).toFixed(2)}% of value (expected a near-tie)`); }
   /* 24i. the self-audit's fit-consistency row (renderCalib's own profile) reads 'in range' */
-  { const I=A.IND.prof, R=A.sizeRefs(158950);
-    const p={ind:"prof",rev:703000,ern:158950,ask:0,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,
-             fin:R.fin,yrs:6,buyers:(I.buyers||50)};
+  { const I=A.IND.prof;
+    const p={ind:"prof",rev:703000,ern:158950,ask:0,...A.peerMedians("prof",158950,703000),yrs:6,buyers:(I.buyers||50)};
     const V=A.model({...p,ask:1}).V, r=A.model({...p,ask:V*M_TYP}), e=r.Vmean/r.inputs.ask;
     ok(e>=.875&&e<=.925,`self-audit fit-consistency row ${e.toFixed(4)} in 87.5-92.5%`); }
   /* 24j. the page says what it does: R^s in the scenario equations, the calibrated badge, the benchmark label from $2M,
@@ -519,7 +535,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&HTML.includes("const mktTxt=`${(0.09*(1-loiMed)).toFixed(2)}&ndash;${(0.10*(1-loiMed)).toFixed(2)}`;")&&!HTML.includes("36% of it), which the analogs")
      &&!/0\.07 on the time-given-sale scale|0\.07 \(time-given-sale scale\)/.test(HTML),
      "Data tab states b as a labelled judgment between the two conversions");
-  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ nDelta \+ nCat \+ nConf \+ nPeer \+ nPeerX \+ 11 \+ 2 \+ 1\s+\+ 1\s+\/\* the SBA tail factor[^*]*\*\/\s+\+ 4;/.test(HTML),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers, the SBA tail factor)");
+  ok(/Overpricing time multiplier[\s\S]{0,200}<td class="n" style="padding-right:18px">2<\/td>/.test(HTML)&&/\+ nDelta \+ nCat \+ nConf \+ nPeer \+ nPeerX \+ 11 \+ 2 \+ 1\s+\+ 4;/.test(HTML)&&!HTML.includes("the SBA tail factor (years 9-10"),"judgment inventory counts T_ELAST and T_SMOOTH (and THIN_W, competition_buyers; the SBA tail is fitted since October 2026)");
   /* a median business priced at the proceeds optimum scores 50 at every cost of delay */
   for(const ind of ["medical","rest","msp","mfg"]) for(const ern of [2e5,1e6,5e6]) for(const lamT of [0,900,4000]){
     const s={...median(ind,ern),lamT}, V=A.model({...s,ask:1}).V;
@@ -528,9 +544,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const s=median("rest",1.5e5); ok(A.bestRatio(s,0,4000)<A.bestRatio(s,0,0)-1e-3,"a cost of delay lowers the delay-aware ask"); }
   const EXO={grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false};
   /* the walk-away asks the Data tab quotes (75% kept, delay charged on the mean time to close): $900/day 1.13, 1.14, 1.15,
-     1.15; $4,000/day 1.09, 1.12, 1.14, 1.14 for earnings $150k/$400k/$1.45M/$5M. If another change moves them, update the
-     Data-tab paragraph. */
-  { const Q={900:["1.13","1.14","1.15","1.15"],4000:["1.09","1.12","1.14","1.14"]};
+     1.15; $4,000/day 1.08, 1.12, 1.14, 1.14 for earnings $150k/$400k/$1.45M/$5M (the $150k figure at $4,000/day moved from
+     1.09 when the peer medians were fitted, October 2026). If another change moves them, update the Data-tab paragraph. */
+  { const Q={900:["1.13","1.14","1.15","1.15"],4000:["1.08","1.12","1.14","1.14"]};
     [1.5e5,4e5,1.45e6,5e6].forEach((ern,i)=>{ const s={...EXO,ind:"medical",ern,rev:ern/0.24};
       for(const lam of [900,4000]){ const b=A.bestRatio(s,.75,lam);
         ok(b.toFixed(2)===Q[lam][i],`Data tab: walk-away ask at $${ern} and $${lam}/day ${b.toFixed(3)} (text says ${Q[lam][i]})`); } }); }
@@ -645,7 +661,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     return {t,o:t.optRho,n:A.optNote(t,V,A.model({...t,ask:V*t.rhoSell}),A.model({...t,ask:V*t.optRho}))}; };
   /* a walk-away flip between ~1.22x and ~1.45x on one 1% step of theta, NEITHER end at the cap (the second peak is not
      assumed to be the cap): the range covers both peaks on both sides of the flip */
-  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.91,.92],750],
+  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.92,.93],750],
                              [{ind:"home",rev:326000,ern:55000,grw:.66,gm:.77,rec:.59,cc:.07,ret:.70,plt:.24,own:.95,mgt:.36,fin:.14,yrs:6,buyers:440},[.94,.95],700]]){
     const out=ths.map(th=>noteAt(s0,th,lam));
     ok(Math.abs(out[1].o-out[0].o)>.2&&out.every(({o,n})=>o<A.RHO_MAX-.02&&n.alt&&Math.min(o,n.alt.m)<1.25&&Math.max(o,n.alt.m)>1.44&&/as a range/.test(n.text)),
@@ -662,7 +678,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       checkNote(v.t,n,`(${v.t.ind} at ${v.t.theta})`); } }
   /* every industry near the knife edge: the note's three readings (range, named peak, no second peak) against the reference */
   for(const ind of Object.keys(A.IND)) for(const [th,lam] of [[.85,900],[.9,4000],[.95,900]]){
-    const I=A.IND[ind], v=noteAt({...EXO,ind,ern:4e5,rev:4e5/.24,grw:I.grw,gm:I.gm,rec:I.rec,ret:I.ret},th,lam);
+    const P=A.peerMedians(ind,4e5,4e5/.24), v=noteAt({...EXO,ind,ern:4e5,rev:4e5/.24,grw:P.grw,gm:P.gm,rec:P.rec,ret:P.ret},th,lam);
     checkNote(v.t,v.n,`(${ind}, theta ${th}, $${lam}/day)`); }
 }
 
@@ -687,8 +703,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(kink<1e-4,`capOne has no kink at either end of the blend (${kink})`);
     ok(near(maxLift,F.thin_cap_max_lift,5e-4)&&F.thin_cap_w===A.THIN_W,`capOne lifts the ratio by at most ${maxLift.toFixed(4)} (stored ${F.thin_cap_max_lift})`); }
   /* band centres: median businesses at Vbase = 250k .. 15.8M, every industry */
-  const medB=(ind,ern)=>{ const I=A.IND[ind],RF=A.sizeRefs(ern),m=A.typMargin(ind,ern);
-    return {ind,rev:ern/m,ern,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:RF.own,mgt:RF.mgt,fin:RF.fin,yrs:6,buyers:I.buyers,st:null,franchise:false,ask:1e6}; };
+  const medB=(ind,ern)=>{ const I=A.IND[ind],m=A.typMargin(ind,ern);
+    return {ind,rev:ern/m,ern,...A.peerMedians(ind,ern,ern/m),yrs:6,buyers:I.buyers,st:null,franchise:false,ask:1e6}; };
   const atV=(ind,V)=>{ let lo=Math.log(2e3),hi=Math.log(2e8);
     for(let i=0;i<50;i++){ const m=(lo+hi)/2; if(A.model(medB(ind,Math.exp(m))).Vbase<V) lo=m; else hi=m; }
     const t=medB(ind,Math.exp((lo+hi)/2)); t.ask=A.REF_RATIO*A.model(t).V; return t; };
@@ -757,9 +773,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(dps.every((v,j)=>j===0||v<=dps[j-1]+1e-12)&&cont&&row(52).dP<1e-9,`buyer-pool row changes smoothly through the typical pool (${dps.map(v=>v.toFixed(4))})`);
     const t=A.model({...ex,buyers:50}), h=1e-4, f=b=>A.model({...ex,buyers:b}).thinF;
     ok(Math.abs((f(50)-f(50-h))/h-(f(50+h)-f(50))/h)<1e-3,"thinF has no kink at the typical pool"); }
-  /* BUYERS unchanged (judgment); the strategic-over-financial premium with both present stays inside Pepperdine/GF's range */
+  /* BUYERS unchanged (judgment) but for the individual's factor, calibrated in October 2026 (fit/buyer_factors.py); the
+     strategic-over-financial premium with both present stays inside Pepperdine/GF's range */
   { const mf={}; for(const b of A.BUYERS) mf[b.k]=b.mf;
-    ok(mf.str===1.18&&mf.adj===1.14&&mf.add===1.12&&mf.pep===1.06&&mf.fo===1.02&&mf.eta===.98&&mf.ind===.90&&mf.mbo===.86&&A.PHI===.38,"buyer multiple factors and PHI unchanged");
+    ok(mf.str===1.18&&mf.adj===1.14&&mf.add===1.12&&mf.pep===1.06&&mf.fo===1.02&&mf.eta===.98&&mf.ind===A.MODELS.fitted.buyers.mf_ind&&mf.ind===.97&&mf.mbo===.86&&A.PHI===.38,"buyer multiple factors and PHI unchanged; the individual's calibrated (0.97)");
     const syn={}; for(const b of A.BUYERS) syn[b.k]=b.syn; let sum=0,n=0;
     for(const V of [5e6,8e6,1.5811e7,3e7]) for(const ind of inds){ const t=atV(ind,V), r=A.model(t), x=r.synE/t.ern;
       const full=k=>mf[k]+Math.min(A.PHI*syn[k]*x,.40);
@@ -771,8 +788,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.includes("Not adopted: the fit&rsquo;s negative-binomial thin-pool factor"),"Data tab: the NB thin-pool factor is listed as not adopted");
   ok(HTML.includes("<code>IND</code> buyers is also the typical pool that the thin-pool factor"),"Data tab: the IND row names the typical pool");
   /* ENG_SHARE is CALIBRATED everywhere: its row badge, the ledger, and (like FAN_S) no tally */
-  ok(/\(\(MODELS\.fitted\.ttc_medians\|\|\{\}\)\.listing\|\|\[\]\)\.length;\s+\/\* time-to-close band medians[^*]*\*\/\s+\/\* the two CALIBRATED constants, FAN_S and ENG_SHARE/.test(HTML)
-     &&!/\+ 1;\s+\/\* ENG_SHARE/.test(HTML),"nFit does not count ENG_SHARE (calibrated, like FAN_S)");
+  { const i=HTML.indexOf("const nFit = "), j=HTML.indexOf('let h="";',i), NF=HTML.slice(i,j);
+    ok(i>0&&j>i&&!/ENG_SHARE|eng_share|mf_ind|FAN_S/.test(NF.split("/* the CALIBRATED constants")[0])
+       &&/\/\* the CALIBRATED constants, FAN_S, ENG_SHARE \(offers per closed deal, IBBA\), the individual buyer's multiple/.test(NF),"nFit does not count ENG_SHARE (calibrated, like FAN_S and the individual buyer's factor)"); }
   ok(/Buyer pool: expected offers, and how a thin pool lowers the closing probability\s*&nbsp;<span class="st adj">calibrated<\/span>/.test(HTML)
      &&HTML.includes("(the offer share that sets its scale is now calibrated to IBBA)")&&!HTML.includes("sets its scale is now fitted"),"ENG_SHARE badged calibrated in its row and in the ledger");
   ok(/Thin-pool cap<div class="muted"[^>]*>THIN_W/.test(HTML),"Data tab counts THIN_W as judgment");
@@ -808,11 +826,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(C.mgt.oos===false&&C.mgt.ratio[1]<1&&C.mgt.ratio[2]>1,"management depth: weak (no out-of-sample value, ratio includes an equal share)");
   ok(C.q[2]>0.05,"equal relative weights across the nine measured dimensions are not rejected");
   /* the model: a business at every peer median sits at the band midpoint; one sd moves qz by sign*w/norm */
-  const I=A.IND.medical, RF=A.sizeRefs(1.45e6);
-  const med={ind:"medical",rev:6e6,ern:1.45e6,yrs:6,buyers:I.buyers,franchise:false,st:null,rec:I.rec,cc:.16,own:RF.own,mgt:RF.mgt,grw:I.grw,gm:I.gm,ret:I.ret,fin:RF.fin,plt:.40,ask:3.24e6};
+  const I=A.IND.medical;
+  const med={ind:"medical",rev:6e6,ern:1.45e6,yrs:6,buyers:I.buyers,franchise:false,st:null,...A.peerMedians("medical",1.45e6,6e6),ask:3.24e6};
   const r0=A.model(med);
   ok(near(r0.qz,0,1e-12)&&near(r0.qFactor,1,1e-6),"QW: a business at every peer median sits at the band midpoint");
-  const dz={rec:.28,grw:.13,gm:.13,ret:.13,cc:.13,plt:.22};
+  const dz={rec:A.PEER_SD.rec,grw:A.PEER_SD.grw,gm:A.PEER_SD.gm,ret:A.PEER_SD.ret,cc:A.PEER_SD.cc,plt:A.PEER_SD.plt};
   for(const k of Object.keys(dz)){ const sg=(k==="cc"||k==="plt")?-1:1, r1=A.model({...med,[k]:med[k]+dz[k]});
     ok(near(r1.qz-r0.qz,sg*A.QW.w[k]/A.QW.norm,1e-9),`QW: one sd of ${k} moves the composite by w/norm`); }
   ok(A.model({...med,rec:med.rec+.2}).V>r0.V&&A.model({...med,grw:med.grw+.1}).V>r0.V,"QW: more recurring revenue or growth raises value (growth: direction confirmed; recurring revenue: judgment)");
@@ -937,12 +955,14 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&!HTML.includes("relative to the financial-buyer baseline\n"),"#10: buyer labels");
   /* #20: the SDE margin range is read live (20-30% at $200k SDE) */
   { const m=Object.keys(A.IND).map(k=>A.typMargin(k,2e5)); ok(!HTML.includes("18&ndash;35%")&&Math.round(Math.min(...m)*100)===20&&Math.round(Math.max(...m)*100)===30,"#20: margin range live, 20-30%"); }
-  /* #21: one aggregate count for the tally and the badge; the tail factor counted as judgment */
+  /* #21: one aggregate count for the tally and the badge; the tail is fitted (October 2026), so it is counted with the
+     fitted tables and has no judgment row */
   ok((HTML.match(/\$\{nAgg\}/g)||[]).length===2&&!HTML.includes("17 parameters</span>")&&/\+ 2   \/\* the size x age interaction/.test(HTML)
-     &&/\+ 1    \/\* the SBA tail factor/.test(HTML)&&/\+ 4;   \/\* the price-gap penalty scale PEN_MAX/.test(HTML)&&HTML.includes("<tr><td>SBA tail factor<div"),"#21: tallies agree");
+     &&!/\+ 1    \/\* the SBA tail factor/.test(HTML)&&/\+ 4;   \/\* the price-gap penalty scale PEN_MAX/.test(HTML)&&!HTML.includes("<tr><td>SBA tail factor<div")
+     &&HTML.includes("+ MODELS.risk.tail.by_band.ratio.length"),"#21: tallies agree");
   /* #22: the centring row at a business actually at its peer medians reads in range */
-  { const I=A.IND.prof, R=A.sizeRefs(158950), p={ind:"prof",rev:158950/A.typMargin("prof",158950),ern:158950,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,
-      own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:(I.buyers||50)}, V=A.model({...p,ask:1}).V, d=A.model({...p,ask:V}).dsum;
+  { const I=A.IND.prof, rv=158950/A.typMargin("prof",158950), p={ind:"prof",rev:rv,ern:158950,...A.peerMedians("prof",158950,rv),
+      yrs:6,buyers:(I.buyers||50)}, V=A.model({...p,ask:1}).V, d=A.model({...p,ask:V}).dsum;
     ok(Math.abs(d)<.03&&HTML.includes("mMed.dsum.toFixed(3)"),`#22: judgment stack at the peer medians ${d.toFixed(4)}`); }
   /* #23: the 15 quarters named correctly */
   ok(!/2020Q1(&ndash;|-|–)2023Q3/.test(HTML)&&A.MODELS.fitted.ttc_shape.source.includes("2020Q1-2021Q4, 2022Q2-2023Q3 and 2025Q4"),"#23: quarter labels");
@@ -966,7 +986,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&HTML.includes('row("Bear sale"')&&!HTML.includes("Outcome distribution"),"R1-2: scenario labels");
   /* R1-3, R1-18: badges say when judgment enters the value, the multiple and the risk */
   ok(/const j=Math\.abs\(r\.qFactor-1\)>\.005/.test(HTML)&&HTML.includes('id="o_msv_pv"')&&HTML.includes('id="o_mult_pv"')
-     &&HTML.includes('pv.innerHTML="<i></i>fitted × judgment";')&&HTML.includes("× the average acquisition loan"),"R1-3/R1-18: dynamic provenance badges");
+     &&HTML.includes('pv.className="pv f"; pv.innerHTML="<i></i>fitted";')&&HTML.includes("× the average acquisition loan"),"R1-3/R1-18: dynamic provenance badges (the risk tile's tail is fitted)");
   /* R1-4, R1-5: buyers paid at most the ask ceiling and closing on the gap to their own value */
   { const r=A.model(FX);
     ok(r.buyers.every(b=>b.Pj<=Math.min(b.Vj,r.ceil)*(1+1e-9))&&r.best.k==="eta"&&r.top.k==="str","R1-4/R1-5: the search fund is pursued first at the default (the strategic premium sits above the ask)"); }
@@ -1000,7 +1020,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* R1-15: the earnings input is SDE; EBITDA benchmarks are converted */
   ok(HTML.includes(">Normalized earnings (SDE)</label>")&&!HTML.includes("SDE / EBITDA")&&HTML.includes('const lmmS=e2s("mfg",1.5e6), ulmmS=e2s("mfg",3.5e6);'),"R1-15: SDE input and converted benchmarks");
   /* R1-16, R1-17, R1-19, R1-20: accessible shares, honest interval label, precise k, valued terms */
-  ok(HTML.includes("${pc(r.t90)} close within 90 days")&&HTML.includes("fitted residual band, 80")&&HTML.includes("k=${GAP_TAIL_K.toPrecision(3)}")
+  ok(HTML.includes("${pc(r.t90)} close within 90 days")&&HTML.includes("fitted band here, 80")&&HTML.includes("k=${GAP_TAIL_K.toPrecision(3)}")
      &&HTML.includes("e_i=${r.fv.indEff.toFixed(4)}")&&HTML.includes("A_{\\\\max}=${AMAX.toFixed(2)}")&&HTML.includes("\\\\kappa=${r.compK.toFixed(2)}"),"R1-16/17/19/20: equation and label precision");
   { const r=A.model(FX), co=A.MODELS.value.coefficients, m=FX.ern/FX.rev;
     const lp=A.MODELS.value.intercept+co.ln_sde*Math.log(FX.ern/1e3)+co.hinge_sde*r.fv.hinge+co.ln_gross*Math.log(FX.rev/1e3)+co.margin_c*m+co.yr_c*(2026-2015)+co.ind_eff*r.fv.indEff;
@@ -1047,7 +1067,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(!HTML.includes("published size-band lookup")&&!HTML.includes("the median is still the IBBA band median")&&!HTML.includes("Median pinned to the band median")
      &&!HTML.includes("The median is the IBBA band median")&&!HTML.includes("Median is a size-band lookup")&&!HTML.includes("The median stays on the band figure"),"ttc medians: no stale 'lookup' claims");
   ok(HTML.includes('<span class="pv f" id="o_t_pv"><i></i>fitted</span>')&&HTML.includes('pv.innerHTML="<i></i>"+(j?"fitted × judgment":"fitted");'),"ttc medians: the tile badge says fitted");
-  ok(HTML.includes("((MODELS.fitted.ttc_medians||{}).listing||[]).length;")&&HTML.includes("const nAgg = 2 + Object.keys(C.close_probability.valuation_gap_distribution).length"),"ttc medians: counted as fitted; the aggregate count is read from the tables");
+  { const i=HTML.indexOf("const nFit = "), j=HTML.indexOf('let h="";',i);
+    ok(HTML.slice(i,j).includes("((MODELS.fitted.ttc_medians||{}).listing||[]).length")&&HTML.includes("const nAgg = 2 + Object.keys(C.close_probability.valuation_gap_distribution).length"),"ttc medians: counted as fitted; the aggregate count is read from the tables"); }
   ok(Math.abs(A.fitTiming(4e5,"medical").days-A.fitTiming(4e5,"medical").months*30.44)<1e-9,"ttc medians: days = months x 30.44");
 }
 
@@ -1075,7 +1096,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(!("poisson_same_scale" in H)&&H.poisson_own_scale>H.poisson_console_pairing&&H.nb>H.poisson_own_scale&&Math.abs(H.poisson_console_pairing-H.poisson_old_034)<.01
        &&HTML.includes("for what the thin-pool factor uses, the Poisson shape at the negative"),"R2-3: held-out benchmarks named and the console pairing shown"); }
   /* R2-4: the days-on-market self-audit row explains why it reads off; 213 days now, 207 with the published medians */
-  { const prof=(B)=>{ const I=B.IND.prof, R=B.sizeRefs(158950); const s={ind:"prof",rev:703000,ern:158950,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:R.own,mgt:R.mgt,fin:R.fin,yrs:6,buyers:I.buyers||50};
+  { const prof=(B)=>{ const I=B.IND.prof; const s={ind:"prof",rev:703000,ern:158950,...B.peerMedians("prof",158950,703000),yrs:6,buyers:I.buyers||50};
       return B.model({...s,ask:B.model({...s,ask:1}).V}).tMed; };
     const now=prof(A), pub=prof(A.loadWith([["const TM=MODELS.fitted.ttc_medians;","const TM=null;"]]));
     ok(Math.round(now)===213&&Math.round(pub)===207&&Math.abs(now-170)>=40&&Math.abs(pub-170)<40&&HTML.includes("reads off on a disagreement between the two sources (207 days with IBBA&rsquo;s published medians"),
@@ -1100,9 +1121,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
     const numLeaves=o=>typeof o==="function"?numLits(o):typeof o==="number"?1:o&&typeof o==="object"?Object.values(o).reduce((a,v)=>a+numLeaves(v),0):0;
     const grp={ind:1,str:1,adj:1,pep:1,add:1,fo:1};
-    const nBuy=A.BUYERS.length*2+A.BUYERS.filter(b=>!grp[b.k]).length*2+A.BUYERS.reduce((a,b)=>a+numLits(b.fit),0)+12;
+    /* October 2026: the individual's multiple factor is calibrated (no tally); the QoE fee and the sales hire's floor read
+       published tables, so INTERV lost three typed numbers (43 -> 40) */
+    const nBuy=A.BUYERS.length*2-A.BUYERS.filter(b=>b.k==="ind"&&b.mf===A.MODELS.fitted.buyers.mf_ind).length
+              +A.BUYERS.filter(b=>!grp[b.k]).length*2+A.BUYERS.reduce((a,b)=>a+numLits(b.fit),0)+12;
     const nInt=A.INTERV.length+A.INTERV.reduce((a,v)=>a+numLits(v.cost)+numLeaves(v.eff),0);
-    ok(nBuy===54&&nInt===43&&HTML.includes("${nBuy}</td>")&&HTML.includes("${nInt}</td>")&&!HTML.includes("BUYERS.length*4"),`R2-9: BUYERS ${nBuy} and INTERV ${nInt} counted from their definitions`); }
+    ok(nBuy===53&&nInt===40&&HTML.includes("${nBuy}</td>")&&HTML.includes("${nInt}</td>")&&!HTML.includes("BUYERS.length*4"),`R2-9: BUYERS ${nBuy} and INTERV ${nInt} counted from their definitions`); }
   /* R2-10, R2-11: provenance wording */
   ok(HTML.includes("and time to close to IBBA&rsquo;s per-band histograms of closed deals")&&!HTML.includes("closing probability and timing are market aggregates"),"R2-10: footer");
   ok(!HTML.includes("never on business quality")&&!HTML.includes("&mdash; not on business quality")&&HTML.includes("It has no quality term"),"R2-11: P_C's quality claims");
@@ -1120,21 +1144,26 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&!HTML.includes("<dd>"+(A.MODELS.value.n_fit+A.MODELS.risk.n_fit).toLocaleString("en-US")+"</dd>"),"R3-1: masthead provenance (status row removed)");
   /* R3-2: the prime moves no figure, is not said to set a shown rate, and is not counted */
   ok(!HTML.includes("sets the SBA note rate shown beside the survival risk")&&HTML.includes("SBA spread over prime by loan size (the survival risk reads only the spread)")
-     &&/\+ \(C\.dvi_consideration\?4:0\)\s+\/\*[^*]*\*\/\s+\+ 2;/.test(HTML),"R3-2: prime wording and count");
+     &&/\+ \(C\.dvi_consideration\?4:0\)\s+\/\*[^*]*\*\/\s+\+ 2\s/.test(HTML),"R3-2: prime wording and count");
   { const B=A.loadWith([['"prime":7.0,','"prime":3.0,']]), a=A.model(FX), b=B.model(FX);
     ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&Math.abs(a.risk.p-b.risk.p)<1e-12,"R3-2: the prime level moves no figure"); }
   /* R3-3: the employee count is described as reaching no figure (it still exists for fitRisk's signature) */
   { const B=A.loadWith([["function jobsFor(rev,ind){ const K","function jobsFor(rev,ind){ return 1e9; const K"]]), a=A.model({...FX,jobs:undefined}), b=B.model({...FX,jobs:undefined});
     ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&a.risk.p===b.risk.p&&A.gmSalary(FX)===B.gmSalary(FX)&&HTML.includes("so the count reaches no figure")&&!HTML.includes("Employees for this revenue")&&!HTML.includes("<tr><td>Firm-size rank behind the GM salary</td>"),"R3-3 (+ round 4): the head count reaches no figure, and no public-data row claims it"); }
-  /* R3-4: the ledger counts the category formulas (38), the confidence formula (8) and the peer scales (22) */
+  /* R3-4: the ledger counts the category formulas (37 since Market position reads the fitted comparables depth against
+     its own mean, not a typed .65), the confidence label (3: two cut-offs and the extrapolation rule; the figure is fitted
+     since October 2026) and the peer scales (17 + 2: PEER_SD, the two typed medians and sizeRefs' typed numbers less its
+     clamp; the buyer-pool scale and the size centre) */
   { const src=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
     const sl=(a,b)=>{ const i=src.indexOf(a); return src.slice(i,src.indexOf(b,i)); };
     const mults=t=>(t.match(/(?<![\w.])(\d+\.\d*|\.\d+|\d+)\*/g)||[]).length;
-    const cat=sl("out.cats={","const catMean"), conf=sl("const conf=","out.conf=conf"), z=sl("const z={","const emRaw");
-    const nCat=mults(cat)+(cat.match(/-\.\d+\)/g)||[]).length+4, nConf=mults(conf)+4, nPeer=(z.match(/\/\.\d+/g)||[]).length+(z.match(/-\.\d+\)\//g)||[]).length+1+8;
-    /* round 4 splits the 22 by reach: 19 quality-dimension scales, medians and sizeRefs; 3 size and buyer-pool scales */
-    ok(nCat===38&&nConf===8&&nPeer===22&&HTML.includes("+ nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1")&&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>"),
-       `R3-4: ledger counts ${nCat}/${nConf}/${nPeer}`); }
+    const numLits=f=>((String(f).match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(String(f).match(/\(1-/g)||[]).length);
+    const cat=sl("out.cats={","const catMean"), z=sl("const z={","const emRaw");
+    const nCat=mults(cat)+(cat.match(/-\.\d+\)/g)||[]).length+4, C=A.MODELS.fitted.confidence, nConf=["cut_high","cut_moderate","extrap_x"].filter(k=>typeof C[k]==="number").length;
+    const nPeer=Object.keys(A.PEER_SD).length+2+numLits(String(A.sizeRefs).replace(/Math\.max\(ern,1e4\)/,""))-2, nPeerX=(z.match(/\/\.\d+,?\s*$/gm)||[]).length+1;
+    ok(nCat===37&&nConf===3&&nPeer===17&&nPeerX===2&&!src.includes('slice("const conf="')&&HTML.includes("+ nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1")
+       &&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>")&&HTML.includes("${nPeerX}</td>"),
+       `R3-4: ledger counts ${nCat}/${nConf}/${nPeer}+${nPeerX}`); }
   /* R3-5: the loan-size gap is read at the hazard pieces' start ages: x0.26 per tenfold at month 6, rising to x0.89 in
      months 60-72, and x1.16 from month 72 (R5-7) */
   { const R=A.MODELS.risk, c=R.co.coef.lnamt, a=R.co.age_coef.lnamt, hr=m=>Math.exp(R.co.lp_shrink*(c+a*(Math.min(m,R.co.age_cap_months)/12-R.co.age_center_years))*Math.LN10);
@@ -1164,10 +1193,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(!/overwrites/.test(HTML)&&T.chgoff_term_within3_of_elapsed<.05&&Math.abs(T.chgoff_corr_term_elapsed)<.2&&T.chgoff_median_months_to_chargeoff<T.chgoff_median_term,"R4-1: TermInMonths mechanism"); }
   /* R4-2: the size and buyer-pool scales reach only the categories and confidence; the quality-dimension scales reach value */
   { const pk=r=>[r.V,r.PC,r.EVp].join(), base=A.model(FX);
-    const sz=A.loadWith([["Math.log10(7e5))/.45","Math.log10(7e5))/.90"]]).model(FX), by=A.loadWith([["Math.log(I.buyers||50))/.9","Math.log(I.buyers||50))/1.8"]]).model(FX),
-          rc=A.loadWith([["(s.rec-I.rec)/.28","(s.rec-I.rec)/.20"]]).model(FX);
-    ok(pk(sz)===pk(base)&&pk(by)===pk(base)&&JSON.stringify(sz.cats)!==JSON.stringify(base.cats)&&rc.V!==base.V
-       &&HTML.includes("Only the category sub-scores and the confidence figure: the quality position does not read them."),"R4-2: peer scales split by reach (19 + 3)"); }
+    const sz=A.loadWith([["const SIZE_SD=MODELS.fitted.size_refs.size_sd_log10;","const SIZE_SD=2*MODELS.fitted.size_refs.size_sd_log10;"]]).model(FX), by=A.loadWith([["Math.log(I.buyers||50))/.9","Math.log(I.buyers||50))/1.8"]]).model(FX),
+          rc=A.loadWith([["const PEER_SD={rec:.28,","const PEER_SD={rec:.20,"]]).model(FX);
+    ok(pk(sz)===pk(base)&&pk(by)===pk(base)&&sz.conf===base.conf&&by.conf===base.conf&&rc.conf===base.conf&&JSON.stringify(sz.cats)!==JSON.stringify(base.cats)&&rc.V!==base.V
+       &&HTML.includes("Only the category sub-scores: the quality position and the confidence figure do not read them."),"R4-2: peer scales split by reach (17 + 2); none reaches the fitted confidence"); }
   /* R4-3: the staffing row states the measured relation, not 'several times fewer' */
   ok(!HTML.includes("several times fewer than the firm's Census employees")&&!HTML.includes("runs from about a third of SBA's figure to several times it")
      &&HTML.includes("so the head count can be a fraction of SBA's figure for a small firm or many times it for a low-margin or lower-quality one, and past the $${(R.loan_range[1]/1e6).toFixed(0)}M 7(a) limit SBA's band median stays at")
@@ -1208,7 +1237,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
   /* R5-1: the IND anchors and the judgment bounds have their own 'Nothing' rows; the Bounds row keeps ALPHA, AMAX, PHI, clamps */
   { const dsrc=String(A.model).match(/const d=\{[\s\S]*?let sum=0/);
-    ok(HTML.includes("<code>IND</code> anchors<div")&&HTML.includes("${Object.keys(IND).length*(nIndF-1)}</td>")
+    ok(HTML.includes("<code>IND</code> anchors<div")&&HTML.includes("one judgment multiple per industry</div></td>\n            <td class=\"n\" style=\"padding-right:18px\">${Object.keys(IND).length}</td>")
        &&HTML.includes("ALPHA, AMAX, PHI, clamps</div></td>\n            <td class=\"n\" style=\"padding-right:18px\">7</td>")
        &&HTML.includes("and their bounds PMIN, PMAX")&&HTML.includes("scale LAM0 and shape KW")&&!!dsrc,"R5-1: inert rows split out"); }
   /* R5-1: the 20 numbers really are inert: scaling the IND anchors and moving PMIN/PMAX/LAM0/KW changes no reported figure */
@@ -1284,7 +1313,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       wq=Math.max(wq,Math.abs(A.qualityZ(t)-A.model(t).qz)); }
     const w={ind:"rest",rev:1.5e6,ern:3e5,own:.95,mgt:.08,fin:.14,rec:.05,cc:.18,grw:-.05,gm:.62,ret:.45,plt:.40,yrs:6,buyers:41,st:null,franchise:false};
     const V=A.model({...w,ask:1}).V, r=A.model({...w,ask:V*A.bestRatio(w,0,0)});
-    ok(n===12288&&worst<1e-9&&wq<1e-12&&A.omniScore(r)===10,
+    /* the weak restaurant scored 10 until October 2026: the fitted size slopes put its owner dependence and management depth
+       further from its peers' at $300k of SDE, and the restaurant medians moved */
+    ok(n===12288&&worst<1e-9&&wq<1e-12&&A.omniScore(r)===7,
        `S-1: ${n} reference draws at their composite (worst ${worst.toExponential(1)}), qualityZ = model qz (${wq}); the weak restaurant scores ${A.omniScore(r)}`); }
   /* S-2: the Census tables are read on an increasing receipts scale, so the GM salary has no jump */
   { let sorted=true; for(const ind of Object.keys(A.IND)){ const K=A.jobsKnots(ind); if(!K) continue;
@@ -1306,12 +1337,91 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        `S-4: boxes and echoes re-read within ${(worst*100).toFixed(2)}%`); }
   /* S-5: an empty programme says what binds; a change the budget blocks is named, and it does beat doing nothing */
   { const prep=s=>{ s.rhoSell=A.bestRatio(s,0,0); s.optRho=A.bestRatio(s,s.lamT,s.theta); return s; };
-    const s=prep({...FX,ask:4.7e6,budget:26e3}), b=A.optimize(s,A.model(s),s.budget,s.lamT,s.theta);
-    const s2=prep({...FX,ask:4.7e6,budget:27e3}), b2=A.optimize(s2,A.model(s2),s2.budget,s2.lamT,s2.theta);
+    /* the quality-of-earnings fee is the cheapest change: a budget just under it blocks it, one just over it buys it */
+    const cq=A.INTERV.find(i=>i.k==="qoe").cost(FX);
+    const s=prep({...FX,ask:4.7e6,budget:cq-400}), b=A.optimize(s,A.model(s),s.budget,s.lamT,s.theta);
+    const s2=prep({...FX,ask:4.7e6,budget:cq+600}), b2=A.optimize(s2,A.model(s2),s2.budget,s2.lamT,s2.theta);
     const bl=b.U.blocked, ru=bl&&A.model(A.applyAll(s,A.model(s),[bl.k],s.optRho)), uBl=bl&&ru.EVp+(1-ru.PC)*s.theta*ru.V-s.lamT*(ru.tMean+A.daysOf(s,[bl.k]))-bl.c;
     ok(!b.U.keys.length&&bl&&bl.k==="qoe"&&bl.c>s.budget&&uBl>b.U.U&&b2.U.keys.includes("qoe")&&!b.allIn
        &&HTML.includes("Do nothing — nothing within the budget clears its cost; ${INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${moneyIn(sel.blocked.c)}"),
        `S-5: the budget-bound programme names ${bl&&bl.k} at $${bl&&Math.round(bl.c)}`); }
+}
+
+/* ---- 38. second round, October 2026: the peer table and the remaining judgment parameters, fitted where public data
+   allows (fit/peer_gross_margin.py, peer_growth.py, peer_recurring_retention.py, industry_tailwind_and_comps.py,
+   size_refs.py, buyer_factors.py, sba_tail_factor.py, intervention_costs.py, confidence_accuracy.py, peer_checks.py) ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const F=A.MODELS.fitted, IND=A.IND, INDS=Object.keys(IND);
+  /* 38a. peer gross margin: a curve in log10 revenue, flat beyond its knots, on a stated definition */
+  { const G=F.peer_gm, K=G.knots_log10_rev; let knots=true, flat=true, defs=true;
+    for(const k of INDS){ const B=G.by_industry[k];
+      if(!B){ if(A.peerGm(k,1e6)!==IND[k].gm) knots=false; continue; }
+      K.forEach((x,i)=>{ if(Math.abs(A.peerGm(k,Math.pow(10,x))-B.gm[i])>1e-12) knots=false; });
+      if(A.peerGm(k,Math.pow(10,K[0]-1))!==B.gm[0]||A.peerGm(k,Math.pow(10,K[K.length-1]+1))!==B.gm[B.gm.length-1]) flat=false;
+      if(!(B.se.length===B.gm.length&&B.gm.every(v=>v>0&&v<1)&&B.se.every(v=>v>0))) knots=false; }
+    for(const k of INDS) if(!(typeof A.gmDefinition(k)==="string"&&A.gmDefinition(k).length>20)) defs=false;
+    ok(knots&&flat&&defs,"38a: peerGm reads the knots, holds the end values, and every industry states its definition");
+    ok(Object.keys(G.by_industry).length===15&&!G.by_industry.wash&&IND.wash.gm===.70&&IND.ecom.gm===undefined
+       &&G.by_industry.ecom.tier==="listing-level"&&G.by_industry.ecom.gm.every(v=>v===G.by_industry.ecom.gm[0]),"38a: car washes alone keep a hand-set margin; e-commerce's is flat");
+    const m=median("home",7e5); ok(A.model({...m,ask:1}).peer.gm===A.peerGm("home",m.rev),"38a: model() compares gross margin with the curve at its revenue");
+    ok(HTML.includes('gl.title="Gross margin: "+gmDefinition(s.ind)'),"38a: the slider's label states the definition"); }
+  /* 38b. growth, retention, tailwind and comparables depth are written into IND at load (FITTED_CELLS) */
+  { let good=true;
+    for(const k of INDS){ if(k in F.peer_grw.by_industry){ if(IND[k].grw!==F.peer_grw.by_industry[k]) good=false; } else if(k!=="saas") good=false;
+      if(IND[k].tail!==F.tailwind.by_industry[k]||Math.abs(IND[k].comps-A.compsFor(k))>1e-15||!(IND[k].tail>=-1&&IND[k].tail<=1)) good=false; }
+    ok(good&&IND.saas.grw===.25&&IND.land.ret===F.peer_rec_ret.ret.land.v&&IND.fit.ret===F.peer_rec_ret.ret.fit.v&&!Object.keys(F.peer_rec_ret.rec).length,
+       "38b: the fitted cells are written in; software's growth and every recurring share stay hand-set");
+    const want=[...Object.keys(F.peer_grw.by_industry).map(k=>k+".grw"),...INDS.map(k=>k+".tail"),...INDS.map(k=>k+".comps"),"land.ret","fit.ret"].sort();
+    ok(JSON.stringify(A.FITTED_CELLS.slice().sort())===JSON.stringify(want),"38b: FITTED_CELLS lists exactly what was written");
+    ok(Math.abs(IND.saas.comps-7/(7+A.MODELS.value.industry_shrinkage.k_naics6))<1e-15&&Math.abs(A.COMPS_MEAN-INDS.reduce((a,k)=>a+IND[k].comps,0)/INDS.length)<1e-15,
+       "38b: software's comparables depth from its 7 sales; Market position reads depth against the industries' mean"); }
+  /* 38c. size slopes fitted, levels judgment; the size z-score's width fitted */
+  { const S=F.size_refs; let good=true;
+    for(const e of [1e4,4.5e4,1.5e5,7.08e5,3e6,1.1e7,5e7]){ const R=A.sizeRefs(e), z=Math.max(-1,Math.min(1,(Math.log10(Math.max(e,1e4))-5.85)/1.2));
+      if(Math.abs(R.own-(.62+S.own.b*z))>1e-12||Math.abs(R.mgt-(.42+S.mgt.b*z))>1e-12||Math.abs(R.fin-(.55+.22*z))>1e-12) good=false; }
+    ok(good&&S.own.b===-.15&&S.mgt.b===.17&&A.SIZE_SD===S.size_sd_log10&&S.size_sd_log10===.48,"38c: sizeRefs reads the fitted slopes at the hand-set levels; SIZE_SD is fitted"); }
+  /* 38d. intervention costs: the QoE fee, the GM's loading and hire, the sales hire's floor */
+  { const I=F.interventions, c=k=>A.INTERV.find(v=>v.k===k); let good=true;
+    for(const k of INDS) for(const rev of [2e5,1e6,8e6,4e7]){ const s={...median(k,rev*.2),rev};
+      if(Math.abs(c("qoe").cost(s)-Math.max(I.qoe.floor,I.qoe.share*rev))>1e-9) good=false;
+      if(Math.abs(c("gm").cost(s)-(I.gm.hire_cost+I.gm.loading*A.gmSalary(s)))>1e-9) good=false;
+      if(Math.abs(c("growth").cost(s)-Math.max(I.growth_floor.by_industry[k],.022*rev))>1e-9) good=false;
+      if(Math.abs(c("gm").eff(s).add.ern+I.gm.loading*A.gmSalary(s))>1e-9) good=false; }
+    ok(good&&I.qoe.floor===16400&&I.qoe.share===.0019&&I.gm.loading===1.24&&I.gm.hire_cost===10625&&Object.keys(I.growth_floor.by_industry).length===16,
+       "38d: the three costs read the published benchmarks");
+    ok(c("growth").cost({ind:"zzz",rev:1e5})===I.growth_floor.by_industry.prof,"38d: an industry without a cell reads professional services' sales hire"); }
+  /* 38e. confidence: the fitted chance of landing within 25% of the fitted value */
+  { const C=F.confidence;
+    /* the fit's own test vectors (a Python port with the console's ncdf): ind, SDE, revenue, z.em, extrapMax -> p, label, sigma */
+    const TV=[["home",7e5,3.5e6,0,0,.548252,"High",.776195],["rest",1.5e5,1.2e6,-.5,0,.474165,"Moderate",.928972],
+      ["saas",2.5e6,8e6,1,1.5,.471778,"Moderate",.934489],["vet",3e5,1e6,2,0,.407037,"Low",1.105286],["medical",1.45e6,5e6,.1,0,.561768,"High",.752234],
+      ["msp",5e4,4e5,-1.5,0,.386356,"Low",1.169986],["dist",2e7,1.3e8,0,11.9,.55152,"Low",.770307],["auto",5.1e6,2e7,0,3,.578304,"High",.724247],
+      ["fit",1e5,1.1e5,3.2,1.1,.336469,"Low",1.356324],["land",2e4,1.5e6,-3.2,1.7,.298868,"Low",1.535456]];
+    ok(TV.every(([ind,ern,rev,zem,ex,p,l,sg])=>{ const r=A.confidenceOf({ind,ern,rev},{z:{em:zem},extrapMax:ex}); return Math.abs(r.p-p)<2e-6&&r.label===l&&Math.abs(r.sigma-sg)<2e-6; }),
+       "38e: the fit's ten test vectors");
+    let same=true, rule=true, rng=true, mono=true;
+    for(const k of INDS) for(const ern of [5e4,3e5,1.5e6]){ const s={...median(k,ern),ask:1}, r=A.model(s), c=A.confidenceOf(s,r);
+      if(r.conf!==c.p||r.confLabel!==c.label||r.confNote!==c.note||r.confOutside!==c.outside) same=false;
+      if(!(r.conf>0&&r.conf<1)) rng=false;
+      if(r.confLabel!==(r.confOutside?"Low":r.conf>=C.cut_high?"High":r.conf>=C.cut_moderate?"Moderate":"Low")) rule=false;
+      if(A.model({...s,yrs:s.yrs+5}).conf!==r.conf||A.model({...s,fin:Math.min(1,s.fin+.2)}).conf!==r.conf) same=false; }
+    for(const k of INDS){ let prev=Infinity; for(const zem of [0,.5,1,2,3]){ const p=A.confidenceOf({ind:k,ern:3e5,rev:1.5e6},{z:{em:zem},extrapMax:0}).p; if(p>prev+1e-12) mono=false; prev=p; }
+      prev=-Infinity; for(const e of [2e4,5e4,1.5e5,5e5,1.5e6]){ const p=A.confidenceOf({ind:k,ern:e,rev:e*4},{z:{em:0},extrapMax:0}).p; if(p<prev-1e-12) mono=false; prev=p; } }
+    ok(same&&rule&&rng&&mono,"38e: model() reads confidenceOf; the label follows the quartile cut-offs; years and reporting do not move it; it falls with the margin's distance from typical and rises with size");
+    const at=(ind,ex)=>A.confidenceOf({ind,ern:7e5,rev:3.5e6},{z:{em:0},extrapMax:ex});
+    ok(at("saas",0).p<at("home",0).p&&at("home",3.01).label==="Low"&&at("home",3.01).note===C.notes.outside&&at("home",3).label==="High"
+       &&Math.abs(at("home",0).p-C.reference.p)<.01,"38e: no comparables cell lowers it; past 3x the fitted data it reads Low, outside the fitted data; the reference business reads the table's p");
+    ok(/const nConf = \["cut_high","cut_moderate","extrap_x"\]/.test(HTML)&&/\+ 3;\s+\/\* confidence: the size and margin gradients/.test(HTML),"38e: the ledger counts the label's three choices; the fitted gradients count as fitted");
+    ok(HTML.includes('eq("eq_c",`c=P')&&HTML.includes("fitted band here, 80")&&HTML.includes("r.fv.point*r.confBand80[0]"),"38e: eq_c is the fitted formula; eq_cs prints this business's fitted band"); }
+  /* 38f. the Data tab: a row for every second-round fit, and no stale wording */
+  ok(["Peer median gross margin, by industry and revenue","Peer median revenue growth by industry","Customer retention: landscaping and fitness",
+      "How owner dependence and management depth change with size","Width of the size z-score","<tr><td>Industry tailwind","Depth of comparable sales (Market position)",
+      "The individual buyer&rsquo;s multiple factor","Survival risk: years 9&ndash;10 of the 10-year figure","Quality-of-earnings report: cost",
+      "Hire a general manager: cost and the charge on earnings","Add sales capacity: the cost floor","<tr><td>Analysis confidence &nbsp;",
+      "Typical buyer pools and strategic interest by industry"].every(t=>HTML.includes(t)),"38f: a row for every second-round fit, and a judgment row for buyer pools and strategic interest");
+  ok(!/(?<!sba_)tail_factor/.test(HTML)&&!HTML.includes("tail_by_band")&&!HTML.includes("more often carry 25-year terms")&&!HTML.includes("four weights, two scales, two label cut-offs")
+     &&!HTML.includes("PLACEHOLDER")&&!/\blead\b|fit6|\/tmp\//.test(HTML.slice(HTML.indexOf("/* October 2026, second round: the peer table"),HTML.indexOf("MODELS.fitted.peer_checks="))),"38f: no stale or workflow wording");
 }
 
 console.log(`${pass} passed, ${fail} failed`);
