@@ -335,8 +335,16 @@ PROBE_JS = r"""/* buyer_factors probe (written by buyer_factors.py): evaluates t
    patched copy of it (cfg.page), through the harness. usage: node probe.js HARNESS CFG.json  ->  JSON on stdout */
 const H=require(process.argv[2]); const cfg=JSON.parse(require('fs').readFileSync(process.argv[3],'utf8'));
 const load=(page,ov)=>H.load(ov||[],page||undefined);
+/* the peer median gross margin at this revenue: the page's fitted curve where it has one (MODELS.fitted.peer_gm, October
+   2026 on: read linearly in log10 revenue, flat beyond the knots, as the page's peerGm reads it), else IND's hand-set
+   median (the snapshot; car washes). On the snapshot it returns IND[ind].gm, so the shipped results are unchanged. */
+function gmAt(A,ind,rev){ const F=A.MODELS.fitted.peer_gm, G=F&&F.by_industry[ind];
+  if(!G) return A.IND[ind].gm;
+  const x=Math.log10(Math.max(rev,1e4)), K=F.knots_log10_rev, n=K.length;
+  if(x<=K[0]) return G.gm[0]; if(x>=K[n-1]) return G.gm[n-1];
+  let i=0; while(x>K[i+1]) i++; return G.gm[i]+(G.gm[i+1]-G.gm[i])*(x-K[i])/(K[i+1]-K[i]); }
 function med(A,ind,ern){ const I=A.IND[ind], RF=A.sizeRefs(ern), m=A.typMargin(ind,ern);
-  return {ind,rev:ern/m,ern,grw:I.grw,gm:I.gm,rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:RF.own,mgt:RF.mgt,fin:RF.fin,
+  return {ind,rev:ern/m,ern,grw:I.grw,gm:gmAt(A,ind,ern/m),rec:I.rec,cc:.16,ret:I.ret,plt:.40,own:RF.own,mgt:RF.mgt,fin:RF.fin,
           yrs:6,buyers:I.buyers,st:null,franchise:false,ask:1e6}; }
 function peRefOf(A,ind,r){ return r.nEngRef/((A.IND[ind].buyers||50)*A.ENG_SHARE); }
 /* the earnings at which the pre-quality fitted value equals V, found as fit/competition_buyers.py does */
@@ -348,7 +356,7 @@ if(cfg.mode==="identity"){
   const A=load(cfg.page,cfg.overrides);
   out.PHI=A.PHI; out.ENG_SHARE=A.ENG_SHARE; out.REF_RATIO=A.REF_RATIO;
   out.BUYERS=A.BUYERS.map(b=>({k:b.k,mf:b.mf,syn:b.syn,lo:(b.lo===undefined)?null:b.lo,hi:(b.hi!==undefined&&isFinite(b.hi))?b.hi:null}));
-  out.IND={}; for(const k of Object.keys(A.IND)) out.IND[k]={buyers:A.IND[k].buyers,strat:A.IND[k].strat,gm:A.IND[k].gm};
+  out.IND={}; for(const k of Object.keys(A.IND)) out.IND[k]={buyers:A.IND[k].buyers,strat:A.IND[k].strat};   /* gm: per row (gmAt) */
   out.buyer_mix=A.MODELS.fitted.buyer_mix; out.support=A.MODELS.value.support;
   const C=A.MODELS.fitted.competition;
   out.competition={eng_share:C.eng_share,eng_share_se:C.eng_share_se,nb_r:C.nb_r,band_centres:C.band_centres,
@@ -361,7 +369,7 @@ if(cfg.mode==="identity"){
   for(const ern of cfg.sde) for(const ind of Object.keys(A.IND)){ const s=med(A,ind,ern), r=A.model(s), B={};
     for(const b of r.buyers) B[b.k]=[b.sizeFit,b.Vj/r.V,b.PE];
     const mx=A.buyerMix(r.Vbase);
-    out.rows.push({ind,ern,V:r.V,Vbase:r.Vbase,M:r.M,x:r.synE/s.ern,synE_rev:r.synE/s.rev,mix:[mx.individual,mx.strategic,mx.financial],B}); }
+    out.rows.push({ind,ern,gm:s.gm,V:r.V,Vbase:r.Vbase,M:r.M,x:r.synE/s.ern,synE_rev:r.synE/s.rev,mix:[mx.individual,mx.strategic,mx.financial],B}); }
 }
 if(cfg.mode==="effect"){
   const A0=load(); const inds=Object.keys(A0.IND);
@@ -1425,7 +1433,8 @@ def main():
     wr = 1 / (s ** 2 + tau2); phi_re = float(np.sum(wr * y) / wr.sum()); phi_se = float(math.sqrt(1 / wr.sum()))
     z_phi = (PHI - phi_re) / phi_se
     check('PHI .38 against the BCG pooled seller share', abs(z_phi) < 2, 'random effects %.3f (se %.3f, tau %.3f); z %.2f' % (phi_re, phi_se, math.sqrt(tau2), z_phi))
-    console_pool = {k: IND[k]['strat'] * (.050 + .028 * IND[k]['gm'] + .015) for k in INDS}
+    gmr = {r['ind']: r['gm'] for r in rows}   # the profile's peer gm, from the same row as synr below (IND's, or the curve's)
+    console_pool = {k: IND[k]['strat'] * (.050 + .028 * gmr[k] + .015) for k in INDS}
     cp = np.array([console_pool[k] for k in INDS]); bm = np.array([BCG13_POOL[BCG_MAP[k]] / 100 for k in INDS])
     rho_map, p_map = stats.spearmanr(cp, bm)
     synr = {r['ind']: r['synE_rev'] for r in rows}
@@ -1445,7 +1454,7 @@ def main():
                 bcg_industry_median=float(np.median(list(BCG13_POOL.values()))) / 100,
                 bcg_median_se_industry_spread=float(1.2533 * np.std(list(BCG13_POOL.values()), ddof=1) / 100 / math.sqrt(len(BCG13_POOL))),
                 mapped_bcg_median=float(np.median(bm)), median_ratio_mapped=float(np.median(cp / bm)), spearman_mapped=[float(rho_map), float(p_map)],
-                coefficient_sum_at_median_gm=float(.050 + .028 * np.median([IND[k]['gm'] for k in INDS]) + .015),
+                coefficient_sum_at_median_gm=float(.050 + .028 * np.median([gmr[k] for k in INDS]) + .015),
                 strat_median=float(np.median(strat)), strat_range=[float(strat.min()), float(strat.max())],
                 by_industry={k: dict(console=console_pool[k], bcg=BCG13_POOL[BCG_MAP[k]] / 100, bcg_industry=BCG_MAP[k], strat=IND[k]['strat']) for k in INDS},
                 gm_slope=dict(slope=float(ols.params[1]), se=float(ols.bse[1]), const=float(ols.params[0]), r2=float(ols.rsquared), n=len(xr), console_slope=0.028,

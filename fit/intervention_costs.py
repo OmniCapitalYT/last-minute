@@ -38,9 +38,9 @@ Why
     They are list prices, a published benchmark, not invoices: tier AGGREGATE.
   - gm, "Hire or promote a general manager": cost and earnings charge = gmSalary(s), the OEWS wage, which is wages and
     salaries only (gmSalary's own comment; fit/README lists an ECEC-based employer-cost loading as an open follow-up).
-    BLS ECEC June 2026 measures the employer's total cost per dollar of annual salary (wages plus paid leave): FITTED
-    (official data on the same quantity). An outside hire also costs a search: SHRM's 2025 median executive
-    cost-per-hire (AGGREGATE).
+    BLS ECEC June 2026 measures the employer's total cost per dollar of annual salary (wages plus paid leave):
+    AGGREGATE (a ratio of published summary costs on the same quantity, with no estimation). An outside hire also
+    costs a search: SHRM's 2025 median executive cost-per-hire (AGGREGATE).
   - growth, "Add sales capacity to lift growth": cost max(55000, .022 x revenue). The floor is the cost of one added
     salesperson for the programme's 270 days through a stated judgment bridge (one hire, at the industry's median
     sales-rep wage, on payroll once hired): measured wages, loading, time-to-fill and hire cost, AGGREGATE, per
@@ -1494,7 +1494,7 @@ def main():
                             note='the console\'s structure: one year\'s salary as the cost, now loaded, plus the one-time hire; the pre-sale payroll '
                                  'alternative is in checks.gm_cost'),
                    days=gm_days, current=dict(loading=1, hire_cost=0, cost='gmSalary(s)', earnings_charge='-gmSalary(s)'),
-                   tier=dict(loading='fitted', hire_cost='aggregate')),
+                   tier=dict(loading='aggregate', hire_cost='aggregate')),
         'growth_floor': dict(by_industry={i: rnd(gf[i]['cost'], 100) for i in INDS}, se={i: rnd(gf[i]['se'], 10) for i in INDS},
                              se_components={k: {i: rnd(gf[i]['comp'][k], 10) for i in INDS} for k in SE_KEYS},
                              tier='aggregate', bridge=bridge, formula='median x eci x loading x payroll_days/365 + hire_cost',
@@ -1510,7 +1510,7 @@ def main():
                                       '(relative %.4f)' % (days_g, rel_common),
                              share=cur['growth']['share'], share_tier='judgment', current=cur['growth']['floor']),
         'checks': js_checks,
-        'tiers': {'qoe.floor': 'aggregate', 'qoe.share': 'aggregate', 'gm.loading': 'fitted', 'gm.hire_cost': 'aggregate',
+        'tiers': {'qoe.floor': 'aggregate', 'qoe.share': 'aggregate', 'gm.loading': 'aggregate', 'gm.hire_cost': 'aggregate',
                   'growth_floor.by_industry': 'aggregate', 'growth.share': 'judgment', 'checks': 'judgment'},
         'asof': '2026-10',
         'source': 'fit/intervention_costs.py: 33 published QoE fee tiers from 15 sources (fetched Oct 2026); BLS ECEC June 2026 tables 4 and 6 and their RSEs; '
@@ -1561,7 +1561,7 @@ def main():
                     se_research=rep.get('qoe', {}).get('reproduced', {}).get('share_se')),
                dict(param='gm.loading', value=L_ship, se=L_se_ship, range=L_range, current=1.0, unrounded=round(L, 4), round2=LOADING_ROUND2,
                     management_business_financial=round(L_mbf, 4), unit='employer cost per $ of annual salary (wages plus paid leave)',
-                    tier='fitted', note='current: gmSalary is wages and salaries only; round 2 divided by wages without paid leave'),
+                    tier='aggregate', note='current: gmSalary is wages and salaries only; round 2 divided by wages without paid leave'),
                dict(param='gm.hire_cost', value=hire, se=HIRE_SE_JUDGMENT, current=0, unit='USD, once', tier='aggregate', note='SE: judgment (2022-25 change)')]
     for i in INDS:
         shipped.append(dict(param='growth_floor.' + i, value=rnd(gf[i]['cost'], 100), se=rnd(gf[i]['se'], 10), current=cur['growth']['floor'],
