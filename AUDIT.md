@@ -1188,3 +1188,89 @@ Every shipped number reproduces, and nothing blocking was found. Recorded, not c
   | `node tests/browser.inputs.js` | 15 checks pass |
   | `node tests/browser.sweep.js` | 118 input states at 1440 and 390 px pass |
   | `node tests/invariants.test.js --browser` | 253 invariants pass: statics 57, identities 60, extremes 60, app 76 |
+
+## Skeptic review and recurring motion, October 2026
+
+The owner asked: "Now do the review loop to ensure everything is working as intended (have skeptics test everything), then just add recurring animations like everywhere (but make them tasteful)."
+
+### The skeptic review
+Four skeptics tested a frozen copy of the page at 53e6498. Each was told to break its area and to report only defects it could reproduce:
+- **The model, in node.** Random and extreme inputs over every industry and state, the identities the page states, monotonicity, determinism, and five headline outputs recomputed from the tables.
+- **The interface, in a browser.** Every slider by keyboard and drag, every typed box with valid input, suffixes and junk, the selects, reset, the optimizer, tab switching; inputs and outputs checked against a fresh model run, at 1440 and 390 px.
+- **Every displayed figure.** Tiles, sub-lines, tooltips, tables, chart labels and every equation against the model output and the stated formulas, for seven very different businesses, and the Data tab's computed text against the tables.
+- **Layout and robustness.** Seven widths from 320 to 1920 px and a short viewport, with and without motion, tab switching, resizing, text zoom, print emulation, focus visibility and page errors.
+
+**The model.** The skeptic rebuilt the fitted value, closing odds, time curve, expected price and SBA charge-off from the tables with its own code. Over thousands of profiles they agreed to 1e-7 or better. Five hundred profiles at the bounds gave no non-finite output, and about thirty identities and monotonicity rules all held. It found three low-severity defects, each confirmed and fixed:
+- **MODEL-1.** The walk-away note judges whether a second peak is real by the dip between the two peaks, but it read the dip off the 0.02 grid of ask ratios. For one veterinary profile the grid sat beside a kinked bottom. It measured $191 against the page's own rule of 0.01% of value ($288), where the true dip is $306, so the note said "there is no second peak" about a real one. The dip's bottom is now searched between the grid minimum's neighbours (14 golden-section steps), the same way the peak itself is refined.
+- **MODEL-2.** A comment and the SOI wedge's `why` text said the SDE-to-EBITDA wedge falls monotonically from 1.90 at $100-250k of revenue to 1.08 above $100M. The table the page ships is 1.87 at $100-250k and 1.90 at $250-500k, then falls to 1.12 at $50-100M. Both texts now say that.
+- **MODEL-3.** A comment gave the BIZCOMPS band's implied sigma as 0.472; it is 0.468, the figure the Data tab prints.
+
+**Every displayed figure.** The skeptic recomputed every tile, sub-line, tooltip, table and equation for seven profiles, against the model and the stated formulas. Of its nine findings, eight were fixed in whole or in part:
+- **D1 (medium).** The time-to-close equation printed `e^{0.10 h}` without defining h, while the value equation on the same tab defines h as the SDE hinge. Substituting that h gives a median about 25% longer than the one shown. The exponent is the ask's log gap over value, smoothed near zero. It is now called g, defined in the label and printed with its value.
+- **D2.** The scenario sub-equation printed R at the 10th and 90th percentiles but P at the 8th and 94th. It now prints R at the same levels as P, from the fan's quantile function.
+- **D3.** The Data tab's extrapolation table was typed in and had drifted from the console's warning: a 2.2% margin percentile against 2.3%, on a tab that says its tables are generated from the live constants. It is now generated from `MODELS.value.support` in the warning's own formats, and so are the two figures in the paragraph above it.
+- **D4 (refuted).** The business-score caption's "optimal ask of $4.63M and a typical 59 buyers" sits beside "the optimal ask of $4.62M" for a five-buyer pool. The first caption names its pool, so these are two different, labelled optima.
+- **D5.** The price tile's tooltip said the prices are capped at the ask. Above about $9M of value, IBBA's size band closes above the ask, and the tile shows that. The tooltip now names the ask ceiling.
+- **D6.** The sensitivity note used singular grammar for several one-sided rows. Fixed.
+- **D7 (in part).** The signed zeros it found ("−0.0%", "ROI −0%") follow the page's convention, pinned by the invariant suite: a change keeps its sign when it rounds to zero. That part is refuted. The quality band's ASCII hyphen-minus is now U+2212, as on every other figure.
+- **D8.** With the ask under value and binding, "Repricing is the lever" quoted only a 5% cut, which loses money. It now gives the 5% raise first, then the cut that the sensitivity bar shows.
+- **D9.** With no cost of delay, the optimizer note still said a higher ask lengthens the time to close, "which only the second figure charges for". That clause now appears only when delay has a cost.
+
+**Layout and robustness.** The skeptic tested seven widths from 320 to 1920 px, a short viewport, 200% zoom, resizing, the full film, keyboard focus and print. Away from 320 px and print, it found no overflow, clipping, overlap, KaTeX error or page error. It reported five findings, all confirmed:
+- **VIS-1 (medium).** At 320 px the buyer star map could drop the label of the buyer to pursue first, because no candidate box fit inside the plot. In another state it overprinted two labels. A label with no room in the plot is now clamped inside with a leader line, and on a phone the plot may grow four times instead of two. The model-value label may also sit a little off its line. The skeptic's states now draw 8 of 8 labels with no overlap at 320, 360, 375 and 414 px.
+- **VIS-2 (medium).** Printing with Chrome's defaults made the title, both scores and the headline figures invisible: they are gradient text, and print drops backgrounds. A print style now gives them solid ink and leaves out the fixed backdrop layers. **Still open:** in Chrome's PDF output the hero caption and the quality note lose their right half. Print emulation shows no ancestor clipping them, and the cause was not found in the time available.
+- **VIS-3 (low).** At 320 px the time curve's median label could print over the 365-day callout. It now tries six more spots, and if none is clear it takes the one that overlaps least.
+- **VIS-4 (low).** At 320 px the chance-of-closing tile cut its "aggregate × judgment" badge mid-word. Below 360 px the badge now wraps.
+- **VIS-5 (low).** On phones the closed rail dropdowns cut their option mid-word. They now end with an ellipsis; shorter option labels were not attempted.
+
+**The interface.** The skeptic ran every slider by keyboard (126 actions) and by drag, 331 typed cases in 14 boxes, every industry, state and option, reset, the tabs, 14 optimizer budgets and 150 random profiles. Each time it checked the state, the boxes, the sliders and the tiles against a fresh model run, with 0 mismatches. It reported two low-severity findings; one was confirmed and fixed, and the other was refuted:
+- **ui-1.** At phone width, money ticks of six characters on the star map lost their "$": "$12.5M" read "12.5M" in a 40 px gutter. The gutter now grows to fit the widest tick.
+- **ui-2 (refuted).** The buyers box keeps a typed fraction, so the captions can read "12.5 buyers". The stress test kept this by design, because the model treats the pool as continuous (an expected-offer count), and the invariant `buyer-count-kept-as-typed` pins it. A rounding fix was tried and reverted when that invariant failed.
+
+**A second figures skeptic.** The review workflow also ran its own display lane, independently of the first. Two of its findings repeated D3 and D9; the other four were new, and all were confirmed:
+- **DISP-1 (medium).** The buyer table's "Synergy captured" column printed each buyer's whole synergy S, 2.6 times the seller's share that its price holds. It now prints that share (0.38 × S), as the header and the section lede say.
+- **DISP-2 (low).** The sensitivity note called a lever "already at the end of its range" whenever a bound clipped one of its steps, for example customer concentration at 5% against a 1% floor. It now says "at or near the end" and calls the row an uneven difference.
+- **DISP-3 (low).** The overall-outcome equation printed P_C to the whole percent, and the competition equation printed offers to one decimal, too coarse to reproduce their results: $50.28M against $50.21M, and −1.2% against −1.3%. They now print 0.1% and two decimals.
+- **DISP-5 (low).** The value gap "if every value-adding change is made" silently left out the changes the bundle prunes. For example, a GM hire adds $134k on its own and nothing once the other changes are made. The note below the gap now names them.
+
+The workflow's verifiers did not run: the lanes ran past the time box, and the workflow was stopped before its second layout lane reported. Instead, each finding was reproduced against the code before it was fixed. Two whole findings (D4 and ui-2) and two of D7's three parts were refuted.
+
+### Recurring motion
+A motion layer (`v10-motion`) adds slow, low-contrast loops wherever the page was still once loaded:
+- **Section labels.** A soft light crosses each framework pill in turn, under the text, and the pills' glyph dots breathe; on the Data tab the emblem's three provenance dots take turns.
+- **Equation cards.** A hairline of light runs along the top edge, a few seconds apart from card to card.
+- **Bar charts.** A glint travels along each bar, row after row: the quality z-scores, the closing contributions and the other bar charts.
+- **The hero.** The quality marker sends out a slow sonar ring, and the two score dials' glow discs breathe out of step.
+- **The rail.** Each group rule carries a passing light.
+- **The tab bar.** The active indicator breathes.
+- **The Data tab's tally.** The four orbs breathe in turn, and a light runs along the fitted, aggregate and judgment spectrum.
+- **Key figures.** When a headline figure changes, it glows for under a second, only if it is on screen. Dragging a slider restarts the glow instead of stacking more.
+
+How it stays tasteful and safe:
+- **What moves.** Every loop moves only opacity, a transform or a background strip a few pixels tall. None changes text, size or layout, and the sweep found no horizontal overflow at 1440 or 390 px.
+- **When it runs.** A loop runs only while its block is on screen: an observer sets `.m-on` on each section, the hero, the rail and the tally, and clears it when they scroll away. The tab indicator, always in view, is the exception. Nothing starts until the opening film has gone.
+- **The glow.** It is a Web Animation, so no class, style or attribute of a figure is written; the invariant suite's snapshots of the tiles are untouched.
+- **Reduced motion.** The page's global rule stops every loop, and the script skips the glow.
+- **Cost.** Long tasks and frame rate in idle headless Chromium matched the page without the layer, which is dominated by the existing canvases.
+- **Tests.** Section 39 of model.test.js pins these rules: what the keyframes may move, which loops are gated, and what the script may write.
+
+### Results
+- **Tests.** Section 40 of model.test.js pins each fix: MODEL-1 on the skeptic's own profile, and the rest by the code that makes them. Before these fixes all six of its checks fail, and section 39 fails without the motion layer.
+- **The skeptics' own scripts, rerun on the final build:**
+  - The star map draws 8 of 8 labels with no overlap in the four named states at 320, 360, 375 and 414 px, and the median label clears the 365-day callout.
+  - "$12.5M" keeps its "$" with 7 px to spare.
+  - The extrapolation table matches the console's warning.
+- **The motion layer on the final build.** Run with full motion, blocks switch on as they scroll into view, the loops run, figures glow when a value changes, and there are no page errors.
+- **Suites,** on the final build:
+
+  | Suite | Result |
+  |---|---|
+  | `node tests/model.test.js` | 7,522 pass (7,512 before; sections 39 and 40 are new) |
+  | `node tests/fuzz.test.js 1500` | 179,746 checks pass |
+  | `node tests/invariants.test.js --browser` | 253 invariants pass: statics 57, identities 60, extremes 60, app 76 (see the note below) |
+  | `node tests/browser.inputs.js` | 15 checks pass (see the note below) |
+  | `node tests/browser.sweep.js` | 118 input states at 1440 and 390 px pass, with full motion on |
+
+  The random chart sweep the layout skeptic wrote (50 states at 320 and 390 px) found 2 star-map overlaps before the fixes and none after. The inputs suite's first run on the final build was made while two other browser jobs loaded the machine. It missed the 1.5 s window for a quick Data-then-Console switch. A rerun passed. Eight timed switches each, on the page before and after these changes, landed within 3-700 ms on both, so the motion layer did not cause the miss.
+
+  The first full invariants run on the final build failed one invariant, `buyer-count-kept-as-typed`, which showed that ui-2 was intended behaviour. After the revert, extremes.js was rerun and all 60 of its invariants pass.
