@@ -4352,8 +4352,7 @@ function syncMoneySliders(s,V){
         if(k==="ern"&&IN.ern>IN.rev*.92) IN.ern=IN.rev*.92;
         if(final&&IN[k]!==v) box.classList.add("bad");
       } else {
-        /* a count of buyers is whole: 12.5 typed is held to 13 and marked, like any held value (skeptic review, ui-2) */
-        const sl=$(BOX[k].slider), x0=clamp(v,+sl.min,+sl.max), x=k==="buy"?Math.round(x0):x0; sl.value=x; EXACT[sl.id]=x;
+        const sl=$(BOX[k].slider), x=clamp(v,+sl.min,+sl.max); sl.value=x; EXACT[sl.id]=x;
         if(final&&x!==v) box.classList.add("bad");   /* held to the slider's range: say so */
       }
       scheduleRender();

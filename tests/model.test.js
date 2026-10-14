@@ -1497,8 +1497,9 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&HTML.includes("@media(max-width:359px){ .hero-stats .big .k .pv{white-space:normal} }")&&HTML.includes("#view-console .rail select{text-overflow:ellipsis")
      &&/@media print\{[\s\S]{0,400}-webkit-text-fill-color:#1b2335!important/.test(HTML),
      "40: VIS-1 to VIS-5 phone labels kept and clear, the badge wraps, dropdowns end in an ellipsis, gradient figures print in ink");
-  ok(HTML.includes("if(tkw+13>L){ L=Math.ceil(tkw+13); IW=Wd-L-R; }")&&HTML.includes('x=k==="buy"?Math.round(x0):x0'),
-     "40: ui-1/ui-2 the phone star map fits its money ticks; a typed count of buyers is held to a whole number");
+  /* ui-2 (a typed fractional buyer count) was refuted: the stress test keeps it by design, and invariant
+     buyer-count-kept-as-typed pins it */
+  ok(HTML.includes("if(tkw+13>L){ L=Math.ceil(tkw+13); IW=Wd-L-R; }"),"40: ui-1 the phone star map fits its money ticks");
 }
 
 console.log(`${pass} passed, ${fail} failed`);
