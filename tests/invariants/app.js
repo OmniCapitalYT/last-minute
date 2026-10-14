@@ -477,7 +477,7 @@ function checkState(name,st,askTyped,S,E){
     ok("kf-strips-mirror-sources",!bad.length,ctx({bad})); }
   { const p=r.qPct, pn=Math.min(99,Math.max(1,Math.round(p*100))), QB=A.MODELS.value.quality_band;
     const lab=p<.15?"bottom of the range":p<.38?"lower part of the range":p<.62?"middle of the range":p<.85?"upper part of the range":"top of the range";
-    const q=tx.o_qband, want="Quality position"+ordn(pn)+" percentile · "+(r.qFactor>=1?"+":"")+((r.qFactor-1)*100).toFixed(1)+"% on the fitted value"+money(r.Vbase*QB.lo)+money(r.Vbase)+money(r.Vbase*QB.hi);
+    const q=tx.o_qband, want="Quality position"+ordn(pn)+" percentile · "+(r.qFactor>=1?"+":"\u2212")+Math.abs((r.qFactor-1)*100).toFixed(1)+"% on the fitted value"+money(r.Vbase*QB.lo)+money(r.Vbase)+money(r.Vbase*QB.hi);
     const row=(S.multbl.find(x=>/^Quality position:/.test(x[0]||""))||[""])[0];
     ok("quality-band-panel",q.startsWith(want)&&q.includes("here, the "+lab+" —")&&row.startsWith("Quality position: "+ordn(pn)+" percentile among peers"),ctx({q:q.slice(0,140),want,row})); }
   /* ---- equations */
@@ -501,7 +501,7 @@ function checkState(name,st,askTyped,S,E){
     const sq=seqIn(e,toks);
     ok("eq-buyer-substitution",sq.ok&&e.includes("caps what it pays")===capped&&tx.o_bb.replace(/\u00a0/g," ").length>0,ctx({missing:sq.missing,eq:e})); }
   { const e=eq.eq_comps||"", compAt=A.softMin(r.V*r.anchorF*(1+r.compPrem),r.ceil)-A.softMin(r.V*r.anchorF,r.ceil), nil=Math.abs(compAt)<.02*Math.abs(r.V*r.anchorF*r.compPrem);
-    const toks=["\\kappa="+r.compK.toFixed(2),r.nEng.toFixed(1)+" of "+s.buyers+" contacted, against "+r.nEngRef.toFixed(1)+" typical",(r.compPrem>=0?"+":"-")+pc(Math.abs(r.compPrem),1)+" before the ceiling",
+    const toks=["\\kappa="+r.compK.toFixed(2),r.nEng.toFixed(2)+" of "+s.buyers+" contacted, against "+r.nEngRef.toFixed(2)+" typical",(r.compPrem>=0?"+":"-")+pc(Math.abs(r.compPrem),1)+" before the ceiling",
       nil?"(no effect at the point estimate: the ask caps the price)":(compAt>=0?"+":"-")+dm(money(Math.abs(compAt)))+" at the point estimate after it"];
     const sq=seqIn(e,toks), row=(S.multbl.find(x=>/^Competition:/.test(x[0]||""))||[]);
     const rowOk=row[0]&&row[0].startsWith("Competition: "+r.nEng.toFixed(1)+" expected offer"+(Math.abs(r.nEng-1)<.05?"":"s")+" against a typical "+r.nEngRef.toFixed(1))&&row[1]==="×"+(1+r.compPrem).toFixed(3);
@@ -521,12 +521,12 @@ function checkState(name,st,askTyped,S,E){
     ok("eq-roi-substitution",sq.ok&&dm(row[6]||"")===want&&E.it.filter(o=>o.c>0)[0]===bi,ctx({missing:sq.missing,eq:e,row})); }
   { const eo=eq.eq_os||"", eu=eq.eq_us||"", bV=E.best.V, bU=E.best.U, c1=S.cards[0], c2=S.cards[1];
     const sqo=seqIn(eo,["B="+dm(A.moneyIn(s.budget)),"2^{11}=2,048","commits "+dm(A.moneyIn(bV.c)),"proceeds "+dm(money(bV.proceeds))]);
-    const sqU=seqIn(eu,["U="+pc(bU.PC),dm(money(bU.r.Vmean)),pc(1-bU.PC),pc(s.theta),dm(money(bU.r.V)),"$"+s.lamT.toLocaleString("en-US"),String(Math.round(bU.t+bU.days)),dm(A.moneyIn(bU.c)),"\\boxed{"+dm(money(bU.U))+"}"]);
+    const sqU=seqIn(eu,["U="+pc(bU.PC,1),dm(money(bU.r.Vmean)),pc(1-bU.PC,1),pc(s.theta),dm(money(bU.r.V)),"$"+s.lamT.toLocaleString("en-US"),String(Math.round(bU.t+bU.days)),dm(A.moneyIn(bU.c)),"\\boxed{"+dm(money(bU.U))+"}"]);
     const Ufresh=bU.r.EVp+(1-bU.PC)*s.theta*bU.r.V-s.lamT*(bU.r.tMean+bU.days)-bU.c;
     const card=c2&&c2.bigs.find(b=>b[0]==="Closes")&&c2.bigs.find(b=>b[0]==="Closes")[1]===pc(bU.PC)&&c2.bigs.find(b=>b[0]==="Expected days")[1]===String(Math.round(bU.t+bU.days));
     ok("eq-optimizer-substitution",sqo.ok&&sqU.ok&&Math.abs(Ufresh-bU.U)<1e-6*Math.max(1,Math.abs(bU.U))&&!!card,ctx({mo:sqo.missing,mu:sqU.missing,eo,eu})); }
   { const ss=eq.eq_ss||"", cs=eq.eq_cs||"", P=A.MODELS.value.fan_quantiles;
-    const sq1=seqIn(ss,["R(0.10)^{s}="+Math.pow(P.p10,A.FAN_S).toFixed(2),"R(0.90)^{s}="+Math.pow(P.p90,A.FAN_S).toFixed(2),dm(money(r.scen.bear[0])),dm(money(r.q(.5))),dm(money(r.scen.bull[1]))]);
+    const sq1=seqIn(ss,["R(0.08)^{s}="+Math.pow(A.fanRatio(.08),A.FAN_S).toFixed(2),"R(0.94)^{s}="+Math.pow(A.fanRatio(.94),A.FAN_S).toFixed(2),dm(money(r.scen.bear[0])),dm(money(r.q(.5))),dm(money(r.scen.bull[1]))]);
     const sq2=seqIn(cs,["c="+r.conf.toFixed(3),r.confLabel,r.confNote,dm(money(r.q(.10))),dm(money(r.q(.90))),dm(money(r.fv.point*r.confBand80[0])),dm(money(r.fv.point*r.confBand80[1]))]);
     const sub=S.kfig.o_val[1]||"", inSub=/80% between/.test(sub)?(sub.includes(money(r.q(.10)))&&sub.includes(money(r.q(.90)))):true;
     ok("eq-scenario-substitution",sq1.ok&&sq2.ok&&inSub,ctx({m1:sq1.missing,m2:sq2.missing,ss,cs})); }
@@ -556,7 +556,7 @@ function checkState(name,st,askTyped,S,E){
     r.buyers.forEach((b,i)=>{ const row=B[i]; if(!row){ bad.push("missing "+b.k); return; }
       if(row.name!==b.n) bad.push("order "+i+" "+row.name+" vs "+b.n);
       const cap=b.Pj<b.Vj*.995, c=row.cells;
-      if(c[0][0]!==pc(b.PE)||c[1][0]!==pc(b.PCj)||c[2][0]!==(b.S>0?money(b.S):"—")||c[3][0]!==money(b.Vj)||(cap?c[3][1]!==money(b.Pj)+" at this ask":c[3][1]!==null)||c[4][0]!==money(b.EV)) bad.push("cells "+b.k+" "+J(c));
+      if(c[0][0]!==pc(b.PE)||c[1][0]!==pc(b.PCj)||c[2][0]!==(b.S>0?money(A.PHI*b.S):"—")||c[3][0]!==money(b.Vj)||(cap?c[3][1]!==money(b.Pj)+" at this ask":c[3][1]!==null)||c[4][0]!==money(b.EV)) bad.push("cells "+b.k+" "+J(c));
       const tagsWant=(b===r.best?["pursue first"]:[]).concat(b===r.top?["pays most"]:[]); if(J(row.tags)!==J(tagsWant)) bad.push("tags "+b.k+" "+J(row.tags));
       /* the row rebuilds its EV from its own printed figures (pc to 1%, money to its unit) */
       const PE=ppc(c[0][0]), PCj=ppc(c[1][0]), P=pm(cap?c[3][1]:c[3][0]), EV=pm(c[4][0]);
@@ -676,12 +676,15 @@ function checkState(name,st,askTyped,S,E){
   { const f=tx.sensflat||"", over=(s.ask/r.V-1)*100, qs=E.sn.filter(o=>o.k!=="ask"&&o.k!=="buyers"), top=qs.slice().sort((a,b)=>Math.abs(b.dE)-Math.abs(a.dE))[0];
     const askRow=E.sn.find(o=>o.k==="ask"), share=top&&Math.abs(top.dV)>0?Math.abs(top.dE)/(r.PC*Math.abs(top.dV)):1, bad=[];
     const branch=r.askBinds&&share<.25?"bind":E.sn.every(o=>Math.abs(o.dP)<1e-9)&&over<=0?"flat":E.sn.every(o=>Math.abs(o.dP)<1e-9)?"zero":"none";
-    if(branch==="bind"){ const m=/^The ask is the binding constraint\. At (\$[\d.]+[kMB]?), (?:about the model value of (\$[\d.]+[kMB]?)|(\d+)% (under|over) the model value of (\$[\d.]+[kMB]?)), (\d+)% of closings land at the ask, .* \((.+?)\) passes through (?:almost none \(under 1%\)|only about (\d+)%) of its effect on value\. Repricing is the lever: a 5% lower ask changes expected proceeds by ([−-]?\$[\d.]+[kMB]?)\.$/.exec(f);
+    if(branch==="bind"){ const m=/^The ask is the binding constraint\. At (\$[\d.]+[kMB]?), (?:about the model value of (\$[\d.]+[kMB]?)|(\d+)% (under|over) the model value of (\$[\d.]+[kMB]?)), (\d+)% of closings land at the ask, .* \((.+?)\) passes through (?:almost none \(under 1%\)|only about (\d+)%) of its effect on value\. Repricing is the lever: (?:a 5% higher ask changes expected proceeds by ([+−-]?\$[\d.]+[kMB]?), and a 5% lower one by|a 5% lower ask changes expected proceeds by) ([−-]?\$[\d.]+[kMB]?)\.$/.exec(f);
       if(!m) bad.push("bind format");
       else { if(m[1]!==money(s.ask)) bad.push("ask"); if(m[3]!==undefined&&(+m[3]!==+Math.abs(over).toFixed(0)||m[4]!==(over<0?"under":"over"))) bad.push("over/under");
         if(m[6]+"%"!==pc(r.capShare)) bad.push("cap share");
         if(m[7]!==top.n.toLowerCase()) bad.push("lever");
-        const bar=(S.bars.sensP.find(x=>x[0]==="Asking price, 5% lower")||[])[1]; if(dm(m[9])!==dm(money(askRow.dE,2))||pm(bar)!==pm(m[9])) bad.push("5% cut "+m[9]+" bar "+bar);
+        const bar=(S.bars.sensP.find(x=>x[0]==="Asking price, 5% lower")||[])[1]; if(dm(m[10])!==dm(money(askRow.dE,2))||pm(bar)!==pm(m[10])) bad.push("5% cut "+m[10]+" bar "+bar);
+        /* under value the note leads with the raise that helps (skeptic review, D8) */
+        if(over<0){ const up=A.model({...s,ask:s.ask*1.05}).EVp-r.EVp; if(m[9]===undefined||dm(m[9].replace(/^\+/,""))!==dm(money(up,2))) bad.push("5% raise "+m[9]); }
+        else if(m[9]!==undefined) bad.push("raise quoted over value");
         const bull=(S.scen[2]||{}).pct||""; if(r.capShare>=.06&&!bull.includes(pc(r.capShare)+" of closings at the ask ceiling")) bad.push("bull share"); } }
     else if(branch==="flat"){ if(!/^Closing probability is flat here\./.test(f)) bad.push("flat"); }
     else if(branch==="zero"){ if(!f.startsWith("Closing probability is effectively zero here. At "+over.toFixed(0)+"% over model value")) bad.push("zero"); }
@@ -721,7 +724,7 @@ function checkState(name,st,askTyped,S,E){
       if(!(Math.abs(d-(r.risk.p-p0)*100)<.005+1e-9)) bad.push("selected "+lab+" vs tile delta "+(r.risk.p-p0)*100); }
     ok("state-option-labels",!bad.length,ctx({bad:bad.slice(0,3)})); }
   { const os=E.sn.filter(o=>o.oneSided).map(o=>o.n), bk=E.sn.some(o=>o.back), n=tx.sensnote||"";
-    const want=(os.length?os.join(" and ")+(os.length>1?" are":" is")+" already at the end of its range, so that row is a one-sided difference rather than a central one.":"")
+    const want=(os.length?os.join(" and ")+(os.length>1?" are at or near the ends of their ranges, so those rows are uneven differences rather than central ones.":" is at or near the end of its range, so that row is an uneven difference rather than a central one."):"")
       +(bk?(os.length?" ":"")+"Within 25% of the 600-buyer cap the pool cannot grow by a quarter, so its row shows what the last quarter of buyers added.":"");
     ok("sensnote-one-sided",n===want&&bk===(s.buyers*1.25>600),ctx({n,want})); }
   { const bad=[], lab=S.starLabels||[];
@@ -880,7 +883,7 @@ async function partB(){
     const b2=await snap();
     const eps=x=>texNorm(x.eq.eq_ps||""), base=x=>(/P_C=\\underbrace\{([\d.]+%)\}_\{base rate, u=([\d.]+)\}/.exec(eps(x))||[]).slice(1).join("|"), pen=x=>(/\(1-\\underbrace\{([\d.]+)\}_\{gap penalty\}/.exec(eps(x))||[])[1];
     ok("pc-quality-free-at-same-ratio",a.txt.o_pc===b2.txt.o_pc&&base(a)===base(b2)&&base(a)!==""&&Math.abs(+pen(a)-+pen(b2))<=.0011,()=>J({rho,move:id+"="+val,pc:[a.txt.o_pc,b2.txt.o_pc],base:[base(a),base(b2)],pen:[pen(a),pen(b2)],ratio:[a.r.V?a.s.ask/a.r.V:0,b2.s.ask/b2.r.V]}));
-    const fm=x=>(x.multbl.find(y=>/^Fitted multiple/.test(y[0]||""))||[])[2], band=x=>(/t_\{med\}=t_\{band\} e\^\{0\.10 h\}=([\d,]+)/.exec(texNorm(x.eq.eq_ts||"").replace(/\\text\{med\}/g,"med").replace(/\\text\{band\}/g,"band"))||[])[1];
+    const fm=x=>(x.multbl.find(y=>/^Fitted multiple/.test(y[0]||""))||[])[2], band=x=>(/t_\{med\}=t_\{band\} e\^\{0\.10 g\}=([\d,]+)/.exec(texNorm(x.eq.eq_ts||"").replace(/\\text\{med\}/g,"med").replace(/\\text\{band\}/g,"band"))||[])[1];
     const cash=x=>(x.real[2]||[])[1];
     const below=a.s.ask<=a.r.V&&b2.s.ask<=b2.r.V;
     ok("quality-keeps-size-band",fm(a)===fm(b2)&&band(a)===band(b2)&&band(a)!==undefined&&cash(a)===cash(b2)&&base(a)===base(b2)&&(!below||a.txt.o_t===b2.txt.o_t),

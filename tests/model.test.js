@@ -503,7 +503,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(e>=.875&&e<=.925,`self-audit fit-consistency row ${e.toFixed(4)} in 87.5-92.5%`); }
   /* 24j. the page says what it does: R^s in the scenario equations, the calibrated badge, the benchmark label from $2M,
           the range note in the optimiser card, the self-audit row labelled as the fit's own target */
-  ok(HTML.includes("cdot R^{s}")&&HTML.includes("R(0.10)^{s}=${Math.pow(")&&HTML.includes("R(p)^{s},")&&HTML.includes("s=${FAN_S.toFixed(2)}"),"eq_s / eq_ss / eq_a show R^s");
+  ok(HTML.includes("cdot R^{s}")&&HTML.includes("R(0.08)^{s}=${Math.pow(")&&HTML.includes("R(p)^{s},")&&HTML.includes("s=${FAN_S.toFixed(2)}"),"eq_s / eq_ss / eq_a show R^s");
   ok(/share of the value spread kept once a business is listed \(FAN_S;[\s\S]{0,120}<span class="st adj">calibrated<\/span>/.test(HTML),"Data tab: FAN_S row badged calibrated");
   ok(/r\.Vbase>=2e6\?'Market benchmark: sale price as a share of the advisor&rsquo;s benchmark/.test(HTML),"realisation block: $2M+ IBBA ratio is a benchmark");
   ok(HTML.indexOf("close to a tie, so read the patient-seller price as a range")>0,"optimiser card: range note");
@@ -1452,6 +1452,53 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       "Typical buyer pools and strategic interest by industry"].every(t=>HTML.includes(t)),"38f: a row for every second-round fit, and a judgment row for buyer pools and strategic interest");
   ok(!/(?<!sba_)tail_factor/.test(HTML)&&!HTML.includes("tail_by_band")&&!HTML.includes("more often carry 25-year terms")&&!HTML.includes("four weights, two scales, two label cut-offs")
      &&!HTML.includes("PLACEHOLDER")&&!/\blead\b|fit6|\/tmp\//.test(HTML.slice(HTML.indexOf("/* October 2026, second round: the peer table"),HTML.indexOf("MODELS.fitted.peer_checks="))),"38f: no stale or workflow wording");
+}
+
+/* ---- 39. recurring motion (v10): tasteful by construction. Every loop moves only opacity, a transform or a background
+   strip; every loop but the tab indicator's runs only while its block is on screen; the figure glow is a Web Animation, so
+   the script writes no attribute a test or a reader sees except the blocks' m-on class ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const i=HTML.indexOf('<style id="v10-motion-css">'), css=i<0?"":HTML.slice(i,HTML.indexOf("</style>",i));
+  const k=HTML.indexOf('<script id="v10-motion-js">'), js=k<0?"":HTML.slice(k,HTML.indexOf("</script>",k));
+  const frames=[...css.matchAll(/@keyframes\s+([\w-]+)\{([\s\S]*?)\}\}/g)];
+  const props=[...new Set(frames.flatMap(m=>[...m[2].matchAll(/([a-z-]+)\s*:/g)].map(x=>x[1])))];
+  ok(i>0&&k>0&&frames.length>=5&&props.every(q=>["opacity","transform","background-position"].includes(q)),
+     `39: the motion layer's ${frames.length} keyframes move only ${props.join(", ")}`);
+  const loops=[...css.matchAll(/animation:m-[\w-]+[^;}]*infinite/g)].length, gated=[...css.matchAll(/\.m-on[^{]*\{[^}]*animation:m-/g)].length;
+  ok(loops>=8&&gated===loops-1&&/nav-ind::after\{[^}]*animation:m-breathe/.test(css),`39: ${gated} of ${loops} loops run only while their block is on screen; the other is the tab indicator`);
+  ok(/el\.animate\(/.test(js)&&!/setAttribute|\.style\.|className\s*=|innerHTML/.test(js)&&/classList\.toggle\("m-on"/.test(js)
+     &&/getElementById\("boot"\)/.test(js),"39: the figure glow is a Web Animation; the script writes no attribute but m-on, and waits for the film");
+  ok(/@media\(prefers-reduced-motion:reduce\)\{\*\{animation:none!important;transition:none!important\}\}/.test(HTML)&&/mq\.matches/.test(js),
+     "39: reduced motion stops every loop (the page's global rule) and the glow (the script checks the preference)");
+}
+
+/* ---- 40. the skeptic review (October 2026): each confirmed fix, pinned. MODEL-1 is checked on the skeptic's own
+   profile; the display, layout and interface fixes by the code that makes them ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  { const s={ind:"vet",rev:3878320.238970697,ern:776822.4617297485,grw:0.03709924817085264,gm:0.6877818477153778,rec:0.39787375926971436,
+      cc:0.6583209502696991,ret:0.8690899014472961,plt:0.10440324544906616,own:0.72,mgt:0.66,fin:0.45,yrs:6,buyers:530,st:null,franchise:false,
+      budget:100000,lamT:3350,theta:0.9155685663223266,ask:3681742.1258855304};
+    const r=A.model(s); s.optRho=A.bestRatio(s,s.theta,s.lamT); s.rhoSell=A.bestRatio(s,0,0);
+    const nt=A.optNote(s,r.V,A.model({...s,ask:r.V*s.rhoSell}),A.model({...s,ask:r.V*s.optRho})), hit=nt.text.match(/another peak, at [\d.]+× value/);
+    ok(!/There is no second peak/.test(nt.text)&&!!hit&&/1\.2\d×/.test(hit[0]),
+       `40: MODEL-1 a dip deeper than 0.01% of value makes a real second peak, named in the note (${hit?hit[0]:"none"})`); }
+  ok(/1\.87 at \$100-250k of revenue and 1\.90 at \$250-500k/.test(A.MODELS.value.soi_size_wedge.why)&&!/falls monotonically from 1\.90/.test(HTML)
+     &&HTML.includes("that band implies 0.468"),"40: MODEL-2/3 the SOI wedge and the BIZCOMPS sigma are described as the tables have them");
+  ok(HTML.includes("e^{${T_ELAST.toFixed(2)}\\\\,g}")&&HTML.includes("R(0.08)^{s}=${Math.pow(fanRatio(.08),FAN_S)")
+     &&HTML.includes('row("Normalized earnings",S.ern,mny)')&&HTML.includes("raised only where IBBA&rsquo;s size band closes above the ask")
+     &&HTML.includes("Math.abs((f-1)*100).toFixed(1)+'% on the fitted value")&&HTML.includes("a 5% higher ask changes expected proceeds by ")
+     &&HTML.includes("(s.lamT>0?` Above model value"),"40: D1-D3, D5, D7-D9 the equations, the extrapolation table and the notes say what the model does");
+  ok(HTML.includes("money(PHI*b.S)")&&HTML.includes("U=${tp(best.U.PC,1)}")&&HTML.includes("${r.nEng.toFixed(2)}\\\\text{ of }")
+     &&HTML.includes(" is at or near the end of its range, so that row is an uneven difference")&&HTML.includes("Left out because "),
+     "40: DISP-1/2/3/5 the captured synergy, the uneven sensitivity rows, the equations' precision and the pruned changes");
+  ok(HTML.includes("if(!it.C.length) it.C=all.map(")&&HTML.includes("(grow||0)<(nar?4:2)")&&HTML.includes("var pick=spots[0], pk=Infinity;")
+     &&HTML.includes("@media(max-width:359px){ .hero-stats .big .k .pv{white-space:normal} }")&&HTML.includes("#view-console .rail select{text-overflow:ellipsis")
+     &&/@media print\{[\s\S]{0,400}-webkit-text-fill-color:#1b2335!important/.test(HTML),
+     "40: VIS-1 to VIS-5 phone labels kept and clear, the badge wraps, dropdowns end in an ellipsis, gradient figures print in ink");
+  ok(HTML.includes("if(tkw+13>L){ L=Math.ceil(tkw+13); IW=Wd-L-R; }")&&HTML.includes('x=k==="buy"?Math.round(x0):x0'),
+     "40: ui-1/ui-2 the phone star map fits its money ticks; a typed count of buyers is held to a whole number");
 }
 
 console.log(`${pass} passed, ${fail} failed`);
