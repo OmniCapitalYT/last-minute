@@ -1502,5 +1502,32 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.includes("if(tkw+13>L){ L=Math.ceil(tkw+13); IW=Wd-L-R; }"),"40: ui-1 the phone star map fits its money ticks");
 }
 
+/* ---- 41. the opening film's camera does not swing. The owner: "during the solar system the camera goes to the left
+   then back to the right ... dont have it shake like that". The camera's path, run outside the browser: no channel
+   overshoots a keyframe, the Sun closes on the centre of the frame monotonically during the dive and stays there ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8"), L=HTML.split("\n");
+  const at=re=>L.findIndex(l=>re.test(l)), i0=at(/^\/\* ---- vectors/), i1=at(/^function project\(cam,p\)/);
+  const tl=L.find(l=>/^var TL=\{P0:/.test(l)), hl=L.filter(l=>/^function (sm|cl|mix)\(/.test(l)).slice(0,3);
+  let F=null;
+  try{ F=new Function("var innerWidth=1440, innerHeight=900;\n"+tl+"\n"+hl.join("\n")+"\n"+L.slice(i0,i1+2).join("\n")
+    +"\nreturn {camera:camera,project:project,track:track,SUN:SUN,KF:KF};")(); }catch(e){ F=null; }
+  const C1=F?F.KF[8][0]:8.45;   /* the camera reaches the Sun: the keyframe whose target is the Sun */
+  ok(!!F&&i0>0&&i1>i0,"41: the film's camera path evaluates outside the browser");
+  if(F){
+    const K=F.KF; let over=0, hit=0;
+    for(let i=0;i+1<K.length;i++){
+      for(let j=1;j<K[i].length;j++) if(Math.abs(F.track(K[i][0])[j-1]-K[i][j])>1e-12) hit++;
+      for(let c=K[i][0];c<=K[i+1][0];c+=.005){ const k=F.track(c);
+        for(let j=1;j<K[i].length;j++){ const lo=Math.min(K[i][j],K[i+1][j]), hi=Math.max(K[i][j],K[i+1][j]); if(k[j-1]<lo-1e-12||k[j-1]>hi+1e-12) over++; } } }
+    ok(!over&&!hit,`41: the path passes through every keyframe and no channel overshoots one (${over} overshoots)`);
+    const pos=c=>F.project(F.camera(c),F.SUN), rad=c=>{ const q=pos(c); return Math.hypot(q.x*1.6,q.y); };
+    let off=0, worst=0; for(let c=C1;c<=13.6;c+=.01){ const r=rad(c); if(r>1e-6) off++; worst=Math.max(worst,r); }
+    ok(!off,`41: once the camera arrives (c ${C1}) the Sun holds the centre of the frame until the jump (worst ${worst.toExponential(1)})`);
+    let up=0, prev=Infinity; for(let c=6.9;c<=C1;c+=.005){ const r=rad(c); if(r>prev+1e-9) up++; prev=r; }
+    ok(!up,`41: during the dive the Sun's offset from the centre only shrinks (${up} steps outward)`);
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

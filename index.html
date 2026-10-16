@@ -8517,19 +8517,38 @@ var KF=(function(){ var O=[0,0,0], H=HOME, S=SUN, L=Math.log, h1=lerp3(O,H,.65),
     [4.5,0,0,0,L(13.2),.62,.26,0],[5.7,h1[0],h1[1],h1[2],L(7.4),.8,.3,0],[6.75,H[0],H[1],H[2],L(4.1),AZS+.3,.64,.02],
     [7.65,h2[0],h2[1],h2[2],L(.9),AZS+.33,.3,.16],[8.45,S[0],S[1],S[2],L(.085),AZS+.5,.2,.38],
     [9.45,S[0],S[1],S[2],L(.0785),AZS+.53,.2,.4],[10.6,S[0],S[1],S[2],L(.07),AZS+.55,.2,.4]]; })();
+/* The tangents are monotone (PCHIP, Fritsch-Butland), so no channel overshoots a keyframe: where a channel turns or
+   comes to rest, its tangent is zero. The Catmull-Rom tangents they replace carried the camera past the Sun where its
+   target comes to rest there, and back: between c 8.3 and 9.5 the Sun swung from 15% of the half-width left of centre
+   to 13% right of it and back, and the distance dipped and pumped out again (the camera went left, then back right). */
+function slope(K,i,j){
+  if(i<=0||i>=K.length-1) return 0;                     /* the film starts and ends at rest */
+  var h0=K[i][0]-K[i-1][0], h1=K[i+1][0]-K[i][0], d0=(K[i][j]-K[i-1][j])/h0, d1=(K[i+1][j]-K[i][j])/h1;
+  if(d0*d1<=0) return 0;
+  var w1=2*h1+h0, w2=h1+2*h0; return (w1+w2)/(w1/d0+w2/d1); }
 function track(c){
   var K=KF, n=K.length, i=0, out=[];
   if(c<=K[0][0]) return K[0].slice(1); if(c>=K[n-1][0]) return K[n-1].slice(1);
   while(c>K[i+1][0]) i++;
   var t0=K[i][0], t1=K[i+1][0], h=t1-t0, u=(c-t0)/h, u2=u*u, u3=u2*u;
   for(var j=1;j<K[i].length;j++){
-    var m0=i>0?(K[i+1][j]-K[i-1][j])/(K[i+1][0]-K[i-1][0]):0, m1=i+2<n?(K[i+2][j]-K[i][j])/(K[i+2][0]-K[i][0]):0;
+    var m0=slope(K,i,j), m1=slope(K,i+1,j);
     out.push((2*u3-3*u2+1)*K[i][j]+(u3-2*u2+u)*h*m0+(-2*u3+3*u2)*K[i+1][j]+(u3-u2)*h*m1); }
   return out;
 }
+/* the dive's keyframes: the home galaxy's centre at c0 and the Sun at c1, with their distances */
+var DIVE=(function(){ var a=KF[6], b=KF[8]; return {c0:a[0],c1:b[0],d0:Math.exp(a[4]),d1:Math.exp(b[4]),S:[b[1],b[2],b[3]],
+  HS:[a[1]-b[1],a[2]-b[2],a[3]-b[3]]}; })();
 var VW=Math.max(1,innerWidth), VH=Math.max(1,innerHeight), DPR=1;
 function camera(c){
   var k=track(Math.max(c,-1)), T=[k[0],k[1],k[2]], lnD=k[3], az=k[4], el=k[5], roll=k[6];
+  /* the dive to the Sun: the target's progress from the home galaxy's centre to the Sun follows the distance,
+     g = x^1.5 with x the share of the dive's distance still to go, so the Sun's offset from the centre of the frame
+     (about |H - S| g / D) only ever shrinks and the Sun glides in. Tracked keyframe by keyframe, the distance fell
+     faster than the target closed in and the Sun drifted out to the left before the camera swung across to it. The
+     blend from the tracked path starts at rest, and x^1.5 arrives at rest. */
+  if(c>DIVE.c0&&c<DIVE.c1){ var x=cl((Math.exp(lnD)-DIVE.d1)/(DIVE.d0-DIVE.d1),0,1), g=x*Math.sqrt(x);
+    T=lerp3(T,add(DIVE.S,DIVE.HS,g),sm(DIVE.c0,DIVE.c0+.45,c)); }
   if(c>0&&c<.6){ var a=.016*Math.exp(-c*6); T=[T[0]+a*Math.sin(c*53),T[1]+a*Math.sin(c*71+1),T[2]]; }   /* the bang shakes the lens, under 2 px */
   if(c>TL.JUMP){ var uj=sm(TL.JUMP,TL.JUMP+1.1,c); lnD-=4.2*uj*uj; }                                 /* the jump: into the Sun */
   var D=Math.exp(lnD), ce=Math.cos(el);
