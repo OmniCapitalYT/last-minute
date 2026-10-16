@@ -582,8 +582,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     /* the range: shown exactly when another peak (here or one 1% step of theta away) is within 1% of value */
     /* "real": a dip of 0.01% of value toward the walk-away ask on the curve where it is a peak (the page reads it on its
        .02 grid, this reference on .005, so the two tests leave a margin either side of the rule) */
+    /* ... or the walk-away ask one 1% step of the share kept away sits at it (it jumps there, however shallow the dip) */
+    const jumps=m=>[ss.theta-.01,ss.theta+.01].some(t=>t>=0&&t<=1&&Math.abs(A.bestRatio(ss,t,ss.lamT)-m)<=.03);
     if(n.alt) ok(n.text.includes("close to a tie, so read the patient-seller price as a range")&&uK-n.alt.u<=.01*V*(1+1e-9)&&Math.abs(n.alt.m-ss.optRho)>.02
-      &&R.pk.some(p=>Math.abs(p.m-n.alt.m)<=.025&&p.d>.015&&p.vdepth>=.5e-4),`range end ${n.alt.m.toFixed(3)} is a real peak within 1% ${tag}`);
+      &&R.pk.some(p=>Math.abs(p.m-n.alt.m)<=.025&&p.d>.015&&(p.vdepth>=.5e-4||jumps(p.m))),`range end ${n.alt.m.toFixed(3)} is a real peak within 1% ${tag}`);
     else ok(!/as a range/.test(n.text)&&!R.pk.some(p=>p.d>.06&&uK-p.u<=.0095*V&&p.vdepth>=2e-4),`no range only when no other real peak is within 1% ${tag}: ${n.text}`);
     /* the flat top: only at the cap, printed rounded UP, and the printed ask and every fine-grid ask above it within 1% */
     if(n.flat!==null&&n.flat!==undefined){
@@ -689,6 +691,13 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(v.o>A.RHO_MAX-.02&&!n.alt&&!n.peak&&/There is no second peak/.test(n.text)
          &&n.flat===fl&&U(v.o)-U(fl)<=.01*V&&U(v.o)-U(fl-.01)>.01*V,`${v.t.ind} at ${v.t.theta}: no second peak, flat from ${n.flat} (${n.text})`);
       checkNote(v.t,n,`(${v.t.ind} at ${v.t.theta})`); } }
+  /* a walk-away ask that jumps between 1% steps of the share kept to a peak barely separated from the plateau (a dip
+     under 0.01% of value): the range shows on both sides of the jump (fuzz, third round: an MSP at 98% and 99% kept) */
+  { const s0={ind:"msp",st:"AL",franchise:false,rev:1052100,ern:264500,grw:0.61955,gm:0.66279,rec:0.44291,cc:0.67859,ret:0.58744,plt:0.38511,
+      own:0.14,mgt:0.92,fin:0.96,yrs:12,buyers:55,budget:69039,lamT:3100}, out=[.98,.99].map(th=>noteAt(s0,th,3100));
+    ok(out[1].o-out[0].o>.1&&out.every(v=>v.n.alt&&/as a range/.test(v.n.text)),
+       `walk-away jump ${out.map(v=>v.o.toFixed(3)).join(" -> ")} over a shallow dip: the range on both sides`);
+    for(const v of out) checkNote(v.t,v.n,`(shallow jump at theta ${v.t.theta})`); }
   /* every industry near the knife edge: the note's three readings (range, named peak, no second peak) against the reference */
   for(const ind of Object.keys(A.IND)) for(const [th,lam] of [[.85,900],[.9,4000],[.95,900]]){
     const P=A.peerMedians(ind,4e5,4e5/.24), v=noteAt({...EXO,ind,ern:4e5,rev:4e5/.24,grw:P.grw,gm:P.gm,rec:P.rec,ret:P.ret},th,lam);
@@ -1171,16 +1180,17 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(a.V===b.V&&a.PC===b.PC&&a.EVp===b.EVp&&a.risk.p===b.risk.p&&A.gmSalary(FX)===B.gmSalary(FX)&&HTML.includes("so the count reaches no figure")&&!HTML.includes("Employees for this revenue")&&!HTML.includes("<tr><td>Firm-size rank behind the GM salary</td>"),"R3-3 (+ round 4): the head count reaches no figure, and no public-data row claims it"); }
   /* R3-4: the ledger counts the category formulas (37 since Market position reads the fitted comparables depth against
      its own mean, not a typed .65), the confidence label (3: two cut-offs and the extrapolation rule; the figure is fitted
-     since October 2026) and the peer scales (17 + 2: PEER_SD, the two typed medians and sizeRefs' typed numbers less its
-     clamp; the buyer-pool scale and the size centre) */
+     since October 2026) and the peer scales (14 + 2 since the third round: PEER_SD's seven typed spreads, the channel
+     median and sizeRefs' typed numbers less its clamp; the buyer-pool scale and the size centre) */
   { const src=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
     const sl=(a,b)=>{ const i=src.indexOf(a); return src.slice(i,src.indexOf(b,i)); };
     const mults=t=>(t.match(/(?<![\w.])(\d+\.\d*|\.\d+|\d+)\*/g)||[]).length;
     const numLits=f=>{ const t=String(f).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,""); return (t.match(/(?<![\w.$])(\d+\.\d*|\.\d+|\d+)(?![\w.])/g)||[]).filter(v=>+v!==0).length-(t.match(/\(1-/g)||[]).length; };
     const cat=sl("out.cats={","const catMean"), z=sl("const z={","const emRaw");
     const nCat=mults(cat)+(cat.match(/-\.\d+\)/g)||[]).length+4, C=A.MODELS.fitted.confidence, nConf=["cut_high","cut_moderate","extrap_x"].filter(k=>typeof C[k]==="number").length;
-    const nPeer=Object.keys(A.PEER_SD).length+2+numLits(String(A.sizeRefs).replace(/Math\.max\(ern,1e4\)/,""))-2, nPeerX=(z.match(/\/\.\d+,?\s*$/gm)||[]).length+1;
-    ok(nCat===37&&nConf===3&&nPeer===17&&nPeerX===2&&!src.includes('slice("const conf="')&&HTML.includes("+ nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1")
+    const SDF=A.MODELS.fitted.peer_sd, typed=Object.keys(A.PEER_SD).filter(k=>!(SDF[k]&&SDF[k].v===A.PEER_SD[k]));
+    const nPeer=typed.length+1+numLits(String(A.sizeRefs).replace(/Math\.max\(ern,1e4\)/,""))-2, nPeerX=(z.match(/\/\.\d+,?\s*$/gm)||[]).length+1;
+    ok(nCat===37&&nConf===3&&nPeer===14&&typed.join()==="rec,own,mgt,gm,ret,fin,plt"&&nPeerX===2&&!src.includes('slice("const conf="')&&HTML.includes("+ nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1")
        &&HTML.includes("${nCat}</td>")&&HTML.includes("${nConf}</td>")&&HTML.includes("${nPeer}</td>")&&HTML.includes("${nPeerX}</td>"),
        `R3-4: ledger counts ${nCat}/${nConf}/${nPeer}+${nPeerX}`); }
   /* R3-5: the loan-size gap is read at the hazard pieces' start ages: x0.26 per tenfold at month 6, rising to x0.89 in
@@ -1228,7 +1238,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       (R.loan_share*r.V>R.loan_range[1]?ca:un).push(r.jobs/m); }
     /* R7-1: 'a fraction ... for a small firm', 'many times it' for a low-margin or lower-quality one (a typical-margin restaurant at
        the worse quality ends, inside the limit), and growing past the limit */
-    const wq=A.model({...FX,ind:"rest",rev:12.48e6,ern:12.48e6*A.typMargin("rest",3.36e6),rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95});
+    const wq=A.model({...FX,ind:"rest",rev:12.48e6,ern:12.48e6*A.typMargin("rest",3.36e6),rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.05,plt:.95});
     un.push(wq.jobs/med[wq.risk.empBandKey]);
     ok(Math.min(...un)>.15&&Math.min(...un)<.3&&R.loan_share*wq.V<=R.loan_range[1]&&wq.jobs/med[wq.risk.empBandKey]>9&&Math.max(...ca)>50&&Math.max(...Object.values(med))===14&&R.loan_share===.85,
        `R4-3/R5-6/R7-1: Census/SBA ratio ${Math.min(...un).toFixed(2)}-${Math.max(...un).toFixed(2)} within the limit, up to ${Math.max(...ca).toFixed(0)} past it`); }
@@ -1286,7 +1296,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        &&Math.abs(capped)<.5*Math.abs(raw)&&Math.abs((r.Vreal-Z.Vreal)/capped-1)<.25,
        `R5-3: capped premium ${capped.toFixed(0)} against uncapped ${raw.toFixed(0)}; median moves ${(r.Vreal-Z.Vreal).toFixed(0)}`); }
   /* R5-4: the old build's swing is computed: the nine inputs from the worse to the better end of their controls */
-  { const lo={...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95}, hi={...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.97,ret:.99,plt:.05};
+  { const lo={...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.05,plt:.95}, hi={...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.97,ret:.99,plt:.05};
     const a=A.model(lo), b=A.model(hi);
     ok(!HTML.includes("2.38&times; to 3.02&times;")&&HTML.includes("swings the old judgement build&rsquo;s multiple from ${xx(rl.Mjudg)} to ${xx(rh.Mjudg)}")
        &&b.Mjudg/a.Mjudg>b.M/a.M&&b.M>a.M,`R5-4: judgement build ${a.Mjudg.toFixed(2)}-${b.Mjudg.toFixed(2)}, console multiple ${a.M.toFixed(2)}-${b.M.toFixed(2)}`); }
@@ -1306,7 +1316,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
   const FX={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75};
   /* R6-1: the quality sweep moves the console's multiple through the judgment quality position; the fitted multiple stays */
-  { const a=A.model({...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.45,plt:.95}), b=A.model({...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.97,ret:.99,plt:.05});
+  { const a=A.model({...FX,rec:0,own:.95,mgt:.08,cc:.70,fin:.14,grw:-.25,gm:.12,ret:.05,plt:.95}), b=A.model({...FX,rec:1,own:.14,mgt:.92,cc:.01,fin:.96,grw:.70,gm:.97,ret:.99,plt:.05});
     ok(!HTML.includes("here the same sweep moves the fitted multiple from")&&HTML.includes("here the same sweep moves the console&rsquo;s multiple from ${xx(rl.M)} to ${xx(rh.M)}: the fitted")
        &&Math.abs(a.fv.mult-b.fv.mult)<1e-12&&Math.abs(b.M/a.M-b.qFactor/a.qFactor)<1e-9,
        `R6-1: fitted ${a.fv.mult.toFixed(2)} at both ends; quality position x${a.qFactor.toFixed(2)}-x${b.qFactor.toFixed(2)}`); }
@@ -1336,8 +1346,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const w={ind:"rest",rev:1.5e6,ern:3e5,own:.95,mgt:.08,fin:.14,rec:.05,cc:.18,grw:-.05,gm:.62,ret:.45,plt:.40,yrs:6,buyers:41,st:null,franchise:false};
     const V=A.model({...w,ask:1}).V, r=A.model({...w,ask:V*A.bestRatio(w,0,0)});
     /* the weak restaurant scored 10 until October 2026: the fitted size slopes put its owner dependence and management depth
-       further from its peers' at $300k of SDE, and the restaurant medians moved */
-    ok(n===12288&&worst<1e-9&&wq<1e-12&&A.omniScore(r)===7,
+       further from its peers' at $300k of SDE, and the restaurant medians moved (7). The third round's retention median for
+       restaurants (.27 by customer count, was .45) puts its .45 above its peers', and the concentration median and spread
+       (.14, .18) moved: 16 */
+    ok(n===12288&&worst<1e-9&&wq<1e-12&&A.omniScore(r)===16,
        `S-1: ${n} reference draws at their composite (worst ${worst.toExponential(1)}), qualityZ = model qz (${wq}); the weak restaurant scores ${A.omniScore(r)}`); }
   /* S-2: the Census tables are read on an increasing receipts scale, so the GM salary has no jump */
   { let sorted=true; for(const ind of Object.keys(A.IND)){ const K=A.jobsKnots(ind); if(!K) continue;
@@ -1387,8 +1399,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     for(const k of INDS){ const B=G.by_industry[k]; if(!B) continue;   /* halfway between the first two knots, in log10 revenue */
       if(Math.abs(A.peerGm(k,Math.pow(10,(K[0]+K[1])/2))-(B.gm[0]+B.gm[1])/2)>1e-12) knots=false; }
     ok(knots&&flat&&defs,"38a: peerGm reads the knots, holds the end values, and every industry states its definition");
-    ok(Object.keys(G.by_industry).length===15&&!G.by_industry.wash&&IND.wash.gm===.70&&IND.ecom.gm===undefined
-       &&G.by_industry.ecom.tier==="listing-level"&&G.by_industry.ecom.gm.every(v=>v===G.by_industry.ecom.gm[0]),"38a: car washes alone keep a hand-set margin; e-commerce's is flat");
+    ok(Object.keys(G.by_industry).length===16&&INDS.every(k=>IND[k].gm===undefined)&&!("wash" in G.not_identified)
+       &&G.by_industry.ecom.tier==="listing-level"&&G.by_industry.ecom.gm.every(v=>v===G.by_industry.ecom.gm[0])
+       &&G.by_industry.wash.tier==="franchise disclosure"&&G.by_industry.wash.gm.every(v=>v===.80)&&G.by_industry.wash.slope===0,
+       "38a: no margin is hand-set: car washes read a flat .80 from a franchisor's disclosed costs (third round); e-commerce's is flat");
     const m=median("home",7e5); ok(A.model({...m,ask:1}).peer.gm===A.peerGm("home",m.rev),"38a: model() compares gross margin with the curve at its revenue");
     ok(HTML.includes('gl.title="Gross margin: "+gmDefinition(s.ind)'),"38a: the slider's label states the definition");
     /* second-round review: an unlisted industry reads prof's curve (it read IND.prof.gm, which the round removed: NaN z.gm) */
@@ -1402,9 +1416,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { let good=true;
     for(const k of INDS){ if(k in F.peer_grw.by_industry){ if(IND[k].grw!==F.peer_grw.by_industry[k]) good=false; } else if(k!=="saas") good=false;
       if(IND[k].tail!==F.tailwind.by_industry[k]||Math.abs(IND[k].comps-A.compsFor(k))>1e-15||!(IND[k].tail>=-1&&IND[k].tail<=1)) good=false; }
-    ok(good&&IND.saas.grw===.25&&IND.land.ret===F.peer_rec_ret.ret.land.v&&IND.fit.ret===F.peer_rec_ret.ret.fit.v&&!Object.keys(F.peer_rec_ret.rec).length,
-       "38b: the fitted cells are written in; software's growth and every recurring share stay hand-set");
-    const want=[...Object.keys(F.peer_grw.by_industry).map(k=>k+".grw"),...INDS.map(k=>k+".tail"),...INDS.map(k=>k+".comps"),"land.ret","fit.ret"].sort();
+    ok(good&&IND.saas.grw===.25&&["land","fit","ecom","auto","rest"].every(k=>IND[k].ret===F.peer_rec_ret.ret[k].v)
+       &&Object.keys(F.peer_rec_ret.rec).join()==="msp"&&IND.msp.rec===F.peer_rec_ret.rec.msp.v,
+       "38b: the fitted cells are written in; software's growth and every recurring share but the MSPs' (third round) stay hand-set");
+    const want=[...Object.keys(F.peer_grw.by_industry).map(k=>k+".grw"),...INDS.map(k=>k+".tail"),...INDS.map(k=>k+".comps"),"land.ret","fit.ret",
+      "ecom.ret","auto.ret","rest.ret","msp.rec"].sort();
     ok(JSON.stringify(A.FITTED_CELLS.slice().sort())===JSON.stringify(want),"38b: FITTED_CELLS lists exactly what was written");
     ok(Math.abs(IND.saas.comps-7/(7+A.MODELS.value.industry_shrinkage.k_naics6))<1e-15&&Math.abs(A.COMPS_MEAN-INDS.reduce((a,k)=>a+IND[k].comps,0)/INDS.length)<1e-15,
        "38b: software's comparables depth from its 7 sales; Market position reads depth against the industries' mean"); }
@@ -1499,14 +1515,17 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* MODEL-1 (the dip under a peak read off the .02 grid beside a kinked bottom) on the skeptic's own profile, under the gap
      axis it was found on: the third round read Pepperdine's gap as a share of the ask, which removed this profile's second
      peak, so the fix is pinned on a build with the old axis (bucket edges at 10-50% and the open bucket at 100% over
-     value), and the live note is checked against a fine grid */
+     value) and the old peer comparison (concentration median .16, its spread and growth's .13), and the live note is
+     checked against a fine grid */
   { const s0={ind:"vet",rev:3878320.238970697,ern:776822.4617297485,grw:0.03709924817085264,gm:0.6877818477153778,rec:0.39787375926971436,
       cc:0.6583209502696991,ret:0.8690899014472961,plt:0.10440324544906616,own:0.72,mgt:0.66,fin:0.45,yrs:6,buyers:530,st:null,franchise:false,
       budget:100000,lamT:3350,theta:0.9155685663223266,ask:3681742.1258855304};
     const noteOf=API=>{ const s={...s0}, r=API.model(s); s.optRho=API.bestRatio(s,s.theta,s.lamT); s.rhoSell=API.bestRatio(s,0,0);
       return {s,V:r.V,nt:API.optNote(s,r.V,API.model({...s,ask:r.V*s.rhoSell}),API.model({...s,ask:r.V*s.optRho}))}; };
     const OLD=A.loadWith([['const K=A.knots_pct_over_value, seq=[["1-10",K[0]],["11-20",K[1]],["21-30",K[2]],["31-40",K[3]],["41-50",K[4]],[">50",A.open_knot]];',
-      'const seq=[["1-10",10],["11-20",20],["21-30",30],["31-40",40],["41-50",50],[">50",100]];']]);
+      'const seq=[["1-10",10],["11-20",20],["21-30",30],["31-40",40],["41-50",50],[">50",100]];'],
+      ["const PEER_SD={rec:.28,cc:MODELS.fitted.peer_sd.cc.v,own:.25,mgt:.28,grw:MODELS.fitted.peer_sd.grw.v,","const PEER_SD={rec:.28,cc:.13,own:.25,mgt:.28,grw:.13,"],
+      ['cc=(C.by_industry[IND[ind]?ind:"prof"]||C).v;','cc=.16;']]);
     const o=noteOf(OLD), hit=o.nt.text.match(/another peak, at [\d.]+× value/);
     ok(OLD.GAP_CDF.g.join()==="0,10,20,30,40,50,100"&&OLD.GAP_TAIL_K>.00113&&!/There is no second peak/.test(o.nt.text)&&!!hit&&/1\.2\d×/.test(hit[0]),
        `40: MODEL-1 a dip deeper than 0.01% of value makes a real second peak, named in the note (old gap axis: ${hit?hit[0]:"none"})`);
@@ -1594,6 +1613,40 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   ok(HTML.includes("Third round: definitions")&&HTML.includes("Where Pepperdine&rsquo;s price gaps sit against value")
      &&HTML.includes("walk-away ask moves from about 1.15&times; to 1.26&times;")&&HTML.includes("11&ndash;30% of the ask</b> (12&ndash;43% over value)")
      &&!/up to a\s+100% gap/.test(HTML),"42: the Data tab states the axis, the kill zone on both axes, and the third round's row");
+  /* the peer table, third round (fit/round3_peer.py): retention by customer count, three retention medians and the MSPs'
+     recurring share written into IND, car washes' margin, the largest customer's median and two peer spreads */
+  const IND=A.IND, T=F.peer_rec_ret, INDS=Object.keys(IND);
+  ok(T.ret.ecom.v===.25&&T.ret.auto.v===.45&&T.ret.rest.v===.27&&T.rec.msp.v===.42&&T.ret.ecom.was===.40&&T.ret.auto.was===.58&&T.ret.rest.was===.45&&T.rec.msp.was===.72
+     &&IND.ecom.ret===.25&&IND.auto.ret===.45&&IND.rest.ret===.27&&IND.msp.rec===.42&&["ecom.ret","auto.ret","rest.ret","msp.rec"].every(c=>A.FITTED_CELLS.includes(c))
+     &&!/ecom:[^\n]*ret:\.40|auto:[^\n]*ret:\.58|rest:[^\n]*ret:\.45|msp:[^\n]*rec:\.72|wash:[^\n]*gm:\.70/.test(HTML.slice(HTML.indexOf("const IND = {"),HTML.indexOf("const BANDS"))),
+     "42: retention .25/.45/.27 (e-commerce, auto repair, restaurants) and the MSPs' recurring share .42 are written in; the typed cells are gone");
+  const rp=T.ret.rest.parts;
+  ok(Math.abs(T.ret.rest.v-Math.round(100*(rp.bloom_2025.retention+rp.steady_state_bridge.central)/2)/100)<1e-12&&rp.steady_state_bridge.r[1]===rp.steady_state_bridge.central&&T.ret.rest.se===.1,
+     `42: restaurants read the middle of their source's range: (${rp.bloom_2025.retention} + ${rp.steady_state_bridge.central}) / 2, SE .10`);
+  ok(/customers who bought/.test(T.definitions.ret)&&/not revenue/.test(T.definitions.ret)&&HTML.includes('<input type="range" id="i_ret" min="5" max="99"')
+     &&HTML.includes("rl.title=MODELS.fitted.peer_rec_ret.definitions.ret")&&INDS.every(k=>IND[k].ret>=.05),
+     "42: retention is counted in customers, the label says so, and the slider reaches every median (from 5%)");
+  const W=F.peer_gm.by_industry.wash, K=F.peer_gm.knots_log10_rev;
+  ok(IND.wash.gm===undefined&&K.every(x=>A.peerGm("wash",Math.pow(10,x))===.80)&&A.peerGm("wash",1e4)===.80&&A.peerGm("wash",1e9)===.80
+     &&W.se[0]>W.se[1]&&W.se[3]>W.se[2]&&Math.min(...W.se)>=F.peer_gm.surveys.wash.detail.se&&A.gmDefinition("wash")===F.peer_gm.definition.wash
+     &&!("wash" in F.peer_gm.not_identified),`42: car washes read a flat .80 (SE ${W.se.join("/")}, wider away from the measured sites' revenue)`);
+  ok(INDS.every(k=>A.peerMedians(k,5e5,2e6).cc===(k==="mfg"?.19:.14))&&A.peerMedians("zzz",5e5,2e6).cc===.14&&F.peer_cc.was===.16,
+     "42: the largest customer's median is .14, manufacturing .19 (was .16 everywhere)");
+  const SENS=A.sensitivity({ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false});
+  ok(A.PEER_SD.cc===F.peer_sd.cc.v&&A.PEER_SD.cc===.18&&A.PEER_SD.grw===F.peer_sd.grw.v&&A.PEER_SD.grw===.16&&F.peer_sd.cc.was===.13&&F.peer_sd.grw.was===.13
+     &&["rec","own","mgt","gm","ret","fin","plt"].every(k=>A.PEER_SD[k]===({rec:.28,own:.25,mgt:.28,gm:.13,ret:.13,fin:.28,plt:.22})[k])
+     &&SENS.some(v=>v.k==="cc"&&/\(18 pts\)/.test(v.unit))&&SENS.some(v=>v.k==="grw"&&/\(16 pts\)/.test(v.unit)),
+     "42: growth's and the largest customer's peer spreads are .16 and .18 (were .13), and the sensitivity rows step by them");
+  /* what it moves: a business at its industry's medians keeps its value; one typed at the old medians moves */
+  { const at=(ind,ern,extra)=>{ const rev=ern/A.typMargin(ind,ern), P=A.peerMedians(ind,ern,rev);
+      return A.model({ind,ern,rev,yrs:6,buyers:IND[ind].buyers||50,st:null,franchise:false,ask:1,...P,...extra}); };
+    const z=at("rest",3e5,{}), o=at("rest",3e5,{ret:.45});
+    ok(Math.abs(z.qz)<1e-12&&o.V>z.V&&at("wash",3e5,{gm:.70}).V<at("wash",3e5,{}).V,"42: at the medians the quality position is neutral; the old medians now read above (retention) or below (car-wash margin) them"); }
+  ok(["Customer retention, by count, and three industries&rsquo; medians","Recurring revenue: IT services and MSPs","Peer median gross margin: car washes",
+      "The largest customer&rsquo;s share: peer median and spread","The peer spread of revenue growth"].every(t=>HTML.includes(t))
+     &&!/verifier|\blane\b|fit6|fit8|\/tmp\//.test(HTML.slice(HTML.indexOf("MODELS.fitted.peer_rec_ret="),HTML.indexOf("\n",HTML.indexOf("MODELS.fitted.peer_rec_ret="))))
+     &&!/verifier|\blane\b|fit6|fit8|\/tmp\//.test(HTML.slice(HTML.indexOf("MODELS.fitted.peer_cc="),HTML.indexOf("/* Industry tailwind (fit/"))),
+     "42: a Data tab row for every third-round fit, and no process notes in the embedded tables");
 }
 
 console.log(`${pass} passed, ${fail} failed`);

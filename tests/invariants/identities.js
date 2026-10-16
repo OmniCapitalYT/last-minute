@@ -41,7 +41,7 @@ function sample(){
   const s={ind:pick(INDS),st:pick(STS),franchise:rnd()<.2,rev,ern,
     grw:rnd()<.1?pick([-.25,.7,-.6,1.5]):-.25+rnd()*.95, gm:rnd()<.1?pick([.12,.97,.02,.5]):.12+rnd()*.85,
     rec:rnd()<.1?pick([0,1]):rnd(), cc:rnd()<.1?pick([.01,.7,.005,.95]):.01+rnd()*.69,
-    ret:rnd()<.1?pick([.45,.99,.05]):.45+rnd()*.54, plt:rnd()<.1?pick([.05,.95,.02,.999]):.05+rnd()*.9,
+    ret:rnd()<.1?pick([.05,.99,.05]):.05+rnd()*.94, plt:rnd()<.1?pick([.05,.95,.02,.999]):.05+rnd()*.9,
     own:rnd()<.8?pick([.95,.72,.42,.14]):.02+rnd()*.97, mgt:rnd()<.8?pick([.08,.36,.66,.92]):.02+rnd()*.97,
     fin:rnd()<.8?pick([.14,.45,.74,.96]):.02+rnd()*.98,
     yrs:1+Math.floor(rnd()*12), buyers:rnd()<.2?pick([5,600,480,485,40,41,42,50,52,58,59,65]):5*(1+Math.floor(rnd()*120)),
@@ -259,7 +259,7 @@ inv("sens-step-rows","the ask row is y(0.95 ask) - y(ask) and the buyer row y(1.
   "sensitivity() comment (AUDIT_FINDINGS R5-2); eq_d second line; Sensitivity lede ('The ask and the buyer pool cannot change what a business supports')");
 inv("sens-units","each quality row's step 2h equals the peer sd its z-score uses in model() and the '(NN pts)' its unit label prints",
   "SENS comment ('Every quality lever moves by ONE PEER STANDARD DEVIATION (the same sd the z-scores use)'); unit labels");
-{ const SD={own:.25,mgt:.28,rec:.28,cc:.13,fin:.28,grw:.13,gm:.13,ret:.13,plt:.22};
+{ const SD={own:.25,mgt:.28,rec:.28,cc:.18,fin:.28,grw:.16,gm:.13,ret:.13,plt:.22};   /* cc and grw measured since the third round */
   for(const v of XI.SENS){ if(v.h===null) continue; const m=v.unit.match(/\((\d+) pts\)/);
     chk("sens-units",Math.abs(2*v.h-SD[v.k])<1e-12&&m&&+m[1]===Math.round(200*v.h),()=>cx({k:v.k,h:v.h,unit:v.unit,sd:SD[v.k]})); } }
 for(let i=0;i<Math.min(STATES.length,300);i++){ const s=STATES[i], sn=A.sensitivity(s), r0=A.model(s);
@@ -439,7 +439,7 @@ async function browser(){
   /* states: the default, then typed variations (money fields by text, others by their exact boxes, selects by option) */
   const plans=[[],[["v_ask","5.5M"]],[["v_ask","2M"],["v_buy","10"]],[["v_rev","800k"],["v_ern","150k"],["v_ask","400k"]],[["v_rev","40M"],["v_ern","6M"],["v_ask","30M"],["v_buy","600"]],
     [["v_ern","2M"],["v_ask","9M"],["v_lam","4000"],["v_th","100"]],[["v_rev","120k"],["v_ern","3k"],["v_ask","40k"],["v_bud","none"]],[["v_rev","16M"],["v_ern","2.4M"],["v_ask","8M"],["sel:i_ind","wash"]],
-    [["v_ask","4.09M"],["v_th","0"],["v_lam","0"]],[["v_rev","3M"],["v_ern","1.2M"],["v_ask","1.4M"],["v_buy","25"],["sel:i_own","0.95"],["sel:i_fin","0.14"]],
+    [["v_ask","4.05M"],["v_th","0"],["v_lam","0"]],[["v_rev","3M"],["v_ern","1.2M"],["v_ask","1.4M"],["v_buy","25"],["sel:i_own","0.95"],["sel:i_fin","0.14"]],
     [["v_ask","6.62M"]],[["sel:i_ind","rest"],["v_rev","100k"],["v_ern","2k"],["v_ask","30k"],["sel:i_own","0.95"],["sel:i_mgt","0.08"],["sel:i_fin","0.14"]],
     [["v_rev","100k"],["v_ern","4k"],["v_ask","40k"]],[["v_rev","60M"],["v_ern","12M"],["v_ask","50M"]]];
   for(const plan of plans){
@@ -544,9 +544,12 @@ async function browser(){
       +C.ibba_cash_at_close.by_band.length+4+2
       /* second round: the bridged margin curves' knots, growth, the benchmarked retention cells, the tailwind, the QoE fee's
          floor and share, the GM's employer-cost loading and hire, the sales hire's floor by industry */
-      +Object.values(F.peer_gm.by_industry).filter(g=>g.tier!=="listing-level").reduce((a,g)=>a+g.gm.length,0)
+      +Object.values(F.peer_gm.by_industry).filter(g=>g.tier!=="listing-level").reduce((a,g)=>a+new Set(g.gm).size,0)
       +Object.keys(F.peer_grw.by_industry).length+Object.keys(F.peer_rec_ret.rec).length+Object.keys(F.peer_rec_ret.ret).length
-      +Object.keys(F.tailwind.by_industry).length+2+2+Object.keys(F.interventions.growth_floor.by_industry).length;
+      +Object.keys(F.tailwind.by_industry).length+2+2+Object.keys(F.interventions.growth_floor.by_industry).length
+      /* third round: the largest customer's median (cross-industry and manufacturing) and the two measured peer spreads;
+         a flat margin curve (car washes) is one number */
+      +1+Object.keys(F.peer_cc.by_industry).length+["grw","cc"].filter(k=>F.peer_sd[k]&&typeof F.peer_sd[k].v==="number").length;
     return {tally,fitB:badge(/^Fitted/),aggB:badge(/^Aggregate/),judB:badge(/^Judgment/),ledger,note,fit,agg,tx:V.n_fit+R.n_fit};
   });
   { const n=dt.tally.map(x=>+String(x.n).replace(/[^\d]/g,"")), sum=dt.ledger.reduce((a,b)=>a+b,0);

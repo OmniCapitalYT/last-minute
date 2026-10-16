@@ -1274,3 +1274,106 @@ How it stays tasteful and safe:
   The random chart sweep the layout skeptic wrote (50 states at 320 and 390 px) found 2 star-map overlaps before the fixes and none after. The inputs suite's first run on the final build was made while two other browser jobs loaded the machine. It missed the 1.5 s window for a quick Data-then-Console switch. A rerun passed. Eight timed switches each, on the page before and after these changes, landed within 3-700 ms on both, so the motion layer did not cause the miss.
 
   The first full invariants run on the final build failed one invariant, `buyer-count-kept-as-typed`, which showed that ui-2 was intended behaviour. After the revert, extremes.js was rerun and all 60 of its invariants pass.
+
+## Third round: data for the remaining judgment numbers, October 2026
+
+The owner asked: "now, see if there are any other datasets you can use to fit more parameters, and update all models and the code accordingly." In the same session they also asked: "in the opening animation during the solar system the camera goes to the left then back to the right for some reaosn. fix that. dont have it shake like that".
+
+### How it ran
+- **Research.** Four lanes searched for data behind every live judgment number, each with a different target:
+  - retention and recurring revenue;
+  - buyers and the price mechanics;
+  - the peer spreads, medians and size references;
+  - the interventions, the category formulas and the confidence label.
+
+  Each lane was followed by an adversarial verifier. The verifier re-read every figure from the downloaded files, recomputed every estimate with its own code, and gave a verdict per finding.
+- **Sources.** Only public copies were used: publishers' pages, government statistical agencies, a state franchise registry and the Internet Archive. No logins, paywalls or bot challenges were bypassed. For example, digitalcommons.pepperdine.edu sits behind a bot challenge, so the Pepperdine reports were read from the Internet Archive's copies, whose digests are recorded. Downloads were treated as untrusted data: they were read with `python3 -I`, and nothing downloaded was executed.
+- **Approach.** The lead from the second round was definitions. Many benchmarks had been left unshipped because the console never said what its sliders measure.
+- **Fits.** Two scripts are in `fit/` with their transcriptions in `fit/data_round3/` and their rows in `fit/README.md`:
+  - `round3_gap_axis.py`;
+  - `round3_peer.py`, which stops without writing if any of its 89 quoted figures differs from its local file.
+
+  Both reproduce their outputs byte for byte.
+
+### What was fitted
+| Was judgment | Now | Data | Tier |
+|---|---|---|---|
+| Pepperdine's valuation-gap buckets read as 10–50% over model value, the open >50% bucket at 100% | the gap as Pepperdine defines it, a share of the seller's asking price: the edges sit at 11.1, 25, 42.9, 66.7 and 100% over value (p/(1−p)); the open bucket at 200% (judgment) | Pepperdine Private Capital Markets reports 2017–2026, investment-bank survey (the definition is printed in the 2025 and 2026 reports; ten vintages pool within 0.013 of the shipped shares, which are kept) | aggregate |
+| customer retention, no stated definition | by customer count: of last year's customers, the share who bought again; stated on the slider, which now starts at 5% | — | definition |
+| retention: e-commerce 0.40, auto repair 0.58, restaurants 0.45 | 0.25 (SE 0.05), 0.45 (0.05), 0.27 (0.10) | Little Stream's Shopify study and Bluecore 2025; Auto Apps shop data; Bloom Intelligence 2025 (the middle of the range its figures support) | aggregate |
+| the MSPs' recurring share 0.72 | 0.42 (SE 0.066) | ScalePad 2025 and 2026, Datto 2019 | aggregate |
+| car-wash gross margin 0.70 | 0.80, flat (SE 0.054 at the sites' revenue, up to 0.14 at the curve's ends) | Tommy's Express franchise disclosures, Item 19 (536 site-years; 0.835 measured on the definition, shaded for formats) | aggregate |
+| the largest customer's median 0.16 everywhere | 0.14; manufacturing 0.19 (SE 0.02) | Value Builder's owner survey; Statistics Canada's Survey of Innovation | aggregate |
+| peer spreads of growth and the largest customer's share, 0.13 each | 0.16 (SE 0.027) and 0.18 (SE 0.02), the scales at which each clamped z-score has unit variance on its slider's range | Statistics Canada's Canadian Survey on Business Conditions 2023–25; Value Builder | aggregate |
+
+**Checked and kept**, each with its evidence recorded:
+- **Recorded on the page** (`peer_rec_ret.not_shipped`, `flags`, `definitions.rec_check`, `peer_sd.checks`):
+  - nine other retention medians;
+  - whether "recurring" means subscriptions only or anything under contract (the label is unchanged; the readings that would separate them are recorded);
+  - the other seven peer spreads;
+  - the owner-dependence and management-depth levels and reporting's line.
+- **Checked by the buyers-and-mechanics lane, recorded here:**
+  - **RHO_MAX.** It is a judgment cap. Any cap above 1.5 leaves the patient seller at the cap, and its texts no longer call it the edge of the data.
+  - **PEN_MAX.** An analog from Pepperdine's withdrawal ratios spans 0.15–0.59, so it does not identify the scale.
+  - **The $1M–$5M base-rate ramp.** Pepperdine's resolved close rates by band (0.57–0.66) give its direction only.
+  - **The strategic premium.** It trends down by 0.7 pt a year, and the shipped factors sit between the pooled and recent readings.
+  - **PHI, the search-fund window, the competition bounds and IND.buyers.** No number moves.
+  - **The MBO window's lower edge.** A new-ESOP size distribution (DOL Form 5500) gives about $1M as an industry-median reading of a proxy, not a fit.
+- **Checked by the interventions lane:** no intervention cost, duration or effect moves.
+  - The outreach cost's bridge from data-room fees does not measure the console's quantity.
+  - The SOPs floor's sources price small-scope packs.
+  - The growth share, the diversification floor, the channel, retention and contract costs, the durations, the effects and the confidence label's cut-offs all reproduce as checks.
+
+### What it changes on the console
+- **The price-gap penalty arrives later.**
+  - An ask of 1.3× value keeps 75% of the base closing rate, against 64% before; 1.5× keeps 62%, against 58%.
+  - The framework example's walk-away ask (75% kept, $900 a day) moves from 1.15× to 1.26×. At $150k, $400k, $1.45M and $5M of SDE it is 1.17×, 1.19×, 1.26× and 1.20×, against 1.13–1.15× before.
+  - The knife edge at which the cap wins moves to 78% kept at $900 a day, 77% with no delay cost and 83% at $4,000.
+  - The tail past the last knot decays from 200% over value, at half the old rate (k 0.000571).
+- **RHO_MAX's wording.** The cap stays 1.5× as a judgment. Its texts no longer call it "the highest ask the closing data resolve", because Pepperdine resolves gaps up to half the ask, 2× value.
+- **The walk-away note.** It now offers a range only for a real second peak: one with a dip of 0.01% of value, or one where the walk-away ask sits one 1% step of the share kept away. On the stated axis the framework example showed a 0.002% wiggle at 1.21×, which offered a range of 1.20–1.26× and hid the cap, 0.38% of value away.
+  - The fuzz suite found that the dip rule alone was too strict. An MSP's walk-away ask jumped from 1.34× to 1.45× between 98% and 99% kept, over a dip under 0.01% of value, and at 98% the note showed no range. A peak the ask jumps to now counts as real however shallow its dip, and a test pins the case.
+- **The peer table.**
+  - **At the medians.** A business entered at its industry's medians keeps its value exactly.
+  - **At the old medians.** One entered at the old hand-set medians moves:
+    - −0.9% in most industries, because 0.16 now sits above the largest-customer median;
+    - +6.7% to +9.6% where retention or the recurring share was set above the measured median (e-commerce, auto repair, restaurants, MSPs);
+    - −7.1% for car washes, whose 0.70 margin is now below the median;
+    - +1.2% in manufacturing.
+  - **The framework example.** Its value falls 0.9% ($4.09M to $4.05M). Its Omni score moves from 41 to 40, and its business score from 79 to 77. Its closing probability (68%) and its walk-away ask as a multiple of value (1.26×) are unchanged.
+  - **The weak restaurant (S-1)** scores 16 (7 before): its 45% retention now sits above its peers' 27%.
+- **Tallies.** The Data tab's aggregate count rises from 147 to 156, and judgment falls from 353 to 345. Both are computed from the tables:
+  - five IND cells leave the ledger: three retention cells, the MSPs' recurring share and the car-wash margin;
+  - so do two of PEER_SD's spreads and the largest-customer median;
+  - the flat car-wash margin curve counts as one number.
+
+### The opening film
+The camera's path ran Catmull-Rom tangents through its keyframes. Where a channel comes to rest these overshoot. As the camera reached the Sun its target carried on past it and came back: between film time 8.3 and 9.5 the Sun swung from 15% of the half-width left of centre to 13% right and back.
+
+The tangents are now monotone (PCHIP), so no channel overshoots a keyframe. During the dive, the target's progress toward the Sun follows the camera's distance, so the Sun's offset from the centre only shrinks (ab69492). Section 41 of model.test.js evaluates the path outside the browser. On the old page it finds 3,360 overshoots, and the Sun 0.22 of the half-width off centre after arrival.
+
+### Tests
+- **Section 42** of model.test.js covers the round:
+  - **Gap axis:** the knots from the stated edges, the penalty's continuity through the open knot, and the shares kept at 1.3× and 1.5× on both axes.
+  - **Peer table:** every new cell and its table, the restaurant rule, the slider's new range and its definition, car washes' per-knot SEs, the concentration median by industry, the two spreads and the sensitivity steps that read them.
+  - **Data tab:** a row for every fit, and no process notes in the embedded tables.
+- **Section 40's MODEL-1 pin** runs on a build with the old axis and the old peer comparison. The stated axis removed the skeptic's second peak, and without the golden-section search that build's note again says "no second peak". The live note is checked against a fine grid.
+- **Other re-pins.**
+  - The walk-away asks, the knife edges, the flip scenarios and the 28a margins.
+  - The median-business score pins (half pool 1–23, three quarters 16–41). The stored integration record is kept, as the Data tab says.
+  - The ledger counts.
+- **The invariant suites.** They read the live knots and the new retention range, and recount the new tables.
+
+- **Suites,** on the final build:
+
+  | Suite | Result |
+  |---|---|
+  | `node tests/model.test.js` | 7,549 pass (7,526 before; section 42 is new) |
+  | `node tests/fuzz.test.js 1500` | 179,746 checks pass |
+  | `node tests/invariants.test.js --browser` | 253 invariants pass: statics 57, identities 60, extremes 60, app 76 |
+  | `node tests/browser.inputs.js` | 15 checks pass |
+  | `node tests/browser.sweep.js` | 118 input states at 1440 and 390 px pass |
+
+  The gap-axis commit passed all 253 invariants on its own build.
+
+  The first full invariant run on the final build failed one check, `reset-restores-defaults`. It pinned the framework example's value at $4.09M, and the peer fits move it to $4.05M, as recorded above. The pin was updated, an identities state that typed the old value as its ask was moved to the new one, and both parts were rerun: all pass.

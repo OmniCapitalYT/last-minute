@@ -44,7 +44,7 @@ const U=(a,b)=>a+rnd()*(b-a);
 const logU=(lo,hi)=>Math.exp(Math.log(lo)+rnd()*(Math.log(hi)-Math.log(lo)));
 const INDS=Object.keys(A.IND), STS=[null,...Object.keys(A.MODELS.risk.state_effects)];
 const SEL={own:[.95,.72,.42,.14],mgt:[.08,.36,.66,.92],fin:[.14,.45,.74,.96]};          /* the rail's select options */
-const SL={grw:[-.25,.70],gm:[.12,.97],rec:[0,1],cc:[.01,.70],ret:[.45,.99],plt:[.05,.95]};   /* slider ranges; typed values are held to them */
+const SL={grw:[-.25,.70],gm:[.12,.97],rec:[0,1],cc:[.01,.70],ret:[.05,.99],plt:[.05,.95]};   /* slider ranges; typed values are held to them */
 const FR={own:[.02,.99],mgt:[.02,.99],fin:[.02,1]};                                        /* FIELD_RANGE: what interventions can produce */
 const sl=k=>{ const [a,b]=SL[k], u=rnd(); return u<.06?a:u<.12?b:U(a,b); };
 const typOf=s=>A.IND[s.ind].buyers||50;
@@ -341,7 +341,7 @@ for(let i=0;i<states.length;i++){
     let prev=-1, okB=true, atB=null; for(const b of pools){ const tb=prep({...s,buyers:b}), sb=A.businessScore(tb,A.model(tb),tb.rhoSell).score; if(sb<prev){okB=false; atB=atB||{b,prev,sb};} prev=sb; }
     ok("business-score-monotone-in-buyers",okB,()=>cx(s,atB));
     /* the proceeds optimum against the whole quality range */
-    const lo={...s,rec:0,cc:.7,ret:.45,plt:.95,grw:-.25,gm:.12,own:.95,mgt:.08,fin:.14}, hi={...s,rec:1,cc:.01,ret:.99,plt:.05,grw:.7,gm:.97,own:.14,mgt:.92,fin:.96};
+    const lo={...s,rec:0,cc:.7,ret:.05,plt:.95,grw:-.25,gm:.12,own:.95,mgt:.08,fin:.14}, hi={...s,rec:1,cc:.01,ret:.99,plt:.05,grw:.7,gm:.97,own:.14,mgt:.92,fin:.96};
     const qa=A.bestRatio(lo,0,0), qb=A.bestRatio(s,0,0), qc=A.bestRatio(hi,0,0);
     ok("proceeds-optimum-flat-in-quality",Math.abs(qc-qa)<.005&&qa<=qb+2e-4&&qb<=qc+2e-4,()=>cx(s,{worst:qa,actual:qb,best:qc}));
   }

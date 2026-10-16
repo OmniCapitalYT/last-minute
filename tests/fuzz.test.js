@@ -14,7 +14,7 @@ const ok=(c,name,ctx)=>{ checks++; if(!c){ (fails[name]=fails[name]||[]).push(ct
 function sample(){
   const rev=logU(1e4,5e9), ern=rev*(.005+rnd()*.915);
   const s={ind:pick(INDS),st:pick(STS),franchise:rnd()<.2,rev,ern,
-    grw:-.25+rnd()*.95, gm:.12+rnd()*.8, rec:rnd(), cc:.01+rnd()*.69, ret:.45+rnd()*.54, plt:.05+rnd()*.9,
+    grw:-.25+rnd()*.95, gm:.12+rnd()*.8, rec:rnd(), cc:.01+rnd()*.69, ret:.05+rnd()*.94, plt:.05+rnd()*.9,
     own:pick([.95,.72,.42,.14]), mgt:pick([.08,.36,.66,.92]), fin:pick([.14,.45,.74,.96]),
     yrs:1+Math.floor(rnd()*12), buyers:5+Math.floor(rnd()*596), budget:rnd()<.15?0:rev*.15*rnd(),
     lamT:Math.floor(rnd()*81)*50, theta:rnd(), rate:10.5};

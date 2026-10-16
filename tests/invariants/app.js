@@ -290,7 +290,7 @@ const STATES=[
   {name:"forced-seller",typed:{lam:"$4,000/day",th:"0%"},ask:1.3},
   {name:"patient-seller",typed:{lam:"none",th:"100"},ask:1.15},
   {name:"knife-edge-theta",typed:{th:"78.5"}},
-  {name:"worst-quality",sel:{i_own:"0.95",i_mgt:"0.08",i_fin:"0.14"},typed:{rec:"0",cc:"70",ret:"45",plt:"95",grw:"-25",gm:"12",yrs:"1"},ask:1.1},
+  {name:"worst-quality",sel:{i_own:"0.95",i_mgt:"0.08",i_fin:"0.14"},typed:{rec:"0",cc:"70",ret:"5",plt:"95",grw:"-25",gm:"12",yrs:"1"},ask:1.1},
   {name:"best-quality",sel:{i_own:"0.14",i_mgt:"0.92",i_fin:"0.96"},typed:{rec:"100",cc:"1",ret:"99",plt:"5",grw:"70",gm:"97",yrs:"12"},ask:.9},
   {name:"earnings-above-92pct",typed:{rev:"1M",ern:"5M"},ask:1.0},
   {name:"half-percent-margin",typed:{rev:"200M",ern:"1M"},ask:1.1},
@@ -324,16 +324,16 @@ function randomStates(n){
     const rev=Math.exp(Math.log(2e5)+rnd()*(Math.log(2e8)-Math.log(2e5))), ern=rev*(.03+rnd()*.5);
     out.push({name:"random-"+i,sel:{i_ind:pick(INDS),i_st:pick(STS),i_own:pick(["0.95","0.72","0.42","0.14"]),i_mgt:pick(["0.08","0.36","0.66","0.92"]),i_fin:pick(["0.14","0.45","0.74","0.96"])},
       fr:rnd()<.25,typed:{rev:String(Math.round(rev)),ern:String(Math.round(ern)),grw:String(Math.round(-25+rnd()*95)),gm:String(Math.round(12+rnd()*80)),
-        rec:String(Math.round(rnd()*100)),cc:String(Math.round(1+rnd()*69)),ret:String(Math.round(45+rnd()*54)),plt:String(Math.round(5+rnd()*90)),
+        rec:String(Math.round(rnd()*100)),cc:String(Math.round(1+rnd()*69)),ret:String(Math.round(5+rnd()*94)),plt:String(Math.round(5+rnd()*90)),
         yrs:String(1+Math.floor(rnd()*12)),buy:String(5+Math.floor(rnd()*596)),bud:rnd()<.15?"none":String(Math.round(rev*.15*rnd())),
         lam:String(Math.floor(rnd()*81)*50),th:String(Math.round(rnd()*100))},ask:+(Math.exp(Math.log(.3)+rnd()*Math.log(10))).toFixed(4)});
   }
   return out;
 }
 const BOXES={rev:{money:1,hard:[1e4,5e9]},ern:{money:1,hard:[1e3,1e10]},ask:{money:1,hard:[1e3,1e11]},bud:{money:1,hard:[0,1e9]},
-  grw:{sl:[-25,70],f:"grw",div:100},gm:{sl:[12,97],f:"gm",div:100},rec:{sl:[0,100],f:"rec",div:100},cc:{sl:[1,70],f:"cc",div:100},ret:{sl:[45,99],f:"ret",div:100},
+  grw:{sl:[-25,70],f:"grw",div:100},gm:{sl:[12,97],f:"gm",div:100},rec:{sl:[0,100],f:"rec",div:100},cc:{sl:[1,70],f:"cc",div:100},ret:{sl:[5,99],f:"ret",div:100},
   plt:{sl:[5,95],f:"plt",div:100},yrs:{sl:[1,12],f:"yrs",div:1},buy:{sl:[5,600],f:"buyers",div:1},lam:{sl:[0,4000],f:"lamT",div:1},th:{sl:[0,100],f:"theta",div:100}};
-const KEYSL={i_grw:["grw",-25,70,100],i_gm:["gm",12,97,100],i_rec:["rec",0,100,100],i_cc:["cc",1,70,100],i_ret:["ret",45,99,100],i_plt:["plt",5,95,100],
+const KEYSL={i_grw:["grw",-25,70,100],i_gm:["gm",12,97,100],i_rec:["rec",0,100,100],i_cc:["cc",1,70,100],i_ret:["ret",5,99,100],i_plt:["plt",5,95,100],
   i_yrs:["yrs",1,12,1],i_buy:["buyers",5,600,1],i_lam:["lamT",0,4000,1],i_th:["theta",0,100,100]};
 const DEF_UI={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,budget:1e5,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,lamT:900,theta:.75};
 /* what the page should hold after the entry, by its own rules */
@@ -795,7 +795,7 @@ function dataTabChecks(dataText,calibRows){
   const sent=`For the framework example (model value ${money(Vx)}) the median is ${t[0]} days at value, ${t[1]} at 1.2×, ${t[2]} at 1.5× and ${t[3]} at 2×.`;
   ok("data-tab-live-figures",dataText.replace(/\s+/g," ").includes(sent),()=>J({want:sent}));
   const D={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75}, lo={...D}, hi={...D};
-  const ends={rec:[0,1],own:[.14,.95],mgt:[.08,.92],cc:[.01,.70],fin:[.14,.96],grw:[-.25,.70],gm:[.12,.97],ret:[.45,.99],plt:[.05,.95]};
+  const ends={rec:[0,1],own:[.14,.95],mgt:[.08,.92],cc:[.01,.70],fin:[.14,.96],grw:[-.25,.70],gm:[.12,.97],ret:[.05,.99],plt:[.05,.95]};
   for(const k in ends){ const inv=k==="own"||k==="cc"||k==="plt"; lo[k]=inv?ends[k][1]:ends[k][0]; hi[k]=inv?ends[k][0]:ends[k][1]; }
   const rl=A.model(lo), rh=A.model(hi);
   const sw=`multiple from ${xx(rl.Mjudg)} to ${xx(rh.Mjudg)} on coefficients nobody had estimated; here the same sweep moves the console’s multiple from ${xx(rl.M)} to ${xx(rh.M)}: the fitted ${xx(rl.fv.mult)}, which the sliders do not touch, times a quality position of ×${rl.qFactor.toFixed(2)} to ×${rh.qFactor.toFixed(2)}`;
@@ -823,7 +823,8 @@ async function partB(){
   await settle(p,true);
   const snap=async()=>p.evaluate(pageSnap);
   const S0=await snap();                                    /* the page as loaded */
-  ok("reset-restores-defaults",Object.keys(DEF_UI).every(k=>S0.s[k]===DEF_UI[k])&&money(S0.r.V)==="$4.09M",()=>J({s:S0.s,V:S0.r.V}));
+  /* $4.05M since the third round's peer medians and spreads (the largest customer's median .14, its spread .18): $4.09M before */
+  ok("reset-restores-defaults",Object.keys(DEF_UI).every(k=>S0.s[k]===DEF_UI[k])&&money(S0.r.V)==="$4.05M",()=>J({s:S0.s,V:S0.r.V}));
   /* the Data tab's live figures, once */
   { const d=await p.evaluate(()=>({text:document.getElementById("view-data").textContent,attrs:[...document.querySelectorAll("#view-data [title],#view-data [aria-label]")].map(e=>(e.getAttribute("title")||"")+(e.getAttribute("aria-label")||"")).join(" | "),
       calib:[...document.querySelectorAll("#calib .chk")].map(r=>{ const v=r.querySelector(":scope>span.n:not(.muted)"); return v?v.textContent.trim():null; })}));
