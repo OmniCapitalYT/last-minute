@@ -16,7 +16,8 @@ function load(overrides){
   fitTiming,bestRatio,optimize,applyAll,interventionTable,sensitivity,MODELS,IND,REF_RATIO,
   RHO_MAX,AMAX,fanRatio,fanNodes,softMin,gapPenalty,sizeRefs,sbaRate,jobsFor,typMargin,QW,buyerMix,INTERV,costOf,daysOf,IND2NAICS,gmSalary,
   timeMult,T_ELAST,T_SMOOTH,optNote,optCardNote,businessScore,sdeEbitdaWedge,naicsFor,PEN_MAX,GAP_TAIL_K,GAP_CDF,money,ENG_SHARE,COMP_K,COMP_H,THIN_W,capOne,BUYERS,PHI,FAN_S,qualityZ,jobsKnots,moneyIn,refDistAt,nqnt,
-  peerMedians,peerGm,gmDefinition,PEER_SD,SIZE_SD,compsFor,FITTED_CELLS,COMPS_MEAN,confidenceOf,tailAt,growthFloor,IVC,FAN};`,ctx);
+  peerMedians,peerGm,gmDefinition,PEER_SD,SIZE_SD,compsFor,FITTED_CELLS,COMPS_MEAN,confidenceOf,tailAt,growthFloor,IVC,FAN,
+  SBA_COO,DSC_TYPES,FIN_DEFAULTS,annualPayment,sbaRateLoan,debtCheck,maxFinanced,RECAST_ROWS,RECAST_ENTITY,RECAST_WEIGHTS,recastSDE,DEAL_DONE,dealPredict,daysBetween,logSummary,CALIB_K,fitPenaltyScale,olsFit,DEAL_MIN,dealsStats,reportData,reportHTML,hEsc,RP_CSS,pc,ordn};`,ctx);
   return ctx.API;
 }
 module.exports=load();

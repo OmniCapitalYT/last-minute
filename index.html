@@ -1606,6 +1606,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
 <nav class="nav">
   <button class="tab on" data-v="console">Console</button>
   <button class="tab" data-v="data">Data &amp; parameters</button>
+  <button class="tab" data-v="deals">Deals</button>
 </nav>
 
 <div id="view-console">
@@ -1625,6 +1626,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
         <input type="range" id="i_rev" min="0" max="1000" step="1" value="552"></div>
       <div class="f"><div class="lab"><label for="i_ern" title="Seller's discretionary earnings: EBITDA plus one owner's compensation and perks. The value equation is fitted on SDE, so enter SDE; entering EBITDA understates value by roughly a quarter.">Normalized earnings (SDE)</label><input class="v" id="v_ern" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Normalized earnings (SDE: EBITDA plus owner compensation), exact value"></div>
         <input type="range" id="i_ern" min="0" max="1000" step="1" value="499"></div>
+      <button class="linkish" id="r_recast" type="button">Build SDE from tax returns or a P&amp;L</button>
       <div class="f"><div class="lab"><label for="i_ask">Asking price</label><input class="v" id="v_ask" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Asking price, exact value"></div>
         <input type="range" id="i_ask" min="0" max="1000" step="1" value="466">
         <div class="vx" id="vx_ask"></div></div>
@@ -1690,6 +1692,20 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
 
   <!-- ============ OUTPUT COLUMN ============ -->
   <div>
+
+    <!-- broker tools: the deal in the console, the worksheet, the financing check, the report and saving -->
+    <div class="tools" id="tools">
+      <div class="tools-deal" id="tl_deal"><span class="tl-k">Unsaved valuation</span></div>
+      <div class="tools-acts">
+        <button class="btn tool" id="tl_recast" type="button">Build SDE from financials</button>
+        <button class="btn tool" id="tl_fin" type="button">Financing check</button>
+        <button class="btn tool" id="tl_report" type="button">Seller report</button>
+        <button class="btn tool prime" id="tl_save" type="button">Save deal</button>
+        <button class="btn tool" id="tl_saveas" type="button" hidden>Save as new</button>
+      </div>
+      <p class="tools-msg" id="tl_msg" role="status" aria-live="polite"></p>
+      <p class="tools-cal" id="tl_cal" hidden></p>
+    </div>
 
     <div class="panel flush">
       <div class="hero">
@@ -1906,6 +1922,38 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       </div>
     </section>
 
+    <!-- financing check (its inputs redraw this section only: data-norender) -->
+    <section class="sec" id="sec_fin" data-norender><div class="sec-head">
+      <svg class="sec-glyph" viewBox="0 0 20 20"><rect x="2.5" y="5" width="15" height="10" rx="2" fill="none" stroke="#4da3ff" stroke-opacity=".5"/><circle cx="10" cy="10" r="2.6" fill="#9ecbff"/><path d="M2.5 8h15" stroke="#4da3ff" stroke-opacity=".3"/></svg>
+      <h2>Financing check</h2><span class="ref">SBA SOP 50 10 8.1</span></div>
+      <div class="panel">
+        <p class="lede">Most buyers of a business this size borrow under SBA&rsquo;s 7(a) program, and the lender&rsquo;s first
+          test is <b>debt service coverage</b>: the cash the business throws off after the new owner&rsquo;s pay and its capital
+          spending, over the payments on all the acquisition debt. SBA&rsquo;s rules for a change of ownership, in force for
+          loans numbered from October 1, 2026, set the floor at <b>1.25&times;</b> for a buyer new to the business and 1.15&times;
+          for an established owner expanding, on the seller&rsquo;s historical earnings, not projections. When an ask fails it,
+          the buyer needs more cash, a larger seller note on full standby, or a lower price.</p>
+        <div class="fin-in" id="fin_in">
+          <label class="fin-f wide">Transaction<select id="f_type"></select></label>
+          <label class="fin-f" title="Buyer cash, as a share of the price plus working capital and closing costs">Buyer cash<input type="text" class="fin-v" id="f_cash" inputmode="decimal" autocomplete="off" spellcheck="false" value="10%"></label>
+          <label class="fin-f" title="The seller note, as a share of the price">Seller note<input type="text" class="fin-v" id="f_note" inputmode="decimal" autocomplete="off" spellcheck="false" value="5%"></label>
+          <label class="fin-f">Note rate<input type="text" class="fin-v" id="f_nrate" inputmode="decimal" autocomplete="off" spellcheck="false" value="6%"></label>
+          <label class="fin-f">Note term<input type="text" class="fin-v" id="f_nyrs" inputmode="decimal" autocomplete="off" spellcheck="false" value="10 years"></label>
+          <label class="fin-f">Working capital and closing costs<input type="text" class="fin-v" id="f_extra" inputmode="decimal" autocomplete="off" spellcheck="false" value="none"></label>
+          <label class="fin-f">Capital spending a year<input type="text" class="fin-v" id="f_capex" inputmode="decimal" autocomplete="off" spellcheck="false" value="none"></label>
+          <label class="fin-f wide">New owner&rsquo;s pay a year<input type="text" class="fin-v" id="f_draw" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="market pay for a general manager"></label>
+          <label class="fin-chk"><input type="checkbox" id="f_standby"> Seller note on full standby: no payments while the SBA loan is outstanding, and it counts toward the buyer&rsquo;s equity</label>
+        </div>
+        <div class="fin-out">
+          <div class="tw"><table id="fintbl"></table></div>
+          <div class="fin-max" id="fin_max"></div>
+        </div>
+        <ul class="note fin-notes" id="fin_note"></ul>
+        <div class="eq"><div class="lbl">Debt service coverage on SBA&rsquo;s adjusted basis: SDE less the new owner&rsquo;s pay and capital spending, over a year of payments on the acquisition debt</div>
+          <div id="eq_f"></div><div class="sub" id="eq_fs"></div></div>
+      </div>
+    </section>
+
     <!-- categories + scenarios + confidence -->
     <div class="interlude ringworld" aria-hidden="true"><canvas class="rw"></canvas></div>
 
@@ -1954,10 +2002,63 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
   <p class="lede" style="margin:6px 0 20px;max-width:86ch">Every number the console produces carries one of three badges. <b style="color:#5ee0a8">Fitted</b> means a regression was run against observed transaction outcomes and the error is measured. <b style="color:#ffc640">Aggregate</b> means a published summary statistic was read off, so the number is real but can only respond to what the publisher tabulated. <b style="color:#ff8e7a">Judgment</b> means a person picked it and no data constrains it. These tables are generated from the live model constants, so they cannot drift out of step with what the console actually runs.</p>
   <div id="dataviews"></div>
 </div>
+<div id="view-deals" hidden data-norender>
+  <p class="lede deals-lede">Save each business you value, record what happened when it went to market, and the console
+    compares your deals with its own predictions: what your closed deals sold for against the price it expected, how
+    often your listings closed against the odds it gave, and how long they took. With enough deals the same records fit
+    the two judgment numbers that move its advice most: how hard pricing above value cuts the chance of a sale, and how much
+    each quality factor is worth. Deals are kept in this browser; export them to keep a copy or move them.</p>
+  <div class="deals-bar">
+    <button class="btn tool prime" id="dl_new" type="button">Save the console as a new deal</button>
+    <button class="btn tool" id="dl_json" type="button">Export (JSON)</button>
+    <button class="btn tool" id="dl_csv" type="button">Export (CSV)</button>
+    <button class="btn tool" id="dl_imp" type="button">Import</button>
+    <input type="file" id="dl_file" accept=".json,application/json" hidden>
+    <p class="tools-msg" id="dl_msg" role="status" aria-live="polite"></p>
+  </div>
+  <section class="sec"><div class="sec-head"><h2>Your deals</h2></div>
+    <div class="panel"><div class="tw"><table id="dl_tbl" class="cards"></table></div><p class="note" id="dl_store"></p></div></section>
+  <section class="sec" id="dl_edit_sec" hidden><div class="sec-head"><h2 id="dl_edit_t">Deal</h2></div>
+    <div class="panel" id="dl_edit"></div></section>
+  <section class="sec"><div class="sec-head"><h2>Your track record against the model</h2></div>
+    <div class="panel" id="dl_track"></div></section>
+  <section class="sec"><div class="sec-head"><h2>Toward fitting the judgment numbers</h2></div>
+    <div class="panel" id="dl_fit"></div></section>
+</div>
 <footer id="foot"></footer>
 <div class="horizon" aria-hidden="true">
   <span class="sunrise"></span><span class="planet"></span>
 </div>
+</div>
+
+<!-- broker tools: the add-back worksheet and the seller report -->
+<div class="ovl" id="recast" hidden data-norender role="dialog" aria-modal="true" aria-labelledby="rc_t">
+  <div class="ovl-card rc-card">
+    <div class="ovl-head"><h2 id="rc_t">Build SDE from the financials</h2>
+      <button class="btn tool" id="rc_close" type="button">Close</button></div>
+    <p class="ovl-lede">Enter up to three years from the tax returns or income statements, most recent first; a blank counts as
+      zero, and a figure in parentheses is a negative (a &ldquo;Less&rdquo; line always deducts). Seller&rsquo;s discretionary earnings (SDE) is what one owner-operator takes out
+      of the business: income before income taxes, plus one working owner&rsquo;s pay and perks, depreciation, interest and one-time or
+      personal items, less income that will not continue. Buyers and lenders ask for documentation of every add-back.</p>
+    <div class="rc-ctl"><label>Source<select id="rc_ent"></select></label><label>Basis<select id="rc_wt"></select></label></div>
+    <div class="tw"><table class="rc-t" id="rc_tbl"></table></div>
+    <div class="rc-sum" id="rc_sum"></div>
+    <div class="ovl-acts"><label class="fin-chk"><input type="checkbox" id="rc_grw" checked> Also set revenue growth from the last two years</label>
+      <button class="btn tool" id="rc_clear" type="button">Clear</button>
+      <button class="btn tool prime" id="rc_use" type="button">Use in the console</button></div>
+  </div>
+</div>
+<div class="ovl rp-ovl" id="report" hidden data-norender role="dialog" aria-modal="true" aria-label="Seller report">
+  <div class="rp-bar">
+    <label>Business<input type="text" id="rp_biz" autocomplete="off" maxlength="120"></label>
+    <label>Prepared for<input type="text" id="rp_for" autocomplete="off" maxlength="120"></label>
+    <label>Broker<input type="text" id="rp_broker" autocomplete="off" maxlength="120"></label>
+    <label>Firm<input type="text" id="rp_firm" autocomplete="off" maxlength="120"></label>
+    <span class="rp-acts"><button class="btn tool prime" id="rp_print" type="button">Print or save as PDF</button>
+      <button class="btn tool" id="rp_dl" type="button">Download (.html)</button>
+      <button class="btn tool" id="rp_close" type="button">Close</button></span>
+  </div>
+  <div class="rp-wrap"><div class="rp-paper" id="rp_paper"></div></div>
 </div>
 
 <script>
@@ -4253,6 +4354,317 @@ expected value ${money(b.EV)}</title>
   $("starmap").innerHTML=g;
 }
 
+/* ============================================================
+   BROKER TOOLS (October 2026): the add-back worksheet, the debt-coverage check, the seller report and what a
+   broker's own deals say about the model. Everything here is a pure function of its inputs and of model(); the
+   page's dialogs, panels and the Deals tab (end of this script) only read and write it.
+   ============================================================ */
+/* SBA's rules for a 7(a) change of ownership, as published (rules, not fitted numbers): SOP 50 10 8.1, Appendix 15,
+   for applications given an SBA loan number on or after October 1, 2026. Minimum debt service coverage by transaction
+   type, on the last fiscal year or the average of the last two, historical or adjusted (Para. C.2.b); at least 10%
+   equity, of total project cost (of the price for an owner buyout), of which seller debt on full standby for the life
+   of the loan may supply at most half (Equity Requirements); amortization of at most 10 years without real estate (Loan
+   Terms and Conditions); the $5,000,000 maximum Standard 7(a) loan; all acquisition debt, with any seller note not on
+   full standby, at most the business valuation (Change of Ownership Requirements); the lender may value a business
+   priced at $350,000 or less itself (Para. C.1.a), and needs a Quality of Earnings report from a $3M price, except for an
+   owner buyout (Quality of Earnings). */
+const SBA_COO={sop:"SBA SOP 50 10 8.1, Appendix 15 (7(a) changes of ownership), effective October 1, 2026",
+  dsc:{initial:1.25,expansion:1.15,buyout:1.25}, equity:.10, standbyShare:.5, amortYears:10, maxLoan:5e6,
+  ownValuationMax:350000, qoeMin:3e6};
+const DSC_TYPES={initial:"Initial acquisition: a buyer new to this business",
+  expansion:"Business expansion: an owner of a business in operation 2+ years buys this one outright",
+  buyout:"Owner buyout: a partner or an employee buys out the owner"};
+/* the structure the check starts from: SBA's minimum 10% buyer cash, a 5% seller note at 6% over 10 years paid
+   alongside the loan (not on standby), and an 85% SBA loan, the split the survival-risk model already assumes. The
+   note's size, rate and term are conventions (judgment); the new owner's pay defaults to a general manager's market
+   pay for this industry and size (BLS OEWS, fitted: gmSalary); capital spending is the broker's to enter. */
+const FIN_DEFAULTS={type:"initial",cash:.10,note:.05,noteRate:6,noteYears:10,standby:false,extra:0,capex:0,draw:null};
+/* annual debt service of a fully amortizing loan with monthly payments (rate in percent a year) */
+function annualPayment(P,rate,years){
+  if(!(P>0)) return 0;
+  const m=rate/1200, n=Math.max(1,Math.round(years*12));
+  return 12*(m>0?P*m/(1-Math.pow(1+m,-n)):P/n);
+}
+/* the SBA rate on a loan of this size: today's prime plus the fitted spread (MODELS.fitted.sba_rate), read on the loan
+   itself; sbaRate(price) reads the same table at the 85% loan the risk model assumes */
+function sbaRateLoan(loan){ const R=MODELS.fitted.sba_rate; return R.prime+lerpKnots(Math.log(Math.max(loan,1e4)),R.spread_knots); }
+/* SBA's adjusted coverage for a change of ownership: what the business earns before interest, taxes, depreciation,
+   amortization and the owner's pay (SDE), less the pay the new owner needs and the capital spending the business must
+   fund, over every payment on the acquisition debt (the SBA loan, and a seller note unless it is on full standby).
+   Above the 7(a) maximum the rest is taken as more buyer cash. V, when given, stands in for the business valuation the
+   debt may not exceed. */
+function debtCheck(s,price,f,V){
+  f={...FIN_DEFAULTS,...(f||{})};
+  price=Math.max(price,0);
+  const project=price+Math.max(0,f.extra||0), note=Math.max(0,f.note)*price;
+  let cash=Math.max(0,f.cash)*project, loan=Math.max(0,project-cash-note), over=0;
+  if(loan>SBA_COO.maxLoan){ over=loan-SBA_COO.maxLoan; loan=SBA_COO.maxLoan; cash+=over; }
+  const rate=sbaRateLoan(loan), sbaPay=annualPayment(loan,rate,SBA_COO.amortYears);
+  const notePay=f.standby?0:annualPayment(note,f.noteRate,f.noteYears);
+  const draw=f.draw===null||f.draw===undefined||!isFinite(f.draw)?gmSalary(s):Math.max(0,f.draw);
+  const capex=Math.max(0,f.capex||0), cf=s.ern-draw-capex, ds=sbaPay+notePay;
+  const dscr=ds>0?cf/ds:Infinity, min=SBA_COO.dsc[f.type]||SBA_COO.dsc.initial;
+  /* an owner buyout's equity is figured on the price, every other type's on the whole project */
+  const equityNeed=SBA_COO.equity*(f.type==="buyout"?price:project);
+  const standbyCredit=f.standby?Math.min(note,SBA_COO.standbyShare*equityNeed):0;
+  const equityIn=cash+standbyCredit, debt=loan+(f.standby?0:note);
+  return {price,project,cash,note,loan,over,rate,sbaPay,notePay,ds,draw,drawMarket:!(f.draw!==null&&f.draw!==undefined&&isFinite(f.draw)),
+    capex,cf,dscr,min,ok:dscr>=min,equityNeed,equityIn,equityOK:equityIn>=equityNeed*(1-1e-9),debt,
+    debtOverValue:V>0&&debt>V*(1+1e-9),qoe:price>=SBA_COO.qoeMin&&f.type!=="buyout",ownValuation:price<=SBA_COO.ownValuationMax,
+    monthly:ds/12,type:f.type,standby:!!f.standby};
+}
+/* the highest price this structure finances at the coverage target (the SBA minimum for the transaction type unless
+   another is given). Debt service rises with the price up to the 7(a) maximum loan; past it the rest is buyer cash, so
+   coverage stops falling and the cap, not coverage, binds: capped is then true and the price is where the loan
+   reaches the cap. 0 when the business cannot cover even a token loan; noLoan when cash and the note pay for it all. */
+function maxFinanced(s,f,target){
+  f={...FIN_DEFAULTS,...(f||{})};
+  const t=target||SBA_COO.dsc[f.type]||SBA_COO.dsc.initial, cov=p=>debtCheck(s,p,f).dscr;
+  const cash=Math.max(0,f.cash), share=1-cash-Math.max(0,f.note), extra=Math.max(0,f.extra||0);
+  if(share<.01) return {price:0,capped:false,target:t,noLoan:true};
+  /* the price at which the loan reaches the 7(a) maximum: (p + extra)(1 - cash) - note p = maxLoan */
+  const pCap=Math.max(1e3,(SBA_COO.maxLoan-extra*(1-cash))/share);
+  if(!(cov(1e3)>=t)) return {price:0,capped:false,target:t};
+  if(cov(pCap)>=t) return {price:pCap,capped:true,target:t};
+  let lo=1e3, hi=pCap;
+  for(let i=0;i<70;i++){ const m=Math.sqrt(lo*hi); if(cov(m)>=t) lo=m; else hi=m; }
+  return {price:lo,capped:false,target:t};
+}
+
+/* The add-back worksheet: seller's discretionary earnings rebuilt from a tax return or an income statement, one year
+   per column (most recent first). SDE = income before income taxes, plus one working owner's pay with its payroll taxes
+   and perks, depreciation and amortization, interest, and one-time, personal or above-market items, less non-operating
+   income and the pay needed to replace any other working owner at market. A blank is zero. */
+const RECAST_ROWS=[
+  {k:"rev",   n:"Revenue",                                                     sg:0, grp:"base"},
+  {k:"ni",    n:"Income before income taxes",                                 sg:1, grp:"base"},
+  {k:"owner", n:"One working owner's salary or wages",                        sg:1, grp:"owner"},
+  {k:"ptax",  n:"Payroll taxes on that pay",                                  sg:1, grp:"owner"},
+  {k:"perks", n:"That owner's benefits and perks (health insurance, retirement, vehicle, phone)", sg:1, grp:"owner"},
+  {k:"dep",   n:"Depreciation and amortization",                              sg:1, grp:"noncash"},
+  {k:"int",   n:"Interest expense",                                           sg:1, grp:"fin"},
+  {k:"once",  n:"One-time or non-recurring expenses",                         sg:1, grp:"disc"},
+  {k:"pers",  n:"Personal or discretionary expenses run through the business", sg:1, grp:"disc"},
+  {k:"rent",  n:"Rent above market paid to an owner-related landlord (negative if below market)", sg:1, grp:"disc"},
+  {k:"oth",   n:"Other add-backs",                                            sg:1, grp:"disc"},
+  {k:"nonop", n:"Non-operating or one-time income (interest income, gains on asset sales, relief grants)", sg:-1, grp:"less"},
+  {k:"xowner",n:"Pay needed to bring any other working owner to market",       sg:-1, grp:"less"}];
+/* where each line is on the forms, by name (line numbers move between years); a sole proprietor's pay is the net
+   profit itself, so the owner's pay line stays blank there */
+const RECAST_ENTITY={
+  scorp:{n:"S corporation (Form 1120-S)",src:"Form 1120-S returns",ni:"Ordinary business income (loss)",owner:"Compensation of officers (one working owner's share)",dep:"Depreciation",int:"Interest"},
+  ccorp:{n:"C corporation (Form 1120)",src:"Form 1120 returns",ni:"Taxable income before net operating loss deduction and special deductions",owner:"Compensation of officers (one working owner's share)",dep:"Depreciation",int:"Interest"},
+  partnership:{n:"Partnership or multi-member LLC (Form 1065)",src:"Form 1065 returns",ni:"Ordinary business income (loss)",owner:"Guaranteed payments to partners (one working partner's share)",dep:"Depreciation",int:"Interest"},
+  schc:{n:"Sole proprietor or single-member LLC (Schedule C)",src:"Schedule C returns",ni:"Net profit or (loss)",owner:"Leave blank: the owner's pay is the net profit",dep:"Depreciation and section 179 expense deduction",int:"Interest (mortgage and other)"},
+  pl:{n:"Income statement (P&L)",src:"income statements",ni:"Net income before income taxes",owner:"Owner's salary or draw recorded as an expense",dep:"Depreciation and amortization",int:"Interest expense"}};
+const RECAST_WEIGHTS={latest:"Most recent year",w321:"Weighted 3:2:1, most recent heaviest",avg:"Average of the years entered"};
+function recastSDE(ws){
+  const W={entity:"scorp",weight:"latest",years:[],...(ws||{})};
+  const num=v=>{ const x=typeof v==="number"?v:parseFloat(v); return isFinite(x)?x:0; };
+  const yrs=[0,1,2].map(i=>{
+    const y=(W.years||[])[i]||{}, v=k=>num(y[k]), out={rev:v("rev"),ni:v("ni"),owner:0,noncash:0,fin:0,disc:0,less:0};
+    /* a deduction row always deducts: "(12,000)" typed there means less 12,000, not plus */
+    for(const R of RECAST_ROWS) if(R.grp!=="base") out[R.grp]+=R.sg<0?-Math.abs(v(R.k)):v(R.k);
+    out.add=out.owner+out.noncash+out.fin+out.disc; out.sde=out.ni+out.add+out.less;
+    out.has=RECAST_ROWS.some(R=>y[R.k]!==undefined&&y[R.k]!==null&&y[R.k]!==""&&isFinite(parseFloat(y[R.k])));
+    return out; });
+  /* the years entered, by column: "latest" reads the most recent of them, the others weight by column */
+  const use=yrs.map((y,i)=>({y,i})).filter(o=>o.y.has), wts=W.weight==="w321"?[3,2,1]:W.weight==="avg"?[1,1,1]:null;
+  const pick=k=>{ if(!use.length) return 0; if(!wts) return use[0].y[k];
+    let a=0, sw=0; for(const o of use){ a+=wts[o.i]*o.y[k]; sw+=wts[o.i]; } return a/sw; };
+  const sde=pick("sde"), rev=pick("rev"), disc=pick("disc"), ni=pick("ni"), owner=pick("owner");
+  const r0=yrs[0].has?yrs[0].rev:0, r1=yrs[1].has?yrs[1].rev:0;
+  const flags=[];
+  if(use.length&&sde<=0) flags.push("sde_nonpositive");
+  if(sde>0&&disc/sde>.15) flags.push("heavy_discretionary");
+  if(use.length>1){ const a=use[0].y.sde, b=use[1].y.sde; if(b>0&&a<b*.85) flags.push("sde_falling"); }
+  if(W.entity==="schc"&&yrs.some(y=>y.has&&y.owner>0)) flags.push("schc_owner_pay");
+  return {years:yrs,n:use.length,sde,rev,ni,owner,disc,addShare:sde>0?(sde-ni)/sde:null,discShare:sde>0?disc/sde:null,
+    margin:rev>0?sde/rev:null,grw:r0>0&&r1>0?r0/r1-1:null,weight:W.weight,entity:W.entity,flags};
+}
+
+/* A broker's own deals against the model. A saved deal holds the console's inputs and, as the deal moves, its
+   listing price and date and its outcome. dealPredict runs today's model at the price it was listed at, so the
+   comparison is always with the model as it now stands. */
+const DEAL_DONE=["closed","withdrawn","expired"];
+function dealPredict(d){
+  const I=d.inputs||{}, s={...I,ask:d.listPrice>0?d.listPrice:I.ask};
+  const r=model(s), b=Math.min(.95,r.fc.base*r.thinF);
+  const L=GAP_CDF.g[GAP_CDF.g.length-1], g=r.fc.gap;
+  return {s,V:r.V,point:r.fv.point,priceMed:r.Vreal,pc:r.PC,b,gap:g,F:g>0&&g<=L?gapPenalty(g)/PEN_MAX:g>L?null:0,tMed:r.tMed,
+    z:Object.fromEntries(MODELS.value.quality_band.dimensions.map(k=>[k,(k==="own"||k==="cc"||k==="plt"?-1:1)*clamp(r.z[k],-3.2,3.2)]))};
+}
+/* days from one ISO date to another (null unless both parse) */
+const daysBetween=(a,b)=>{ const t=x=>Date.parse(x); return isFinite(t(a))&&isFinite(t(b))?(t(b)-t(a))/864e5:null; };
+/* mean, its SE and a 90% interval of a sample of logs, read back as a factor; shrunk toward 1 with the weight of K
+   deals (K = 10, judgment: a prior as strong as ten deals) for the opt-in track-record line */
+const CALIB_K=10;
+function logSummary(x){
+  const n=x.length; if(!n) return {n:0};
+  const m=x.reduce((a,v)=>a+v,0)/n, sd=n>1?Math.sqrt(x.reduce((a,v)=>a+(v-m)*(v-m),0)/(n-1)):null, se=sd!==null?sd/Math.sqrt(n):null;
+  return {n,mean:m,sd,se,factor:Math.exp(m),lo:se!==null?Math.exp(m-1.645*se):null,hi:se!==null?Math.exp(m+1.645*se):null,
+    shrunk:Math.exp(m*n/(n+CALIB_K))};
+}
+/* the price-gap penalty's scale fitted to finished listings: P(close) = b (1 - pen F(gap)), b the base rate times the
+   thin-pool factor and F the price-killed share at the listing's gap (Pepperdine), by maximum likelihood with its SE
+   from the curvature. Listings asked at or below value carry no information about pen and only enter through b. */
+function fitPenaltyScale(obs){
+  const o=obs.filter(x=>x.F!==null&&x.F!==undefined&&isFinite(x.b));
+  const ll=pen=>o.reduce((a,x)=>{ const p=clamp(x.b*(1-pen*x.F),1e-6,1-1e-6); return a+(x.y?Math.log(p):Math.log(1-p)); },0);
+  let a=0, b=.99, c=b-.618034*(b-a), d=a+.618034*(b-a);
+  for(let i=0;i<80;i++){ if(ll(c)>ll(d)) b=d; else a=c; c=b-.618034*(b-a); d=a+.618034*(b-a); }
+  const pen=(a+b)/2, h=1e-3, curv=(ll(pen+h)-2*ll(pen)+ll(pen-h))/(h*h);
+  return {pen,se:curv<0?1/Math.sqrt(-curv):null,n:o.length,nAbove:o.filter(x=>x.F>.05).length};
+}
+/* least squares with SEs (normal equations, Gauss-Jordan); X rows include the intercept */
+function olsFit(X,y){
+  const n=X.length, p=X[0].length, A=[...Array(p)].map((_,i)=>[...Array(p)].map((_,j)=>X.reduce((s,r)=>s+r[i]*r[j],0)));
+  const inv=A.map((r,i)=>[...r,...r.map((_,j)=>i===j?1:0)]);
+  for(let c=0;c<p;c++){ let pv=c; for(let r=c+1;r<p;r++) if(Math.abs(inv[r][c])>Math.abs(inv[pv][c])) pv=r;
+    if(Math.abs(inv[pv][c])<1e-12) return null; [inv[c],inv[pv]]=[inv[pv],inv[c]];
+    const d=inv[c][c]; for(let j=0;j<2*p;j++) inv[c][j]/=d;
+    for(let r=0;r<p;r++) if(r!==c){ const f=inv[r][c]; for(let j=0;j<2*p;j++) inv[r][j]-=f*inv[c][j]; } }
+  const Ai=inv.map(r=>r.slice(p)), Xy=[...Array(p)].map((_,i)=>X.reduce((s,r,k)=>s+r[i]*y[k],0));
+  const beta=Ai.map(r=>r.reduce((s,v,j)=>s+v*Xy[j],0));
+  const res=y.map((v,k)=>v-X[k].reduce((s,x,j)=>s+x*beta[j],0)), s2=res.reduce((a,v)=>a+v*v,0)/Math.max(1,n-p);
+  return {beta,se:Ai.map((r,i)=>Math.sqrt(Math.max(0,r[i]*s2))),s2,n};
+}
+/* the minimum deals before each comparison is shown: prices, timing and the close rate are averages, read from a few
+   deals with wide intervals; the penalty scale needs listings priced above value; the nine quality effects need many
+   closed deals (ten coefficients) */
+const DEAL_MIN={price:3,time:3,close:5,pen:20,penAbove:5,quality:60};
+function dealsStats(deals){
+  const D=(deals||[]).filter(d=>d&&d.inputs&&IND[d.inputs.ind]), P=new Map(D.map(d=>[d,dealPredict(d)]));
+  const closed=D.filter(d=>d.status==="closed"&&d.salePrice>0), done=D.filter(d=>DEAL_DONE.includes(d.status));
+  const price=logSummary(closed.map(d=>Math.log(d.salePrice/P.get(d).priceMed)));
+  const tl=closed.map(d=>({d,t:daysBetween(d.listDate,d.closeDate)})).filter(o=>o.t>0).map(o=>Math.log(o.t/P.get(o.d).tMed));
+  const time=logSummary(tl);
+  const ys=done.map(d=>d.status==="closed"?1:0), ps=done.map(d=>P.get(d).pc), n=done.length;
+  const close=n?{n,obs:ys.reduce((a,v)=>a+v,0)/n,pred:ps.reduce((a,v)=>a+v,0)/n,
+    se:Math.sqrt(ps.reduce((a,p)=>a+p*(1-p),0))/n}:{n:0};
+  const pen=fitPenaltyScale(done.map(d=>({y:d.status==="closed"?1:0,b:P.get(d).b,F:P.get(d).F})));
+  pen.ready=pen.n>=DEAL_MIN.pen&&pen.nAbove>=DEAL_MIN.penAbove;
+  const dims=MODELS.value.quality_band.dimensions, qd=closed.filter(d=>P.get(d).point>0);
+  let quality={n:qd.length,ready:qd.length>=DEAL_MIN.quality};
+  if(quality.ready){ const fit=olsFit(qd.map(d=>[1,...dims.map(k=>P.get(d).z[k])]),qd.map(d=>Math.log(d.salePrice/P.get(d).point)));
+    if(fit) quality={...quality,dims,beta:fit.beta.slice(1),se:fit.se.slice(1)}; else quality.ready=false; }
+  return {n:D.length,closed:closed.length,done:n,price,time,close,pen,quality,pred:P};
+}
+
+/* ---- the seller report: its figures (reportData) and its page (reportHTML) ----
+   One page for the seller: what the business is worth and how sure that is, what to ask under each goal and what
+   each ask means for the odds, timeline and proceeds, what a buyer's lender will see, what moves the value and what
+   is worth fixing first, and where every figure comes from. */
+function reportData(s,opt){
+  opt=opt||{};
+  const r=model(s), V=r.V;
+  /* the render's own optima when it has them (STATE.s carries both), else solved here */
+  const rhoSell=s.rhoSell>0?s.rhoSell:bestRatio(s,0,0), rhoWalk=s.optRho>0?s.optRho:bestRatio(s,s.theta,s.lamT);
+  const at=a=>{ const x=model({...s,ask:a}); return {ask:a,ratio:a/V,pc:x.PC,tMed:x.tMed,ev:x.EVp,price:x.Vreal,lo:x.q(.10),hi:x.q(.90),
+    cash:x.cashShare,fin:debtCheck(s,a,opt.fin,V)}; };
+  const sell=at(V*rhoSell), walk=at(V*rhoWalk), cur=at(s.ask);
+  const sens=sensitivity(s).filter(v=>v.h!==null).sort((a,b)=>b.dV-a.dV).slice(0,3);
+  const tab=interventionTable(s,r).filter(t=>t.k!=="reprice"&&t.net>0).slice(0,3);
+  const mf=maxFinanced(s,opt.fin);
+  return {s,V,point:r.fv.point,qFactor:r.qFactor,qPct:r.qPct,conf:r.conf,confLabel:r.confLabel,mult:r.M,
+    sell,walk,cur,same:Math.abs(rhoSell-rhoWalk)<.005,sens,fixes:tab,maxFin:mf,recast:opt.recast||null,calib:opt.calib||null,
+    sde:s.ern,rev:s.rev,ind:(IND[s.ind]||IND.prof).n,date:opt.date||null};
+}
+function hEsc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const toMonths=d=>(d/30.44).toFixed(1);
+function reportHTML(D,meta){
+  meta=meta||{};
+  const B=(c,t)=>`<span class="rp-b rp-${c}">${t}</span>`, fit=B("f","fitted"), agg=B("a","published data"), jdg=B("j","judgment");
+  const cov=f=>f.dscr===Infinity?"no debt":f.dscr.toFixed(2)+"×";
+  const askRow=(t,a,note)=>`<tr><th scope="row">${t}</th><td class="n"><b>${money(a.ask)}</b><br><span>${a.ratio.toFixed(2)}× value</span></td>
+    <td class="n">${pc(a.pc)}</td><td class="n">${toMonths(a.tMed)} mo</td><td class="n">${money(a.price)}</td><td class="n">${money(a.ev)}</td>
+    <td class="n">${cov(a.fin)}${a.fin.ok?"":` <span class="rp-warn">below ${a.fin.min.toFixed(2)}×</span>`}</td></tr>${note?`<tr class="rp-sub"><td colspan="7">${note}</td></tr>`:""}`;
+  const f=D.cur.fin, R=D.recast, mf=D.maxFin, C=D.calib;
+  const head=`<header class="rp-head"><div><div class="rp-kicker">Business valuation and sale outlook</div>
+      <h1>${hEsc(meta.business||D.ind)}</h1>
+      <div class="rp-meta">${hEsc(D.ind)}${D.s.st?` · ${hEsc(D.s.st)}`:""}${D.s.franchise?" · franchise":""} · revenue ${money(D.rev)} · SDE ${money(D.sde)}</div></div>
+    <div class="rp-prep">${meta.preparedFor?`Prepared for ${hEsc(meta.preparedFor)}<br>`:""}${meta.broker?`by ${hEsc(meta.broker)}${meta.firm?`, ${hEsc(meta.firm)}`:""}<br>`:meta.firm?`${hEsc(meta.firm)}<br>`:""}${hEsc(D.date||"")}</div></header>`;
+  const value=`<section class="rp-value"><div><div class="rp-k">Model value ${fit}</div><div class="rp-big">${money(D.V)}</div>
+      <div class="rp-s">${D.mult.toFixed(2)}× SDE; ${D.qFactor>=1?"+":"−"}${Math.abs((D.qFactor-1)*100).toFixed(0)}% for quality, ${ordn(Math.min(99,Math.max(1,Math.round(D.qPct*100))))} percentile of peers ${jdg}</div></div>
+    <div><div class="rp-k">If it sells at the recommended ask ${jdg}</div><div class="rp-mid">${money(D.sell.lo)} – ${money(D.sell.hi)}</div>
+      <div class="rp-s">80% of outcomes; median ${money(D.sell.price)}</div></div>
+    <div><div class="rp-k">Accuracy ${fit}</div><div class="rp-mid">${pc(D.conf)}</div>
+      <div class="rp-s">chance the price lands within 25% of the model's fitted value (${hEsc(D.confLabel)})</div></div></section>
+    ${C&&C.n?`<p class="rp-cal">Track record: this broker's ${C.n} closed deal${C.n>1?"s":""} sold at ${C.factor.toFixed(2)}× the model's median price${C.lo?` (90% interval ${C.lo.toFixed(2)}–${C.hi.toFixed(2)}×)`:""}. Read with the weight of ten deals toward the model, that is ${C.shrunk.toFixed(2)}×, about ${money(D.sell.price*C.shrunk)} at the recommended ask.</p>`:""}`;
+  const asks=`<section><h2>What to ask</h2><div class="rp-tw"><table class="rp-t"><thead><tr><th></th><th class="n">Ask</th><th class="n">Chance it sells<br>${agg}</th>
+      <th class="n">Median time to close<br>${fit}</th><th class="n">Median price if it sells<br>${jdg}</th><th class="n">Expected proceeds<br>${jdg}</th><th class="n">Lender coverage<br>${agg}</th></tr></thead><tbody>
+      ${askRow("If you need to sell",D.sell,"Maximizes expected proceeds: the price times the chance of getting it.")}
+      ${D.same?"":askRow("If you can walk away",D.walk,`Also counts keeping the business, if it doesn't sell, as worth ${pc(D.s.theta)} of its value, and charges ${money(D.s.lamT)} a day of delay; asks above value rest partly on judgment.`)}
+      ${Math.abs(D.cur.ask/D.sell.ask-1)>.005&&Math.abs(D.cur.ask/D.walk.ask-1)>.005?askRow("Your ask",D.cur,""):""}
+    </tbody></table></div></section>`;
+  const finance=`<section><h2>What a buyer's lender will see</h2>
+    <p>At ${money(f.price)}: an SBA loan of ${money(f.loan)} at ${f.rate.toFixed(2)}% over ${SBA_COO.amortYears} years, ${pc(f.cash/f.project)} buyer cash${f.note>0?` and a ${money(f.note)} seller note${f.standby?" on full standby":""}`:""}.
+    Cash available for debt service ${money(f.cf)} (SDE less ${money(f.draw)} for the new owner's pay${f.capex>0?` and ${money(f.capex)} capital spending`:""}) against ${money(f.ds)} a year of payments:
+    <b>${cov(f)} coverage</b>, ${f.ok?"meeting":"<b>below</b>"} SBA's ${f.min.toFixed(2)}× minimum for this kind of purchase.
+    ${mf.noLoan?"Buyer cash and the seller note pay the whole price, so no SBA loan is needed.":mf.price>0?(mf.capped?`Coverage does not limit the price: this structure meets ${f.min.toFixed(2)}× up to the 7(a) maximum loan of ${money(SBA_COO.maxLoan)}, and above that the buyer pays the rest in cash.`:`At this structure the highest price that meets ${f.min.toFixed(2)}× is about <b>${money(mf.price)}</b>.`):"After the new owner's pay the business does not cover any loan, so no SBA-financed price works at this structure."}
+    ${f.debtOverValue?" The acquisition debt would exceed the model value; SBA caps it at the business valuation and any price above that must be paid in equity.":""}</p></section>`;
+  const drivers=`<section class="rp-two"><div><h2>What moves the value most ${jdg}</h2><ul>${D.sens.map(v=>`<li><b>${hEsc(v.n)}</b>: one peer step better is worth about ${money(Math.max(0,v.dV))}</li>`).join("")}</ul></div>
+    <div><h2>Worth doing before listing ${jdg}</h2>${D.fixes.length?`<ul>${D.fixes.map(t=>`<li><b>${hEsc(t.n)}</b>: about ${money(t.c)} and ${t.days} days; adds ${money(t.dE)} of expected proceeds</li>`).join("")}</ul>`:"<p>None of the modelled improvements pays for itself here.</p>"}</div></section>`;
+  const basis={latest:"read on the most recent year",w321:"weighted 3:2:1 toward the most recent year",avg:"averaged over the years"};
+  const earn=R&&R.n?`<section><h2>Earnings basis</h2><p>SDE of ${money(R.sde)}, built from ${R.n} year${R.n>1?"s":""} of ${hEsc((RECAST_ENTITY[R.entity]||{}).src||"financial statements")} and ${basis[R.weight]||basis.latest}:
+    income before taxes ${money(R.ni)}, add-backs ${money(R.sde-R.ni)}${R.discShare!==null?`, of which one-time and discretionary items are ${pc(R.discShare)} of SDE`:""}.
+    ${R.flags.includes("heavy_discretionary")?"Buyers and lenders will ask for documentation of the discretionary add-backs. ":""}${R.flags.includes("sde_falling")?"Earnings fell from the year before; buyers will weigh the trend. ":""}</p></section>`:"";
+  const foot=`<footer class="rp-foot"><p><b>Sources.</b> Value: a regression on ${MODELS.value.n_fit.toLocaleString()} closed sales (BIZCOMPS) ${fit}.
+    Chance of selling: Pepperdine Private Capital Markets surveys ${agg}. Time to close: fitted to IBBA / M&amp;A Source Market Pulse
+    histograms ${fit}. Loan terms: SBA rate spreads ${fit} and ${hEsc(SBA_COO.sop)} ${agg}. Labels: ${fit} estimated from data; ${agg} read
+    from published figures or rules; ${jdg} set by reasoning, where no data measure the number.</p>
+    <p><b>This is a broker's opinion of value from statistical models, not an appraisal.</b> Above a ${money(SBA_COO.ownValuationMax)} price an SBA lender
+    needs an independent business valuation${[D.cur,D.sell,D.walk].some(a=>a.fin.qoe)?`, and from ${money(SBA_COO.qoeMin)} a Quality of Earnings report unless the buyer is a partner or employee buying out the owner`:""}.</p></footer>`;
+  return `<article class="rp">${head}${value}${asks}${finance}${drivers}${earn}${foot}</article>`;
+}
+/* the report's paper: one stylesheet for the preview, the print and the downloaded file (system fonts, nothing
+   fetched). It first reverts the page's own element styles inside .rp, so all three look alike; on white the
+   provenance colours keep their meaning. */
+const RP_CSS=`.rp,.rp *,.rp *::before,.rp *::after{all:revert;box-sizing:border-box}
+.rp{--rp-ink:#141922;--rp-ink2:#4b5568;--rp-hair:#d9dee8;display:block;color:var(--rp-ink);background:#fff;max-width:8.5in;margin:0 auto;padding:.55in .6in .5in;
+  font:400 12.5px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;text-align:left;font-variant-numeric:tabular-nums;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rp h1{font-size:25px;line-height:1.15;font-weight:700;letter-spacing:-.01em;margin:3px 0 4px}
+.rp h2{font-size:13px;line-height:1.3;font-weight:700;margin:0 0 6px}
+.rp p{margin:0 0 6px}
+.rp ul{margin:0;padding:0 0 0 16px}
+.rp li{margin:0 0 4px}
+.rp section{display:block;margin:15px 0 0;break-inside:avoid}
+.rp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;padding:0 0 10px;border-bottom:2px solid var(--rp-ink)}
+.rp-kicker,.rp-k{font-size:10px;line-height:1.4;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--rp-ink2)}
+.rp-meta,.rp-prep{font-size:11.5px;color:var(--rp-ink2)}
+.rp-prep{text-align:right;flex:none}
+.rp section.rp-value{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:16px;margin:0;padding:13px 0;border-bottom:1px solid var(--rp-hair)}
+.rp-big{font-size:31px;line-height:1.1;font-weight:700;letter-spacing:-.01em;margin:5px 0 3px}
+.rp-mid{font-size:19px;line-height:1.2;font-weight:700;margin:8px 0 3px}
+.rp-s{font-size:11px;line-height:1.45;color:var(--rp-ink2)}
+.rp-cal{font-size:11px;color:var(--rp-ink2);margin:10px 0 0;padding:4px 0 4px 10px;border-left:3px solid #2f6fd6}
+.rp-tw{overflow-x:auto}
+.rp table.rp-t{width:100%;border-collapse:collapse;font-size:11.5px}
+.rp-t th,.rp-t td{padding:6px 7px;border-bottom:1px solid var(--rp-hair);text-align:left;vertical-align:top;font-weight:400}
+.rp-t thead th{font-size:10px;line-height:1.35;font-weight:600;color:var(--rp-ink2);vertical-align:bottom;border-bottom:1px solid var(--rp-ink)}
+.rp-t tbody th{font-weight:600;white-space:nowrap}
+.rp-t thead .rp-b{margin-top:3px}
+.rp-t .n{text-align:right;white-space:nowrap}
+.rp-t thead th.n{white-space:normal}
+.rp-t td span{font-size:10px;color:var(--rp-ink2)}
+.rp-t td span.rp-warn{display:block;color:#b03a26;font-weight:600}
+.rp-t tr:has(+ tr.rp-sub)>*{border-bottom:0;padding-bottom:2px}
+.rp-t tr.rp-sub td{font-size:10.5px;color:var(--rp-ink2);padding-top:0}
+.rp section.rp-two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.rp-b{display:inline-block;vertical-align:1px;font-size:8.5px;line-height:1.5;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:0 4px;border:1px solid;border-radius:3px;white-space:nowrap}
+.rp-f{color:#0e6b43;border-color:#8ccfae;background:#ecf8f1}
+.rp-a{color:#7c5200;border-color:#e8c675;background:#fff7e3}
+.rp-j{color:#9c3322;border-color:#eaa797;background:#fff0ec}
+.rp-foot{display:block;margin:16px 0 0;padding:9px 0 0;border-top:1px solid var(--rp-hair);font-size:10px;line-height:1.5;color:var(--rp-ink2)}
+.rp-foot p{margin:0 0 4px}
+@media (max-width:640px){.rp{padding:22px 18px}.rp-head{flex-direction:column;align-items:flex-start}.rp-prep{text-align:left}
+  .rp section.rp-value,.rp section.rp-two{grid-template-columns:1fr;gap:12px}.rp-big{font-size:27px}}
+@media print{.rp{max-width:none;margin:0;padding:0;font-size:11.5px}.rp h1{font-size:22px}.rp section{margin-top:11px}
+  .rp section.rp-value{padding:10px 0}.rp-big{font-size:27px}.rp-mid{font-size:17px}.rp table.rp-t{font-size:11px}
+  .rp-t th,.rp-t td{padding:4px 6px}@page{size:letter;margin:.5in}}`;
+
 /* ============ bar helpers ============ */
 function divBars(el,rows,fmt,col){
   const mx=Math.max(...rows.map(r=>Math.abs(r.v)),1e-9);
@@ -6106,6 +6518,38 @@ function renderData(){
   }
 
   /* ── what is still judgement, and what would fit it ───────────── */
+  /* ── the broker tools' own numbers: SBA's rules, the fitted tables they reuse, and conventions (no model figure moves) ── */
+  { const S=SBA_COO;
+  h+=`<section class="sec"><div class="sec-head"><h2>Broker tools: the rules and conventions behind them</h2>
+    <span class="ref">financing check, worksheet, report, Deals tab</span></div>
+    <div class="panel"><p class="lede" style="margin-bottom:14px">The financing check, the add-back worksheet, the seller report
+    and the Deals tab read the model; none of them changes a figure it reports, so the tallies above leave them out. Their own
+    numbers are SBA&rsquo;s published rules, two of the console&rsquo;s fitted tables, and a few conventions, each editable or opt-in.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Component</th><th>Value</th><th>Basis</th></tr></thead><tbody>
+      <tr><td>Minimum debt service coverage</td><td>${S.dsc.initial.toFixed(2)}&times; for a buyer new to the business and for an owner buyout,
+        ${S.dsc.expansion.toFixed(2)}&times; for an established owner expanding; on the last fiscal year or the average of the last two, historical or adjusted</td>
+        <td><b>aggregate</b>, a published rule: ${S.sop}, Para. C.2.b</td></tr>
+      <tr><td>Equity</td><td>at least ${(S.equity*100).toFixed(0)}% of the project (of the price for an owner buyout); a seller note on full standby
+        for the life of the loan may supply at most ${(S.standbyShare*100).toFixed(0)}% of it</td><td><b>aggregate</b>: Appendix 15, Equity Requirements</td></tr>
+      <tr><td>Loan size and term</td><td>at most ${money(S.maxLoan)}, amortized over at most ${S.amortYears} years without real estate; all acquisition debt,
+        with a seller note not on full standby, at most the business valuation</td><td><b>aggregate</b>: Loan Terms and Conditions; Change of Ownership Requirements</td></tr>
+      <tr><td>Due diligence</td><td>the lender may value a business priced at ${money(S.ownValuationMax)} or less itself; from ${money(S.qoeMin)} it also needs a
+        Quality of Earnings report, except for an owner buyout</td><td><b>aggregate</b>: Para. C.1.a; Quality of Earnings</td></tr>
+      <tr><td>The loan&rsquo;s rate</td><td>today&rsquo;s prime plus the spread lenders charge on a loan of that size</td><td><b>fitted</b>: the SBA spread table above</td></tr>
+      <tr><td>The new owner&rsquo;s pay, unless entered</td><td>a general manager&rsquo;s market pay for the industry and size</td><td><b>fitted</b>: the BLS wage table above</td></tr>
+      <tr><td>The structure the check starts from</td><td>${(FIN_DEFAULTS.cash*100).toFixed(0)}% buyer cash; a ${(FIN_DEFAULTS.note*100).toFixed(0)}% seller note
+        at ${FIN_DEFAULTS.noteRate}% over ${FIN_DEFAULTS.noteYears} years, paid alongside the loan; no working capital or capital spending</td>
+        <td>the cash is SBA&rsquo;s minimum (<b>aggregate</b>); the note is a common structure (<b>judgment</b>); all of it editable</td></tr>
+      <tr><td>Worksheet warnings</td><td>one-time and discretionary add-backs above 15% of SDE; SDE more than 15% below the year before</td>
+        <td><b>judgment</b> thresholds: they warn and change no figure</td></tr>
+      <tr><td>Your price record, read toward the model</td><td>your closed deals&rsquo; mean log of sale price over the model&rsquo;s median,
+        weighted as if the model were ${CALIB_K} more deals</td><td>the weight is <b>judgment</b>; display only, and only when you opt in</td></tr>
+      <tr><td>When the Deals tab fits a judgment number</td><td>the price-gap penalty&rsquo;s scale (${PEN_MAX.toFixed(2)} today) from ${DEAL_MIN.pen} finished
+        listings, ${DEAL_MIN.penAbove} of them listed above value; the nine quality effects from ${DEAL_MIN.quality} closed deals</td>
+        <td>maximum likelihood and least squares on your own deals; the minimums are <b>judgment</b></td></tr>
+      </tbody></table></div></div></section>`; }
+
   h+=`<section class="sec"><div class="sec-head"><h2>Still judgment, and the data that would fit it</h2></div>
     <div class="panel"><div class="tw"><table>
       <thead><tr><th>Component</th><th>Data that would fit it</th><th>Status</th></tr></thead><tbody>
@@ -6206,7 +6650,9 @@ function renderData(){
       Flippa&rsquo;s listings and sales) are already used: they set the direction of the overpricing effect and checked
       the growth and recurring-revenue weights, but they cannot fit the rows above. What moves a row out of this
       table is <b>your own transaction records</b>: every closed and failed engagement logged with the
-      soft variables, the outreach and the dates.</p>
+      soft variables, the outreach and the dates. The <b>Deals</b> tab keeps them, compares them with the model as they come in,
+      and fits the price-gap penalty&rsquo;s scale from ${DEAL_MIN.pen} finished listings and the nine quality effects from
+      ${DEAL_MIN.quality} closed deals.</p>
     </div></section>`;
 
   /* ── live calibration check ─────────────────────────────────── */
@@ -6385,10 +6831,12 @@ function reset(){ document.querySelectorAll("input.v.bad").forEach(e=>e.classLis
 $("reset").addEventListener("click",reset);
 document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===t));
-  const d=t.dataset.v==="data";
-  document.documentElement.dataset.tab=d?"data":"console";   /* v9: each tab's theme (sky, chrome, panels) follows */
-  $("view-console").hidden=d; $("view-data").hidden=!d;
+  const v=t.dataset.v, d=v==="data";
+  document.documentElement.dataset.tab=v;   /* v9: each tab's theme (sky, chrome, panels) follows; Deals keeps the console's */
+  $("view-console").hidden=v!=="console"; $("view-data").hidden=!d; $("view-deals").hidden=v!=="deals";
   if(d&&!$("dataviews").innerHTML) renderData();
+  /* the broker tools draw the Deals tab, and put a deal opened there into the console once it shows */
+  if(window.OMNI_BROKER) window.OMNI_BROKER.tab(v);
   window.scrollTo(0,0);
 }));
 /* A slider fires input on every step and change on release, and a checkbox fires
@@ -6397,6 +6845,7 @@ document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
 let _rq=0;
 const scheduleRender=()=>{ if(_rq) return; _rq=requestAnimationFrame(()=>{_rq=0;render();}); };
 document.querySelectorAll("input,select").forEach(el=>{
+  if(el.closest("[data-norender]")) return;
   el.addEventListener("input",scheduleRender); el.addEventListener("change",scheduleRender);
 });
 
@@ -7052,6 +7501,544 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   };
   /* change handlers come from the generic input/select loop above; wiring them here
      as well rendered every state or franchise change twice */
+})();
+/* ============================================================
+   BROKER TOOLS, the page (October 2026). The worksheet and the seller report open over the console, the financing
+   check is a console section and saved deals are the Deals tab; the figures come from the pure functions above the
+   bar helpers. Deals and preferences stay in this browser (localStorage; a private window or blocked storage refuses
+   it, and the Deals tab then says so). Nothing here moves a model figure: the opt-in track-record line only displays.
+   ============================================================ */
+(function brokerUI(){
+  if(!$("tools")) return;
+  const K_DEALS="omni.deals.v1", K_PREFS="omni.prefs.v1";
+  const load=(k,d)=>{ try{ const v=localStorage.getItem(k); return v===null?d:JSON.parse(v); }catch(e){ return d; } };
+  const keep=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } };
+  let STORE_OK=keep("omni.probe",1); try{ localStorage.removeItem("omni.probe"); }catch(e){}
+  const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const STATUS={valuing:"Valuing",listed:"Listed",loi:"Under LOI",closed:"Closed",withdrawn:"Withdrawn",expired:"Expired"};
+  const p1=v=>{ const x=Math.round(v*1000)/10; return (Number.isInteger(x)?x.toFixed(0):x.toFixed(1))+"%"; };
+  const fx=v=>v===Infinity?"no debt":(v<0?"−":"")+Math.abs(v).toFixed(2)+"×";
+  const say=(id,msg,ms)=>{ const e=$(id); if(!e) return; e.textContent=msg; clearTimeout(e.__t);
+    if(msg&&ms!==0) e.__t=setTimeout(()=>{ if(e.textContent===msg) e.textContent=""; },ms||7000); };
+  const isoDay=v=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&isFinite(Date.parse(v))?v:null;
+  const isoTime=v=>typeof v==="string"&&v.length<40&&isFinite(Date.parse(v))?v:null;
+  const today=()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+  const newId=()=>"d"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const indName=k=>(IND[k]||IND.prof).n;
+  const nameFor=I=>indName(I.ind)+", "+money(I.ern)+" SDE";
+
+  /* ---- the console's inputs as a deal keeps them: what readState() reads, held to the rail's own ranges ---- */
+  const SL={grw:["i_grw",100],gm:["i_gm",100],rec:["i_rec",100],cc:["i_cc",100],ret:["i_ret",100],plt:["i_plt",100],
+    yrs:["i_yrs",1],buyers:["i_buy",1],lamT:["i_lam",1],theta:["i_th",100]};
+  const SEL={own:"i_own",mgt:"i_mgt",fin:"i_fin"};
+  const nearOpt=(id,v)=>{ let best=null, bd=Infinity; for(const o of $(id).options){ const d=Math.abs(+o.value-v); if(d<bd){ bd=d; best=o.value; } } return best; };
+  function cleanInputs(I){
+    if(!I||typeof I!=="object"||!IND[I.ind]) return null;
+    const n=k=>{ const v=Number(I[k]); return isFinite(v)?v:NaN; };
+    const o={ind:I.ind,st:typeof I.st==="string"&&STNAMES[I.st]?I.st:null,franchise:!!I.franchise};
+    const rev=n("rev"), ern=n("ern"), ask=n("ask"), bud=I.budget===undefined?0:n("budget");
+    if(![rev,ern,ask,bud].every(isFinite)) return null;
+    o.rev=clamp(rev,MONEY.rev.hard[0],MONEY.rev.hard[1]);
+    o.ern=clamp(Math.min(ern,o.rev*.92),MONEY.ern.hard[0],MONEY.ern.hard[1]);
+    o.ask=clamp(ask,MONEY.ask.hard[0],MONEY.ask.hard[1]); o.budget=clamp(bud,MONEY.bud.hard[0],MONEY.bud.hard[1]);
+    for(const k in SL){ const v=n(k), e=$(SL[k][0]); if(!isFinite(v)) return null; o[k]=clamp(v*SL[k][1],+e.min,+e.max)/SL[k][1]; }
+    for(const k in SEL){ const v=n(k); if(!isFinite(v)) return null; o[k]=+nearOpt(SEL[k],v); }
+    return o;
+  }
+  const snap=()=>cleanInputs(readState());
+  const sameInputs=(a,b)=>!!a&&!!b&&Object.keys(a).every(k=>typeof a[k]==="number"
+    ?Math.abs(a[k]-b[k])<=1e-9*Math.max(1,Math.abs(a[k])):a[k]===b[k]);
+  /* put a deal's inputs in the rail: money in IN, sliders through EXACT (kept exactly), selects to their option */
+  function applyInputs(o){
+    document.querySelectorAll("input.v.bad").forEach(e=>e.classList.remove("bad"));
+    for(const k in EXACT) delete EXACT[k];
+    $("i_ind").value=o.ind; $("i_st").value=o.st||""; $("i_fr").checked=!!o.franchise;
+    IN.rev=o.rev; IN.ern=o.ern; IN.ask=o.ask; IN.bud=o.budget;
+    for(const k in SL){ const e=$(SL[k][0]), x=o[k]*SL[k][1]; e.value=x; EXACT[e.id]=x; }
+    for(const k in SEL) $(SEL[k]).value=nearOpt(SEL[k],o[k]);
+    render();
+  }
+
+  /* ---- stored records, cleaned on the way in (storage and imports are both untrusted) ---- */
+  function cleanFin(f){
+    const o={...FIN_DEFAULTS}; if(!f||typeof f!=="object") return o;
+    if(DSC_TYPES[f.type]) o.type=f.type;
+    const n=(k,lo,hi)=>{ if(f[k]===null||f[k]===undefined||f[k]==="") return; const v=Number(f[k]); if(isFinite(v)&&v>=lo&&v<=hi) o[k]=v; };
+    n("cash",0,1); n("note",0,.9); n("noteRate",0,30); n("noteYears",1,30); n("extra",0,1e10); n("capex",0,1e10); n("draw",0,1e10);
+    o.standby=!!f.standby; return o;
+  }
+  const emptyWS=()=>({entity:"scorp",weight:"latest",grw:true,years:[{},{},{}]});
+  function cleanWS(w){
+    if(!w||typeof w!=="object") return null;
+    const o={entity:RECAST_ENTITY[w.entity]?w.entity:"scorp",weight:RECAST_WEIGHTS[w.weight]?w.weight:"latest",grw:w.grw!==false,years:[{},{},{}]};
+    (Array.isArray(w.years)?w.years:[]).slice(0,3).forEach((y,i)=>{ if(!y||typeof y!=="object") return;
+      for(const R of RECAST_ROWS){ const raw=y[R.k], v=Number(raw);
+        if(raw!==""&&raw!==null&&raw!==undefined&&isFinite(v)&&Math.abs(v)<1e12) o.years[i][R.k]=v; } });
+    return o;
+  }
+  const wsHas=w=>!!w&&w.years.some(y=>Object.keys(y).length>0);
+  function cleanDeal(d){
+    if(!d||typeof d!=="object") return null;
+    const inputs=cleanInputs(d.inputs); if(!inputs) return null;
+    const num=(v,lo,hi)=>{ if(v===null||v===undefined||v==="") return null; v=Number(v); return isFinite(v)&&v>=lo&&v<=hi?v:null; };
+    const str=(v,n)=>typeof v==="string"?v.slice(0,n):"", now=new Date().toISOString();
+    return {id:typeof d.id==="string"&&/^[\w-]{1,40}$/.test(d.id)?d.id:newId(), name:str(d.name,120).trim()||nameFor(inputs),
+      status:STATUS[d.status]?d.status:"valuing", created:isoTime(d.created)||now, updated:isoTime(d.updated)||now,
+      inputs, fin:cleanFin(d.fin), ws:cleanWS(d.ws),
+      listPrice:num(d.listPrice,1e3,1e11), listDate:isoDay(d.listDate), salePrice:num(d.salePrice,1e3,1e11), closeDate:isoDay(d.closeDate),
+      cashAtClose:num(d.cashAtClose,0,1), buyers:num(d.buyers,0,1e6), offers:num(d.offers,0,1e5),
+      business:str(d.business,120), preparedFor:str(d.preparedFor,120), notes:str(d.notes,5000)};
+  }
+  const PREFS={fin:null,ws:null,broker:"",firm:"",calib:false};
+  { const p=load(K_PREFS,null); if(p&&typeof p==="object"){
+      PREFS.fin=cleanFin(p.fin); PREFS.ws=cleanWS(p.ws);
+      PREFS.broker=typeof p.broker==="string"?p.broker.slice(0,120):""; PREFS.firm=typeof p.firm==="string"?p.firm.slice(0,120):"";
+      PREFS.calib=p.calib===true; } }
+  const savePrefs=()=>keep(K_PREFS,PREFS);
+  let DEALS=[]; { const raw=load(K_DEALS,[]); DEALS=(Array.isArray(raw)?raw:[]).map(cleanDeal).filter(Boolean); }
+  let STATS=null, CUR=null, EDIT=null, PENDING=null;
+  const stats=()=>STATS||(STATS=dealsStats(DEALS));
+  const dealById=id=>DEALS.find(d=>d.id===id)||null;
+  function saveDeals(){ STATS=null; STORE_OK=keep(K_DEALS,DEALS); return STORE_OK; }
+  let FIN=cleanFin(PREFS.fin), WS=PREFS.ws||emptyWS();
+
+  /* ---- the toolbar: the deal in the console, and the opt-in price record ---- */
+  function calibNow(){ const P=stats().price; return PREFS.calib&&P.n>=DEAL_MIN.price?P:null; }
+  function toolbar(){
+    const d=CUR&&dealById(CUR); if(CUR&&!d) CUR=null;
+    const ed=d&&!sameInputs(snap(),d.inputs);
+    $("tl_deal").innerHTML=d?`<span class="tl-k">Deal</span><b class="tl-n">${hEsc(d.name)}</b><span class="tl-st st-${d.status}">${STATUS[d.status]}</span>${ed?'<span class="tl-ed">unsaved changes</span>':""}`
+      :'<span class="tl-k">Unsaved valuation</span>';
+    $("tl_save").textContent=d?(ed?"Save changes":"Update deal"):"Save deal";
+    $("tl_saveas").hidden=!d;
+    const C=calibNow(), r=STATE.r, el=$("tl_cal");
+    if(C&&r){ el.hidden=false; el.innerHTML=`<b>Your record:</b> ${C.n} closed deals sold at ${C.factor.toFixed(2)}× the model's median price.
+      Read with the weight of ten deals toward the model, ${C.shrunk.toFixed(2)}×: about <b>${money(r.Vreal*C.shrunk)}</b> at your ask, against the model's ${money(r.Vreal)}. Display only.`; }
+    else { el.hidden=true; el.textContent=""; }
+  }
+  function saveCurrent(asNew){
+    const I=snap(); if(!I) return;
+    const now=new Date().toISOString(), base=CUR?dealById(CUR):null;
+    let d=!asNew&&base?base:null, made=false;
+    if(d){ d.inputs=I; d.fin={...FIN}; if(wsHas(WS)) d.ws=cleanWS(WS); d.updated=now; }
+    else { d=cleanDeal({id:newId(),name:base?base.name+" (copy)":nameFor(I),status:base?base.status:"valuing",created:now,updated:now,
+        inputs:I,fin:FIN,ws:wsHas(WS)?WS:null,business:base?base.business:"",preparedFor:base?base.preparedFor:""});
+      DEALS.unshift(d); CUR=d.id; made=true; }
+    const ok=saveDeals(); toolbar();
+    say("tl_msg",(made?`Saved as “${d.name}”. Rename it and record its outcome in the Deals tab.`:"Deal updated.")
+      +(ok?"":" This browser is not keeping data (a private window or blocked storage): export from the Deals tab before closing."),ok?7000:0);
+    return d;
+  }
+
+  /* ---- the financing check ---- */
+  const FF={cash:"f_cash",note:"f_note",noteRate:"f_nrate",noteYears:"f_nyrs",extra:"f_extra",capex:"f_capex",draw:"f_draw"};
+  const FFMT={cash:p1,note:p1,noteRate:v=>(Math.round(v*100)/100)+"%",noteYears:v=>v+(v===1?" year":" years"),
+    extra:v=>v?moneyIn(v):"none",capex:v=>v?moneyIn(v):"none",draw:v=>v===null?"":moneyIn(v)};
+  /* shares as "10%", "10" or ".1"; the note's rate as "6%", "6" or ".06"; money as the rail reads it; a blank pay
+     field is the market pay */
+  function parseFin(k,t){
+    t=String(t).trim(); if(k==="draw"&&t==="") return null;
+    const v=parseAmount(t); if(!isFinite(v)) return NaN;
+    const pct=t.includes("%");
+    if(k==="cash"||k==="note"){ const x=pct||v>1?v/100:v; return x>=0&&x<=(k==="cash"?1:.9)?x:NaN; }
+    if(k==="noteRate"){ const x=!pct&&v>0&&v<1?v*100:v; return x>=0&&x<=30?x:NaN; }
+    if(k==="noteYears") return !pct&&v>=1&&v<=30?v:NaN;
+    return !pct&&v>=0&&v<1e10?v:NaN;
+  }
+  function finFill(){ $("f_type").value=FIN.type; $("f_standby").checked=FIN.standby; for(const k in FF){ $(FF[k]).value=FFMT[k](FIN[k]); $(FF[k]).classList.remove("bad"); } }
+  function finChanged(){ PREFS.fin={...FIN}; savePrefs(); renderFinance(); }
+  function renderFinance(){
+    const s=STATE.s, r=STATE.r; if(!s||!r) return;
+    const V=r.V, cols=[];
+    for(const [t,a] of [["If you need to sell",V*s.rhoSell],["If you can walk away",V*s.optRho],["Your ask",s.ask]]){
+      const c=cols.find(c=>Math.abs(c.a/a-1)<.005); if(c) c.t.push(t); else cols.push({t:[t],a}); }
+    cols.forEach(c=>{ c.f=debtCheck(s,c.a,FIN,V); });
+    const sub=t=>`<span class="fin-s">${t}</span>`;
+    const row=(h,cell)=>`<tr><th scope="row">${h}</th>${cols.map(c=>`<td class="n">${cell(c.f)}</td>`).join("")}</tr>`;
+    $("fintbl").innerHTML=`<thead><tr><th><span class="vh">Ask</span></th>${cols.map(c=>`<th class="n" scope="col">${c.t.join(" · ")}</th>`).join("")}</tr></thead><tbody>
+      ${row("Price",f=>`<b>${money(f.price)}</b>${sub((f.price/V).toFixed(2)+"× model value")}`)}
+      ${row("SBA 7(a) loan",f=>money(f.loan)+sub(f.loan>0?f.rate.toFixed(2)+"%, "+SBA_COO.amortYears+" years":"none"))}
+      ${row("Seller note",f=>money(f.note)+sub(f.note>0?(f.standby?"full standby":FFMT.noteRate(FIN.noteRate)+", "+FFMT.noteYears(FIN.noteYears)):"none"))}
+      ${row("Buyer cash",f=>money(f.cash)+sub(p1(f.cash/Math.max(f.project,1))+" of the project"+(f.over>0?"; the loan is at its cap":"")))}
+      ${row("Payments a year",f=>money(f.ds)+sub(money(f.monthly)+" a month"))}
+      ${row("Cash for debt service",f=>money(f.cf)+sub("after "+money(f.draw)+" of pay"+(f.capex?" and "+money(f.capex)+" of capital spending":"")))}
+      ${row("Coverage",f=>`<b class="fin-cov ${f.ok?"ok":"no"}">${fx(f.dscr)}</b>${sub((f.ok?"meets ":"below ")+f.min.toFixed(2)+"×")}`)}
+    </tbody>`;
+    const mf=maxFinanced(s,FIN), min=SBA_COO.dsc[FIN.type];
+    $("fin_max").innerHTML=mf.noLoan?`<div class="fin-k">Highest price a lender finances</div><div class="fin-big">no loan</div><p>Buyer cash and the seller note pay the whole price.</p>`
+      :mf.price>0?`<div class="fin-k">Highest price this structure finances at ${min.toFixed(2)}×</div><div class="fin-big">${money(mf.price)}</div>
+        <p>${mf.capped?`Coverage is not the limit: at this price the loan reaches the 7(a) maximum of ${money(SBA_COO.maxLoan)}, and above it the buyer pays the rest in cash.`
+          :`${(mf.price/V).toFixed(2)}× model value, ${(mf.price/s.ern).toFixed(2)}× SDE. Above it the buyer needs more cash, a larger note on full standby or a lower price.`}</p>`
+      :`<div class="fin-k">Highest price this structure finances</div><div class="fin-big">none</div><p>After the new owner's pay${FIN.capex?" and capital spending":""} the business does not cover a loan at this structure.</p>`;
+    const fc=cols.find(c=>c.t.includes("Your ask")).f, notes=[];
+    notes.push(fc.drawMarket?`The new owner's pay is a general manager's market pay for this industry and size, ${money(fc.draw)} (BLS, fitted); enter a figure to replace it.`
+      :`The new owner's pay is the ${money(fc.draw)} entered.`);
+    notes.push(`The SBA rate is today's prime, ${MODELS.fitted.sba_rate.prime.toFixed(2)}%, plus the spread lenders charge on a loan this size (fitted).`);
+    if(!fc.equityOK) notes.push(`<b>Equity:</b> at your ask the buyer brings ${money(fc.equityIn)}${FIN.standby?" counting the standby note":""}, under SBA's 10% minimum of ${money(fc.equityNeed)}${FIN.type==="initial"
+      ?"; for a buyer new to the business it cannot be waived.":"; the lender may reduce it when the buyer has the liquidity to run the business."}`);
+    else if(FIN.standby&&fc.note>0) notes.push(`A seller note on full standby counts toward the buyer's 10% equity, for at most half of it.`);
+    if(fc.debtOverValue) notes.push(`<b>Debt above value:</b> at your ask the acquisition debt, ${money(fc.debt)}, exceeds the model value. SBA caps it at the business valuation; any price above the valuation is paid in equity.`);
+    if(cols.some(c=>c.f.qoe)) notes.push(`From a ${money(SBA_COO.qoeMin)} price the lender also needs a Quality of Earnings report and tests coverage on its earnings (not for an owner buyout).`);
+    notes.push(fc.ownValuation?`At ${money(fc.price)} the lender may value the business itself.`:`Above ${money(SBA_COO.ownValuationMax)} the lender orders an independent business valuation, and the debt may not exceed it.`);
+    notes.push(`Lenders test coverage on the last fiscal year or the average of the last two, from tax returns checked against IRS transcripts; the console uses the SDE entered.`);
+    $("fin_note").innerHTML=notes.map(n=>`<li>${n}</li>`).join("");
+    eq("eq_f",String.raw`\text{DSC}=\frac{\text{SDE}-W-K}{D_{\text{SBA}}+D_{\text{note}}}\;\ge\;${min.toFixed(2)}`);
+    eq("eq_fs",String.raw`\text{at your ask: }\frac{${tm(s.ern)}-${tm(fc.draw)}-${tm(fc.capex)}}{${tm(fc.sbaPay)}+${tm(fc.notePay)}}=${fc.dscr===Infinity?String.raw`\infty`:fc.dscr.toFixed(2)}`
+      +String.raw`,\quad W\text{: the new owner's pay},\;K\text{: capital spending},\;D\text{: a year of payments}`);
+  }
+
+  /* ---- the add-back worksheet ---- */
+  const YEARS=["Most recent year","Year before","Two years before"], LESS=new Set(RECAST_ROWS.filter(R=>R.sg<0).map(R=>R.k));
+  const wsFmt=v=>v===undefined?"":(v<0?"−":"")+"$"+Math.round(Math.abs(v)).toLocaleString("en-US");
+  /* a blank is no entry; "(12,000)" is a negative, as returns print a loss; percentages are not amounts */
+  function wsParse(t){
+    t=String(t).trim(); if(t==="") return undefined;
+    let neg=false; const m=t.match(/^\((.*)\)$/); if(m){ neg=true; t=m[1]; }
+    if(t.includes("%")) return NaN;
+    const v=parseAmount(t); return isFinite(v)?(neg?-Math.abs(v):v):NaN;
+  }
+  function wsBuild(){
+    const E=RECAST_ENTITY[WS.entity];
+    $("rc_ent").value=WS.entity; $("rc_wt").value=WS.weight; $("rc_grw").checked=WS.grw;
+    $("rc_tbl").innerHTML=`<thead><tr><th scope="col">Line</th>${YEARS.map(t=>`<th class="n" scope="col">${t}</th>`).join("")}</tr></thead><tbody>
+      ${RECAST_ROWS.map(R=>{ const hint=E[R.k];
+        return `<tr class="rc-${R.grp}"><th scope="row">${R.sg<0?"Less: ":R.grp!=="base"?"Add: ":""}${hEsc(R.n)}${hint?`<span class="rc-h">${hEsc(hint)}</span>`:""}</th>
+        ${YEARS.map((y,i)=>`<td><input type="text" class="rc-in" inputmode="decimal" autocomplete="off" spellcheck="false" data-y="${i}" data-k="${R.k}" aria-label="${hEsc(R.n)}, ${y.toLowerCase()}" value="${wsFmt(WS.years[i][R.k])}"></td>`).join("")}</tr>`; }).join("")}
+      <tr class="rc-tot"><th scope="row">Seller's discretionary earnings</th>${YEARS.map((y,i)=>`<td class="n" id="rc_s${i}">—</td>`).join("")}</tr></tbody>`;
+    wsSum();
+  }
+  const WS_MSG={sde_nonpositive:"SDE is zero or negative on this basis; the console needs positive earnings.",
+    sde_falling:"SDE fell more than 15% from the year before. Buyers weigh the trend, and a lender tests coverage on the last year or the last two.",
+    schc_owner_pay:"On Schedule C the owner's pay is the net profit itself: an owner's pay entered as well is counted twice."};
+  function wsSum(){
+    const R=recastSDE(WS);
+    YEARS.forEach((y,i)=>{ const Y=R.years[i]; $("rc_s"+i).textContent=Y.has?money(Y.sde):"—"; });
+    const ok=R.n>0&&R.sde>=MONEY.ern.hard[0]&&R.rev>=MONEY.rev.hard[0];
+    $("rc_use").disabled=!ok;
+    if(!R.n){ $("rc_sum").innerHTML=`<p class="rc-g">Enter at least one year: revenue, income before taxes and the add-backs.</p>`; return R; }
+    const flags=R.flags.map(f=>f==="heavy_discretionary"
+      ?`One-time and discretionary add-backs are ${pc(R.discShare)} of SDE. Buyers and lenders discount add-backs they cannot verify: have the documentation ready.`:WS_MSG[f]);
+    if(R.rev>0&&R.sde>R.rev*.92) flags.push("SDE is above 92% of revenue, which the console does not accept; check the entries.");
+    if(!(R.rev>0)) flags.push("Enter revenue: the value model reads it beside SDE.");
+    $("rc_sum").innerHTML=`<div class="rc-fig"><div class="rc-k">SDE, ${hEsc(RECAST_WEIGHTS[R.weight].toLowerCase())}</div><div class="rc-big">${money(R.sde)}</div>
+      <div class="rc-s">${R.margin!==null?pc(R.margin,1)+" of revenue of "+money(R.rev)+"; ":""}add-backs ${money(R.sde-R.ni)} on income before taxes of ${money(R.ni)}</div></div>
+      ${R.grw!==null?`<p class="rc-g">Revenue ${R.grw>=0?"grew":"fell"} ${pc(Math.abs(R.grw),1)} in the most recent year.</p>`:""}
+      ${flags.map(f=>`<p class="rc-flag">${f}</p>`).join("")}`;
+    return R;
+  }
+  function wsSave(){ PREFS.ws=WS; savePrefs(); }
+  function wsUse(){
+    const R=recastSDE(WS); if(!(R.n>0&&R.sde>=MONEY.ern.hard[0]&&R.rev>=MONEY.rev.hard[0])) return;
+    IN.rev=clamp(R.rev,MONEY.rev.hard[0],MONEY.rev.hard[1]);
+    IN.ern=clamp(Math.min(R.sde,IN.rev*.92),MONEY.ern.hard[0],MONEY.ern.hard[1]);
+    const g=WS.grw&&R.grw!==null;
+    if(g){ const e=$("i_grw"), x=clamp(R.grw*100,+e.min,+e.max); e.value=x; EXACT.i_grw=x; }
+    ["v_rev","v_ern","v_grw"].forEach(id=>$(id).classList.remove("bad"));
+    closeDlg(); render();
+    say("tl_msg",`From the worksheet: SDE ${money(IN.ern)}, revenue ${money(IN.rev)}${g?", growth "+pc(R.grw,1):""}. The asking price is unchanged.`);
+  }
+  /* the worksheet is the basis of the report's earnings section only while the console's SDE is still its figure */
+  function wsInUse(){ if(!wsHas(WS)||!STATE.s) return null; const R=recastSDE(WS); return R.n&&Math.abs(R.sde-STATE.s.ern)<=Math.max(1,R.sde*1e-6)?R:null; }
+
+  /* ---- dialogs: modal, Escape closes, focus stays inside and returns to the opener ---- */
+  let OPEN=null, BACK=null;
+  function openDlg(id,opener){
+    if(OPEN) closeDlg();
+    OPEN=$(id); BACK=opener||document.activeElement; OPEN.hidden=false;
+    document.documentElement.classList.add("dlg-open"); if(id==="report") document.documentElement.classList.add("rp-on");
+    const f=$(id==="report"?"rp_biz":"rc_ent"); if(f) f.focus({preventScroll:true});
+  }
+  function closeDlg(){
+    if(!OPEN) return;
+    OPEN.hidden=true; OPEN=null; document.documentElement.classList.remove("dlg-open","rp-on");
+    if(BACK&&BACK.isConnected&&BACK.focus) BACK.focus({preventScroll:true}); BACK=null;
+  }
+  document.addEventListener("keydown",e=>{
+    if(!OPEN) return;
+    if(e.key==="Escape"){ e.preventDefault(); closeDlg(); return; }
+    if(e.key!=="Tab") return;
+    const f=[...OPEN.querySelectorAll("input,select,textarea,button")].filter(x=>!x.disabled&&x.getClientRects().length);
+    if(!f.length) return;
+    const a=f[0], z=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===a){ e.preventDefault(); z.focus(); }
+    else if(!e.shiftKey&&document.activeElement===z){ e.preventDefault(); a.focus(); }
+  });
+  ["recast","report"].forEach(id=>$(id).addEventListener("mousedown",e=>{ if(e.target===$(id)) closeDlg(); }));
+
+  /* ---- the seller report ---- */
+  let REPORT=null;
+  const longDate=()=>new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
+  const reportMeta=()=>({business:$("rp_biz").value.trim(),preparedFor:$("rp_for").value.trim(),broker:$("rp_broker").value.trim(),firm:$("rp_firm").value.trim()});
+  function reportOpen(opener){
+    const s=STATE.s; if(!s) return;
+    const d=CUR&&dealById(CUR);
+    $("rp_broker").value=PREFS.broker; $("rp_firm").value=PREFS.firm;
+    if(d){ $("rp_biz").value=d.business; $("rp_for").value=d.preparedFor; }
+    REPORT=reportData(s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()});
+    $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta());
+    openDlg("report",opener);
+  }
+  function reportMetaChanged(e){
+    if(!REPORT) return;
+    $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta());
+    if(e.type!=="change") return;
+    PREFS.broker=$("rp_broker").value.trim().slice(0,120); PREFS.firm=$("rp_firm").value.trim().slice(0,120); savePrefs();
+    const d=CUR&&dealById(CUR);
+    if(d){ d.business=$("rp_biz").value.trim().slice(0,120); d.preparedFor=$("rp_for").value.trim().slice(0,120); saveDeals(); }
+  }
+  const slug=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,48);
+  function download(name,type,text){
+    const u=URL.createObjectURL(new Blob([text],{type})), a=document.createElement("a");
+    a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+  }
+  function reportFile(){
+    const m=reportMeta(), title=(m.business||REPORT.ind)+": valuation and sale outlook";
+    return `<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">`
+      +`<title>${hEsc(title)}</title><style>body{margin:0;background:#eef1f6}${RP_CSS}</style></head><body>${reportHTML(REPORT,m)}</body></html>\n`;
+  }
+
+  /* ---- the Deals tab ---- */
+  const FACTOR={own:"Owner independence",mgt:"Management depth",rec:"Recurring revenue",cc:"Less customer concentration",
+    fin:"Financial reporting",grw:"Revenue growth",gm:"Gross margin",ret:"Customer retention",plt:"Less channel concentration"};
+  function renderDeals(){
+    const S=stats();
+    dealsTable(S); dealsTrack(S); dealsFit(S); dealsStore();
+    if(EDIT&&dealById(EDIT)) dealsEdit(EDIT); else { EDIT=null; $("dl_edit_sec").hidden=true; }
+    document.querySelectorAll("#view-deals .sec").forEach(x=>x.classList.add("landed"));
+  }
+  function dealsTable(S){
+    if(!DEALS.length){ $("dl_tbl").innerHTML=`<tbody><tr><td class="dl-empty">No deals yet. Value a business in the console and press <b>Save deal</b>,
+      or import a file exported from this page.</td></tr></tbody>`; return; }
+    /* td cells with data-th: on a phone the page's table.cards rules set each deal as a card with its labels */
+    const H=["Deal","Status","Model value today","Listed at","Sold for","Sold ÷ model median","Days to close"];
+    $("dl_tbl").innerHTML=`<thead><tr>${H.map((h,i)=>`<th${i>1?' class="n"':""} scope="col">${h}</th>`).join("")}<th scope="col"><span class="vh">Actions</span></th></tr></thead><tbody>
+      ${DEALS.map(d=>{ const p=S.pred.get(d), sold=d.status==="closed"&&d.salePrice>0, t=sold?daysBetween(d.listDate,d.closeDate):null;
+        const cell=(i,v)=>`<td class="n" data-th="${H[i]}">${v}</td>`;
+        return `<tr data-id="${d.id}"${d.id===CUR?' class="cur"':""}><td class="dl-deal"><button class="linkish dl-name" type="button" data-act="edit">${hEsc(d.name)}</button>
+          <span class="dl-sub">${hEsc(indName(d.inputs.ind))} · SDE ${money(d.inputs.ern)}</span></td>
+          <td data-th="${H[1]}"><span class="tl-st st-${d.status}">${STATUS[d.status]}</span></td>${cell(2,p?money(p.V):"—")}
+          ${cell(3,d.listPrice?money(d.listPrice):"—")}${cell(4,sold?money(d.salePrice):"—")}
+          ${cell(5,sold&&p?(d.salePrice/p.priceMed).toFixed(2)+"×":"—")}${cell(6,t>0?Math.round(t):"—")}
+          <td class="dl-acts" data-th=""><button class="btn tool sm" type="button" data-act="open">Open in the console</button></td></tr>`; }).join("")}</tbody>`;
+  }
+  const card=(k,big,sub)=>`<div class="dl-card"><div class="dl-k">${k}</div><div class="dl-big">${big}</div><div class="dl-s">${sub}</div></div>`;
+  const prog=(have,need)=>`<span class="dl-prog" role="img" aria-label="${have} of ${need}"><i style="width:${Math.min(100,have/need*100).toFixed(0)}%"></i></span>`;
+  function dealsTrack(S){
+    const P=S.price, T=S.time, C=S.close;
+    $("dl_track").innerHTML=`<div class="dl-cards">
+      ${card("Deals saved",S.n,`${S.done} finished (closed, withdrawn or expired); ${S.closed} closed with a sale price.`)}
+      ${card("Sale price ÷ the model's median",P.n>=DEAL_MIN.price?P.factor.toFixed(2)+"×":"—",P.n>=DEAL_MIN.price
+        ?`${P.n} closed deals; 90% interval ${P.lo.toFixed(2)}–${P.hi.toFixed(2)}×. Above 1, your deals sold for more than the model expected at their listing prices.`
+        :`${prog(P.n,DEAL_MIN.price)}Needs ${DEAL_MIN.price} closed deals with a sale price; ${P.n} so far.`)}
+      ${card("Listing to close ÷ the model's median",T.n>=DEAL_MIN.time?T.factor.toFixed(2)+"×":"—",T.n>=DEAL_MIN.time
+        ?`${T.n} closed deals with both dates; 90% interval ${T.lo.toFixed(2)}–${T.hi.toFixed(2)}×. Above 1, your deals took longer than the model's median.`
+        :`${prog(T.n,DEAL_MIN.time)}Needs ${DEAL_MIN.time} closed deals with listing and closing dates; ${T.n} so far.`)}
+      ${card("Closed, of finished listings",C.n>=DEAL_MIN.close?pc(C.obs):"—",C.n>=DEAL_MIN.close
+        ?`The model expected ${pc(C.pred)} (±${pc(1.645*C.se)} at 90%) at the prices you listed at; ${C.n} finished listings.`
+        :`${prog(C.n,DEAL_MIN.close)}Needs ${DEAL_MIN.close} finished listings; ${C.n} so far.`)}</div>
+      <label class="fin-chk dl-cal"><input type="checkbox" id="dl_calib"${PREFS.calib?" checked":""}${P.n>=DEAL_MIN.price?"":" disabled"}>
+        Show my price record beside the console's figures and in the seller report. Display only: the model's numbers do not change.</label>`;
+  }
+  function dealsFit(S){
+    const pen=S.pen, q=S.quality;
+    const penTxt=pen.ready?(()=>{ const lo=pen.se?pen.pen-1.645*pen.se:null, hi=pen.se?pen.pen+1.645*pen.se:null, inside=lo!==null&&PEN_MAX>=lo&&PEN_MAX<=hi;
+        return `<p class="dl-fitres">Fitted on your ${pen.n} finished listings, ${pen.nAbove} of them listed above value: <b>${pen.pen.toFixed(2)}</b>${pen.se?` (SE ${pen.se.toFixed(2)})`:""}
+          against the console's ${PEN_MAX.toFixed(2)}. ${lo===null?"":inside?"Your listings are consistent with the console's number.":
+          pen.pen>PEN_MAX?"Your listings say pricing above value costs more than the console assumes.":"Your listings say pricing above value costs less than the console assumes."}</p>`; })()
+      :`<p>${prog(Math.min(pen.n,DEAL_MIN.pen),DEAL_MIN.pen)}${pen.n} of ${DEAL_MIN.pen} finished listings, ${pen.nAbove} of the ${DEAL_MIN.penAbove} listed above value it needs.</p>`;
+    const qTxt=q.ready?`<div class="tw"><table class="dl-q"><thead><tr><th scope="col">Factor</th><th class="n" scope="col">Effect on price per peer step</th><th class="n" scope="col">SE</th></tr></thead><tbody>
+        ${q.dims.map((k,i)=>`<tr><th scope="row">${FACTOR[k]||k}</th><td class="n">${(q.beta[i]>=0?"+":"−")+Math.abs(q.beta[i]*100).toFixed(1)}%</td><td class="n">${(q.se[i]*100).toFixed(1)}%</td></tr>`).join("")}</tbody></table></div>
+        <p class="note">Least squares of the log of each sale price over the fitted value before quality, on the nine factors in peer standard deviations.</p>`
+      :`<p>${prog(q.n,DEAL_MIN.quality)}${q.n} of ${DEAL_MIN.quality} closed deals with a sale price.</p>`;
+    $("dl_fit").innerHTML=`<div class="dl-fits"><div><h3 class="grp-title">How hard pricing above value cuts the odds</h3>
+        <p>The console multiplies the chance of a sale by 1 &minus; ${PEN_MAX.toFixed(2)} &times; F(gap), where F is the share of price-killed deals that
+        Pepperdine&rsquo;s survey records at or below that gap over value; the ${PEN_MAX.toFixed(2)} is judgment. Every finished listing is one observation of it:
+        listed at a known gap, it sold or it did not. The fit needs listings priced above value, where the number acts.</p>${penTxt}</div>
+      <div><h3 class="grp-title">What each quality factor is worth</h3>
+        <p>The console places a business inside the measured spread of sale prices by nine quality factors; the weights of owner dependence and
+        management depth are fitted, the other seven are equal by judgment. Closed deals with their sale prices fit all nine directly.</p>${qTxt}</div></div>`;
+  }
+  function dealsStore(){
+    let kb=0; try{ kb=(localStorage.getItem(K_DEALS)||"").length/1024; }catch(e){}
+    $("dl_store").innerHTML=STORE_OK
+      ?`${DEALS.length} deal${DEALS.length===1?"":"s"} kept in this browser (${kb<1?"under 1":Math.round(kb)} KB). They do not follow you to another browser or device, and clearing this site&rsquo;s data deletes them: export a copy now and then.`
+      :`<b>This browser is not keeping data</b> (a private window, or storage blocked for this page). Deals last until the page closes: export them to keep them.`;
+  }
+  const field=(lab,html,wide)=>`<label class="fin-f${wide?" wide":""}">${lab}${html}</label>`;
+  const txt=(n,v,extra)=>`<input type="text" name="${n}" autocomplete="off" spellcheck="false" value="${hEsc(v)}"${extra||""}>`;
+  function dealsEdit(id){
+    const d=dealById(id); if(!d){ EDIT=null; $("dl_edit_sec").hidden=true; return; }
+    EDIT=id; $("dl_edit_sec").hidden=false; $("dl_edit_t").textContent=d.name;
+    const p=stats().pred.get(d)||dealPredict(d), at=d.listPrice>0?"its listing price":"the ask saved with it";
+    const sold=d.status==="closed"&&d.salePrice>0, t=sold?daysBetween(d.listDate,d.closeDate):null;
+    $("dl_edit").innerHTML=`<form class="dl-form" id="dl_form" novalidate>
+      ${field("Name",txt("name",d.name,' maxlength="120"'),true)}
+      ${field("Status",`<select name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${k===d.status?" selected":""}>${v}</option>`).join("")}</select>`)}
+      ${field("Listed at",txt("listPrice",d.listPrice?moneyIn(d.listPrice):"",` inputmode="decimal" placeholder="${moneyIn(d.inputs.ask)}"`))}
+      ${field("Listing date",`<input type="date" name="listDate" value="${d.listDate||""}">`)}
+      ${field("Sale price",txt("salePrice",d.salePrice?moneyIn(d.salePrice):"",' inputmode="decimal"'))}
+      ${field("Closing date",`<input type="date" name="closeDate" value="${d.closeDate||""}">`)}
+      ${field("Cash at closing",txt("cashAtClose",d.cashAtClose!==null?p1(d.cashAtClose):"",' inputmode="decimal" placeholder="share of the price"'))}
+      ${field("Buyers contacted",txt("buyers",d.buyers!==null?String(d.buyers):"",' inputmode="numeric"'))}
+      ${field("Offers received",txt("offers",d.offers!==null?String(d.offers):"",' inputmode="numeric"'))}
+      ${field("Notes",`<textarea name="notes" rows="3" maxlength="5000">${hEsc(d.notes)}</textarea>`,true)}
+      <div class="dl-form-acts"><button class="btn tool prime" type="submit">Save changes</button>
+        <button class="btn tool" type="button" data-act="open">Open in the console</button>
+        <button class="btn tool" type="button" data-act="dup">Duplicate</button>
+        <button class="btn tool danger" type="button" data-act="del">Delete</button>
+        <button class="btn tool" type="button" data-act="close">Close</button></div>
+      <p class="tools-msg" id="dl_form_msg" role="status" aria-live="polite"></p></form>
+      <p class="dl-pred">Today&rsquo;s model at ${at}, ${money(p.s.ask)} (${(p.s.ask/p.V).toFixed(2)}× its value of ${money(p.V)}): a ${pc(p.pc)} chance of closing,
+        a median of ${Math.round(p.tMed)} days to close and a median price of ${money(p.priceMed)} if it does.${sold?` It sold for ${money(d.salePrice)},
+        ${(d.salePrice/p.priceMed).toFixed(2)}× that median${t>0?`, in ${Math.round(t)} days`:""}.`:""}</p>`;
+  }
+  function dealsSubmit(form){
+    const d=dealById(EDIT); if(!d) return;
+    const F=new FormData(form), bad=[], get=k=>String(F.get(k)||"").trim();
+    form.querySelectorAll(".bad").forEach(e=>e.classList.remove("bad"));
+    const mark=k=>{ bad.push(k); const e=form.elements[k]; if(e) e.classList.add("bad"); };
+    const amt=(k,lo,hi,old)=>{ const t=get(k); if(!t) return null; const v=parseAmount(t);
+      if(!isFinite(v)||t.includes("%")||v<lo||v>hi){ mark(k); return old; } return v; };
+    const cnt=(k,old)=>{ const t=get(k); if(!t) return null; const v=Number(t.replace(/,/g,""));
+      if(!Number.isInteger(v)||v<0||v>1e6){ mark(k); return old; } return v; };
+    d.name=get("name").slice(0,120)||d.name;
+    if(STATUS[get("status")]) d.status=get("status");
+    d.listPrice=amt("listPrice",1e3,1e11,d.listPrice); d.salePrice=amt("salePrice",1e3,1e11,d.salePrice);
+    d.listDate=isoDay(get("listDate")); d.closeDate=isoDay(get("closeDate"));
+    { const t=get("cashAtClose"); if(!t) d.cashAtClose=null; else { const v=parseAmount(t), x=t.includes("%")||v>1?v/100:v;
+        if(isFinite(x)&&x>=0&&x<=1) d.cashAtClose=x; else mark("cashAtClose"); } }
+    d.buyers=cnt("buyers",d.buyers); d.offers=cnt("offers",d.offers);
+    d.notes=String(F.get("notes")||"").slice(0,5000); d.updated=new Date().toISOString();
+    const tips=[];
+    if(d.listDate&&d.closeDate&&daysBetween(d.listDate,d.closeDate)<=0) tips.push("The closing date is not after the listing date, so the time to close is left out.");
+    if(d.status==="closed"&&!d.salePrice) tips.push("Add the sale price to count this deal in your price record.");
+    if(d.status==="closed"&&d.salePrice&&!(d.listDate&&d.closeDate)) tips.push("Add both dates to count its time to close.");
+    const ok=saveDeals(); renderDeals(); toolbar();
+    say("dl_form_msg",(bad.length?"Not saved, check the marked fields: "+bad.join(", ")+". The rest is saved. ":"Saved. ")+tips.join(" ")+(ok?"":" This browser is not keeping data: export to keep it."),bad.length||tips.length?12000:5000);
+    bad.forEach(k=>{ const e=$("dl_form")&&$("dl_form").elements[k]; if(e) e.classList.add("bad"); });
+  }
+  let delArm=null;
+  function dealsAct(act,id,btn){
+    const d=dealById(id); if(!d) return;
+    if(act==="edit"){ dealsEdit(id); $("dl_edit_sec").scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"}); return; }
+    if(act==="open") return openDeal(id);
+    if(act==="close"){ EDIT=null; $("dl_edit_sec").hidden=true; return; }
+    if(act==="dup"){ const c=cleanDeal({...d,id:newId(),name:d.name+" (copy)",created:new Date().toISOString(),updated:new Date().toISOString()});
+      DEALS.unshift(c); saveDeals(); EDIT=c.id; renderDeals(); say("dl_msg",`Duplicated as “${c.name}”.`); return; }
+    if(act==="del"){
+      if(delArm!==id){ delArm=id; btn.textContent="Press again to delete"; setTimeout(()=>{ if(delArm===id){ delArm=null; if(btn.isConnected) btn.textContent="Delete"; } },4000); return; }
+      delArm=null; DEALS=DEALS.filter(x=>x.id!==id); if(CUR===id) CUR=null; EDIT=null; saveDeals(); renderDeals(); toolbar();
+      say("dl_msg",`Deleted “${d.name}”.`);
+    }
+  }
+  function openDeal(id){
+    const d=dealById(id); if(!d) return;
+    CUR=id; FIN=cleanFin(d.fin); finFill(); PREFS.fin={...FIN};
+    if(d.ws){ WS=cleanWS(d.ws); PREFS.ws=WS; } savePrefs();
+    if(d.business||d.preparedFor){ $("rp_biz").value=d.business; $("rp_for").value=d.preparedFor; }
+    const t=document.querySelector('.nav .tab[data-v="console"]');
+    /* a dispatched click, not t.click(): with reduced motion the nav's warp re-clicks the tab at once, and a browser
+       ignores click() on an element whose own click() is still running */
+    if(t&&!t.classList.contains("on")){ PENDING=d.inputs; t.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true})); }
+    else { applyInputs(d.inputs); window.scrollTo(0,0); }
+  }
+  const csvCell=v=>{ let t=v===null||v===undefined?"":String(v); if(/^[=+\-@\t\r]/.test(t)) t="'"+t; return /[",\n\r]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+  function exportCSV(){
+    const S=stats(), H=["id","name","status","industry","state","franchise","revenue","sde","ask","list_price","list_date","sale_price","close_date",
+      "cash_at_close","buyers_contacted","offers","model_value_today","model_median_price_at_list","model_close_chance_at_list","model_median_days_at_list","notes"];
+    const rows=DEALS.map(d=>{ const p=S.pred.get(d)||dealPredict(d), I=d.inputs;
+      return [d.id,d.name,d.status,indName(I.ind),I.st||"",I.franchise?"yes":"no",Math.round(I.rev),Math.round(I.ern),Math.round(I.ask),
+        d.listPrice!==null?Math.round(d.listPrice):"",d.listDate||"",d.salePrice!==null?Math.round(d.salePrice):"",d.closeDate||"",
+        d.cashAtClose!==null?d.cashAtClose.toFixed(4):"",d.buyers!==null?d.buyers:"",d.offers!==null?d.offers:"",
+        Math.round(p.V),Math.round(p.priceMed),p.pc.toFixed(4),Math.round(p.tMed),d.notes].map(csvCell).join(","); });
+    download(`omni-deals-${today()}.csv`,"text/csv",[H.join(","),...rows].join("\r\n")+"\r\n");
+  }
+  function exportJSON(){
+    download(`omni-deals-${today()}.json`,"application/json",JSON.stringify({format:"omni.deals",version:1,exported:new Date().toISOString(),deals:DEALS},null,1)+"\n");
+  }
+  function importFile(file){
+    if(!file) return;
+    if(file.size>5e6){ say("dl_msg","That file is over 5 MB; a deals export is far smaller."); return; }
+    const rd=new FileReader();
+    rd.onload=()=>{ let j=null; try{ j=JSON.parse(String(rd.result)); }catch(e){}
+      const list=Array.isArray(j)?j:j&&Array.isArray(j.deals)?j.deals:null;
+      if(!list){ say("dl_msg","Not a deals file: export one from this page (JSON) to import it."); return; }
+      let add=0, upd=0, skip=0;
+      for(const raw of list.slice(0,5000)){ const d=cleanDeal(raw); if(!d){ skip++; continue; }
+        const i=DEALS.findIndex(x=>x.id===d.id);
+        if(i<0){ DEALS.push(d); add++; } else if(Date.parse(d.updated)>Date.parse(DEALS[i].updated)){ DEALS[i]=d; upd++; } else skip++; }
+      const ok=saveDeals(); renderDeals(); toolbar();
+      say("dl_msg",`Imported ${add} new deal${add===1?"":"s"} and updated ${upd}; ${skip} skipped (invalid, or not newer than the copy here).`+(ok?"":" This browser is not keeping data."),12000); };
+    rd.readAsText(file);
+  }
+
+  /* ---- wiring ---- */
+  $("f_type").innerHTML=Object.entries(DSC_TYPES).map(([k,v])=>`<option value="${k}">${hEsc(v)}</option>`).join("");
+  $("rc_ent").innerHTML=Object.entries(RECAST_ENTITY).map(([k,v])=>`<option value="${k}">${hEsc(v.n)}</option>`).join("");
+  $("rc_wt").innerHTML=Object.entries(RECAST_WEIGHTS).map(([k,v])=>`<option value="${k}">${hEsc(v)}</option>`).join("");
+  { const st=document.createElement("style"); st.id="rp-css"; st.textContent=RP_CSS; document.head.appendChild(st); }
+  finFill();
+  for(const k in FF){ const el=$(FF[k]);
+    el.addEventListener("input",()=>el.classList.remove("bad"));
+    el.addEventListener("change",()=>{ const v=parseFin(k,el.value);
+      if(v===null||isFinite(v)) FIN[k]=v; else el.classList.add("bad");
+      el.value=FFMT[k](FIN[k]); finChanged(); });
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter") el.blur(); }); }
+  $("f_type").addEventListener("change",()=>{ FIN.type=DSC_TYPES[$("f_type").value]?$("f_type").value:"initial"; finChanged(); });
+  $("f_standby").addEventListener("change",()=>{ FIN.standby=$("f_standby").checked; finChanged(); });
+  const wsOpen=opener=>{ wsBuild(); openDlg("recast",opener); };
+  $("tl_recast").addEventListener("click",e=>wsOpen(e.currentTarget));
+  $("r_recast").addEventListener("click",e=>wsOpen(e.currentTarget));
+  $("tl_fin").addEventListener("click",()=>{ $("sec_fin").scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"}); });
+  $("tl_report").addEventListener("click",e=>reportOpen(e.currentTarget));
+  $("tl_save").addEventListener("click",()=>saveCurrent(false));
+  $("tl_saveas").addEventListener("click",()=>saveCurrent(true));
+  $("rc_close").addEventListener("click",closeDlg);
+  $("rc_ent").addEventListener("change",()=>{ WS.entity=$("rc_ent").value; wsSave(); wsBuild(); });
+  $("rc_wt").addEventListener("change",()=>{ WS.weight=$("rc_wt").value; wsSave(); wsSum(); });
+  $("rc_grw").addEventListener("change",()=>{ WS.grw=$("rc_grw").checked; wsSave(); });
+  $("rc_clear").addEventListener("click",()=>{ const e=WS.entity, w=WS.weight; WS=emptyWS(); WS.entity=e; WS.weight=w; wsSave(); wsBuild(); });
+  $("rc_use").addEventListener("click",wsUse);
+  $("rc_tbl").addEventListener("input",e=>{ const el=e.target; if(!el.matches(".rc-in")) return;
+    const v=wsParse(el.value), y=WS.years[+el.dataset.y], less=LESS.has(el.dataset.k);
+    if(v===undefined){ delete y[el.dataset.k]; el.classList.remove("bad"); }
+    else if(isFinite(v)){ y[el.dataset.k]=less?Math.abs(v):v; el.classList.remove("bad"); }
+    else return;
+    wsSave(); wsSum(); });
+  $("rc_tbl").addEventListener("change",e=>{ const el=e.target; if(!el.matches(".rc-in")) return;
+    const v=wsParse(el.value);
+    if(v!==undefined&&!isFinite(v)){ el.classList.add("bad"); el.value=wsFmt(WS.years[+el.dataset.y][el.dataset.k]); }
+    else el.value=wsFmt(v!==undefined&&LESS.has(el.dataset.k)?Math.abs(v):v); });
+  $("rc_tbl").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.matches(".rc-in")){ e.preventDefault();
+    const all=[...$("rc_tbl").querySelectorAll(".rc-in")], i=all.indexOf(e.target), nx=all[i+3]||all[(i%3)+1]; if(nx) nx.focus(); } });
+  ["rp_biz","rp_for","rp_broker","rp_firm"].forEach(id=>{ $(id).addEventListener("input",reportMetaChanged); $(id).addEventListener("change",reportMetaChanged); });
+  $("rp_close").addEventListener("click",closeDlg);
+  /* while the report is open, html.rp-on prints the paper alone (broker-css), from this button or the browser's own Print */
+  $("rp_print").addEventListener("click",()=>window.print());
+  $("rp_dl").addEventListener("click",()=>{ if(!REPORT) return; const m=reportMeta();
+    download(`valuation-${slug(m.business||REPORT.ind)||"report"}-${today()}.html`,"text/html",reportFile()); });
+  $("dl_new").addEventListener("click",()=>{ CUR=null; const d=saveCurrent(true); if(!d) return; EDIT=d.id; renderDeals();
+    say("dl_msg",`Saved the console's valuation as “${d.name}”: name it and record its listing below.`); });
+  $("dl_json").addEventListener("click",exportJSON);
+  $("dl_csv").addEventListener("click",exportCSV);
+  $("dl_imp").addEventListener("click",()=>$("dl_file").click());
+  $("dl_file").addEventListener("change",e=>{ importFile(e.target.files&&e.target.files[0]); e.target.value=""; });
+  $("dl_tbl").addEventListener("click",e=>{ const b=e.target.closest("[data-act]"), tr=e.target.closest("tr[data-id]"); if(b&&tr) dealsAct(b.dataset.act,tr.dataset.id,b); });
+  $("dl_edit").addEventListener("click",e=>{ const b=e.target.closest("button[data-act]"); if(b&&EDIT) dealsAct(b.dataset.act,EDIT,b); });
+  $("dl_edit").addEventListener("submit",e=>{ e.preventDefault(); dealsSubmit(e.target); });
+  $("dl_track").addEventListener("change",e=>{ if(e.target.id!=="dl_calib") return; PREFS.calib=e.target.checked; savePrefs(); toolbar(); });
+
+  /* after every render: the financing table and the toolbar follow the console */
+  const r0=window.render;
+  window.render=function(){ const out=r0.apply(this,arguments); try{ renderFinance(); toolbar(); }catch(e){ window.__brokerErr=e; } return out; };
+  window.OMNI_BROKER={
+    /* the tab handler calls this once a view is showing: a deal opened from the Deals tab lands in the console only now,
+       so the console renders while it is visible */
+    tab(v){ if(v==="deals") renderDeals(); else if(v==="console"&&PENDING){ const p=PENDING; PENDING=null; applyInputs(p); } },
+    /* for the browser tests */
+    state:()=>({deals:DEALS,cur:CUR,fin:{...FIN},ws:WS,prefs:{...PREFS},store:STORE_OK}),
+    applyInputs,snap,openDeal,saveCurrent
+  };
 })();
 </script>
 <script id="cosmos-js">
@@ -13553,4 +14540,209 @@ function start(){
 })();
 </script>
 <!-- ======== end v10-motion ======== -->
+<!-- ======== broker tools: the toolbar, the financing check, the Deals tab, the worksheet and the report ======== -->
+<style id="broker-css">
+/* Built on the page's tokens (ink, hairlines, the figure face, the control radius); the report's paper has its own
+   stylesheet (RP_CSS in the script) because it also prints and downloads. Status chips are neutral or the page's
+   positive and negative blues and reds: green, amber and coral stay the provenance colours. */
+/* a hidden attribute wins over the display these components set */
+.tools [hidden],#view-deals [hidden],.ovl [hidden]{display:none!important}
+.vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.linkish{appearance:none;background:none;border:0;padding:0;margin:0;font:inherit;color:#cfe3ff;cursor:pointer;text-align:left;
+  text-decoration:underline;text-decoration-color:rgba(158,203,255,.4);text-underline-offset:3px}
+.linkish:hover{color:#fff;text-decoration-color:#d8ecff}
+.btn.tool{width:auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;margin:0;padding:8px 14px;
+  border-radius:var(--r-control,10px);border:1px solid rgba(158,203,255,.24);background:rgba(12,18,40,.6);color:var(--ink,#eef2fb);
+  font:600 13px/1.25 var(--sans);white-space:nowrap;transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.btn.tool:hover{border-color:rgba(184,164,255,.55);box-shadow:0 0 14px rgba(184,164,255,.24);background:rgba(22,30,62,.75);color:#fff}
+.btn.tool.prime{border-color:rgba(158,203,255,.42);background:linear-gradient(135deg,rgba(77,163,255,.30),rgba(184,164,255,.22))}
+.btn.tool.prime:hover{background:linear-gradient(135deg,rgba(77,163,255,.38),rgba(184,164,255,.3))}
+.btn.tool.danger{border-color:rgba(255,180,171,.35);color:#ffd2cc}
+.btn.tool.danger:hover{border-color:rgba(255,180,171,.7);box-shadow:0 0 14px rgba(255,138,155,.22)}
+.btn.tool.sm{min-height:32px;padding:5px 12px;font-size:12.5px}
+.btn.tool:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.tool:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
+.tools-msg{margin:0;font:400 12.5px/1.5 var(--sans);color:var(--ink2,#b9c3d8)}
+.tools-msg:empty{display:none}
+
+/* the toolbar above the hero */
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 var(--sp-4,16px);padding:10px 12px 10px 18px;
+  border:1px solid var(--hair);border-radius:var(--r-card,14px);background:linear-gradient(170deg,rgba(18,24,52,.74),rgba(6,10,26,.84))}
+.tools-deal{flex:1 1 200px;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font:400 13px/1.4 var(--sans);color:var(--ink2,#b9c3d8)}
+.tools-deal .tl-k{font:500 var(--fs-cap,11.5px)/1.4 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3,#8590a8)}
+.tools-deal .tl-n{color:var(--ink,#eef2fb);font-weight:600;overflow-wrap:anywhere}
+.tools-acts{display:flex;flex-wrap:wrap;gap:8px}
+.tools>.tools-msg,.tools>.tools-cal{flex:1 0 100%}
+.tools-cal{margin:0;padding:8px 12px;border-radius:10px;border:1px dashed rgba(158,203,255,.3);font:400 12.5px/1.55 var(--sans);color:var(--ink2,#b9c3d8)}
+.tools-cal b{color:var(--ink,#eef2fb)}
+.tl-st{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid rgba(158,203,255,.28);font:600 11px/1.5 var(--sans);
+  color:var(--ink2,#b9c3d8);background:rgba(12,18,40,.6);white-space:nowrap}
+.tl-st.st-listed,.tl-st.st-loi{border-color:rgba(184,164,255,.5);color:#e3dbff}
+.tl-st.st-closed{border-color:rgba(158,203,255,.6);color:#d8ecff;background:rgba(77,163,255,.16)}
+.tl-st.st-withdrawn,.tl-st.st-expired{border-color:rgba(255,180,171,.4);color:#ffd2cc}
+.tl-ed{font:500 11.5px/1.4 var(--sans);color:#ffd2cc}
+#view-console .rail .linkish#r_recast{display:block;margin:-4px 0 14px;font:400 12.5px/1.45 var(--sans)}
+
+/* the financing check */
+.fin-in{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 14px;margin:0 0 var(--sp-5,24px)}
+.fin-f{display:flex;flex-direction:column;gap:6px;min-width:0;font:400 12.5px/1.35 var(--sans);color:var(--ink2,#b9c3d8)}
+.fin-f.wide{grid-column:span 2}
+.fin-f input,.fin-f select,.fin-f textarea,.rp-bar input,.rc-ctl select{width:100%;min-height:40px;padding:8px 12px;border-radius:var(--r-control,10px);
+  border:1px solid rgba(158,203,255,.2);background-color:rgba(12,18,40,.6);color:var(--ink,#eef2fb);font:500 14px/1.3 var(--sans);
+  transition:border-color .2s ease,box-shadow .2s ease}
+.fin-f input,.rc-in{font-family:var(--fig);font-variant-numeric:tabular-nums}
+.fin-f textarea{resize:vertical;min-height:72px;font:400 13.5px/1.5 var(--sans)}
+.fin-f select,.rc-ctl select{padding-right:34px;background-image:linear-gradient(45deg,transparent 50%,#b8a4ff 50%),linear-gradient(135deg,#b8a4ff 50%,transparent 50%);
+  background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;text-overflow:ellipsis}
+.fin-f input:hover,.fin-f select:hover,.fin-f textarea:hover,.rp-bar input:hover,.rc-ctl select:hover{border-color:rgba(184,164,255,.45)}
+.fin-f input:focus,.fin-f select:focus,.fin-f textarea:focus,.rp-bar input:focus,.rc-ctl select:focus,.rc-in:focus{outline:2px solid #d8ecff;outline-offset:1px;
+  border-color:rgba(184,164,255,.55);box-shadow:none}
+.fin-f input[type=date]{color-scheme:dark}
+.fin-f .bad,.rc-in.bad{border-color:rgba(255,150,150,.85)!important;box-shadow:0 0 0 3px rgba(255,138,155,.18)!important}
+.fin-chk{display:flex;align-items:flex-start;gap:10px;grid-column:1/-1;cursor:pointer;font:400 13px/1.5 var(--sans);color:var(--ink2,#b9c3d8)}
+.fin-chk input{flex:none;width:18px;height:18px;margin:2px 0 0;accent-color:#9d84ff;cursor:pointer}
+.fin-out{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:var(--sp-5,24px);align-items:start}
+#fintbl th[scope=row]{color:var(--ink2,#b9c3d8);font-weight:500;white-space:nowrap}
+#fintbl thead th{vertical-align:bottom}
+#fintbl td{white-space:nowrap}
+#fintbl td b{font:600 15px/1.3 var(--fig);color:var(--ink,#eef2fb)}
+.fin-s{display:block;font:400 11.5px/1.4 var(--sans);color:var(--ink3,#8590a8);white-space:normal}
+.fin-cov.ok{color:#cfe6ff!important}
+.fin-cov.no{color:#ffb4ab!important}
+.fin-max{padding:16px 18px;border:1px solid rgba(158,203,255,.16);border-radius:var(--r-card,14px);background:rgba(6,10,28,.5)}
+.fin-k,.rc-k,.dl-k{font:500 var(--fs-cap,11.5px)/1.4 var(--sans);color:var(--ink3,#8590a8)}
+.fin-big,.rc-big,.dl-big{margin:6px 0 8px;font:600 var(--fs-fig-l,28px)/1.1 var(--fig);font-variant-numeric:tabular-nums;color:var(--ink,#eef2fb)}
+.fin-max p{margin:0;font:400 12.5px/1.55 var(--sans);color:var(--ink2,#b9c3d8)}
+.fin-notes{margin:var(--sp-4,16px) 0 0;padding-left:18px;max-width:86ch}
+.fin-notes li{margin:0 0 6px}
+.fin-notes b{color:#ffd2cc;font-weight:600}
+#view-console #sec_fin{--hue:var(--h-teal);--hue2:var(--h-azure);scroll-margin-top:84px}
+/* the sections after it keep the hues they had */
+#view-console #sec_fin~.sec:nth-of-type(10){--hue:var(--h-indigo);--hue2:var(--h-ice)}
+#view-console #sec_fin~.sec:nth-of-type(11){--hue:var(--h-star);--hue2:var(--h-violet)}
+html[data-stage="11"] .v8-wash.w-d{opacity:1}
+
+/* dialogs */
+html.dlg-open,html.dlg-open body{overflow:hidden}
+.ovl{position:fixed;inset:0;z-index:95;overflow-y:auto;overscroll-behavior:contain;padding:max(16px,4vh) 16px 48px;
+  background:rgba(3,6,16,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ovl[hidden]{display:none}
+.ovl-card{width:min(1040px,100%);margin:0 auto;padding:clamp(18px,3vw,32px);border:1px solid rgba(158,203,255,.2);border-radius:var(--r-panel,22px);
+  background:linear-gradient(170deg,rgba(16,22,48,.98),rgba(6,10,24,.99));box-shadow:0 30px 80px -24px rgba(0,0,0,.85)}
+.ovl-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px}
+.ovl-head h2{margin:0;font:600 22px/1.25 var(--sans);color:var(--ink,#eef2fb)}
+.ovl-lede{margin:0 0 var(--sp-4,16px);max-width:80ch;font:400 13.5px/1.6 var(--sans);color:var(--ink2,#b9c3d8)}
+.ovl-acts{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:10px 12px;margin:var(--sp-4,16px) 0 0}
+.ovl-acts .fin-chk{flex:1 1 260px}
+.rc-ctl{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 14px}
+.rc-ctl label{display:flex;flex-direction:column;gap:6px;flex:1 1 240px;font:400 12.5px/1.35 var(--sans);color:var(--ink2,#b9c3d8)}
+.rc-t{min-width:640px}
+.rc-t thead th{white-space:nowrap}
+.rc-t tbody th{font:400 13px/1.4 var(--sans);color:var(--ink,#eef2fb);padding-right:14px;min-width:240px;white-space:normal}
+.rc-t td{padding:4px 6px 4px 0}
+.rc-h{display:block;font:400 11.5px/1.4 var(--sans);color:var(--ink3,#8590a8)}
+.rc-in{width:100%;min-width:118px;min-height:36px;padding:6px 10px;border-radius:8px;border:1px solid rgba(158,203,255,.18);background:rgba(12,18,40,.6);
+  color:var(--ink,#eef2fb);font-size:14px;text-align:right}
+.rc-less th{color:#ffd2cc!important}
+.rc-tot th,.rc-tot td{border-top:1px solid rgba(158,203,255,.3);padding-top:10px!important;font-weight:600}
+.rc-tot td{font:600 15px/1.3 var(--fig);color:var(--ink,#eef2fb)}
+.rc-sum{margin:var(--sp-4,16px) 0 0;display:grid;gap:8px}
+.rc-fig{padding:14px 16px;border:1px solid rgba(158,203,255,.16);border-radius:var(--r-card,14px);background:rgba(6,10,28,.5)}
+.rc-s{font:400 12.5px/1.5 var(--sans);color:var(--ink2,#b9c3d8)}
+.rc-g,.rc-flag{margin:0;font:400 13px/1.55 var(--sans);color:var(--ink2,#b9c3d8)}
+.rc-flag{padding-left:12px;border-left:2px solid rgba(255,180,171,.6)}
+.rp-ovl{background:rgba(3,6,16,.9)}
+.rp-bar{position:sticky;top:calc(-1 * max(16px,4vh));z-index:2;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px;width:min(8.5in,100%);
+  margin:0 auto 14px;padding:12px 14px;border:1px solid rgba(158,203,255,.22);border-radius:var(--r-card,14px);background:rgba(10,15,34,.97)}
+.rp-bar label{display:flex;flex-direction:column;gap:5px;flex:1 1 150px;min-width:0;font:500 11.5px/1.3 var(--sans);color:var(--ink3,#8590a8)}
+.rp-acts{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 100%;justify-content:flex-end}
+.rp-wrap{width:min(8.5in,100%);margin:0 auto}
+.rp-paper{border-radius:4px;box-shadow:0 30px 80px -30px rgba(0,0,0,.95);overflow:hidden}
+
+/* the Deals tab */
+#view-deals{padding:0 0 var(--sp-6,32px)}
+#view-deals .deals-lede{margin:6px 0 20px}
+.deals-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 var(--sp-6,32px)}
+.deals-bar .tools-msg{flex:1 1 100%}
+#view-deals .sec{margin:0 0 var(--sp-7,40px)}
+#view-deals .sec-head{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+#view-deals .sec-head h2{margin:0;font:600 20px/1.3 var(--sans);color:var(--ink-title,#c9d3ec)}
+#view-deals .panel{position:relative}
+#dl_tbl .dl-sub{display:block;font:400 11.5px/1.4 var(--sans);color:var(--ink3,#8590a8)}
+#dl_tbl tr.cur>td:first-child{box-shadow:inset 3px 0 0 rgba(184,164,255,.7);padding-left:10px}
+#dl_tbl td,#dl_tbl th{vertical-align:middle}
+#dl_tbl .dl-name{font-weight:600}
+.dl-empty{padding:18px 0!important;color:var(--ink2,#b9c3d8);border:0!important}
+.dl-acts{text-align:right;white-space:nowrap}
+.dl-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.dl-card{padding:14px 16px;border:1px solid rgba(158,203,255,.16);border-radius:var(--r-card,14px);background:rgba(6,10,28,.5);min-width:0}
+.dl-big{font-size:var(--fs-fig-m,20px)}
+.dl-s{font:400 12.5px/1.5 var(--sans);color:var(--ink2,#b9c3d8)}
+.dl-prog{display:block;height:4px;margin:2px 0 8px;border-radius:2px;background:rgba(158,203,255,.14);overflow:hidden}
+.dl-prog i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#4da3ff,#b8a4ff)}
+.dl-cal{margin:var(--sp-4,16px) 0 0}
+.dl-cal input:disabled+*,.dl-cal:has(input:disabled){opacity:.6;cursor:not-allowed}
+.dl-fits{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6,32px)}
+.dl-fits h3{margin:0 0 8px;font:600 14px/1.35 var(--sans);color:var(--ink,#eef2fb)}
+.dl-fits p{margin:0 0 10px;font:400 13px/1.6 var(--sans);color:var(--ink2,#b9c3d8)}
+.dl-fitres b{font:600 17px/1.2 var(--fig);color:var(--ink,#eef2fb)}
+.dl-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 14px}
+.dl-form-acts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.dl-form .tools-msg{grid-column:1/-1}
+.dl-pred{margin:var(--sp-4,16px) 0 0;padding-top:12px;border-top:1px solid var(--hair);font:400 13px/1.6 var(--sans);color:var(--ink2,#b9c3d8);max-width:90ch}
+
+@media(max-width:1080px){
+  .fin-out{grid-template-columns:1fr}
+  .dl-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .fin-in,.dl-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dl-fits{grid-template-columns:1fr;gap:var(--sp-5,24px)}
+  .tools{padding:12px}
+  .tools-acts{width:100%}
+  .tools-acts .btn.tool{flex:1 1 auto}
+}
+@media(max-width:700px){
+  /* the deals as cards (the page's table.cards rules); the current deal keeps its mark */
+  #dl_tbl tr.cur>td:first-child{box-shadow:none;padding-left:0!important}
+  #dl_tbl tr.cur{box-shadow:inset 3px 0 0 rgba(184,164,255,.7);padding-left:12px}
+  #dl_tbl .dl-acts{margin-top:8px}
+}
+@media(max-width:640px){
+  /* the worksheet: each line's label above its three years */
+  .rc-t{min-width:0}
+  .rc-t,.rc-t thead,.rc-t tbody{display:block}
+  .rc-t tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:9px 0;border-bottom:1px solid var(--hair)}
+  .rc-t thead tr{padding:0 0 6px}
+  .rc-t thead th:first-child{display:none}
+  .rc-t th,.rc-t td{display:block;padding:0!important;border:0!important;min-width:0}
+  .rc-t thead th{font-size:11px;line-height:1.3;white-space:normal;text-align:right}
+  .rc-t tbody th{grid-column:1/-1;min-width:0;padding:0 0 2px!important}
+  .rc-in{min-width:0;padding:6px 8px;font-size:13px}
+  .rc-tot td{text-align:right}
+}
+@media(max-width:480px){
+  .fin-in,.dl-form{grid-template-columns:1fr}
+  .fin-f.wide{grid-column:auto}
+  .dl-cards{grid-template-columns:1fr}
+  .ovl{padding:10px 10px 40px}
+  .ovl-card{padding:16px 14px;border-radius:16px}
+  .ovl-head h2{font-size:19px}
+  .rp-bar{top:-10px}
+  .rp-acts{justify-content:stretch}
+  .rp-acts .btn.tool{flex:1 1 auto}
+}
+
+/* printing the report prints the paper alone */
+@media print{
+  html.rp-on body>*:not(#report){display:none!important}
+  html.rp-on,html.rp-on body{background:#fff!important;overflow:visible!important}
+  html.rp-on body::before,html.rp-on body::after{display:none!important}
+  html.rp-on #report{position:static!important;display:block!important;padding:0!important;background:none!important;overflow:visible!important;
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  html.rp-on #report .rp-bar{display:none!important}
+  html.rp-on #report .rp-wrap{width:auto!important;margin:0!important}
+  html.rp-on #report .rp-paper{box-shadow:none!important;border-radius:0!important;overflow:visible!important}
+}
+</style>
 </html>

@@ -1377,3 +1377,137 @@ The tangents are now monotone (PCHIP), so no channel overshoots a keyframe. Duri
   The gap-axis commit passed all 253 invariants on its own build.
 
   The first full invariant run on the final build failed one check, `reset-restores-defaults`. It pinned the framework example's value at $4.09M, and the peer fits move it to $4.05M, as recorded above. The pin was updated, an identities state that typed the old value as its ask was moved to the new one, and both parts were rerun: all pass.
+
+## Broker tools, October 2026
+
+Asked what in the console would help a working business broker, I named four tools it could add on top of the models. The owner asked: "build all four of those." They are:
+- an add-back worksheet that builds SDE from tax returns or income statements;
+- a debt-coverage check at the asking price, on SBA's rules for financing a business purchase;
+- a one-page seller report to print, save as PDF or download;
+- saved deals, which compare a broker's own listings and sales with the model, and which can in time fit two of the judgment numbers.
+
+None of them changes a figure the model reports. They read the model, and the Data tab's tallies (565 fitted, 156 aggregate, 345 judgment) are unchanged.
+
+### How it is built
+- **Pure functions in the model half of the script,** before the test loader's cut, so the tests run them without a browser:
+  - `debtCheck` and `maxFinanced`, with `annualPayment` and `sbaRateLoan`;
+  - `recastSDE`;
+  - `dealPredict`, `dealsStats`, `fitPenaltyScale`, `olsFit` and `logSummary`;
+  - `reportData` and `reportHTML`, with the paper's stylesheet `RP_CSS`.
+- **The page code** comes at the end of the main script. It adds:
+  - a toolbar above the hero;
+  - a "Financing check" section after the budget optimizer;
+  - a link under the earnings input in the rail;
+  - a third tab, Deals;
+  - the worksheet and the report, as dialogs.
+- **Rendering.** It hooks `window.render` the way the later scripts do. The financing table and the toolbar follow every render.
+- **Inputs that skip the full render.** Inputs inside `[data-norender]` (the financing check, the Deals tab and the dialogs) redraw only their own part. A keystroke there no longer re-runs the whole console and its 2,048-call optimizer: the browser test counts zero renders.
+- **Storage.** Deals and preferences stay in this browser, under `localStorage` keys `omni.deals.v1` and `omni.prefs.v1`:
+  - everything read back is cleaned first, imports included, because both are untrusted;
+  - when storage is refused (a private window), every save says so and the Deals tab says the deals last only until the page closes;
+  - deals export to JSON and CSV and import from JSON.
+
+### The financing check
+- **The rules** are read from SBA's own SOP 50 10 8.1 (the docx and the procedural notice on sba.gov). Appendix 15 governs 7(a) changes of ownership for applications numbered from October 1, 2026. They are published rules, labelled aggregate:
+  - **Coverage.** At least 1.25× debt service coverage for an initial acquisition or an owner buyout, and 1.15× for a business expansion. It is tested on the last fiscal year or the average of the last two, historical or adjusted (Para. C.2.b).
+  - **Equity.** At least 10% of the total project cost; for an owner buyout, 10% of the price. Seller debt on full standby for the life of the loan may supply at most half of it.
+  - **Loan terms.** Amortization of at most 10 years without real estate. The maximum Standard 7(a) loan is $5,000,000.
+  - **The debt cap.** All acquisition debt, including a seller note not on full standby, is limited to the business valuation.
+  - **Due diligence.** The lender may value a business priced at $350,000 or less itself (Para. C.1.a). From a $3M price it also needs a Quality of Earnings report, except for an owner buyout.
+
+  Paragraph letters are cited only where SBA's own cross-references give them. The other rules are cited by section name.
+- **Coverage** is SDE, less the new owner's pay and any capital spending, over a year of payments on the SBA loan and the seller note (none when the note is on full standby).
+- **Two fitted tables are reused:**
+  - **The rate** is today's prime plus the fitted SBA spread, read on the loan's own size.
+  - **The new owner's pay** defaults to a general manager's market pay for the industry and size (BLS).
+- **The starting structure** is 10% buyer cash and a 5% seller note at 6% over 10 years. The cash is SBA's minimum; the note is a common structure (judgment). Every part is editable.
+- **The table** shows each ask (the two optimizer asks and the broker's own) as price, loan, note, cash, payments, cash available and coverage, against the minimum.
+- **The highest price this structure finances** is found by bisection on coverage. Above the 7(a) maximum the rest is buyer cash, so the cap, not coverage, can bind; the check says which one does.
+- **Notes** cover equity short of 10%, debt above the model value, the QoE threshold and the lender's valuation.
+
+### The add-back worksheet
+- **Input.** Up to three years, most recent first.
+- **Calculation.** SDE is income before income taxes, plus:
+  - one working owner's pay with its payroll taxes and perks;
+  - depreciation and amortization;
+  - interest;
+  - one-time, personal or above-market items.
+
+  It subtracts non-operating income and the pay to bring any other working owner to market.
+- **Line names, not line numbers, for each source:**
+  - Form 1120-S, Form 1120 and Form 1065;
+  - Schedule C, whose owner's pay is the net profit itself;
+  - an income statement.
+- **Basis.** The most recent year, a 3:2:1 weighting, or an average of the years entered.
+- **Warnings** (judgment thresholds that change no figure):
+  - add-backs above 15% of SDE;
+  - SDE more than 15% below the year before;
+  - no positive earnings;
+  - a Schedule C owner's pay counted twice.
+- **"Use in the console"** sets SDE, revenue and, if wanted, growth. It leaves the ask alone.
+
+### The seller report
+- **One page,** with:
+  - the model value and its quality position;
+  - the 80% range if it sells at the recommended ask, and the model's accuracy;
+  - each ask with its chance of selling, median time, median price, expected proceeds and lender coverage;
+  - what a buyer's lender will see;
+  - the three largest value drivers and up to three changes that pay for themselves;
+  - the earnings basis, when the worksheet set the SDE;
+  - the sources and a disclaimer.
+
+  Every figure carries its badge.
+- **Text typed into the report is escaped.**
+- **The paper** has its own stylesheet, which reverts the page's styles inside it. The preview, the print and the downloaded `.html` file look alike, and the file has no script and no link.
+- **Printing** while the report is open prints the paper alone. It fits one Letter page; the browser test checks the PDF's page count.
+- **Remembered fields.** The broker's name and firm are kept for the next report; the business and recipient are kept with the deal.
+
+### Saved deals
+- **What a deal holds:**
+  - the console's inputs, its financing structure and its worksheet;
+  - its status (valuing, listed, under LOI, closed, withdrawn, expired);
+  - its listing price and date, and its sale price and closing date;
+  - the cash at closing, the buyers contacted, the offers received and notes.
+- **The comparison is with today's model,** run at each deal's listing price.
+- **The track record:**
+  - **Sale price** over the model's median, from 3 closed deals, as a factor with a 90% interval.
+  - **Time to close** over the model's median, from 3 closed deals with both dates.
+  - **The close rate** of finished listings against the rate the model expected at those prices, from 5.
+- **The opt-in price record** shows beside the console's value and in the report. It is display only, read with the weight of ten deals toward the model (`CALIB_K`, judgment).
+- **What the deals can fit:**
+  - **The price-gap penalty's scale** (0.45, judgment), by maximum likelihood with an SE from the curvature, once 20 finished listings include 5 listed above value.
+  - **The nine quality effects,** by least squares, once there are 60 closed deals.
+
+  Until then the tab shows the progress. The Data tab's "Still judgment" note now points to the Deals tab, and a new Data tab section lists every rule and convention the tools use, with its badge.
+
+### Found while building
+- **A deduction typed as "(12,000)" added $12,000.** It was stored as negative, then subtracted. A deduction line now deducts whatever its sign, and the box shows the amount.
+- **"Save as new" showed with no deal open.** The buttons' display rule overrode the `hidden` attribute. Hidden now wins inside the tools.
+- **The report's asks table overflowed the paper.** Its numeric-cell rule kept the headers on one line, and the printed report ran to two pages. The headers wrap, the badges sit under them, and print sizes were tightened, so it is one page.
+- **Opening a deal from the Deals tab did nothing under reduced motion.** The nav's warp re-clicks the tab at once, and a browser ignores `click()` on an element whose own `click()` is still running. The tools dispatch the click instead, and it works with motion on and off.
+- **On a phone the worksheet's labels ran off the card.** The page's `th` rule does not wrap, and the scroll mask then faded the third year. Labels wrap, and each line stacks its three years under its label below 640 px.
+- **On a phone the deals table hid all but two columns.** It now uses the page's own card layout for tables.
+
+### Tests
+- **Section 43 of model.test.js** (37 checks):
+  - SBA's rule values;
+  - the annuity and the loan's rate;
+  - every coverage identity, including standby, equity by type, the 7(a) cap, the QoE rule and debt above value;
+  - the highest financeable price: at the cap, at coverage, monotone, and moving the right way with cash, standby, type, capital spending and pay;
+  - the worksheet's arithmetic, bases, deductions, blank years and warnings;
+  - a deal's prediction;
+  - the price, time and close-rate record on synthetic deals;
+  - the penalty scale recovered from 4,000 simulated listings within four SEs;
+  - least squares on an exact fit and a singular design;
+  - the report's asks, its escaping, the opt-in line, the earnings basis and the stylesheet;
+  - the page wiring.
+- **tests/browser.broker.js** (new, 38 checks), in a real browser:
+  - the financing check redraws without a console render, rejects bad entries and is remembered;
+  - the worksheet's focus and Escape handling, its sums and its "Use";
+  - saving and the "unsaved changes" mark;
+  - the report's escaping and one-page print, and its self-contained download;
+  - the Deals tab's edits, validation, two-press delete, JSON and CSV export (a formula-like name is written as text) and import (new, newer, older and invalid records);
+  - opening a deal back into the console, and the opt-in record;
+  - a reload;
+  - blocked storage;
+  - no sideways scroll at 390 px in the console, the worksheet, the report and the Deals tab.

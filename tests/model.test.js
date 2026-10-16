@@ -1649,5 +1649,112 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      "42: a Data tab row for every third-round fit, and no process notes in the embedded tables");
 }
 
+/* ---- 43. broker tools, October 2026: the debt-coverage check on SBA's change-of-ownership rules (SOP 50 10 8.1,
+   Appendix 15), the add-back worksheet, a broker's deals against the model, and the seller report ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const S=A.SBA_COO, s0={...EX}, r0=A.model(s0), V=r0.V;
+  ok(S.dsc.initial===1.25&&S.dsc.expansion===1.15&&S.dsc.buyout===1.25&&S.equity===.10&&S.standbyShare===.5&&S.amortYears===10
+     &&S.maxLoan===5e6&&S.ownValuationMax===350000&&S.qoeMin===3e6&&/50 10 8\.1/.test(S.sop),"43: SBA's change-of-ownership rules as published (SOP 50 10 8.1)");
+  /* the annuity */
+  { const P=1e6, m=10/1200, want=12*P*m/(1-Math.pow(1+m,-120));
+    ok(Math.abs(A.annualPayment(P,10,10)-want)<1e-6&&Math.abs(want-158580.88)<.01,`43: a year of payments on $1M at 10% over 10 years is $${want.toFixed(2)}`);
+    ok(Math.abs(A.annualPayment(1.2e6,0,10)-1.2e5)<1e-9&&A.annualPayment(0,8,10)===0&&A.annualPayment(-5,8,10)===0,"43: at 0% the payment is the principal over the years; no loan, no payment"); }
+  ok([2e5,8e5,2.55e6,4.25e6].every(L=>Math.abs(A.sbaRateLoan(L)-A.sbaRate(L/.85))<1e-12),"43: the loan's rate reads the same fitted spread table as the risk model's 85% loan");
+  /* the coverage identities */
+  { const f=A.debtCheck(s0,s0.ask,{},V), g=A.gmSalary(s0);
+    ok(Math.abs(f.loan+f.cash+f.note-f.project)<1e-6&&f.project===s0.ask&&Math.abs(f.cash-.1*s0.ask)<1e-6&&Math.abs(f.note-.05*s0.ask)<1e-6,
+       "43: the loan, buyer cash and seller note add up to the project (85/10/5 by default)");
+    ok(Math.abs(f.draw-g)<1e-9&&f.drawMarket&&Math.abs(f.cf-(s0.ern-g))<1e-6&&Math.abs(f.ds-f.sbaPay-f.notePay)<1e-9&&Math.abs(f.dscr-f.cf/f.ds)<1e-12
+       &&Math.abs(f.sbaPay-A.annualPayment(f.loan,A.sbaRateLoan(f.loan),10))<1e-9&&Math.abs(f.notePay-A.annualPayment(f.note,6,10))<1e-9&&f.min===1.25&&f.ok===(f.dscr>=1.25),
+       `43: coverage is SDE less a GM's market pay over the SBA and note payments (${f.dscr.toFixed(2)}x at the framework example)`);
+    const sb=A.debtCheck(s0,s0.ask,{standby:true},V);
+    ok(sb.notePay===0&&sb.debt===sb.loan&&Math.abs(sb.equityIn-(sb.cash+Math.min(sb.note,.5*sb.equityNeed)))<1e-6&&sb.dscr>f.dscr,
+       "43: a note on full standby has no payments, leaves the debt, and counts toward equity for at most half of it");
+    const lo=A.debtCheck(s0,s0.ask,{cash:.05},V), hi=A.debtCheck(s0,s0.ask,{cash:.2},V);
+    ok(!lo.equityOK&&hi.equityOK&&hi.dscr>f.dscr,"43: 5% buyer cash fails SBA's 10% equity; 20% passes and lowers the payments");
+    const ex=A.debtCheck(s0,2e6,{extra:3e5,type:"buyout"},V), ex2=A.debtCheck(s0,2e6,{extra:3e5},V);
+    ok(Math.abs(ex.equityNeed-2e5)<1e-6&&Math.abs(ex2.equityNeed-2.3e5)<1e-6&&ex.project===2.3e6,"43: an owner buyout's equity is 10% of the price, other types' 10% of the project");
+    const big=A.debtCheck(s0,9e6,{},V);
+    ok(big.loan===5e6&&big.over>0&&Math.abs(big.loan+big.cash+big.note-big.project)<1e-6&&big.qoe&&!A.debtCheck(s0,9e6,{type:"buyout"},V).qoe&&!A.debtCheck(s0,2.9e6,{},V).qoe,
+       "43: above the 7(a) maximum the rest is buyer cash; a QoE from $3M except for an owner buyout");
+    ok(A.debtCheck(s0,V*1.3,{},V).debtOverValue&&!A.debtCheck(s0,V*.9,{},V).debtOverValue&&A.debtCheck(s0,3e5,{},V).ownValuation&&!A.debtCheck(s0,4e5,{},V).ownValuation,
+       "43: debt above the value is flagged (SBA caps it at the business valuation); the lender may value a $350k business itself");
+    ok(A.debtCheck(s0,s0.ask,{type:"expansion"},V).min===1.15&&A.debtCheck({...s0,ern:5e4},s0.ask,{},V).dscr<0&&A.debtCheck(s0,1e6,{cash:1,note:0},V).dscr===Infinity,
+       "43: 1.15x for an expansion; coverage goes negative when SDE is below the new owner's pay, and is infinite with no debt"); }
+  /* the highest price this structure finances */
+  { const m=A.maxFinanced(s0,{}), sm={...s0,ern:4e5,rev:3e6};
+    const m2=A.maxFinanced(sm,{}), c2=A.debtCheck(sm,m2.price,{}).dscr;
+    ok(m.capped&&Math.abs(A.debtCheck(s0,m.price,{}).loan-5e6)<1&&!m2.capped&&Math.abs(c2-1.25)<1e-6,
+       `43: the framework example is held by the 7(a) cap (at $${(m.price/1e6).toFixed(2)}M); a $400k-SDE business by 1.25x coverage at $${(m2.price/1e6).toFixed(3)}M`);
+    let mono=true, prev=Infinity; for(let p=2e5;p<m2.price*1.5;p*=1.07){ const c=A.debtCheck(sm,p,{}).dscr; if(c>prev+1e-12) mono=false; prev=c; }
+    ok(mono,"43: below the cap, coverage falls as the price rises");
+    ok(A.maxFinanced(sm,{cash:.2}).price>m2.price&&A.maxFinanced(sm,{standby:true}).price>m2.price&&A.maxFinanced(sm,{type:"expansion"}).price>m2.price
+       &&A.maxFinanced(sm,{capex:5e4}).price<m2.price&&A.maxFinanced(sm,{draw:2.5e5}).price<m2.price,
+       "43: more cash, a standby note or the 1.15x expansion floor finance more; capital spending or higher pay finance less");
+    ok(A.maxFinanced({...s0,ern:5e4,rev:5e5},{}).price===0&&A.maxFinanced(s0,{cash:.6,note:.4}).noLoan===true,"43: no price when SDE does not cover the pay; no loan when cash and the note pay it all"); }
+  /* the add-back worksheet */
+  { const ws={entity:"scorp",years:[{rev:6e6,ni:5e5,owner:2e5,ptax:15e3,perks:2e4,dep:8e4,int:3e4,once:2e4,pers:1e4},{rev:5.5e6,ni:4.5e5,owner:2e5,dep:7e4},{rev:5e6,ni:4e5,owner:1.9e5}]};
+    const L=A.recastSDE({...ws,weight:"latest"}), W=A.recastSDE({...ws,weight:"w321"}), G=A.recastSDE({...ws,weight:"avg"});
+    ok(L.sde===875000&&W.years[1].sde===720000&&W.years[2].sde===590000&&Math.abs(W.sde-4655000/6)<1e-6&&Math.abs(G.sde-2185000/3)<1e-6
+       &&Math.abs(W.rev-34e6/6)<1e-6&&L.n===3&&Math.abs(L.grw-(6/5.5-1))<1e-12&&L.ni===5e5&&L.disc===3e4&&Math.abs(L.margin-875000/6e6)<1e-12,
+       "43: SDE is income before taxes plus the owner's pay, perks, depreciation, interest and discretionary items; three bases and the growth");
+    const neg=A.recastSDE({years:[{rev:1e6,ni:2e5,nonop:-12000}]}), pos=A.recastSDE({years:[{rev:1e6,ni:2e5,nonop:12000}]});
+    ok(neg.sde===188000&&pos.sde===188000&&A.recastSDE({years:[{rev:1e6,ni:2e5,rent:-6000}]}).sde===194000,"43: a deduction row deducts whatever its sign; below-market rent is a negative add-back");
+    const two=A.recastSDE({weight:"avg",years:[{},{rev:2e6,ni:3e5},{rev:1.8e6,ni:2e5}]});
+    ok(two.n===2&&two.sde===25e4&&A.recastSDE({weight:"latest",years:[{},{rev:2e6,ni:3e5}]}).sde===3e5&&two.grw===null,"43: blank years are left out; 'latest' reads the most recent year entered");
+    ok(A.recastSDE({years:[{rev:1e6,ni:1e5,once:5e4}]}).flags.includes("heavy_discretionary")&&A.recastSDE({years:[{rev:1e6,ni:-3e5}]}).flags.includes("sde_nonpositive")
+       &&A.recastSDE({years:[{rev:1e6,ni:1e5},{rev:1e6,ni:2e5}]}).flags.includes("sde_falling")&&A.recastSDE({entity:"schc",years:[{rev:1e6,ni:2e5,owner:5e4}]}).flags.includes("schc_owner_pay")
+       &&A.recastSDE(ws).flags.length===0,"43: the worksheet flags heavy add-backs, no earnings, a falling year and a Schedule C owner's pay counted twice");
+    ok(A.recastSDE({}).n===0&&A.recastSDE({}).sde===0&&A.recastSDE(null).n===0,"43: an empty worksheet is no SDE, not an error"); }
+  /* a broker's deals against the model */
+  { const d0={inputs:{...s0},listPrice:3.6e6}, P=A.dealPredict(d0), rA=A.model({...s0,ask:3.6e6});
+    ok(P.pc===rA.PC&&P.priceMed===rA.Vreal&&P.tMed===rA.tMed&&P.V===rA.V&&Math.abs(P.gap-(3.6e6/rA.V-1)*100)<1e-9
+       &&Math.abs(P.F-A.gapPenalty(P.gap)/A.PEN_MAX)<1e-12&&A.dealPredict({inputs:{...s0},listPrice:.8*V}).F===0&&A.dealPredict({inputs:{...s0},listPrice:3.5*V}).F===null,
+       "43: a deal is predicted by today's model at its listing price; F is the gap's share of the full penalty (none at or below value, none past the last knot)");
+    ok(P.z.own===-Math.max(-3.2,Math.min(3.2,rA.z.own))&&P.z.mgt===Math.max(-3.2,Math.min(3.2,rA.z.mgt)),"43: the quality factors are signed so that higher is better");
+    const ls=A.logSummary([Math.log(1.2),Math.log(1.2),Math.log(1.2)]);
+    ok(Math.abs(ls.factor-1.2)<1e-12&&ls.n===3&&Math.abs(ls.shrunk-Math.exp(Math.log(1.2)*3/13))<1e-12&&A.CALIB_K===10&&A.logSummary([]).n===0,"43: the price record's factor, and its read with the weight of ten deals");
+    const day=(t,n)=>new Date(Date.parse(t)+n*864e5).toISOString().slice(0,10);
+    const deals=[2.8e6,3.2e6,3.6e6].map(L=>{ const d={inputs:{...s0},listPrice:L,status:"closed",listDate:"2025-01-06"}, p=A.dealPredict(d);
+      return {...d,salePrice:p.priceMed*1.1,closeDate:day("2025-01-06",Math.round(2*p.tMed))}; });
+    deals.push({inputs:{...s0},listPrice:4.2e6,status:"withdrawn"},{inputs:{...s0},listPrice:3e6,status:"expired"},{inputs:{...s0},status:"valuing"},{inputs:{ind:"nope"}});
+    const D=A.dealsStats(deals);
+    ok(D.n===6&&D.closed===3&&D.done===5&&Math.abs(D.price.factor-1.1)<1e-12&&Math.abs(D.price.lo-1.1)<1e-6&&Math.abs(D.time.factor-2)<.005
+       &&Math.abs(D.close.obs-.6)<1e-12&&Math.abs(D.close.pred-[...deals.slice(0,5)].reduce((a,d)=>a+A.dealPredict(d).pc,0)/5)<1e-12&&!D.pen.ready&&!D.quality.ready,
+       "43: on synthetic deals the record reads back what was put in: sold at 1.1x the median, in 2x the median time, 3 of 5 closed");
+    ok(A.daysBetween("2025-01-01","2025-03-02")===60&&A.daysBetween("x","2025-01-01")===null,"43: days between two dates");
+    /* the penalty scale is recovered from simulated listings (P(close) = b(1 - pen F)), with an honest SE */
+    let seed=7; const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+    const obs=[]; for(let i=0;i<4000;i++){ const b=.5+.3*rnd(), F=rnd(); obs.push({b,F,y:rnd()<b*(1-.3*F)?1:0}); }
+    const fp=A.fitPenaltyScale(obs);
+    ok(Math.abs(fp.pen-.3)<4*fp.se&&fp.se>.01&&fp.se<.08&&fp.n===4000,`43: the penalty scale is recovered from 4,000 simulated listings: ${fp.pen.toFixed(3)} (SE ${fp.se.toFixed(3)}) for .30`);
+    const X=[[1,0,1],[1,1,0],[1,2,1],[1,3,3],[1,4,2]], ols=A.olsFit(X,X.map(r=>1+1.5*r[1]-.5*r[2]));
+    ok(ols&&Math.abs(ols.beta[0]-1)<1e-9&&Math.abs(ols.beta[1]-1.5)<1e-9&&Math.abs(ols.beta[2]+.5)<1e-9&&A.olsFit([[1,1],[1,1],[1,1]],[1,2,3])===null,
+       "43: least squares recovers an exact fit and refuses a singular design");
+    ok(A.DEAL_MIN.pen===20&&A.DEAL_MIN.penAbove===5&&A.DEAL_MIN.quality===60&&A.DEAL_DONE.join()==="closed,withdrawn,expired","43: the fits wait for 20 finished listings (5 above value) and 60 closed deals"); }
+  /* the seller report */
+  { const s={...s0}, D=A.reportData(s,{date:"October 16, 2026"}), rs=A.bestRatio(s,0,0), rw=A.bestRatio(s,s.theta,s.lamT), mS=A.model({...s,ask:V*rs});
+    ok(Math.abs(D.sell.ask-V*rs)<1e-6&&Math.abs(D.walk.ask-V*rw)<1e-6&&D.sell.pc===mS.PC&&D.sell.ev===mS.EVp&&D.sell.tMed===mS.tMed&&D.sell.price===mS.Vreal
+       &&D.cur.ask===s.ask&&D.V===V&&D.same===(Math.abs(rs-rw)<.005),"43: the report's asks are the optimizer's, each read off the model at that ask");
+    ok(D.fixes.every(t=>t.net>0&&t.k!=="reprice")&&D.fixes.length<=3&&D.sens.length===3&&D.sens.every((v,i)=>i===0||D.sens[i-1].dV>=v.dV),"43: the report lists only fixes that pay and the three largest value drivers");
+    const D2=A.reportData({...s,rhoSell:rs,optRho:rw},{});
+    ok(D2.sell.ask===D.sell.ask&&D2.walk.ask===D.walk.ask,"43: the render's own optima give the same asks");
+    const h=A.reportHTML(D,{business:"Lakeside <script>alert(1)</script> & Co",broker:"Pat Lee",firm:"Main Street Advisors",preparedFor:"Dr. Ortiz"});
+    ok(!/NaN|undefined|Infinity/.test(h)&&h.includes("Lakeside &lt;script&gt;alert(1)&lt;/script&gt; &amp; Co")&&!h.includes("<script>")&&h.includes(A.money(V))
+       &&h.includes("SOP 50 10 8.1")&&["rp-f","rp-a","rp-j"].every(c=>h.includes(c))&&h.includes("not an appraisal")&&h.includes("Pat Lee, Main Street Advisors"),
+       "43: the report escapes what is typed into it, states the value, cites its sources and badges every figure");
+    const C=A.logSummary([.05,.1,0,.08]), hc=A.reportHTML({...D,calib:C},{});
+    ok(hc.includes("Track record")&&!h.includes("Track record")&&hc.includes(C.shrunk.toFixed(2)+"×"),"43: the track-record line appears only when the broker opts in");
+    const R=A.recastSDE({years:[{rev:6e6,ni:5e5,owner:2e5,once:2e5}]}), hr=A.reportHTML({...D,recast:R},{});
+    ok(hr.includes("Earnings basis")&&hr.includes(A.money(R.sde))&&hr.includes("documentation")&&!h.includes("Earnings basis"),"43: the earnings basis appears when the worksheet set the SDE");
+    ok(/all:revert/.test(A.RP_CSS)&&/@page\{size:letter/.test(A.RP_CSS)&&A.hEsc('<a href="x">&')==="&lt;a href=&quot;x&quot;&gt;&amp;","43: the paper's stylesheet stands alone and prints on Letter"); }
+  /* the page wiring */
+  ok(HTML.includes('<button class="tab" data-v="deals">Deals</button>')&&HTML.includes('<section class="sec" id="sec_fin" data-norender>')
+     &&HTML.includes('<div id="view-deals" hidden data-norender>')&&HTML.includes('if(el.closest("[data-norender]")) return;')
+     &&HTML.includes('$("view-deals").hidden=v!=="deals";')&&HTML.includes('localStorage')&&HTML.includes('"omni.deals.v1"'),
+     "43: the Deals tab, the financing section and the dialogs are wired; their inputs redraw only their own part");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
