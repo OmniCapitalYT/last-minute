@@ -87,7 +87,7 @@ inv("limit-ask-down-pc-flat","For every ask from 1e-9 x value up to value, P_C i
 inv("limit-ask-up-time-finite-rising","Above value the median time to close rises strictly with the ask and stays finite up to 1e12 x value.","timeMult comment ('log-linear above'); overpricing costs time");
 inv("limit-pool-empty-pc-zero","With no buyers contacted P_C, the thin-pool factor and expected proceeds are 0, and P_C never falls as buyers rise from 0 to 1e5.","competition comment: 'A sale needs at least one offer'");
 inv("limit-pool-deep-saturates","From the typical pool up to 1e6 buyers the thin-pool factor is exactly 1 and P_C constant, while the competition premium never falls, stays <= 0.14 and reaches 0.14.","capOne/thinF comments ('exactly 1 at a typical pool or deeper'); compPrem clamp [-0.08, 0.14]");
-inv("limit-gap-penalty-shape","gapPenalty is 0 at or below a 0% gap, never falls from 0% to 1e7%, is continuous at every bucket knot and at 100%, and tends to 1.","gapPenalty/GAP_TAIL_K comments ('Continuous, monotone'; 'the join is smooth')");
+inv("limit-gap-penalty-shape","gapPenalty is 0 at or below a 0% gap, never falls from 0% to 1e7%, is continuous at every bucket knot (Pepperdine's edges read as shares of the ask, 11.1-100% over value) and at the open bucket's knot (200%), and tends to 1.","gapPenalty/GAP_TAIL_K comments ('Continuous, monotone'; 'the join is smooth')");
 inv("limit-multiple-flat-above-cap","Above $3M of SDE at a fixed margin the fitted multiple (Vbase / SDE) is constant: the scale elasticity is exactly 1.","fitValue comment: 'the hinge continues at the slope that makes the total scale elasticity exactly 1.0 - i.e. the multiple goes FLAT'");
 inv("limit-helpers-bounded","Over price/revenue $1-$1e13: sbaRate stays inside prime + [1.42, 2.5] and never rises with size; buyerMix shares lie in (0,1) and sum to 1; gmSalary stays inside the industry's p10-p90 x wage growth; typMargin is positive; sdeEbitdaWedge is null or in [1.02, 2.75]; capOne <= 1 and non-decreasing; softMin <= min.","helper comments (sbaRate, buyerMix, gmSalary 'held to the 10th-90th percentiles', sdeEbitdaWedge clamp, capOne 'Monotone, never above 1', softMin)");
 /* --- continuity --- */
@@ -309,10 +309,10 @@ function modelPart(){
       ok("limit-pool-deep-saturates",deep&&cmono&&Math.abs(r1e6.compPrem-.14)<1e-12,()=>({...ctx(),w,cmono,comp:r1e6.compPrem})); }
   }
   /* gap penalty shape */
-  { let pv=-1, mono=true; const G=[0,1e-9,.5,1,5,10,15,20,25,30,35,40,45,50,60,75,99,99.999,100,100.001,101,150,200,500,1e3,1e4,1e5,1e6,1e7];
+  { let pv=-1, mono=true; const G=[0,1e-9,.5,1,5,10,11.111,15,20,25,30,35,40,42.857,45,50,60,66.667,75,99,99.999,100,100.001,101,150,199.999,200,200.001,201,500,1e3,1e4,1e5,1e6,1e7];
     for(const g of G){ const p=A.gapPenalty(g); if(!(p>=pv-1e-15&&p>=0&&p<=1)) mono=false; pv=p; }
     ok("limit-gap-penalty-shape",A.gapPenalty(0)===0&&A.gapPenalty(-5)===0&&mono&&A.gapPenalty(1e7)>1-1e-12,()=>({mono,p7:A.gapPenalty(1e7)}));
-    for(const k of [10,20,30,40,50,100]){ const a=A.gapPenalty(k*(1-1e-9)), b=A.gapPenalty(k*(1+1e-9)), wa=A.gapPenalty(k*(1-1e-4)), wb=A.gapPenalty(k*(1+1e-4));
+    for(const k of A.GAP_CDF.g.slice(1)){ const a=A.gapPenalty(k*(1-1e-9)), b=A.gapPenalty(k*(1+1e-9)), wa=A.gapPenalty(k*(1-1e-4)), wb=A.gapPenalty(k*(1+1e-4));
       ok("limit-gap-penalty-shape",Math.abs(b-a)<=1e-3*Math.abs(wb-wa)+1e-12,()=>({knot:k,a,b,wa,wb})); } }
   /* multiple flat above the $3M SDE cap */
   for(const ind of INDS) for(const m of [.02,.2,.6,.92]){

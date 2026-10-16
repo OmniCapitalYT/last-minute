@@ -289,7 +289,7 @@ const STATES=[
   {name:"deep-pool-600",typed:{buy:"600"},ask:1.2},
   {name:"forced-seller",typed:{lam:"$4,000/day",th:"0%"},ask:1.3},
   {name:"patient-seller",typed:{lam:"none",th:"100"},ask:1.15},
-  {name:"knife-edge-theta",typed:{th:"77.6"}},
+  {name:"knife-edge-theta",typed:{th:"78.5"}},
   {name:"worst-quality",sel:{i_own:"0.95",i_mgt:"0.08",i_fin:"0.14"},typed:{rec:"0",cc:"70",ret:"45",plt:"95",grw:"-25",gm:"12",yrs:"1"},ask:1.1},
   {name:"best-quality",sel:{i_own:"0.14",i_mgt:"0.92",i_fin:"0.96"},typed:{rec:"100",cc:"1",ret:"99",plt:"5",grw:"70",gm:"97",yrs:"12"},ask:.9},
   {name:"earnings-above-92pct",typed:{rev:"1M",ern:"5M"},ask:1.0},

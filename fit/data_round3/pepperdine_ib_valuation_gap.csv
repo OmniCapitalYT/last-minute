@@ -1,0 +1,61 @@
+year,pdf_page,figure,bucket_pct_of_ask,share_pct,read_from
+2017,11,Fig 8,1-10,12,pie label
+2017,11,Fig 8,11-20,33,pie label
+2017,11,Fig 8,21-30,31,pie label
+2017,11,Fig 8,31-40,14,pie label
+2017,11,Fig 8,41-50,2,pie label
+2017,11,Fig 8,>50,8,pie label
+2018,44,Fig 41,1-10,10,pie label
+2018,44,Fig 41,11-20,35,pie label + text
+2018,44,Fig 41,21-30,35,pie label
+2018,44,Fig 41,31-40,10,pie label
+2018,44,Fig 41,41-50,6,pie label
+2018,44,Fig 41,>50,4,pie label
+2019,45,Fig 41,1-10,7,pie label
+2019,45,Fig 41,11-20,46,pie label
+2019,45,Fig 41,21-30,30,pie label
+2019,45,Fig 41,31-40,9,pie label
+2019,45,Fig 41,41-50,5,pie label
+2019,45,Fig 41,>50,4,pie label
+2020,42,Fig 41,1-10,7,pie label
+2020,42,Fig 41,11-20,44,pie label
+2020,42,Fig 41,21-30,41,pie label
+2020,42,Fig 41,31-40,3,text layer order 3/3/2
+2020,42,Fig 41,41-50,3,text layer order 3/3/2
+2020,42,Fig 41,>50,2,text layer order 3/3/2
+2021,48,Fig 43,1-10,7,pie label
+2021,48,Fig 43,11-20,23,pie label
+2021,48,Fig 43,21-30,40,pie label
+2021,48,Fig 43,31-40,10,pie label
+2021,48,Fig 43,41-50,7,pie label
+2021,48,Fig 43,>50,13,pie label
+2022,48,Fig 43,1-10,8,pie label
+2022,48,Fig 43,11-20,33,pie label
+2022,48,Fig 43,21-30,37,pie label
+2022,48,Fig 43,31-40,10,pie label
+2022,48,Fig 43,41-50,6,pie label
+2022,48,Fig 43,>50,6,pie label
+2023,47,Fig 42,1-10,4,pie label
+2023,47,Fig 42,11-20,44,pie label
+2023,47,Fig 42,21-30,30,pie label
+2023,47,Fig 42,31-40,14,pie label
+2023,47,Fig 42,41-50,1,pie label
+2023,47,Fig 42,>50,6,pie label
+2024,44,Fig 41,1-10,9,pie label
+2024,44,Fig 41,11-20,28,pie label
+2024,44,Fig 41,21-30,38,pie label
+2024,44,Fig 41,31-40,11,pie label
+2024,44,Fig 41,41-50,4,pie label
+2024,44,Fig 41,>50,11,pie label
+2025,62,Fig 47,1-10,5,legend
+2025,62,Fig 47,11-20,38,legend
+2025,62,Fig 47,21-30,44,legend
+2025,62,Fig 47,31-40,5,legend
+2025,62,Fig 47,41-50,5,legend
+2025,62,Fig 47,>50,3,legend
+2026,64,Fig 47,1-10,4,legend
+2026,64,Fig 47,11-20,42,legend
+2026,64,Fig 47,21-30,33,legend
+2026,64,Fig 47,31-40,12,legend
+2026,64,Fig 47,41-50,8,legend
+2026,64,Fig 47,>50,0,category absent from legend

@@ -125,7 +125,7 @@ inv("timeMult-props","timeMult(ask,V) = 1 at or below value and for invalid inpu
   for(const x0 of [1e-9,S]){ const h=1e-7, f=x=>Math.log(tm(Math.exp(x)*1e6,1e6)), dl=(f(x0)-f(x0-h))/h, dr=(f(x0+h)-f(x0))/h;
     chk("timeMult-props",Math.abs(dl-dr)<1e-5,()=>cx({x0,dl,dr})); } }
 
-inv("gapPenalty-props","gapPenalty(g%) is 0 for g <= 0, in [0,1), non-decreasing, continuous (including the join at 100%), equals PEN_MAX x the cumulative price-killed share at each Pepperdine bucket edge, and tends to 1",
+inv("gapPenalty-props","gapPenalty(g%) is 0 for g <= 0, in [0,1), non-decreasing, continuous (including the join at the open bucket's knot, 200% over value), equals PEN_MAX x the cumulative price-killed share at each Pepperdine bucket edge (read as shares of the ask), and tends to 1",
   "gapPenalty()/GAP_CDF/GAP_TAIL_K comments; eq_p");
 { const G=XI.GAP_CDF; let prev=0;
   for(let g=-50;g<=3000;g+=.05){ const p=A.gapPenalty(g);

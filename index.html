@@ -2124,6 +2124,7 @@ MODELS.fitted.confidence={"K":0.7688,"assumes":"P assumes V is centred on today'
 /* Checks on the peer fields that stay judgment (fit/peer_checks.py): strategic interest (Capstone sector trackers, which
    see institutional deals only) and typical buyer pools (Axial pipeline pursuit rates). Display only. */
 MODELS.fitted.peer_checks={"buyers":{"axial_pursuit_rank":{"industries_mapped":11,"population":"Axial lower-middle-market deals, Q4 2025: pursuit rate (share of invited buyers who register interest), not buyers contacted","sectors":7,"spearman_vs_console":0.48},"levels":{"broker_deals":49,"broker_invited_per_deal":40,"broker_pursuits_per_deal":3.9,"lmm_deals":141,"lmm_invited_per_deal":690,"lmm_pursuits_per_deal":41,"source":"Axial: Top 25 lower-middle-market investment banks Q1 2026 (141 deals, 97,332 buyers recommended, 5,756 pursuits) and Brokerfest broker deals ($1M+ EBITDA; 49 deals, 1,961 recommendations, 193 pursuits), read through the Wayback Machine"},"verdict":"judgment: no source counts the qualified buyers contacted per listing by industry"},"method":"check only; nothing here is read by the model","source":"fit/peer_checks.py: Capstone Partners sector M&A updates (Datawrapper tables), SBA 7(a) FOIA change-of-ownership loans FY2018-26, Axial SMB M&A Pipeline Q4 2025 and Axial league and Brokerfest pages","strat":{"capstone":{"by_industry":{"auto":0.516,"constr":0.548,"ecom":0.695,"home":0.507,"mfg":0.742,"prof":0.812,"rest":0.737,"staff":0.623},"deals":9801,"population":"announced institutional M&A in each sector (Capital IQ and similar trackers): individual buyers are not in it","sectors":8,"spearman_vs_console":-0.05,"strategic_plus_addon_range":[0.85,0.91],"strategic_share_range":[0.51,0.81]},"inst_vs_sba":{"n":7,"note":"institutional deals a year over institutional plus SBA-financed acquisitions: coverage differs, ordering only","share":{"auto":0.618,"constr":0.436,"ecom":0.872,"home":0.618,"prof":0.478,"rest":0.056,"staff":0.919},"spearman_vs_console":0.54},"verdict":"judgment: no source measures the strategic share of the buyers of small businesses by industry"}};
+MODELS.fitted.gap_axis={"definition":"the gap between buyer and seller as a percentage of the seller's asking price (Pepperdine PCM 2025, PDF p.62, and 2026, PDF p.64)","bridge":"with the offer at value, a gap of p of the ask is ask/value = 1/(1-p), a gap over value of g = p/(1-p)","edges_pct_of_ask":[10,20,30,40,50],"knots_pct_over_value":[11.111,25.0,42.857,66.667,100.0],"open_knot":200.0,"open_note":"the open >50% bucket (above half the ask, more than 100% over value) is not resolved by the survey: its mass is placed at a knot of 200% over value, twice the last edge (judgment, as the old axis placed it at twice its last edge). Fits of the pooled shares put the open bucket's median at 196.5% (logit-t) and 121.5% (logit-normal) over value","was":{"knots_pct_over_value":[10,20,30,40,50],"open_knot":100},"pool":{"vintages":[2017,2026],"n_vintages":10,"shares":{"1-10":0.0729,"11-20":0.3661,"21-30":0.359,"31-40":0.0981,"41-50":0.047,">50":0.0569},"se":{"1-10":0.0081,"11-20":0.0241,"21-30":0.0154,"31-40":0.0112,"41-50":0.007,">50":0.0127},"respondent_weighted":{"1-10":0.073,"11-20":0.3755,"21-30":0.3552,"31-40":0.0979,"41-50":0.0422,">50":0.0563}},"shares_check":{"max_abs_diff_vs_shipped":0.013,"note":"the shipped shares (valuation_gap_distribution) are kept: the 2017-2026 pool is within .013 of them"},"checks":{"logit_t":{"fitted":{"1-10":0.0895,"11-20":0.3518,"21-30":0.367,"31-40":0.1065,"41-50":0.0368,">50":0.0485},"open_mass":0.0485,"open_median_pct_over_value":196.5},"logitnormal":{"fitted":{"1-10":0.088,"11-20":0.3506,"21-30":0.3011,"31-40":0.1628,"41-50":0.0685,">50":0.029},"open_mass":0.029,"open_median_pct_over_value":121.5}},"tier":"aggregate (the axis is Pepperdine's stated definition; the open knot is judgment)","source":"Pepperdine Private Capital Markets reports 2017-2026, investment-bank survey, \"Valuation gap in pricing for transactions that didn't close\" (Internet Archive copies of digitalcommons.pepperdine.edu; fit/data_round3/)"};
 const VBANDS=[["<500K",0,5e5],["500K-1M",5e5,1e6],["1-2M",1e6,2e6],["2-5M",2e6,5e6],["5-50M",5e6,5e7]];
 const vbandOf=p=>{for(const[n,lo,hi]of VBANDS){if(p>=lo&&p<hi)return n}return p>=5e7?"5-50M":"<500K"};
 /* Map the console's 16 industry keys onto the NAICS-2 sectors the value and
@@ -2443,8 +2444,13 @@ function fitRisk(price,naicsKey,rate,jobs,franchise,st){
    they died at, so its cumulative is the fraction of price-sensitive buyers already
    lost at a gap of g. Continuous, monotone, and no longer six chosen numbers. */
 const GAP_CDF=(function(){
-  const D=MODELS.close_and_timing.close_probability.valuation_gap_distribution||{};
-  const seq=[["1-10",10],["11-20",20],["21-30",30],["31-40",40],["41-50",50],[">50",100]];
+  const D=MODELS.close_and_timing.close_probability.valuation_gap_distribution||{}, A=MODELS.fitted.gap_axis;
+  /* Pepperdine states the gap as a share of the seller's ASKING PRICE: a gap of p of the ask is p/(1-p) over value, so
+     the buckets' edges sit at 11.1, 25, 42.9, 66.7 and 100% over value (MODELS.fitted.gap_axis, fit/round3_gap_axis.py).
+     They were placed at 10-50% over value, which charged the penalty too early: at 1.5x value (a gap of 33% of the ask)
+     the console charged deals that died at gaps up to half the ask. The open >50% bucket (above 100% over value) is not
+     resolved; its knot is placed at 200%, twice the last edge (judgment, as the old axis had it). */
+  const K=A.knots_pct_over_value, seq=[["1-10",K[0]],["11-20",K[1]],["21-30",K[2]],["31-40",K[3]],["41-50",K[4]],[">50",A.open_knot]];
   let c=0;const g=[0],f=[0];
   for(const kv of seq){c+=D[kv[0]]||0;g.push(kv[1]);f.push(c);}
   const tot=c||1;
@@ -2479,12 +2485,12 @@ function mcubic(xs,ys){
   };
 }
 const GAP_F=mcubic(GAP_CDF.g,GAP_CDF.f);
-/* Past the last bucket (">50", pinned at 100) the survey says nothing, and the penalty
+/* Past the last knot (the open ">50%" bucket's, at 200% over value) the survey says nothing, and the penalty
    used to freeze: every ask from 2x to 100x value produced the same probability,
-   proceeds and score. Carry it on: the surviving share decays from its value at 100%
+   proceeds and score. Carry it on: the surviving share decays from its value at the last knot
    at the rate the curve was falling there, so the join is smooth and no new
    parameter is chosen. */
-const GAP_TAIL_K=(function(){ const h=.5; return PEN_MAX*(GAP_F(100)-GAP_F(100-h))/h/(1-PEN_MAX); })();
+const GAP_TAIL_K=(function(){ const h=.5, L=GAP_CDF.g[GAP_CDF.g.length-1]; return PEN_MAX*(GAP_F(L)-GAP_F(L-h))/h/(1-PEN_MAX); })();
 /* Overpricing costs time - a LABELLED JUDGMENT, not an estimate (fit/overpricing_time.py, Oct 2026).
    Above model value the band median (fitTiming: deals sold at their usual ask) is stretched by
    e^{T_ELAST*h}, h = ln(ask/V) with its first T_SMOOTH rounded (Huber): exactly 1 at or below value,
@@ -2795,7 +2801,7 @@ const NL={recA:.44,recS:1.15,ccL:.30,ccQ:.16,          // §7 nonlinear terms
    60-70%. Above the median the benefit saturates; below it, small really is
    worse, so that side stays linear. */
 const AMAX=1.30;   // ceiling on what anchoring alone can add to the realized price
-const RHO_MAX=1.50; // last gap Pepperdine resolves (41-50%); anchoring earns nothing past it
+const RHO_MAX=1.50; // a judgment cap: anchoring earns nothing past 1.5x value (a gap of a third of the ask; Pepperdine resolves gaps to half the ask, 2x value, but any cap above 1.5 leaves the patient seller at the cap)
 /* Price realism is convex, not linear. A linear penalty steep enough to punish
    gross overpricing also made a 10% overprice cut the close probability ~14%,
    an elasticity above 1. That forces the expected-proceeds optimum below the
@@ -3159,10 +3165,11 @@ function model(s){
      optimal asking price is zero. ALPHA=0 means the ask is irrelevant,
      ALPHA=1 means the seller simply receives the ask.                        */
   out.ALPHA=ALPHA_ANCHOR; out.fanS=FAN_S; out.mTyp=M_TYP;
-  /* Anchoring stops at RHO_MAX. Past a 50% gap Pepperdine's distribution of the gaps
-     deals die on runs out (">50" is its last bucket), so anchoring may not earn more
-     than it earns at the largest gap the data resolves; beyond it a higher ask only
-     costs closing probability. Smooth at the top, so no optimiser sits on a kink. */
+  /* Anchoring stops at RHO_MAX, a judgment cap at 1.5x value. Pepperdine's gaps are shares of the ask, so its last
+     resolved bucket (41-50% of the ask) ends at 2x value; at any cap above 1.5 the patient seller's optimum runs to the
+     cap (fit/round3_gap_axis.py's review: three of the Data tab's four businesses), so anchoring may not earn more than
+     it earns at 1.5x; beyond it a higher ask only costs closing probability. Smooth at the top, so no optimiser sits
+     on a kink. */
   const rhoOf=x=>softMin(Math.max(x,.35)*1e6,RHO_MAX*1e6)/1e6;
   /* the effective ask (see the ceiling below), computed here so the point-estimate anchoring the page prints is the
      W = E[V|X] slice's own factor, A(rho~(a_bar/V)), as eq_a defines it; it read the raw ask/V, so past about 1.4x
@@ -3535,12 +3542,14 @@ const FIELD_RANGE={own:[.02,.99],mgt:[.02,.99],fin:[.02,1],rec:[0,1],ret:[.05,.9
 /* The wealth-maximizing listing ratio is not a constant. It depends on how
    price-elastic the closing probability is and on what a retained business is
    worth to the owner: ~1.1x when a failed sale is a total loss. For an owner content to
-   keep it (theta = .75) the utility has two near-equal peaks, an interior one near 1.15x
-   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.55% of value
-   (framework example; 0.34% with no delay cost); the cap wins for FAN_S above about 0.94 (about 0.88
-   with no delay cost), theta from about 0.776 (0.766 with no delay cost), or a price-gap penalty scale PEN_MAX
-   below about 0.42 (shipped 0.45, a spec judgment). (Figures since the R2-2 fix, which stopped the fan's
-   anchoring at RHO_MAX x value; before it 0.48%, 0.27%, 0.92, 0.866, 0.772, 0.763 and 0.43.) The delay cost is charged on
+   keep it (theta = .75) the utility has two near-equal peaks, an interior one near 1.26x
+   and the 1.5x cap. At FAN_S = 0.80 and the default $900 a day the interior one wins by 0.38% of value
+   (framework example; 0.24% with no delay cost); the cap wins for FAN_S above about 0.95 (about 0.89
+   with no delay cost), theta from about 0.785 (0.772 with no delay cost), or a price-gap penalty scale PEN_MAX
+   below about 0.42 (shipped 0.45, a spec judgment). (Figures since the gap axis was read as Pepperdine states it,
+   October 2026, third round; before it 0.55%, 0.34%, 0.94, 0.88, 0.776, 0.766 and 0.42, with the interior peak near
+   1.15x; before the R2-2 fix, which stopped the fan's anchoring at RHO_MAX x value, 0.48%, 0.27%, 0.92, 0.866, 0.772,
+   0.763 and 0.43.) The delay cost is charged on
    the MEAN time to close (out.tMean), as a per-day cost's expectation must be. That knife-edge is set by how
    widely prices scatter at asks of 1.4-1.5x, where FAN_S (calibrated near 1.07x) is
    extrapolated; the whole fan, or selection on closing, keep the cap. The render shows
@@ -3553,9 +3562,9 @@ function bestRatio(s0,theta,lamT){
               return r.EVp+(1-r.PC)*theta*r.V-lamT*r.tMean;};   // delay charged on the MEAN time, lambda*E[T]
   let best={u:-Infinity,m:1.05};
   const STEP=0.02;
-  /* searched up to RHO_MAX, not past it: beyond the last gap Pepperdine resolves the
-     model has no data on what a higher ask does, and a patient seller's utility kept
-     climbing into that unmeasured region (a corner solution, not a recommendation) */
+  /* searched up to RHO_MAX, not past it: past the judgment cap anchoring earns nothing, and a patient seller's
+     utility kept climbing toward the edge of what the closing data resolve (2x value, a gap of half the ask), a corner
+     solution, not a recommendation */
   const TOP=RHO_MAX;
   for(let m=0.80;m<=TOP+1e-9;m+=STEP){
     const u=U(m); if(u>best.u) best={u,m};
@@ -3633,7 +3642,13 @@ function optNote(s,V,rSell,rKeep){
         if(i<top){ const d=us[i-1]-2*us[i]+us[i+1];
           if(d<0){ const mr=clamp(ms[i]+H*(us[i-1]-us[i+1])/(2*d),ms[i-1],ms[i+1]), ur=Um(mr); if(ur>u){ u=ur; m=mr; } } } }
       if(Math.abs(m-s.optRho)<=H) continue;
-      if(!best||u>best.u) best={u,m};
+      /* a range offers a different ask only for a real peak: one with a dip of 0.01% of value toward the walk-away ask on
+         the curve where it is a peak (this share kept, or one step either side), not a wiggle on a flat top. With the gap
+         axis read as Pepperdine states it, a 0.002% wiggle at 1.21x offered the framework example a range of 1.20-1.26x
+         and hid the cap, 0.38% of value away (October 2026, third round) */
+      const real=here?u-lo>=1e-4*V:nb.some(v=>{ if(!isMax(v,i)) return false; let d=v[i];
+        for(let j=Math.min(i,own);j<=Math.max(i,own);j++) d=Math.min(d,v[j]); return v[i]-d>=1e-4*V; });
+      if(real&&(!best||u>best.u)) best={u,m};
       /* a peak the note NAMES beyond a tie must be one here, with a real dip (0.01% of value), not a shoulder */
       if(here&&u-lo>=1e-4*V&&(!peak||u>peak.u)) peak={u,m};
     }
@@ -3674,7 +3689,7 @@ function optNote(s,V,rSell,rKeep){
     +`pays off if the owner genuinely can walk away: it assumes a failed process still leaves them `
     +`${pc(s.theta)} of the value. `
     +(coin?`Even then it is worth only ${money(gain)} more to this owner${s.lamT>0?" after the cost of delay":""}, so the two are close to a coin toss. `:"")
-    +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the highest ask the closing data resolve, so read it as "test the market", not as a measured optimum. `:"")
+    +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the cap the console puts on the ask (a judgment), so read it as "test the market", not as a measured optimum. `:"")
     +range
     +`A seller who must exit should use the left-hand number.`};
 }
@@ -3799,7 +3814,7 @@ function optimize(s0,r0,budget,lamT,theta){
     const recV={keys,c,days,V:r.Vreal,proceeds:r.EVp,net:r.EVp-c,PC:r.PC,t:r.tMean,tMed:r.tMed,r};
     recV.U=r.EVp+(1-r.PC)*theta*r.V-lamT*(r.tMean+days)-c;
     if(!best.V||recV.net>best.V.net) best.V=recV;
-    /* a programme that keeps an ask above RHO_MAX x its own value is outside the range the closing data resolve:
+    /* a programme that keeps an ask above RHO_MAX x its own value is past the console's cap on the ask:
        bestRatio never recommends such an ask, so neither objective may keep one (AUDIT_FINDINGS R2-2). The reprice
        costs nothing, so a repriced programme is always available. */
     if(!hasR&&s0.ask>RHO_MAX*r.V*(1+1e-9)) continue;
@@ -4656,7 +4671,7 @@ function render(){
     P_C&=\\min\\!\\Big(0.95,\\;b(V)\\cdot\\big(1-\\pi(g)\\big)\\cdot\\tau(n)\\Big),\\qquad
       g=\\frac{\\text{ask}-E[V\\mid X]}{E[V\\mid X]}\\;\\;\\text{(reported)}\\\\[4pt]
     b(V)&=${tp(bB,1)}+(${tp(bI,1)}-${tp(bB,1)})\\,u,\\qquad u=\\operatorname{clamp}\\!\\Big(\\tfrac{\\ln(V_{\\text{base}}/\\$1\\text{M})}{\\ln 5},0,1\\Big)\\\\[4pt]
-    \\pi(g)&=\\begin{cases}0 & g\\le 0\\\\ ${PEN_MAX}\\,F_{\\text{gap}}(g) & 0<g\\le 100\\%\\\\ 1-${(1-PEN_MAX).toFixed(2)}\\,e^{-k(g-100)},\\;k=${GAP_TAIL_K.toPrecision(3)} & g>100\\%\\end{cases}\\\\[4pt]
+    \\pi(g)&=\\begin{cases}0 & g\\le 0\\\\ ${PEN_MAX}\\,F_{\\text{gap}}(g) & 0<g\\le ${GAP_CDF.g[GAP_CDF.g.length-1]}\\%\\\\ 1-${(1-PEN_MAX).toFixed(2)}\\,e^{-k(g-${GAP_CDF.g[GAP_CDF.g.length-1]})},\\;k=${GAP_TAIL_K.toPrecision(3)} & g>${GAP_CDF.g[GAP_CDF.g.length-1]}\\%\\end{cases}\\\\[4pt]
     \\tau(n)&=\\operatorname{cap}_1\\!\\Big(\\frac{1-e^{-n_{\\text{pool}}}}{1-e^{-n_{\\text{typical}}}}\\Big)\\quad\\text{(thin pool: 1 at a typical pool or deeper)}\\\\[4pt]
     P_C^{\\text{judg}}&=\\underbrace{\\Big[p_{\\min}+\\tfrac{p_{\\max}-p_{\\min}}{1+e^{-f(X)}}\\Big]}_{\\text{quality}}
        \\;\\cdot\\;\\underbrace{g(x_{\\text{price}})}_{\\text{price gate}},\\qquad
@@ -5011,7 +5026,7 @@ function renderData(){
     /* the 11: ALPHA, AMAX, PHI and four clamps (the Bounds row), PMIN and PMAX (the B + NL row), LAM0 and KW (the G row) */
     + nBuy + nInt + nDelta + nCat + nConf + nPeer + nPeerX + 11 + 2 + 1
     + 4;   /* the price-gap penalty scale PEN_MAX, the $1M / $5M edges of the base-rate size ramp and the placing of the open
-              '>50%' gap bucket at 100% (AUDIT_FINDINGS R1-1) */
+              '>50%' gap bucket, at 200% over value since the axis was read as Pepperdine states it (AUDIT_FINDINGS R1-1) */
   /* published market aggregates the console reads into a figure it shows, counted from the tables themselves:
      Pepperdine's two base rates and its price-gap shares (Model I), IBBA's price-to-ask by size band (the ask ceiling),
      BizBuySell's price-to-ask by industry and DealStats' latest deal structure (the realisation panel), IBBA's cash
@@ -5304,18 +5319,24 @@ function renderData(){
 
     <p class="grp-title" style="margin-top:18px">The kill zone</p>
     <div class="tw"><table>
-      <thead><tr><th>Gap between ask and value</th><th class="n">Share of price-killed deals</th></tr></thead><tbody>
-      ${Object.entries(C.close_probability.valuation_gap_distribution).map(([k,v])=>{
-        const hot=(k==='11-20'||k==='21-30');
-        return `<tr><td>${k}%${hot?' <span class="st free">kill zone</span>':''}</td>
-          <td class="n"${hot?' style="color:#ff8e7a;font-weight:700"':''}>${(v*100).toFixed(1)}%</td></tr>`;}).join('')}
+      <thead><tr><th>Gap, as a share of the asking price</th><th class="n">Over model value</th><th class="n">Share of price-killed deals</th></tr></thead><tbody>
+      ${(()=>{ const GA=MODELS.fitted.gap_axis, ov=p=>(100*p/(100-p)).toFixed(0)+"%";
+        return Object.entries(C.close_probability.valuation_gap_distribution).map(([k,v])=>{
+        const hot=(k==='11-20'||k==='21-30'), b=k.match(/^(\d+)-(\d+)$/);
+        const o=b?`${ov(+b[1])}&ndash;${ov(+b[2])}`:`over ${ov(50)} (placed at ${GA.open_knot}%)`;
+        return `<tr><td>${k}% of the ask${hot?' <span class="st free">kill zone</span>':''}</td><td class="n">${o}</td>
+          <td class="n"${hot?' style="color:#ff8e7a;font-weight:700"':''}>${(v*100).toFixed(1)}%</td></tr>`;}).join(''); })()}
       </tbody></table></div>
     <p class="note"><b>${(C.close_probability.kill_zone.share_of_price_failures*100).toFixed(0)}% of price-killed
-    deals die on a gap of only 11&ndash;30%</b>, stable across every year measured. A modest
+    deals die on a gap of only 11&ndash;30% of the ask</b> (12&ndash;43% over value), stable across every year measured. A modest
     disagreement is not a minor problem &mdash; it is the most common way a sale process ends.
-    The penalty on the console is ${PEN_MAX} &times; this distribution's cumulative (interpolated with a monotone cubic) up to a
-    100% gap, then a smooth tail toward a certain loss. <b>The ${PEN_MAX} scale is a judgment</b> from the framework specification,
-    not a Pepperdine figure, and it matters: for the framework example the walk-away ask flips from about 1.15&times; to the
+    Pepperdine states each gap as a share of the seller&rsquo;s asking price, so its buckets&rsquo; edges sit at
+    ${MODELS.fitted.gap_axis.knots_pct_over_value.map(x=>+x.toFixed(1)).join(", ").replace(/, (?=[^,]*$)/," and ")}% over value; the console read them as
+    10&ndash;50% over value until October 2026, which charged the penalty too early (fit/round3_gap_axis.py).
+    The penalty on the console is ${PEN_MAX} &times; this distribution's cumulative (interpolated with a monotone cubic) up to
+    ${MODELS.fitted.gap_axis.open_knot}% over value, where the open bucket is placed (judgment: the survey does not resolve it),
+    then a smooth tail toward a certain loss. <b>The ${PEN_MAX} scale is a judgment</b> from the framework specification,
+    not a Pepperdine figure, and it matters: for the framework example the walk-away ask flips from about 1.26&times; to the
     1.5&times; cap if it is set below about 0.42. The ramp of the base rate from the broker figure at $1M of deal size to the
     intermediated figure at $5M is a judgment too: Pepperdine cuts its tables by channel, not by size.</p>
 
@@ -5391,11 +5412,11 @@ function renderData(){
     curve and the shares closed by 90, 180 and 365 days, and through the cost of delay (charged per day on the MEAN time
     to close, which the log-logistic puts 44% above the median at $250k of value or less and 28% from $707k up, interpolated between) the walk-away ask; the closing
     probability, the price, the expected proceeds, the proceeds-maximising ask and both scores do not read it. With
-    75% of value kept and $900 a day of delay cost the walk-away ask is 1.13&times;, 1.14&times;, 1.15&times; and
-    1.15&times; for earnings of $150k, $400k, $1.45M and $5M (1.15&times; at every size with b = 0), and
-    1.08&times;, 1.12&times;, 1.14&times; and 1.14&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
-    near 1.15&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
-    cap wins from about 78% kept at $900 a day, 77% with no delay cost and 81% at $4,000), in the realised-price
+    75% of value kept and $900 a day of delay cost the walk-away ask is 1.17&times;, 1.19&times;, 1.26&times; and
+    1.20&times; for earnings of $150k, $400k, $1.45M and $5M (1.26&ndash;1.27&times; at every size with b = 0), and
+    1.09&times;, 1.15&times;, 1.19&times; and 1.20&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
+    near 1.26&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
+    cap wins from about 78% kept at $900 a day, 77% with no delay cost and 83% at $4,000), in the realised-price
     fan and in the judgment scale of the price-gap penalty (the cap wins if it is set below about 0.42), not a measurement of b; the console shows both ends as a range when they are within 1% of value.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     ${(()=>{ /* computed from the shipped sector effects and the eight DealStats sectors tabulated below, so it cannot go
@@ -5627,9 +5648,9 @@ function renderData(){
         <tr><td>Bounds &amp; constants<div class="muted" style="font-size:11.5px">ALPHA, AMAX, PHI, clamps</div></td>
             <td class="n" style="padding-right:18px">7</td>
             <td style="color:#ff8e7a;padding-left:6px">Price anchoring, competitive premium.</td></tr>
-        <tr><td>Price-gap penalty and base-rate ramp<div class="muted" style="font-size:11.5px">PEN_MAX = ${PEN_MAX}; broker base at $1M, intermediated at $5M; the open &gt;50% gap bucket placed at 100%</div></td>
+        <tr><td>Price-gap penalty and base-rate ramp<div class="muted" style="font-size:11.5px">PEN_MAX = ${PEN_MAX}; broker base at $1M, intermediated at $5M; the open &gt;50% gap bucket (above half the ask) placed at ${MODELS.fitted.gap_axis.open_knot}% over value</div></td>
             <td class="n" style="padding-right:18px">4</td>
-            <td style="color:#ff8e7a;padding-left:6px">The closing probability above model value and between $1M and $5M of deal size, and through it the expected proceeds, both recommended asks and both scores. PEN_MAX is load-bearing: below about 0.42 the framework example&rsquo;s walk-away ask jumps from about 1.15&times; to the 1.5&times; cap.</td></tr>
+            <td style="color:#ff8e7a;padding-left:6px">The closing probability above model value and between $1M and $5M of deal size, and through it the expected proceeds, both recommended asks and both scores. PEN_MAX is load-bearing: below about 0.42 the framework example&rsquo;s walk-away ask jumps from about 1.26&times; to the 1.5&times; cap.</td></tr>
         <tr><td>Overpricing time multiplier<div class="muted" style="font-size:11.5px">T_ELAST = ${T_ELAST.toFixed(2)}, T_SMOOTH = ${T_SMOOTH}</div></td>
             <td class="n" style="padding-right:18px">2</td>
             <td style="color:#ff8e7a;padding-left:6px">Median time to close above model value (sign from online-marketplace analogs, size judgment), and through it the walk-away ask when a cost of delay is set.</td></tr>
@@ -5981,6 +6002,26 @@ function renderData(){
         centred first, so a price trend is not counted as inaccuracy); comparables depth from the value model&rsquo;s 6-digit
         effects. It assumes the value sits on today&rsquo;s prices: if the median sale is ${C.reference.prices_over_V.toFixed(2)}&times; it, the
         reference business reads ${pc(C.reference.p_if_prices_over_V,1)}. The scale and the depth approximation are calibrated</td></tr>`; })()}
+      </tbody></table></div>
+    <p class="grp-title" style="margin-top:18px">Third round: definitions</p>
+    <p class="note" style="margin-bottom:12px">A third search, in October 2026, went back to how each source defines what it
+    measures. Pepperdine&rsquo;s price gaps turned out to be shares of the asking price, not of value; retention benchmarks
+    count customers, so the slider now does too.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Component</th><th>Was</th><th>Now</th><th>Data</th></tr></thead><tbody>
+      ${(()=>{ const GA=Fv.gap_axis, W=GA.was, gw=[0,...W.knots_pct_over_value,W.open_knot], Fw=mcubic(gw,GAP_CDF.f),
+          keep=(r,F)=>1-PEN_MAX*clamp(F((r-1)*100),0,1), P=GA.checks;
+        return `<tr><td>Where Pepperdine&rsquo;s price gaps sit against value &nbsp;<span class="st der">aggregate</span></td>
+        <td>the buckets 1&ndash;10% &hellip; 41&ndash;50% read as gaps of 10&ndash;50% over model value, the open &gt;50% bucket at ${W.open_knot}%</td>
+        <td>gaps as Pepperdine defines them, a share of the seller&rsquo;s asking price: with the offer at value a gap of <i>p</i> of the
+        ask is <i>p</i>/(1&minus;<i>p</i>) over value, so the edges sit at ${GA.knots_pct_over_value.map(x=>+x.toFixed(1)).join(", ").replace(/, (?=[^,]*$)/," and ")}% over value; the
+        open bucket is placed at ${GA.open_knot}% (judgment). An ask of 1.3&times; value keeps ${pc(keep(1.3,GAP_F),0)} of the base
+        closing rate (${pc(keep(1.3,Fw),0)} before), 1.5&times; ${pc(keep(1.5,GAP_F),0)} (${pc(keep(1.5,Fw),0)}); the framework example&rsquo;s
+        walk-away ask moves from about 1.15&times; to 1.26&times;</td>
+        <td>Pepperdine Private Capital Markets reports ${GA.pool.vintages[0]}&ndash;${GA.pool.vintages[1]}, investment-bank survey (the definition is
+        printed in the 2025 and 2026 reports): the ${GA.pool.n_vintages} vintages pool within ${GA.shares_check.max_abs_diff_vs_shipped.toFixed(3)} of the shares
+        the console ships, which are kept. Fits of the pooled shares put the open bucket&rsquo;s median at
+        ${Math.round(P.logitnormal.open_median_pct_over_value)}&ndash;${Math.round(P.logit_t.open_median_pct_over_value)}% over value</td></tr>`; })()}
       </tbody></table></div></div></section>`;
   }
 
@@ -6014,13 +6055,13 @@ function renderData(){
           moves the price at the 1.5&times; cap by under 3%. Empire Flippers&rsquo; pass-through of the ask into the sale price,
           0.98 (SE 0.04; online businesses, an analog), mixes anchoring with information in the ask, so it is only an upper
           bound. Both stay judgment, at the spec&rsquo;s values</span></td></tr>
-      <tr><td>Size of the price-gap penalty (PEN_MAX = ${PEN_MAX}), the placing of the open &gt;50% gap bucket at 100%, and the
+      <tr><td>Size of the price-gap penalty (PEN_MAX = ${PEN_MAX}), the placing of the open &gt;50% gap bucket at ${MODELS.fitted.gap_axis.open_knot}% over value, and the
           broker-to-intermediated ramp of the base rate between $1M and $5M of deal size</td>
           <td>listings with ask, independent value and outcome (closed or withdrawn), and the base close rate by deal size
           rather than by channel</td>
           <td><span class="st free">not identified: Pepperdine publishes the distribution of the gaps price-killed deals died at
           (its shape is used) but not how much of the close rate a given gap removes, and it cuts its base rates by channel,
-          not by size. Load-bearing: the framework example&rsquo;s walk-away ask jumps from about 1.15&times; to the 1.5&times; cap if
+          not by size. Load-bearing: the framework example&rsquo;s walk-away ask jumps from about 1.26&times; to the 1.5&times; cap if
           PEN_MAX is set below about 0.42. All stay judgment, at the spec&rsquo;s values</span></td></tr>
       <tr><td>Effect of business quality on time to close, and the Main-Street size of the effect of the ask
           (T_ELAST = ${T_ELAST.toFixed(2)}; the curve&rsquo;s shape by size band is now fitted)</td>

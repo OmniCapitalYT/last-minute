@@ -485,13 +485,14 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(r.Vmean/r.inputs.ask<=pr*(1+1e-9),`${t.ind} rho=${rho.toFixed(2)}: E[P|close]/ask rose with the ask`);
       pv=r.Vmean; pr=r.Vmean/r.inputs.ask; } }
   /* 24h. optimiser: theta = 0 does not move. At theta = .75 (the default) the utility has two near-equal peaks, near
-          1.15x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.94 at $900/day, 0.88 with no delay
-          cost) and theta (0.776 at $900/day, 0.766 with no delay cost; pinned in 28), so the
+          1.26x and the 1.5x cap; which wins is a knife-edge in FAN_S (flip near 0.95 at $900/day, 0.89 with no delay
+          cost) and theta (0.785 at $900/day, 0.772 with no delay cost; pinned in 28; figures since the gap axis was read
+          as Pepperdine states it, October 2026), so the
           WINNER is not pinned: it must be one of the two peaks, and the peaks must lie within 1% of value (the page
           then shows the patient-seller price as a range) */
   { const b0=A.bestRatio(EXF,0,900), b75=A.bestRatio(EXF,.75,900);
     ok(b0>=1.08&&b0<=1.13,`bestRatio(EX,0) ${b0.toFixed(3)}`);
-    ok((b75>=1.08&&b75<=1.25)||b75>=1.45,`bestRatio(EX,.75) ${b75.toFixed(3)} is neither the interior peak nor the cap`);
+    ok((b75>=1.08&&b75<=1.30)||b75>=1.45,`bestRatio(EX,.75) ${b75.toFixed(3)} is neither the interior peak nor the cap`);
     const V=A.model({...EXF,ask:1}).V; let ui=-Infinity, uc=-Infinity;
     for(let k=0;k<=140;k++){ const m=.80+k*.005, r=A.model({...EXF,ask:V*m}), u=r.EVp+(1-r.PC)*.75*r.V-900*r.tMean;
       if(m<1.35) ui=Math.max(ui,u); else uc=Math.max(uc,u); }
@@ -543,17 +544,19 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* why rhoSell must not take lamT: once time reads the ask, a cost of delay lowers the delay-aware ask */
   { const s=median("rest",1.5e5); ok(A.bestRatio(s,0,4000)<A.bestRatio(s,0,0)-1e-3,"a cost of delay lowers the delay-aware ask"); }
   const EXO={grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false};
-  /* the walk-away asks the Data tab quotes (75% kept, delay charged on the mean time to close): $900/day 1.13, 1.14, 1.15,
-     1.15; $4,000/day 1.08, 1.12, 1.14, 1.14 for earnings $150k/$400k/$1.45M/$5M (the $150k figure at $4,000/day moved from
-     1.09 when the peer medians were fitted, October 2026). If another change moves them, update the Data-tab paragraph. */
-  { const Q={900:["1.13","1.14","1.15","1.15"],4000:["1.08","1.12","1.14","1.14"]};
+  /* the walk-away asks the Data tab quotes (75% kept, delay charged on the mean time to close): $900/day 1.17, 1.19, 1.26,
+     1.20; $4,000/day 1.09, 1.15, 1.19, 1.20 for earnings $150k/$400k/$1.45M/$5M (they were 1.13, 1.14, 1.15, 1.15 and
+     1.08, 1.12, 1.14, 1.14 before the gap axis was read as Pepperdine states it, October 2026, third round). If another
+     change moves them, update the Data-tab paragraph. */
+  { const Q={900:["1.17","1.19","1.26","1.20"],4000:["1.09","1.15","1.19","1.20"]};
     [1.5e5,4e5,1.45e6,5e6].forEach((ern,i)=>{ const s={...EXO,ind:"medical",ern,rev:ern/0.24};
       for(const lam of [900,4000]){ const b=A.bestRatio(s,.75,lam);
         ok(b.toFixed(2)===Q[lam][i],`Data tab: walk-away ask at $${ern} and $${lam}/day ${b.toFixed(3)} (text says ${Q[lam][i]})`); } }); }
   /* the knife edge the Data tab quotes for the framework example: the cap wins from about 77% kept with no delay cost,
-     78% at $900/day, 81% at $4,000/day (76.6 / 77.6 / 81.0 since the R2-2 anchoring fix) */
+     78% at $900/day, 83% at $4,000/day (77.2 / 78.5 / 82.8 since the gap axis was read as Pepperdine states it; 76.6 /
+     77.6 / 81.0 before) */
   { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6};
-    for(const [lam,pct] of [[0,77],[900,78],[4000,81]]){ let lo=.70,hi=.86;
+    for(const [lam,pct] of [[0,77],[900,78],[4000,83]]){ let lo=.70,hi=.88;
       for(let k=0;k<12;k++){ const m=(lo+hi)/2; A.bestRatio(ex,m,lam)>1.45?hi=m:lo=m; }
       ok(Math.round(50*(lo+hi))===pct,`Data tab: patient-seller cap from ${(50*(lo+hi)).toFixed(1)}% kept at $${lam}/day (text says ${pct}%)`); } }
   /* small deals leave the cap at $900/day at theta .75 */
@@ -568,17 +571,20 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const Ut=t=>xs.map(x=>x.EVp+(1-x.PC)*t*x.V-lam*x.tMean), u=Ut(th), L=ms.length-1, jo=Math.round((ss.optRho-.80)/.005);
     const isMax=(v,j)=>j>0&&v[j]>=v[j-1]&&(j===L||v[j]>=v[j+1]), pk=[];
     for(const t of [th,th-.01,th+.01]) if(t>=0&&t<=1){ const v=t===th?u:Ut(t);
-      for(let j=1;j<=L;j++) if(isMax(v,j)){ let lo=u[j]; for(let q=Math.min(j,jo);q<=Math.max(j,jo);q++) lo=Math.min(lo,u[q]);
-        pk.push({m:ms[j],u:u[j],here:t===th,depth:(u[j]-lo)/V,d:Math.abs(ms[j]-ss.optRho)}); } }
+      for(let j=1;j<=L;j++) if(isMax(v,j)){ let lo=u[j], lv=v[j]; for(let q=Math.min(j,jo);q<=Math.max(j,jo);q++){ lo=Math.min(lo,u[q]); lv=Math.min(lv,v[q]); }
+        /* vdepth: the dip toward the walk-away ask on the curve where it is a peak (the page's rule for a range) */
+        pk.push({m:ms[j],u:u[j],here:t===th,depth:(u[j]-lo)/V,vdepth:(v[j]-lv)/V,d:Math.abs(ms[j]-ss.optRho)}); } }
     const U=m=>{ const x=A.model({...ss,ask:V*m}); return x.EVp+(1-x.PC)*th*x.V-lam*x.tMean; };
     return {V,pk,U,ms,u,uK:U(ss.optRho)};
   };
   const checkNote=(ss,n,tag)=>{
     const R=noteRef(ss), V=R.V, uK=R.uK;
     /* the range: shown exactly when another peak (here or one 1% step of theta away) is within 1% of value */
+    /* "real": a dip of 0.01% of value toward the walk-away ask on the curve where it is a peak (the page reads it on its
+       .02 grid, this reference on .005, so the two tests leave a margin either side of the rule) */
     if(n.alt) ok(n.text.includes("close to a tie, so read the patient-seller price as a range")&&uK-n.alt.u<=.01*V*(1+1e-9)&&Math.abs(n.alt.m-ss.optRho)>.02
-      &&R.pk.some(p=>Math.abs(p.m-n.alt.m)<=.025&&p.d>.015),`range end ${n.alt.m.toFixed(3)} is a real peak within 1% ${tag}`);
-    else ok(!/as a range/.test(n.text)&&!R.pk.some(p=>p.d>.06&&uK-p.u<=.0095*V),`no range only when no other peak is within 1% ${tag}: ${n.text}`);
+      &&R.pk.some(p=>Math.abs(p.m-n.alt.m)<=.025&&p.d>.015&&p.vdepth>=.5e-4),`range end ${n.alt.m.toFixed(3)} is a real peak within 1% ${tag}`);
+    else ok(!/as a range/.test(n.text)&&!R.pk.some(p=>p.d>.06&&uK-p.u<=.0095*V&&p.vdepth>=2e-4),`no range only when no other real peak is within 1% ${tag}: ${n.text}`);
     /* the flat top: only at the cap, printed rounded UP, and the printed ask and every fine-grid ask above it within 1% */
     if(n.flat!==null&&n.flat!==undefined){
       const above=R.ms.map((m,j)=>[m,R.u[j]]).filter(v=>v[0]>=n.flat-1e-9);
@@ -640,18 +646,22 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       if(th>0) checkNote(ss,n,tag);
     }
   }
-  /* the default state (framework example, 75% kept, $900/day): the two peaks tie and the note shows the range */
+  /* the default state (framework example, 75% kept, $900/day): one step of the share kept away (74%) the walk-away ask is
+     1.20x, a real peak within 0.04% of value of the 1.26x walk-away ask, and the note shows the range (the cap, 0.38% of
+     value below, is the next candidate). Before the gap axis was read as Pepperdine states it the range ran 1.1x-1.50x */
   { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,theta:.75,lamT:900}, V=A.model({...ex,ask:1}).V;
     ex.rhoSell=A.bestRatio(ex,0,0); ex.optRho=A.bestRatio(ex,.75,900);
     const n=A.optNote(ex,V,A.model({...ex,ask:V*ex.rhoSell}),A.model({...ex,ask:V*ex.optRho}));
-    ok(n.kind==="higher"&&!!n.alt&&/1\.1\d–1\.50× value/.test(n.text),`framework example: patient-seller range shown (${n.text})`); }
+    ok(n.kind==="higher"&&!!n.alt&&/1\.20–1\.26× value/.test(n.text),`framework example: patient-seller range shown (${n.text})`); }
   /* a walk-away ask at the cap with an objective that climbs all the way there: no range (there is no second peak, and
-     1.35x was only where the old scan stopped); the note says how flat the top is instead */
-  { const ex={...EXO,ind:"mfg",rev:5e5,ern:1.2e5,ask:4.5e5,theta:1,lamT:900}, V=A.model({...ex,ask:1}).V;
+     1.35x was only where the old scan stopped); the note says how flat the top is instead. (Home services at $300k and
+     its peer medians, 100% kept; the manufacturing case this used peaks at 1.48x since the gap axis was read as
+     Pepperdine states it.) */
+  { const P=A.peerMedians("home",3e5,3e5/.24), ex={...EXO,ind:"home",ern:3e5,rev:3e5/.24,grw:P.grw,gm:P.gm,rec:P.rec,ret:P.ret,theta:1,lamT:900}, V=A.model({...ex,ask:1}).V;
     ex.rhoSell=A.bestRatio(ex,0,0); ex.optRho=A.bestRatio(ex,1,900);
     const n=A.optNote(ex,V,A.model({...ex,ask:V*ex.rhoSell}),A.model({...ex,ask:V*ex.optRho}));
-    ok(ex.optRho>A.RHO_MAX-.02&&!n.alt&&!/as a range/.test(n.text)&&n.flat>1.2&&n.flat<1.28&&/every ask from 1\.2\d× value up comes within 1% of value of the cap/.test(n.text),
-       `manufacturing $120k, 100% kept: no false range, flat top from ${n.flat} (${n.text})`);
+    ok(ex.optRho>A.RHO_MAX-.02&&!n.alt&&!/as a range/.test(n.text)&&n.flat>1.28&&n.flat<1.38&&/every ask from 1\.3\d× value up comes within 1% of value of the cap/.test(n.text),
+       `home services $300k, 100% kept: no false range, flat top from ${n.flat} (${n.text})`);
     /* and the converse: at 90% kept the framework example's asks of 1.40-1.50x are within 1%, but there is no second peak */
     const e9={...EXO,ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,theta:.9,lamT:900}, V9=A.model({...e9,ask:1}).V;
     e9.rhoSell=A.bestRatio(e9,0,0); e9.optRho=A.bestRatio(e9,.9,900);
@@ -659,22 +669,25 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(!n9.alt&&n9.flat>1.3&&n9.flat<1.42,`framework example at 90% kept: flat top from ${n9.flat}, no range`); }
   const noteAt=(s0,th,lam)=>{ const t={...s0,theta:th,lamT:lam}, V=A.model({...t,ask:1}).V; t.rhoSell=A.bestRatio(t,0,0); t.optRho=A.bestRatio(t,th,lam);
     return {t,o:t.optRho,n:A.optNote(t,V,A.model({...t,ask:V*t.rhoSell}),A.model({...t,ask:V*t.optRho}))}; };
-  /* a walk-away flip between ~1.22x and ~1.45x on one 1% step of theta, NEITHER end at the cap (the second peak is not
-     assumed to be the cap): the range covers both peaks on both sides of the flip */
-  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.92,.93],750],
-                             [{ind:"home",rev:326000,ern:55000,grw:.66,gm:.77,rec:.59,cc:.07,ret:.70,plt:.24,own:.95,mgt:.36,fin:.14,yrs:6,buyers:440},[.94,.95],700]]){
+  /* a walk-away flip between ~1.31x and ~1.47x on one 1% step of theta, NEITHER end at the cap (the second peak is not
+     assumed to be the cap): the range covers both peaks on both sides of the flip (the thetas and the cost of delay moved,
+     and the lower peak rose from about 1.22x, when the gap axis was read as Pepperdine states it) */
+  for(const [s0,ths,lam] of [[{ind:"home",rev:4e5,ern:9e4,grw:.06,gm:.5,rec:.3,cc:.16,ret:.82,plt:.40,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5},[.89,.90],500],
+                             [{ind:"home",rev:326000,ern:55000,grw:.66,gm:.77,rec:.59,cc:.07,ret:.70,plt:.24,own:.95,mgt:.36,fin:.14,yrs:6,buyers:440},[.92,.93],500]]){
     const out=ths.map(th=>noteAt(s0,th,lam));
-    ok(Math.abs(out[1].o-out[0].o)>.2&&out.every(({o,n})=>o<A.RHO_MAX-.02&&n.alt&&Math.min(o,n.alt.m)<1.25&&Math.max(o,n.alt.m)>1.44&&/as a range/.test(n.text)),
+    ok(Math.abs(out[1].o-out[0].o)>.15&&out.every(({o,n})=>o<A.RHO_MAX-.02&&n.alt&&Math.min(o,n.alt.m)<1.33&&Math.max(o,n.alt.m)>1.44&&/as a range/.test(n.text)),
        `walk-away flip ${out.map(v=>v.o.toFixed(3)).join(" -> ")} below the cap: the range on both sides`);
     for(const v of out) checkNote(v.t,v.n,`(flip at theta ${v.t.theta})`); }
-  /* at the cap with an interior peak more than 1% below it, the note names that peak instead of claiming none, and the
-     flat-top ask is rounded up (framework example at 85% kept; auto repair $1.2M/$300k at 90%) */
+  /* at the cap, the flat-top ask is rounded up and checked (framework example at 85% kept; auto repair $1.2M/$300k at
+     90%). Both named an interior peak more than 1% below the cap until the gap axis was read as Pepperdine states it;
+     since then no profile scanned (16 industries x 6 sizes x 2 quality profiles x 5 shares kept x 5 costs of delay, and
+     variants of FAN_S and PEN_MAX) has a real interior peak beyond a tie at the cap, so both now read 'no second peak',
+     and checkNote still checks the naming wherever it occurs */
   { const f=noteAt({...EXO,ind:"medical",rev:6e6,ern:1.45e6},.85,900), a=noteAt({...EXO,ind:"auto",rev:1.2e6,ern:3e5},.9,900);
-    for(const [v,pm,lo,hi,fl] of [[f,1.22,1.15,1.25,1.36],[a,1.24,1.04,1.13,1.31]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
-      const U=m=>{ const x=A.model({...v.t,ask:V*m}); return x.EVp+(1-x.PC)*v.t.theta*x.V-v.t.lamT*x.tMean; }, gap=n.peak?(U(v.o)-n.peak.u)/V*100:NaN;
-      ok(v.o>A.RHO_MAX-.02&&!n.alt&&n.peak&&Math.abs(n.peak.m-pm)<.015&&gap>lo&&gap<hi&&!/no second peak|rises all the way/.test(n.text)
-         &&n.text.includes(`another peak, at ${n.peak.m.toFixed(2)}× value, but to this owner it is worth ${gap.toFixed(2)}% of value less than the cap, beyond a tie`)
-         &&n.flat===fl&&U(v.o)-U(fl)<=.01*V&&U(v.o)-U(fl-.01)>.01*V,`${v.t.ind} at ${v.t.theta}: other peak at ${n.peak?n.peak.m.toFixed(3):"none"} ${gap.toFixed(3)}% below, flat from ${n.flat} (${n.text})`);
+    for(const [v,fl] of [[f,1.24],[a,1.24]]){ const n=v.n, V=A.model({...v.t,ask:1}).V;
+      const U=m=>{ const x=A.model({...v.t,ask:V*m}); return x.EVp+(1-x.PC)*v.t.theta*x.V-v.t.lamT*x.tMean; };
+      ok(v.o>A.RHO_MAX-.02&&!n.alt&&!n.peak&&/There is no second peak/.test(n.text)
+         &&n.flat===fl&&U(v.o)-U(fl)<=.01*V&&U(v.o)-U(fl-.01)>.01*V,`${v.t.ind} at ${v.t.theta}: no second peak, flat from ${n.flat} (${n.text})`);
       checkNote(v.t,n,`(${v.t.ind} at ${v.t.theta})`); } }
   /* every industry near the knife edge: the note's three readings (range, named peak, no second peak) against the reference */
   for(const ind of Object.keys(A.IND)) for(const [th,lam] of [[.85,900],[.9,4000],[.95,900]]){
@@ -758,8 +771,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     for(const ind of inds) for(const ern of [2e5,1e6,4e6]){ const t=median(ind,ern), V=A.model({...t,ask:1}).V;
       for(const f of [.5,.75,1]){ const s={...t,ask:A.REF_RATIO*V,buyers:Math.max(1,Math.round(t.buyers*f))}, r=A.model(s); r.inputs=s; const sc=A.omniScore(r);
         rng[f][0]=Math.min(rng[f][0],sc); rng[f][1]=Math.max(rng[f][1],sc); } }
-    ok(Math.abs(rng[.5][0]-SE.median_half_pool[0])<=2&&Math.abs(rng[.5][1]-SE.median_half_pool[1])<=2&&Math.abs(rng[.75][0]-SE.median_three_quarter_pool[0])<=2&&Math.abs(rng[.75][1]-SE.median_three_quarter_pool[1])<=2,
-       `MEDIAN-BUSINESS PIN: half pool ${rng[.5]}, three quarters ${rng[.75]} (stored ${SE.median_half_pool}, ${SE.median_three_quarter_pool})`);
+    /* the stored figures are the record at integration (the Data tab says later model changes move them); the live pins
+       were regenerated when the gap axis was read as Pepperdine states it (third round): half pool 1-23 and three quarters
+       16-41 (1-25 and 19-43 before) */
+    ok(SE.median_half_pool.join()==="1,25"&&SE.median_three_quarter_pool.join()==="19,43","the integration record is kept as it was");
+    ok(Math.abs(rng[.5][0]-1)<=2&&Math.abs(rng[.5][1]-23)<=2&&Math.abs(rng[.75][0]-16)<=2&&Math.abs(rng[.75][1]-41)<=2,
+       `MEDIAN-BUSINESS PIN: half pool ${rng[.5]}, three quarters ${rng[.75]} (pinned 1,23 and 16,41)`);
     /* priced at REF_RATIO against optimum-priced peers a median business scores 48 (test 6): at a typical pool the thin-pool factor changes nothing */
     ok(rng[1][0]===48&&rng[1][1]===48,`median businesses at a typical pool score 48 at REF_RATIO, as without a pool effect (${rng[1]})`); }
   /* the sensitivity panel's buyer-pool row: no negative effect anywhere, smooth through the typical pool */
@@ -855,10 +872,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   const margin=(API,th,lam)=>{ const V=API.model({...EXF,ask:1}).V, U=m=>{ const r=API.model({...EXF,ask:V*m}); return r.EVp+(1-r.PC)*th*r.V-lam*r.tMean; };
     let b=-Infinity; for(let m=1.0;m<=1.40+1e-9;m+=.002) b=Math.max(b,U(m)); return (b-U(A.RHO_MAX))/V; };
   const m9=margin(A,.75,900), m0=margin(A,.75,0);
-  ok(Math.abs(m9-.0055)<.0003&&Math.abs(m0-.0034)<.0003,`interior peak wins by ${(m9*100).toFixed(2)}% of value at $900/day, ${(m0*100).toFixed(2)}% with no delay cost (comment: 0.55%, 0.34%)`);
-  ok(margin(A,.772,900)>0&&margin(A,.779,900)<0&&margin(A,.763,0)>0&&margin(A,.769,0)<0,"theta flip near 0.776 at $900/day and 0.766 with no delay cost");
+  ok(Math.abs(m9-.0038)<.0003&&Math.abs(m0-.0024)<.0003,`interior peak wins by ${(m9*100).toFixed(2)}% of value at $900/day, ${(m0*100).toFixed(2)}% with no delay cost (comment: 0.38%, 0.24%)`);
+  ok(margin(A,.781,900)>0&&margin(A,.788,900)<0&&margin(A,.769,0)>0&&margin(A,.775,0)<0,"theta flip near 0.785 at $900/day and 0.772 with no delay cost");
   const S=f=>A.loadWith([["const FAN_S=0.80;","const FAN_S="+f+";"]]);
-  ok(margin(S(.93),.75,900)>0&&margin(S(.945),.75,900)<0&&margin(S(.876),.75,0)>0&&margin(S(.889),.75,0)<0,"FAN_S flip near 0.94 at $900/day and 0.88 with no delay cost");
+  ok(margin(S(.94),.75,900)>0&&margin(S(.955),.75,900)<0&&margin(S(.886),.75,0)>0&&margin(S(.899),.75,0)<0,"FAN_S flip near 0.95 at $900/day and 0.89 with no delay cost");
   /* 28b. the share of closings at the ceiling is continuous: no 1/48 steps on a 0.05% change in the ask */
   { let worst=0, prev=null; for(let a=2e6;a<9e6;a*=1.0005){ const c=A.model({...EXF,ask:a}).capShare; if(prev!==null) worst=Math.max(worst,Math.abs(c-prev)); prev=c; }
     ok(worst<.002,`capShare moves at most ${worst.toFixed(5)} per 0.05% of ask (was 1/48 = 0.0208)`);
@@ -933,8 +950,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        &&tv>n.gain,`#14: lower note: time value ${A.money(tv)}, net ${A.money(n.gain)} (${n.text})`); }
   /* #5/#25: no 2% floor; the equation carries the tail, the size-interpolated base and the thin-pool factor */
   { const V=A.model({...FX,ask:1}).V, p=[28,30,50,100].map(m=>A.model({...FX,ask:V*m}));
-    ok(p[0].PC>p[1].PC&&p[1].PC>p[2].PC&&p[2].PC>p[3].PC&&p[1].PC<.02&&p[1].EVp>p[2].EVp,`#5: P_C keeps falling past 28x (${p.map(x=>x.PC.toExponential(2)).join(", ")})`);
-    ok(HTML.includes("1-${(1-PEN_MAX).toFixed(2)}\\\\,e^{-k(g-100)}")&&HTML.includes("\\\\tau(n)&=\\\\operatorname{cap}_1")&&HTML.includes("b(V)&=${tp(bB,1)}")
+    /* the tail decays from the open bucket's knot (200% over value) since the gap axis was read as Pepperdine states it, so
+       P_C reaches 2% further out than 30x */
+    ok(p[0].PC>p[1].PC&&p[1].PC>p[2].PC&&p[2].PC>p[3].PC&&p[3].PC<.02&&p[1].EVp>p[2].EVp,`#5: P_C keeps falling past 28x (${p.map(x=>x.PC.toExponential(2)).join(", ")})`);
+    ok(HTML.includes("1-${(1-PEN_MAX).toFixed(2)}\\\\,e^{-k(g-${GAP_CDF.g[GAP_CDF.g.length-1]})}")&&HTML.includes("\\\\tau(n)&=\\\\operatorname{cap}_1")&&HTML.includes("b(V)&=${tp(bB,1)}")
        &&!HTML.includes("pinned at its floor")&&!/clamp\(base\*\(1-pen\),\.02/.test(HTML),"#5/#25: eq_p typesets tail, base and thin pool; floor gone"); }
   /* #16: the P_C badge and captions name the thin-pool factor */
   ok(HTML.includes('id="o_pc_pv"')&&/pv\.innerHTML="<i><\/i>"\+\(j\?"aggregate × judgment":"aggregate"\)/.test(HTML)&&!HTML.includes("conditions on deal size and asking gap only")
@@ -980,7 +999,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
      &&HTML.includes("<tr><td>Price-gap penalty and base-rate ramp")&&HTML.includes("Size of the price-gap penalty (PEN_MAX = ${PEN_MAX})")
      &&HTML.includes("and on the size of the price-gap penalty (a judgment scale)"),"R1-1: PEN_MAX and the size ramp labelled judgment");
   { const at=pm=>A.loadWith([["const PEN_MAX=.45;","const PEN_MAX="+pm+";"]]).bestRatio(FX,.75,900);
-    ok(at(.418)>1.45&&at(.428)<1.25&&A.PEN_MAX===.45,"R1-1: the walk-away ask flips to the cap near PEN_MAX 0.423 (text: about 0.42)"); }
+    ok(at(.414)>1.45&&at(.422)<1.30&&A.PEN_MAX===.45,"R1-1: the walk-away ask flips to the cap near PEN_MAX 0.418 (text: about 0.42)"); }
   /* R1-2: scenarios are prices if it closes, with the no-sale chance beside them */
   ok(HTML.includes("Price if it closes · ${pc(1-r.PC)} chance of no sale")&&(HTML.match(/percentile of closings/g)||[]).length===3
      &&HTML.includes('row("Bear sale"')&&!HTML.includes("Outcome distribution"),"R1-2: scenario labels");
@@ -1477,13 +1496,29 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
    profile; the display, layout and interface fixes by the code that makes them ---- */
 {
   const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
-  { const s={ind:"vet",rev:3878320.238970697,ern:776822.4617297485,grw:0.03709924817085264,gm:0.6877818477153778,rec:0.39787375926971436,
+  /* MODEL-1 (the dip under a peak read off the .02 grid beside a kinked bottom) on the skeptic's own profile, under the gap
+     axis it was found on: the third round read Pepperdine's gap as a share of the ask, which removed this profile's second
+     peak, so the fix is pinned on a build with the old axis (bucket edges at 10-50% and the open bucket at 100% over
+     value), and the live note is checked against a fine grid */
+  { const s0={ind:"vet",rev:3878320.238970697,ern:776822.4617297485,grw:0.03709924817085264,gm:0.6877818477153778,rec:0.39787375926971436,
       cc:0.6583209502696991,ret:0.8690899014472961,plt:0.10440324544906616,own:0.72,mgt:0.66,fin:0.45,yrs:6,buyers:530,st:null,franchise:false,
       budget:100000,lamT:3350,theta:0.9155685663223266,ask:3681742.1258855304};
-    const r=A.model(s); s.optRho=A.bestRatio(s,s.theta,s.lamT); s.rhoSell=A.bestRatio(s,0,0);
-    const nt=A.optNote(s,r.V,A.model({...s,ask:r.V*s.rhoSell}),A.model({...s,ask:r.V*s.optRho})), hit=nt.text.match(/another peak, at [\d.]+× value/);
-    ok(!/There is no second peak/.test(nt.text)&&!!hit&&/1\.2\d×/.test(hit[0]),
-       `40: MODEL-1 a dip deeper than 0.01% of value makes a real second peak, named in the note (${hit?hit[0]:"none"})`); }
+    const noteOf=API=>{ const s={...s0}, r=API.model(s); s.optRho=API.bestRatio(s,s.theta,s.lamT); s.rhoSell=API.bestRatio(s,0,0);
+      return {s,V:r.V,nt:API.optNote(s,r.V,API.model({...s,ask:r.V*s.rhoSell}),API.model({...s,ask:r.V*s.optRho}))}; };
+    const OLD=A.loadWith([['const K=A.knots_pct_over_value, seq=[["1-10",K[0]],["11-20",K[1]],["21-30",K[2]],["31-40",K[3]],["41-50",K[4]],[">50",A.open_knot]];',
+      'const seq=[["1-10",10],["11-20",20],["21-30",30],["31-40",40],["41-50",50],[">50",100]];']]);
+    const o=noteOf(OLD), hit=o.nt.text.match(/another peak, at [\d.]+× value/);
+    ok(OLD.GAP_CDF.g.join()==="0,10,20,30,40,50,100"&&OLD.GAP_TAIL_K>.00113&&!/There is no second peak/.test(o.nt.text)&&!!hit&&/1\.2\d×/.test(hit[0]),
+       `40: MODEL-1 a dip deeper than 0.01% of value makes a real second peak, named in the note (old gap axis: ${hit?hit[0]:"none"})`);
+    /* the live note: the fine-grid curve (.0025 steps, 8x the note's) has no other peak with a dip of 0.03% of value
+       when the note says there is none, and the note names any that has one */
+    const L=noteOf(A), th=L.s.theta, U=m=>{ const x=A.model({...L.s,ask:L.V*m}); return x.EVp+(1-x.PC)*th*x.V-L.s.lamT*x.tMean; };
+    const ms=[], us=[]; for(let k=0;k<=280;k++){ ms.push(.80+k*.0025); us.push(U(ms[k])); }
+    const jo=Math.round((L.s.optRho-.80)/.0025), deep=[];
+    for(let j=1;j<us.length-1;j++) if(us[j]>=us[j-1]&&us[j]>=us[j+1]&&Math.abs(ms[j]-L.s.optRho)>.03){ let lo=us[j];
+      for(let q=Math.min(j,jo);q<=Math.max(j,jo);q++) lo=Math.min(lo,us[q]); if(us[j]-lo>=3e-4*L.V) deep.push(ms[j]); }
+    ok(L.s.optRho>A.RHO_MAX-.02&&(/There is no second peak/.test(L.nt.text)?!deep.length:deep.some(m=>L.nt.peak&&Math.abs(m-L.nt.peak.m)<=.025)),
+       `40: MODEL-1 on the live gap axis the note agrees with the fine grid (${deep.length?"peaks at "+deep.map(m=>m.toFixed(3)):"no other peak"}): ${L.nt.text.slice(0,90)}`); }
   ok(/1\.87 at \$100-250k of revenue and 1\.90 at \$250-500k/.test(A.MODELS.value.soi_size_wedge.why)&&!/falls monotonically from 1\.90/.test(HTML)
      &&HTML.includes("that band implies 0.468"),"40: MODEL-2/3 the SOI wedge and the BIZCOMPS sigma are described as the tables have them");
   ok(HTML.includes("e^{${T_ELAST.toFixed(2)}\\\\,g}")&&HTML.includes("R(0.08)^{s}=${Math.pow(fanRatio(.08),FAN_S)")
@@ -1527,6 +1562,38 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     let up=0, prev=Infinity; for(let c=6.9;c<=C1;c+=.005){ const r=rad(c); if(r>prev+1e-9) up++; prev=r; }
     ok(!up,`41: during the dive the Sun's offset from the centre only shrinks (${up} steps outward)`);
   }
+}
+
+/* ---- 42. third round, October 2026: definitions. Pepperdine states its valuation gap as a share of the seller's asking
+   price (fit/round3_gap_axis.py): the penalty reads the buckets at p/(1-p) over value, the open bucket at 200% (judgment) ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8");
+  const F=A.MODELS.fitted, GA=F.gap_axis, D=A.MODELS.close_and_timing.close_probability.valuation_gap_distribution, G=A.GAP_CDF;
+  const B=["1-10","11-20","21-30","31-40","41-50",">50"], tot=B.reduce((a,k)=>a+D[k],0);
+  ok(GA.edges_pct_of_ask.join()==="10,20,30,40,50"&&GA.edges_pct_of_ask.every((p,i)=>Math.abs(GA.knots_pct_over_value[i]-100*p/(100-p))<1e-3)
+     &&GA.open_knot===200&&GA.was.knots_pct_over_value.join()==="10,20,30,40,50"&&GA.was.open_knot===100,
+     "42: the bucket edges (10-50% of the ask) sit at p/(1-p) over value; the open bucket at 200% (was 10-50 and 100)");
+  let c=0; const fOK=B.every((k,i)=>{ c+=D[k]; return Math.abs(G.f[i+1]-c/tot)<1e-12; });
+  ok(G.g.join()===[0,...GA.knots_pct_over_value,GA.open_knot].join()&&G.f[0]===0&&fOK,"42: the penalty's distribution reads the knots and the shipped shares");
+  ok(B.every(k=>Math.abs(GA.pool.shares[k]-D[k]/tot)<=GA.shares_check.max_abs_diff_vs_shipped+1e-9)&&GA.shares_check.max_abs_diff_vs_shipped<=.015,
+     `42: the 2017-2026 pool stays within ${GA.shares_check.max_abs_diff_vs_shipped} of the shipped shares, which are kept`);
+  /* the penalty: rising, and smooth through the last knot (the tail's rate is set from the slope there) */
+  const P=A.gapPenalty, L=GA.open_knot, h=1e-3; let rise=true, prev=-1;
+  for(let g=0;g<=600;g+=.25){ const v=P(g); if(v<prev-1e-12) rise=false; prev=v; }
+  ok(rise&&P(600)<1&&Math.abs(P(L+h)-P(L-h))<1e-5&&Math.abs((P(L+h)-P(L))-(P(L)-P(L-h)))/h<2e-5,"42: the penalty rises and is smooth through the open bucket's knot");
+  ok(Math.abs(A.GAP_TAIL_K-.000571)<5e-6,`42: the tail's rate halves with the wider axis (k ${A.GAP_TAIL_K.toPrecision(3)}, was 0.00114)`);
+  /* what it changes: the share of the base closing rate an ask keeps, on the stated axis and on the old one */
+  const OLD=A.loadWith([['const K=A.knots_pct_over_value, seq=[["1-10",K[0]],["11-20",K[1]],["21-30",K[2]],["31-40",K[3]],["41-50",K[4]],[">50",A.open_knot]];',
+    'const seq=[["1-10",10],["11-20",20],["21-30",30],["31-40",40],["41-50",50],[">50",100]];']]);
+  const kp=(API,r)=>Math.round(100*(1-API.gapPenalty((r-1)*100)));
+  ok(kp(A,1.3)===75&&kp(OLD,1.3)===64&&kp(A,1.5)===62&&kp(OLD,1.5)===58,`42: an ask of 1.3x keeps ${kp(A,1.3)}% of the base rate (${kp(OLD,1.3)}% before), 1.5x ${kp(A,1.5)}% (${kp(OLD,1.5)}%)`);
+  const ex={...{grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false},ind:"medical",rev:6e6,ern:1.45e6};
+  const wa=API=>API.bestRatio(ex,.75,900);
+  ok(Math.abs(wa(OLD)-1.15)<.01&&Math.abs(wa(A)-1.26)<.01,`42: the framework example's walk-away ask moves from ${wa(OLD).toFixed(3)} to ${wa(A).toFixed(3)} (the Data tab: about 1.15x to 1.26x)`);
+  /* the page says so */
+  ok(HTML.includes("Third round: definitions")&&HTML.includes("Where Pepperdine&rsquo;s price gaps sit against value")
+     &&HTML.includes("walk-away ask moves from about 1.15&times; to 1.26&times;")&&HTML.includes("11&ndash;30% of the ask</b> (12&ndash;43% over value)")
+     &&!/up to a\s+100% gap/.test(HTML),"42: the Data tab states the axis, the kill zone on both axes, and the third round's row");
 }
 
 console.log(`${pass} passed, ${fail} failed`);
