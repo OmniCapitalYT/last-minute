@@ -1511,3 +1511,13 @@ None of them changes a figure the model reports. They read the model, and the Da
   - a reload;
   - blocked storage;
   - no sideways scroll at 390 px in the console, the worksheet, the report and the Deals tab.
+- **Suites,** on the final build:
+
+  | Suite | Result |
+  |---|---|
+  | `node tests/model.test.js` | 7,586 pass (7,549 before; section 43 is new) |
+  | `node tests/fuzz.test.js 1500` | 179,746 checks pass |
+  | `node tests/invariants.test.js --browser` | 253 invariants pass: statics 57, identities 60, extremes 60, app 76 |
+  | `node tests/browser.inputs.js` | 15 checks pass |
+  | `node tests/browser.sweep.js` | 121 input states at each of 1440 and 390 px pass (118 before: the sweep walks every console select, and the financing check's transaction type adds three) |
+  | `node tests/browser.broker.js` | 38 checks pass (new) |
