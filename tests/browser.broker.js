@@ -16,24 +16,47 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   let {p,errs}=await open(ctx);
   ok(await p.evaluate(()=>getComputedStyle(document.getElementById("tl_saveas")).display==="none"&&/Unsaved/.test(document.getElementById("tl_deal").textContent)),
      "a fresh console is an unsaved valuation, with no 'Save as new'");
+  const typeIn=async(sel,v,key)=>{ await p.click(sel); await p.keyboard.press("Control+A"); await p.keyboard.type(v,{delay:5}); await p.keyboard.press(key||"Enter"); await settle(p); };
 
   /* ---- the financing check ---- */
-  const fin=await p.evaluate(()=>{ const s=STATE.s, r=STATE.r, f=debtCheck(s,s.ask,OMNI_BROKER.state().fin,r.V);
-    const cells=[...document.querySelectorAll("#fintbl tbody tr:last-child td")].map(td=>td.querySelector("b").textContent);
-    return {want:f.dscr.toFixed(2)+"×",cells,cols:document.querySelectorAll("#fintbl thead th").length-1,head:document.querySelector("#fintbl thead").textContent}; });
-  ok(fin.cells.includes(fin.want)&&fin.cols>=1&&fin.cols<=3&&/Your ask/.test(fin.head),`the coverage row reads the model's coverage at your ask (${fin.want}; ${fin.cols} asks)`);
+  let st=await p.evaluate(()=>{ const s=STATE.s, r=STATE.r, f=debtCheck(s,s.ask,OMNI_BROKER.state().fin,r.V), mf=maxFinanced(s,OMNI_BROKER.state().fin,r.V);
+    const rows=[...document.querySelectorAll("#fintbl tbody tr")], cov=rows[rows.length-1], debt=rows.find(tr=>/Acquisition debt/.test(tr.textContent));
+    return {want:covFmt(f),cells:[...cov.querySelectorAll("td b")].map(b=>b.textContent),cols:document.querySelectorAll("#fintbl thead th").length-1,head:document.querySelector("#fintbl thead").textContent,
+      debt:debt?debt.textContent:"",max:document.getElementById("fin_max").textContent,price:money(mf.price),bind:mf.bind,who:document.getElementById("fin_who").textContent,
+      pay:document.getElementById("fin_note").textContent}; });
+  ok(st.cells.includes(st.want)&&st.cols>=1&&st.cols<=3&&/Your ask/.test(st.head),`the coverage row reads the model's coverage at your ask (${st.want}; ${st.cols} asks)`);
+  ok(st.bind==="value"&&st.max.includes(st.price)&&/reaches the model value/.test(st.max)&&/over value/.test(st.debt),
+     `the highest financed price keeps the debt within the model value (${st.price}), and an ask whose debt is above it is flagged`);
+  ok(/^Individual buyers, about \d+% of the buyers of a business this size/.test(st.who)&&/payroll taxes and benefits/.test(st.pay)&&/rank by firm size is judgment/.test(st.pay),
+     "the lede reads the buyer mix at this size; the pay note names the employer's costs and the judgment in the rank");
   await p.evaluate(()=>{ window.__renders=0; const r0=window.render; window.render=function(){ window.__renders++; return r0.apply(this,arguments); }; });
-  await p.click("#f_cash"); await p.keyboard.press("Control+A"); await p.keyboard.type("20",{delay:10}); await p.keyboard.press("Enter"); await settle(p);
-  let st=await p.evaluate(()=>({cash:OMNI_BROKER.state().fin.cash,box:document.getElementById("f_cash").value,renders:window.__renders,
-    pref:JSON.parse(localStorage.getItem("omni.prefs.v1")).fin.cash,head:document.querySelector("#fintbl tbody tr:nth-child(4) td").textContent}));
+  await typeIn("#f_cash","20");
+  st=await p.evaluate(()=>({cash:OMNI_BROKER.state().fin.cash,box:document.getElementById("f_cash").value,renders:window.__renders,
+    pref:JSON.parse(localStorage.getItem("omni.prefs.v1")).fin.cash,head:[...document.querySelectorAll("#fintbl tbody tr")].find(tr=>/Buyer cash/.test(tr.textContent)).textContent}));
   ok(Math.abs(st.cash-.2)<1e-12&&st.box==="20%"&&st.pref===.2&&/20%/.test(st.head),`20 in buyer cash reads as 20%, redraws the table and is remembered (${st.box})`);
   ok(st.renders===0,`typing in the financing check does not re-run the console (${st.renders} renders)`);
-  await p.click("#f_note"); await p.keyboard.press("Control+A"); await p.keyboard.type("abc"); await p.keyboard.press("Tab"); await settle(p);
+  await typeIn("#f_cash","1");
+  ok(await p.evaluate(()=>Math.abs(OMNI_BROKER.state().fin.cash-.01)<1e-12&&document.getElementById("f_cash").value==="1%"),"a 1 in a share box is 1%, as 2 is 2%");
+  await typeIn("#f_note","abc","Tab");
   st=await p.evaluate(()=>({note:OMNI_BROKER.state().fin.note,box:document.getElementById("f_note").value,bad:document.getElementById("f_note").classList.contains("bad")}));
   ok(Math.abs(st.note-.05)<1e-12&&st.box==="5%"&&st.bad,"a rejected entry restores the previous value and stays marked");
+  ok(await p.evaluate(()=>/<b>Equity:<\/b>/.test(document.getElementById("fin_note").innerHTML)&&/none/.test(document.getElementById("fin_max").textContent)
+     &&/cannot be waived/.test(document.getElementById("fin_max").textContent)),"at 1% buyer cash the highest price is none: an initial acquisition's 10% equity cannot be waived");
   await p.selectOption("#f_type","expansion"); await settle(p);
-  ok(await p.evaluate(()=>/1\.15×/.test(document.getElementById("fin_max").textContent)||/meets 1\.15×|below 1\.15×/.test(document.getElementById("fintbl").textContent)),"an expansion is tested at 1.15x");
-  await p.selectOption("#f_type","initial"); await p.click("#f_cash"); await p.keyboard.press("Control+A"); await p.keyboard.type("10%"); await p.keyboard.press("Enter"); await settle(p);
+  ok(await p.evaluate(()=>/meets 1\.15×|below 1\.15×/.test(document.getElementById("fintbl").textContent)&&/may waive/.test(document.getElementById("fin_max").textContent)),
+     "an expansion is tested at 1.15x, and its equity may be waived");
+  await p.selectOption("#f_type","initial"); await typeIn("#f_cash","10%");
+  await p.evaluate(()=>{ IN.ern=5e4; render(); }); await settle(p);
+  ok(await p.evaluate(()=>{ const t=[...document.querySelectorAll("#fintbl tbody tr")].pop().textContent; return /none\s*nothing left after the new owner.s pay/.test(t)&&!/−\d/.test(t); }),
+     "with nothing left after the new owner's pay, coverage reads none, not a negative ratio");
+  await p.evaluate(()=>{ IN.ern=1.45e6; render(); }); await settle(p);
+  await typeIn("#f_cash","90%"); await typeIn("#f_note","30%");
+  st=await p.evaluate(()=>({note:document.getElementById("fin_note").textContent,max:document.getElementById("fin_max").textContent}));
+  ok(/the note is cut/.test(st.note)&&/no loan/.test(st.max),"cash and a note set to more than the price: the note is cut, and no loan is needed");
+  await typeIn("#f_note","90%"); await p.check("#f_standby"); await settle(p);
+  ok(await p.evaluate(()=>{ const t=[...document.querySelectorAll("#fintbl tbody tr")].pop().textContent; return /no payments/.test(t)&&!/no debt/.test(t); }),"a note on full standby and no loan reads 'no payments', not 'no debt'");
+  await p.uncheck("#f_standby"); await typeIn("#f_cash","10%"); await typeIn("#f_note","5%");
+  ok(await p.evaluate(()=>document.getElementById("rp-page").media==="not all"),"the report's Letter page size is off while the report is closed: printing the console keeps the reader's paper");
 
   /* ---- the worksheet ---- */
   await p.click("#tl_recast"); await settle(p);
@@ -42,43 +65,93 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   ok(await p.evaluate(()=>document.getElementById("recast").hidden&&document.activeElement.id==="tl_recast"),"Escape closes it and returns focus to its button");
   await p.click("#tl_recast"); await settle(p);
   const put=async(k,y,v)=>{ const sel=`.rc-in[data-k="${k}"][data-y="${y}"]`; await p.click(sel); await p.keyboard.press("Control+A"); await p.keyboard.type(v,{delay:5}); await p.keyboard.press("Tab"); };
+  ok(await p.evaluate(()=>{ const e=document.querySelector('.rc-in[data-k="owner"][data-y="0"]'), d=document.getElementById(e.getAttribute("aria-describedby")||"x");
+    return e.getAttribute("aria-label")==="Add: One working owner's salary or wages, most recent year"&&!!d&&/Compensation of officers/.test(d.textContent)
+      &&document.querySelector('.rc-in[data-k="nonop"][data-y="1"]').getAttribute("aria-label").startsWith("Less: "); }),
+     "each cell's name says whether it adds or deducts, and points to the source's line");
+  /* the reason Use is off, and Clear keeping the growth box */
+  await put("rev",0,"1,000,000"); await put("ni",0,"500"); await settle(p);
+  ok(await p.evaluate(()=>document.getElementById("rc_use").disabled&&/needs SDE of at least \$1k/.test(document.getElementById("rc_sum").textContent)),"'Use in the console' says why it is off");
+  await p.uncheck("#rc_grw"); await p.click("#rc_clear"); await settle(p);
+  ok(await p.evaluate(()=>!document.getElementById("rc_grw").checked&&!document.querySelector('.rc-in[data-k="rev"][data-y="0"]').value),"Clear empties the years and keeps the growth box as set");
+  await p.check("#rc_grw");
   await put("rev",0,"6,200,000"); await put("ni",0,"512,000"); await put("owner",0,"180000"); await put("dep",0,"96k"); await put("int",0,"$41,000");
   await put("once",0,"35,000"); await put("nonop",0,"(12,000)"); await put("rev",1,"5.7m"); await put("ni",1,"470k"); await put("owner",1,"175k"); await settle(p);
   st=await p.evaluate(()=>({s0:document.getElementById("rc_s0").textContent,s1:document.getElementById("rc_s1").textContent,
     nonop:document.querySelector('.rc-in[data-k="nonop"][data-y="0"]').value,sum:document.getElementById("rc_sum").textContent,dis:document.getElementById("rc_use").disabled}));
-  ok(st.s0==="$852k"&&st.s1==="$645k"&&st.nonop==="$12,000"&&/fell|grew 8\.8%/.test(st.sum)&&!st.dis,`the worksheet sums each year and a deduction typed as (12,000) deducts (${st.s0}, ${st.s1})`);
+  ok(st.s0==="$852k"&&st.s1==="$645k"&&st.nonop==="−$12,000"&&/still deducted/.test(st.sum)&&/grew 8\.8%/.test(st.sum)&&!st.dis,
+     `the worksheet sums each year; a deduction typed as (12,000) deducts and says so (${st.s0}, ${st.s1})`);
+  /* a rejected entry goes back to what the cell held when focused */
+  await put("owner",1,"9x"); await settle(p);
+  st=await p.evaluate(()=>{ const e=document.querySelector('.rc-in[data-k="owner"][data-y="1"]'); return {v:e.value,bad:e.classList.contains("bad"),ws:OMNI_BROKER.state().ws.years[1].owner,s1:document.getElementById("rc_s1").textContent}; });
+  ok(st.v==="$175,000"&&st.bad&&st.ws===175000&&st.s1==="$645k",`a rejected entry restores the value it replaced, not a keystroke's prefix (${st.v})`);
+  await put("dep",2,"12/day"); await settle(p);
+  ok(await p.evaluate(()=>{ const e=document.querySelector('.rc-in[data-k="dep"][data-y="2"]'); return e.value===""&&e.classList.contains("bad")&&OMNI_BROKER.state().ws.years[2].dep===undefined; }),"a unit the worksheet does not take is refused");
+  await p.focus('.rc-in[data-k="xowner"][data-y="2"]'); await p.keyboard.press("Enter");
+  const nx1=await p.evaluate(()=>document.activeElement.dataset.k+document.activeElement.dataset.y);
+  await p.focus('.rc-in[data-k="xowner"][data-y="0"]'); await p.keyboard.press("Enter");
+  const nx2=await p.evaluate(()=>document.activeElement.dataset.k+document.activeElement.dataset.y);
+  ok(nx1==="rev0"&&nx2==="rev1",`Enter at the foot of a column goes to the top of the next, and from the last column back to the first (${nx1}, ${nx2})`);
   await p.click("#rc_use"); await settle(p); await p.waitForTimeout(300);
   st=await p.evaluate(()=>({ern:STATE.s.ern,rev:STATE.s.rev,grw:STATE.s.grw,ask:STATE.s.ask,msg:document.getElementById("tl_msg").textContent,closed:document.getElementById("recast").hidden}));
   ok(st.ern===852000&&st.rev===6.2e6&&Math.abs(st.grw-(6.2/5.7-1))<1e-9&&st.ask===3.24e6&&st.closed&&/From the worksheet/.test(st.msg),
      `'Use in the console' sets SDE, revenue and growth and leaves the ask (SDE ${st.ern}, growth ${(st.grw*100).toFixed(1)}%)`);
 
+  /* ---- the report before saving: what is typed there goes with the deal saved next ---- */
+  await p.click("#tl_report"); await settle(p);
+  await p.fill("#rp_biz","Lakeside <b>Dental</b>"); await p.fill("#rp_for","Dr. Ortiz"); await p.locator("#rp_for").blur(); await settle(p);
+  ok(await p.evaluate(()=>document.getElementById("rp-page").media==="print"),"while the report is open its page size applies to printing");
+  await p.click("#rp_close"); await settle(p);
+
   /* ---- saving the deal ---- */
   await p.click("#tl_save"); await settle(p);
-  st=await p.evaluate(()=>({n:JSON.parse(localStorage.getItem("omni.deals.v1")).length,deal:document.getElementById("tl_deal").textContent,
-    saveas:getComputedStyle(document.getElementById("tl_saveas")).display,ws:!!JSON.parse(localStorage.getItem("omni.deals.v1"))[0].ws}));
-  ok(st.n===1&&/Medical or dental practice, \$852k SDE/.test(st.deal)&&st.saveas!=="none"&&st.ws,`Save deal stores it with its worksheet and names it (${st.deal.trim()})`);
+  st=await p.evaluate(()=>{ const d=JSON.parse(localStorage.getItem("omni.deals.v1"))[0]; return {n:JSON.parse(localStorage.getItem("omni.deals.v1")).length,deal:document.getElementById("tl_deal").textContent,
+    saveas:getComputedStyle(document.getElementById("tl_saveas")).display,ws:!!d.ws,biz:d.business,pf:d.preparedFor,auto:d.autoName}; });
+  ok(st.n===1&&/Medical or dental practice, \$852k SDE/.test(st.deal)&&st.saveas!=="none"&&st.ws&&st.auto,`Save deal stores it with its worksheet and names it (${st.deal.trim()})`);
+  ok(st.biz==="Lakeside <b>Dental</b>"&&st.pf==="Dr. Ortiz","the business and recipient typed in the report before saving go with the new deal");
   await p.evaluate(()=>{ const g=document.getElementById("i_gm"); g.value=70; g.dispatchEvent(new Event("input",{bubbles:true})); }); await p.waitForTimeout(500);
   ok(/unsaved changes/.test(await p.evaluate(()=>document.getElementById("tl_deal").textContent)),"changing an input marks unsaved changes");
   await p.click("#tl_save"); await settle(p);
   st=await p.evaluate(()=>({deal:document.getElementById("tl_deal").textContent,gm:JSON.parse(localStorage.getItem("omni.deals.v1"))[0].inputs.gm}));
   ok(!/unsaved/.test(st.deal)&&Math.abs(st.gm-.7)<1e-12,"updating saves the change");
+  await typeIn("#f_note","6%");
+  ok(/unsaved changes/.test(await p.evaluate(()=>document.getElementById("tl_deal").textContent)),"changing the financing structure marks unsaved changes too");
+  await p.click("#tl_save"); await settle(p);
+  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.deals.v1"))[0].fin.note===.06&&!/unsaved/.test(document.getElementById("tl_deal").textContent)),"and 'Save changes' keeps the structure");
+  await typeIn("#f_note","5%"); await p.click("#tl_save"); await settle(p);
 
   /* ---- the seller report ---- */
   await p.click("#tl_report"); await settle(p);
-  await p.fill("#rp_biz","Lakeside <b>Dental</b>"); await p.fill("#rp_broker","Pat Lee"); await p.fill("#rp_firm","Main Street Advisors"); await p.locator("#rp_firm").blur(); await settle(p);
-  st=await p.evaluate(()=>({t:document.getElementById("rp_paper").textContent,html:document.getElementById("rp_paper").innerHTML,on:document.documentElement.classList.contains("rp-on")}));
-  ok(st.on&&st.t.includes("Lakeside <b>Dental</b>")&&!st.html.includes("<b>Dental</b>")&&/Earnings basis/.test(st.t)&&/\$852k/.test(st.t)&&/not an appraisal/.test(st.t),
-     "the report shows what was typed as text, and the worksheet's earnings basis");
-  await p.emulateMedia({media:"print"}); const pdf=await p.pdf({format:"Letter"}); await p.emulateMedia({media:"screen"});
-  const pages=(pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g)||[]).length;
-  ok(pages===1,`printed, the report is one Letter page (${pages})`);
+  await p.fill("#rp_broker","Pat Lee"); await p.fill("#rp_firm","Main Street Advisors"); await p.locator("#rp_firm").blur(); await settle(p);
+  st=await p.evaluate(()=>({t:document.getElementById("rp_paper").textContent,html:document.getElementById("rp_paper").innerHTML,on:document.documentElement.classList.contains("rp-on"),biz:document.getElementById("rp_biz").value}));
+  ok(st.on&&st.biz==="Lakeside <b>Dental</b>"&&st.t.includes("Lakeside <b>Dental</b>")&&!st.html.includes("<b>Dental</b>")&&/Earnings basis/.test(st.t)&&/\$852k/.test(st.t)&&/not an appraisal/.test(st.t)
+     &&/fitted\s*× judgment/.test(st.t)&&/published data\s*× judgment/.test(st.t),"the report shows what was typed as text, the worksheet's earnings basis and the console's compound badges");
+  await p.emulateMedia({media:"print"}); let pdf=await p.pdf({format:"Letter"}); await p.emulateMedia({media:"screen"});
+  const pages=pdf=>(pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g)||[]).length;
+  ok(pages(pdf)===1,`printed, the report is one Letter page (${pages(pdf)})`);
+  /* the longest report the page can make: every optional line, three asks, long names, an extrapolated value */
+  await p.evaluate(()=>{ const s={...STATE.s,ern:5.1e5,rev:6e5,ask:2.6e6,buyers:12}; delete s.rhoSell; delete s.optRho;
+    const R=recastSDE({entity:"schc",weight:"w321",years:[{rev:6e5,ni:3e5,owner:2e4,ptax:3e3,tax:1e4,once:9e4,nonop:-5e3},{rev:5.5e5,ni:4e5},{rev:5e5,ni:3.5e5}]});
+    const D=reportData(s,{fin:{type:"expansion",cash:.05,extra:3e5,capex:1450,draw:2.2e5},recast:R,calib:sampleSummary([1.04,.97,1.1,1.02,.99,1.06],false,.04),date:"September 30, 2026"});
+    const L="Lakeside Family Dental Group of Northern Westchester County, a professional corporation doing business as Lakeside Smiles";
+    document.getElementById("rp_paper").innerHTML=reportHTML(D,{business:L,preparedFor:L,broker:L,firm:L}); window.__worst=D; });
+  st=await p.evaluate(()=>{ const D=window.__worst, t=document.getElementById("rp_paper").textContent, a=document.querySelector("#rp_paper .rp");
+    return {rows:document.querySelectorAll("#rp_paper .rp-t tbody tr:not(.rp-sub)").length,ext:/Extrapolated/.test(t),cal:/Track record/.test(t),earn:/counts it twice/.test(t),
+      eq:/Equity:/.test(t),wide:a.scrollWidth<=a.clientWidth+1}; });
+  pdf=await (async()=>{ await p.emulateMedia({media:"print"}); const x=await p.pdf({format:"Letter"}); await p.emulateMedia({media:"screen"}); return x; })();
+  ok(st.rows===3&&st.ext&&st.cal&&st.earn&&st.eq&&st.wide&&pages(pdf)===1,`the longest report (three asks, every optional line, 120-character names) still prints on one Letter page (${pages(pdf)}; rows ${st.rows})`);
+  await p.click("#rp_close"); await settle(p);
+  /* a report opened straight from a money box reads the value just typed there */
+  await p.click("#v_ask"); await p.keyboard.press("Control+A"); await p.keyboard.type("3.3M"); await p.click("#tl_report"); await settle(p);
+  ok(await p.evaluate(()=>/Your ask\s*\$3\.30M/.test(document.getElementById("rp_paper").textContent)),"a report opened straight from a money box is built on the value just typed");
   const [dl]=await Promise.all([p.waitForEvent("download"),p.click("#rp_dl")]);
   const fpath=path.join(tmp,dl.suggestedFilename()); await dl.saveAs(fpath); const file=fs.readFileSync(fpath,"utf8");
-  ok(/^valuation-lakeside-b-dental-b-\d{4}-\d{2}-\d{2}\.html$/.test(dl.suggestedFilename())&&file.startsWith("<!DOCTYPE html>")&&file.includes("all:revert")
-     &&file.includes("Lakeside &lt;b&gt;Dental&lt;/b&gt;")&&!/<script|https?:\/\//i.test(file),`the download is one self-contained page with no script or link (${dl.suggestedFilename()})`);
+  ok(/^valuation-lakeside-b-dental-b-\d{4}-\d{2}-\d{2}\.html$/.test(dl.suggestedFilename())&&file.startsWith("<!DOCTYPE html>")&&file.includes("all:revert")&&/@media print\{body\{background:#fff\}@page\{size:letter/.test(file)
+     &&file.includes("Lakeside &lt;b&gt;Dental&lt;/b&gt;")&&!/<script|https?:\/\//i.test(file),`the download is one self-contained page that prints on Letter, with no script or link (${dl.suggestedFilename()})`);
   await p.click("#rp_close"); await settle(p);
-  ok(await p.evaluate(()=>{ const P=JSON.parse(localStorage.getItem("omni.prefs.v1")); return P.broker==="Pat Lee"&&P.firm==="Main Street Advisors"&&!document.documentElement.classList.contains("rp-on"); }),
+  ok(await p.evaluate(()=>{ const P=JSON.parse(localStorage.getItem("omni.prefs.v1")); return P.broker==="Pat Lee"&&P.firm==="Main Street Advisors"&&!document.documentElement.classList.contains("rp-on")&&document.getElementById("rp-page").media==="not all"; }),
      "the broker and firm are remembered for the next report");
+  await p.evaluate(()=>{ IN.ask=3.24e6; render(); }); await settle(p); await p.click("#tl_save"); await settle(p);
 
   /* ---- the Deals tab ---- */
   await p.click('.tab[data-v="deals"]'); await p.waitForTimeout(1500);
@@ -91,38 +164,58 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   await p.click('#dl_form button[type="submit"]'); await settle(p);
   st=await p.evaluate(()=>({d:JSON.parse(localStorage.getItem("omni.deals.v1"))[0],msg:document.getElementById("dl_form_msg").textContent,
     bad:document.querySelector('#dl_form input[name="salePrice"]').classList.contains("bad")}));
-  ok(st.d.status==="closed"&&st.d.listPrice===3.4e6&&st.d.listDate==="2025-09-02"&&st.d.salePrice===null&&st.bad&&/salePrice/.test(st.msg)&&/sale price/.test(st.msg),
-     "a bad sale price is refused and marked; the rest saves, with a note on what the record still needs");
+  ok(st.d.status==="closed"&&st.d.listPrice===3.4e6&&st.d.listDate==="2025-09-02"&&st.d.salePrice===null&&st.bad&&/marked fields: Sale price\./.test(st.msg)&&/sale price/.test(st.msg),
+     `a bad sale price is refused and named as the form names it; the rest saves, with a note on what the record still needs (${st.msg.slice(0,60)})`);
   await p.fill('#dl_form input[name="salePrice"]',"3.1M"); await p.fill('#dl_form input[name="name"]',"=HYPERLINK(\"x\")"); await p.click('#dl_form button[type="submit"]'); await settle(p);
   st=await p.evaluate(()=>{ const d=JSON.parse(localStorage.getItem("omni.deals.v1"))[0]; const P=dealPredict(d);
-    return {sale:d.salePrice,row:document.querySelector("#dl_tbl tbody tr").textContent,ratio:(d.salePrice/P.priceMed).toFixed(2)+"×"}; });
-  ok(st.sale===3.1e6&&st.row.includes(st.ratio),`the table shows the sale against the model's median at the listing price (${st.ratio})`);
-  /* duplicates for the record, then the two-press delete */
-  await p.click('#dl_form button[data-act="dup"]'); await settle(p); await p.click('#dl_form button[data-act="dup"]'); await settle(p);
-  ok(await p.evaluate(()=>document.querySelectorAll("#dl_tbl tbody tr[data-id]").length===3&&/Sale price ÷ the model's median\s*\d\.\d\d×/.test(document.getElementById("dl_track").textContent)),
-     "with three closed deals the price record appears");
-  await p.check("#dl_calib"); await settle(p);
-  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.prefs.v1")).calib===true),"the track-record opt-in is remembered");
+    return {sale:d.salePrice,auto:d.autoName,row:document.querySelector("#dl_tbl tbody tr").textContent,ratio:(d.salePrice/P.pExp).toFixed(2)+"×"}; });
+  ok(st.sale===3.1e6&&st.auto===false&&st.row.includes(st.ratio),`the table shows the sale against the model's expected price at the listing (${st.ratio}); a typed name stays`);
+  /* a duplicate is a new valuation, so no outcome is counted twice */
+  await p.click('#dl_form button[data-act="dup"]'); await settle(p);
+  st=await p.evaluate(()=>{ const D=JSON.parse(localStorage.getItem("omni.deals.v1")); return {n:D.length,c:D[0],track:document.getElementById("dl_track").textContent}; });
+  ok(st.n===2&&st.c.status==="valuing"&&st.c.salePrice===null&&st.c.listPrice===null&&st.c.listDate===null&&/ \(copy\)$/.test(st.c.name)&&/1 closed with a sale price/.test(st.track),
+     "a duplicate starts as a new valuation: its listing and outcome are empty and the record still counts one sale");
+  /* the two-press delete; a redraw in between disarms it */
   await p.click('#dl_form button[data-act="del"]'); await settle(p);
-  ok(await p.evaluate(()=>document.querySelectorAll("#dl_tbl tbody tr[data-id]").length===3&&/Press again/.test(document.querySelector('#dl_form button[data-act="del"]').textContent)),"delete asks for a second press");
+  ok(await p.evaluate(()=>/Press again/.test(document.querySelector('#dl_form button[data-act="del"]').textContent)),"delete asks for a second press");
+  await p.click('#dl_form button[type="submit"]'); await settle(p); await p.click('#dl_form button[data-act="del"]'); await settle(p);
+  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.deals.v1")).length===2&&/Press again/.test(document.querySelector('#dl_form button[data-act="del"]').textContent)),
+     "after the form redraws, one press only arms delete again");
   await p.click('#dl_form button[data-act="del"]'); await settle(p);
-  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.deals.v1")).length===2),"the second press deletes");
+  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.deals.v1")).length===1),"the second press deletes");
   /* exports */
   const [dj]=await Promise.all([p.waitForEvent("download"),p.click("#dl_json")]); const jp=path.join(tmp,"deals.json"); await dj.saveAs(jp);
   const J=JSON.parse(fs.readFileSync(jp,"utf8"));
-  ok(J.format==="omni.deals"&&J.version===1&&J.deals.length===2&&J.deals.every(d=>d.inputs&&d.inputs.ind==="medical"),"Export (JSON) writes every deal with its inputs");
+  ok(J.format==="omni.deals"&&J.version===1&&J.deals.length===1&&J.deals.every(d=>d.inputs&&d.inputs.ind==="medical"),"Export (JSON) writes every deal with its inputs");
   const [dc]=await Promise.all([p.waitForEvent("download"),p.click("#dl_csv")]); const cp=path.join(tmp,"deals.csv"); await dc.saveAs(cp);
   const csv=fs.readFileSync(cp,"utf8").split("\r\n");
-  ok(csv[0].startsWith("id,name,status,industry")&&csv.length===4&&csv.slice(1,3).every(l=>/^d[0-9a-z]+,"?'=HYPERLINK/.test(l)||/,Medical or dental/.test(l)),"Export (CSV) writes a row a deal and defuses a formula-like name");
-  ok(csv.slice(1,3).some(l=>l.includes("'=HYPERLINK")),"a name that starts with = is written as text in the CSV");
-  /* import: one new, one newer copy of an existing deal, one older copy, one invalid */
-  const ex=J.deals[0], newer={...ex,name:"Imported update",updated:new Date(Date.now()+864e5).toISOString()}, older={...J.deals[1],name:"Stale",updated:"2020-01-01T00:00:00.000Z"};
-  const fresh={...ex,id:"dimported1",name:"Imported new deal"}, bad={id:"x",inputs:{ind:"nope"}};
-  const ip=path.join(tmp,"import.json"); fs.writeFileSync(ip,JSON.stringify({format:"omni.deals",version:1,deals:[newer,older,fresh,bad]}));
-  await p.setInputFiles("#dl_file",ip); await p.waitForTimeout(600);
-  st=await p.evaluate(()=>({names:JSON.parse(localStorage.getItem("omni.deals.v1")).map(d=>d.name),msg:document.getElementById("dl_msg").textContent}));
-  ok(st.names.length===3&&st.names.includes("Imported update")&&st.names.includes("Imported new deal")&&!st.names.includes("Stale")&&/1 new deal and updated 1; 2 skipped/.test(st.msg),
-     `import adds new deals, takes newer copies and skips older or invalid ones (${st.msg})`);
+  ok(csv[0].startsWith("id,name,status,industry")&&csv[0].includes("cash_at_close_share")&&csv[0].includes("model_expected_price_at_list_or_ask")&&csv.length===3
+     &&/^d[0-9a-z]+,"?'=HYPERLINK/.test(csv[1])&&/,Medical or dental/.test(csv[1]),"Export (CSV) writes a row a deal, names what each model column was read at, and defuses a formula-like name");
+  /* import: a newer and an older copy of the deal here, three new closed deals (one without a sale price, one with an impossible
+     date), an invalid record, inherited keys, and stray types */
+  const ex=J.deals[0], future=new Date(Date.now()+864e5).toISOString(), tdy=new Date().toISOString().slice(0,10);
+  const newer={...ex,name:"Imported update",updated:future}, older={...ex,name:"Stale",updated:"2020-01-01T00:00:00.000Z"};
+  const fresh={...ex,id:"dimported1",name:"Imported new deal",listDate:"2025-03-03",closeDate:"2025-12-01"}, fresh2={...ex,id:"dimported2",name:"Second import",salePrice:ex.salePrice*1.05,listDate:"2026-02-31"};
+  const fresh3={...ex,id:"dimported3",name:"Closed, no price",salePrice:null,listDate:"2025-01-10",closeDate:"2025-11-20"};
+  const bad={id:"x",inputs:{ind:"nope"}}, proto={...ex,id:"dproto",inputs:{...ex.inputs,ind:"constructor"}};
+  const odd={...ex,id:"dodd",name:"Odd keys",status:"__proto__",fin:{...ex.fin,type:"constructor"},ws:null,inputs:{...ex.inputs,st:"toString",ind:"medical"},buyers:true,offers:2.5};
+  const ip=path.join(tmp,"import.json"); fs.writeFileSync(ip,JSON.stringify({format:"omni.deals",version:1,deals:[newer,older,fresh,fresh2,fresh3,bad,proto,odd]}));
+  await p.setInputFiles("#dl_file",ip); await p.waitForTimeout(900);
+  st=await p.evaluate(()=>{ const D=JSON.parse(localStorage.getItem("omni.deals.v1")), o=D.find(d=>d.id==="dodd"), f2=D.find(d=>d.id==="dimported2");
+    return {names:D.map(d=>d.name),msg:document.getElementById("dl_msg").textContent,odd:o?[o.status,o.fin.type,o.inputs.st,o.buyers,o.offers].join():null,f2date:f2?f2.listDate:"missing",
+      track:document.getElementById("dl_track").textContent}; });
+  ok(st.names.length===5&&st.names.includes("Imported update")&&st.names.includes("Imported new deal")&&!st.names.includes("Stale")&&/4 new deals and updated 1; 3 skipped/.test(st.msg),
+     `import adds new deals, takes newer copies and skips older, invalid and hostile ones (${st.msg})`);
+  ok(st.odd==="valuing,initial,,,"&&st.f2date===null,`inherited keys, a stray true, a fractional count and an impossible date are cleaned away (${st.odd}; ${st.f2date})`);
+  ok(/Sale price ÷ the model’s expected price\s*\d\.\d\d×/.test(st.track)&&/3 closed deals; 90% interval/.test(st.track)&&/Listing to close ÷ the model’s median\s*\d\.\d\d×/.test(st.track)
+     &&/3 closed deals with both dates/.test(st.track),"with three closed deals the price record appears; the time record counts a closed deal without a sale price");
+  await p.check("#dl_calib"); await settle(p);
+  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.prefs.v1")).calib===true),"the track-record opt-in is remembered");
+  /* a date in an implausible year is refused by name */
+  await p.click('#dl_tbl tr:has(.dl-name:text("Imported new deal")) .dl-name'); await settle(p);
+  await p.fill('#dl_form input[name="listDate"]',"1900-01-01"); await p.click('#dl_form button[type="submit"]'); await settle(p);
+  ok(await p.evaluate(()=>/Listing date/.test(document.getElementById("dl_form_msg").textContent)&&JSON.parse(localStorage.getItem("omni.deals.v1")).find(d=>d.id==="dimported1").listDate==="2025-03-03"),
+     "a listing date in 1900 is refused by name and the saved date kept");
   /* open a deal into the console */
   await p.click('.tab[data-v="console"]'); await p.waitForTimeout(1500);
   await p.evaluate(()=>{ IN.ern=5e5; render(); }); await settle(p);
@@ -132,11 +225,43 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   st=await p.evaluate(()=>({ern:STATE.s.ern,gm:STATE.s.gm,vis:!document.getElementById("view-console").hidden,deal:document.getElementById("tl_deal").textContent}));
   ok(st.vis&&st.ern===want.ern&&Math.abs(st.gm-want.gm)<1e-12&&/Imported new deal/.test(st.deal)&&!/unsaved/.test(st.deal),
      `opening a deal puts its inputs in the console, with nothing unsaved (SDE ${st.ern} for ${want.ern}; ${st.deal.trim()})`);
-  ok(await p.evaluate(()=>!document.getElementById("tl_cal").hidden&&/Your record/.test(document.getElementById("tl_cal").textContent)),"the opted-in price record shows beside the console");
+  ok(await p.evaluate(()=>!document.getElementById("tl_cal").hidden&&/Your record/.test(document.getElementById("tl_cal").textContent)&&/expected price/.test(document.getElementById("tl_cal").textContent)),
+     "the opted-in price record shows beside the console");
+  /* a deal without a worksheet opens with an empty one, not the last deal's */
+  await p.click('.tab[data-v="deals"]'); await p.waitForTimeout(1500);
+  await p.click('#dl_tbl tr:has(.dl-name:text("Odd keys")) button[data-act="open"]'); await p.waitForTimeout(1800);
+  ok(await p.evaluate(()=>OMNI_BROKER.state().ws.years.every(y=>!Object.keys(y).length)&&document.getElementById("f_type").value==="initial"&&!window.__brokerErr&&!/unsaved/.test(document.getElementById("tl_deal").textContent)),
+     "a deal saved without a worksheet opens with an empty one, and its cleaned type draws the financing check");
+  /* an automatic name follows the deal's SDE; reset leaves the deal as saved */
+  await p.evaluate(()=>{ IN.ern=9e5; render(); }); await settle(p); await p.click("#tl_save"); await settle(p);
+  ok(await p.evaluate(()=>{ const d=JSON.parse(localStorage.getItem("omni.deals.v1")).find(x=>x.id==="dodd"); return d.name==="Odd keys"&&d.inputs.ern===9e5; }),"a typed name stays when the deal's SDE changes");
+  await p.click("#reset"); await p.waitForTimeout(800);
+  st=await p.evaluate(()=>({deal:document.getElementById("tl_deal").textContent,msg:document.getElementById("tl_msg").textContent,cur:OMNI_BROKER.state().cur,draft:OMNI_BROKER.state().draft}));
+  ok(st.cur===null&&/Unsaved valuation/.test(st.deal)&&/unchanged in the Deals tab/.test(st.msg)&&st.draft.business==="","reset leaves the deal as saved, out of reach of a later save, and starts the report fields empty");
+  await p.click("#tl_save"); await settle(p);
+  ok(await p.evaluate(()=>{ const d=JSON.parse(localStorage.getItem("omni.deals.v1"))[0]; return d.autoName&&/, \$\d/.test(d.name)&&d.business===""; }),"a new deal after reset is named for its own SDE");
+  /* the Data tab: the broker section is last and has its own place; Still judgment keeps its own */
+  await p.click('.tab[data-v="data"]'); await p.waitForTimeout(2500);
+  st=await p.evaluate(()=>{ const S=[...document.querySelectorAll("#dataviews>section.sec")], last=S[S.length-1], still=S.find(s=>/^Still judg/.test(s.querySelector("h2").textContent));
+    const idx=[...document.querySelectorAll("a[data-to]")].map(a=>a.getAttribute("data-to"));
+    return {n:S.length,last:last.id+"|"+last.getAttribute("data-v8d")+"|"+/^Broker tools/.test(last.querySelector("h2").textContent),still:still&&still.id,
+      hue:getComputedStyle(last).getPropertyValue("--hue").trim(),stillHue:still&&getComputedStyle(still).getPropertyValue("--hue").trim(),idx}; });
+  ok(st.n===8&&st.last==="d-broker|broker|true"&&st.still==="d-still"&&/111 242 220/.test(st.hue)&&/255 142 122/.test(st.stillHue)
+     &&(st.idx.length===0||st.idx.includes("d-broker")&&st.idx.includes("d-still")),
+     `the Data tab's broker section comes last with its own id and hue; Still judgment keeps d-still and its coral (${st.last}; ${st.still}; ${st.hue}; ${st.stillHue})`);
   ok(errs.length===0,"no page errors: "+errs.slice(0,3).join(" | "));
-  /* a reload keeps the deals and the settings */
+  /* a stored record this page cannot read is kept and written back; a repeated id gets a new one */
+  await p.evaluate(()=>{ const D=JSON.parse(localStorage.getItem("omni.deals.v1")); D.push({format:"from a later version",inputs:{ind:"nope"}}); D.push({...D[0]}); localStorage.setItem("omni.deals.v1",JSON.stringify(D)); });
   await p.reload(); await p.waitForFunction(()=>!document.getElementById("boot"),null,{timeout:90000}); await p.waitForTimeout(300);
-  ok(await p.evaluate(()=>OMNI_BROKER.state().deals.length===3&&OMNI_BROKER.state().prefs.broker==="Pat Lee"&&document.getElementById("f_cash").value==="10%"),"a reload keeps the deals and preferences");
+  st=await p.evaluate(()=>{ const S=OMNI_BROKER.state(), ids=S.deals.map(d=>d.id); return {n:S.deals.length,kept:S.kept.length,uniq:new Set(ids).size===ids.length,broker:S.prefs.broker,cash:document.getElementById("f_cash").value}; });
+  ok(st.n===7&&st.kept===1&&st.uniq&&st.broker==="Pat Lee"&&st.cash==="10%",`a reload keeps the deals and preferences, gives a repeated id a new one and keeps an unreadable record (${st.n} deals, ${st.kept} kept)`);
+  await p.click("#tl_save"); await settle(p); await p.click('.tab[data-v="deals"]'); await p.waitForTimeout(1500);
+  ok(await p.evaluate(()=>JSON.parse(localStorage.getItem("omni.deals.v1")).some(d=>d.format==="from a later version")&&/cannot read/.test(document.getElementById("dl_store").textContent)),
+     "the unreadable record survives the next save, and the Deals tab says so");
+  await p.evaluate(()=>localStorage.setItem("omni.deals.v1","{not json"));
+  await p.reload(); await p.waitForFunction(()=>!document.getElementById("boot"),null,{timeout:90000}); await p.waitForTimeout(300);
+  await p.click('.tab[data-v="deals"]'); await p.waitForTimeout(1500);
+  ok(await p.evaluate(()=>localStorage.getItem("omni.deals.v1.unreadable")==="{not json"&&/could not be read/.test(document.getElementById("dl_store").textContent)),"a stored list that is not JSON is copied aside before anything replaces it");
   await p.close();
 
   /* ---- storage blocked (a private window): the page works and says so ---- */
@@ -149,7 +274,7 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   ok(/not keeping data/.test(await p.evaluate(()=>document.getElementById("dl_store").textContent)),"the Deals tab says so too");
   await c2.close();
 
-  /* ---- a phone: no sideways scrolling on any of it ---- */
+  /* ---- a phone: no sideways scrolling on any of it, long names wrap ---- */
   const c3=await b.newContext({viewport:{width:390,height:844},reducedMotion:"reduce"});
   ({p,errs}=await open(c3));
   const wide=async()=>p.evaluate(()=>document.documentElement.scrollWidth);
@@ -159,10 +284,37 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   await p.keyboard.press("Escape"); await p.click("#tl_report"); await settle(p);
   ok(await wide()<=390,"390px report: no sideways scroll");
   await p.keyboard.press("Escape"); await p.click("#tl_save"); await p.click('.tab[data-v="deals"]'); await p.waitForTimeout(1500);
-  ok(await wide()<=390&&await p.evaluate(()=>getComputedStyle(document.querySelector("#dl_tbl tbody tr")).display==="block"),"390px Deals tab: each deal is a card");
+  await p.click("#dl_tbl .dl-name"); await settle(p); await p.fill('#dl_form input[name="name"]',"N".repeat(120)); await p.click('#dl_form button[type="submit"]'); await settle(p);
+  st=await p.evaluate(()=>{ const r=e=>e.getBoundingClientRect().right; return {page:document.documentElement.scrollWidth,card:r(document.querySelector("#dl_tbl tbody tr")),
+    name:r(document.querySelector("#dl_tbl .dl-name")),head:r(document.getElementById("dl_edit_t")),cards:getComputedStyle(document.querySelector("#dl_tbl tbody tr")).display}; });
+  ok(st.page<=390&&st.card<=390&&st.name<=390&&st.head<=390&&st.cards==="block",`390px Deals tab: each deal is a card, and a 120-letter name wraps inside it (${Math.round(st.card)}, ${Math.round(st.head)})`);
+  await p.click('.tab[data-v="console"]'); await p.waitForTimeout(1500);
+  ok(await p.evaluate(()=>{ const e=document.querySelector(".tools-deal .tl-n"); return !e||e.getBoundingClientRect().right<=390; })&&await wide()<=390,"the toolbar wraps the long name too");
   ok(errs.length===0,"no page errors on a phone: "+errs.slice(0,3).join(" | "));
   await c3.close();
+  await b.close();
 
-  await b.close(); fs.rmSync(tmp,{recursive:true,force:true});
+  /* ---- real scrollbars (Playwright hides them by default): a press on the dialog's scrollbar does not close it ---- */
+  const b2=await pw.chromium.launch({ignoreDefaultArgs:["--hide-scrollbars"]});
+  const c4=await b2.newContext({viewport:{width:1280,height:640},reducedMotion:"reduce"});
+  ({p,errs}=await open(c4));
+  await p.click("#r_recast"); await settle(p);
+  st=await p.evaluate(()=>{ const o=document.getElementById("recast"), r=o.getBoundingClientRect(); return {sb:o.offsetWidth-o.clientWidth,x:r.left+o.clientWidth+Math.max(1,(o.offsetWidth-o.clientWidth)/2),y:r.top+200}; });
+  await p.mouse.move(st.x,st.y); await p.mouse.down(); await p.mouse.move(st.x,st.y+120,{steps:4}); await p.mouse.up(); await settle(p);
+  ok(st.sb>0&&await p.evaluate(()=>!document.getElementById("recast").hidden),`dragging the worksheet's scrollbar leaves it open (scrollbar ${st.sb}px)`);
+  await p.mouse.click(6,6); await settle(p);
+  ok(await p.evaluate(()=>document.getElementById("recast").hidden),"a click on the backdrop closes it");
+  /* growth past the rail's range is held to it, marked, and said where the dialog was opened from */
+  await p.click("#r_recast"); await settle(p);
+  const put4=async(k,y,v)=>{ const sel=`.rc-in[data-k="${k}"][data-y="${y}"]`; await p.click(sel); await p.keyboard.press("Control+A"); await p.keyboard.type(v,{delay:5}); await p.keyboard.press("Tab"); };
+  await put4("rev",0,"2,000,000"); await put4("ni",0,"300,000"); await put4("rev",1,"1,000,000"); await put4("ni",1,"200,000"); await settle(p);
+  await p.click("#rc_use"); await settle(p); await p.waitForTimeout(300);
+  st=await p.evaluate(()=>({grw:STATE.s.grw,bad:document.getElementById("v_grw").classList.contains("bad"),msg:document.getElementById("r_msg").textContent,top:document.getElementById("tl_msg").textContent}));
+  ok(Math.abs(st.grw-.7)<1e-9&&st.bad&&/growth 70\.0%/.test(st.msg)&&/Held to the console.s range: the worksheet.s growth of 100\.0%/.test(st.msg)&&!st.top,
+     `growth of 100% is held to the rail's 70%, marked, and the message shows beside the link it was opened from (${st.msg.slice(0,80)})`);
+  ok(errs.length===0,"no page errors with real scrollbars: "+errs.slice(0,3).join(" | "));
+  await b2.close();
+
+  fs.rmSync(tmp,{recursive:true,force:true});
   console.log(fail?`${fail} failed`:"all passed"); process.exit(fail?1:0);
 })().catch(e=>{ console.error(e); process.exit(1); });

@@ -292,6 +292,64 @@ for(let i=0;i<N;i++){
     const shown=n=>!!n.alt||(n.flat!==null&&n.flat!==undefined);
     for(let c=0;c<100;c+=5) if(Math.abs(br(c+5)-br(c))>.1) for(let k=c;k<c+5;k++) if(Math.abs(br(k+1)-br(k))>.1)
       ok(shown(note(k))&&shown(note(k+1)),"a walk-away jump between 1% steps of theta shows the range on both sides",ctx(s,{theta:k/100,from:br(k),to:br(k+1)})); }
+  /* 10. the broker tools, on the same random businesses (AUDIT.md, "Broker tools"): the financing check's identities and
+     monotonicity, the highest financeable price, coverage as printed, the worksheet's arithmetic, a deal's prediction and
+     the report's figures */
+  { const V=r.V, f={type:pick(["initial","expansion","buyout"]),cash:pick([0,.05,.1,.2,.5,.9]),note:pick([0,.05,.1,.3]),noteRate:pick([0,4,6,9]),
+      noteYears:pick([1,5,10,25]),standby:rnd()<.3,extra:rnd()<.5?0:V*.2*rnd(),capex:rnd()<.5?0:s.ern*.3*rnd(),draw:rnd()<.5?null:s.ern*rnd()};
+    const p=s.ask, c=A.debtCheck(s,p,f,V), S=A.SBA_COO, share=1-f.cash-f.note;
+    ok([c.loan,c.cash,c.note,c.ds,c.cf,c.rate,c.draw,c.equityNeed,c.equityIn,c.debt].every(fin)&&(fin(c.dscr)||c.dscr===Infinity),"broker: debt check finite",ctx(s,f));
+    ok(Math.abs(c.loan+c.cash+c.note-c.project)<=1e-6*c.project+1e-6&&c.loan<=S.maxLoan&&c.loan>=0&&c.over>=0&&c.note<=f.note*p+1e-6
+       &&c.cash>=Math.max(0,f.cash)*c.project*(1-1e-9)&&c.noteCut===(c.note<f.note*p-1e-6),"broker: the loan, cash and note make up the project, the loan within the 7(a) cap, the note cut only to fit",ctx(s,f));
+    ok(Math.abs(c.ds-c.sbaPay-c.notePay)<1e-6&&(c.ds>0?Math.abs(c.dscr-c.cf/c.ds)<1e-9*Math.max(1,Math.abs(c.dscr)):c.dscr===Infinity)
+       &&Math.abs(c.cf-(s.ern-c.draw-c.capex))<1e-6&&(f.draw!==null||Math.abs(c.draw-A.gmSalary(s)*A.IVC.gm.loading)<1e-6),"broker: coverage is cash available, after the loaded market pay, over the payments",ctx(s,f));
+    ok(!f.standby||(c.notePay===0&&c.debt===c.loan&&c.equityIn<=c.cash+S.standbyShare*c.equityNeed+1e-6),"broker: a standby note is no payment, no debt, at most half the equity",ctx(s,f));
+    ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?p:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(p<=S.ownValuationMax&&f.type!=="buyout"),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
+    ok(c.debtOverValue===(c.loan>0&&c.debt>V*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
+    /* coverage as printed: rounded down, never the minimum it fails */
+    { const t=A.covFmt(c), x=parseFloat(t);
+      ok(!(c.ds>0)?/^no (payments|debt)$/.test(t):!(c.cf>0)?t==="none":(/^\d+\.\d\d×$/.test(t)&&x<=c.dscr+1e-9&&(c.ok?x>=c.min-1e-9:x<c.min-1e-9)),"broker: coverage prints rounded down, below the minimum when it fails",ctx(s,f,{t})); }
+    /* coverage never rises with the price below the cap, for shares that leave the loan to the price */
+    if(share>=0){ let prev=Infinity, mono=true; for(let k=0;k<12;k++){ const q=p*Math.pow(1.35,k-6), d=A.debtCheck(s,q,f,V);
+        if(d.over>0||!(d.cf>0)) break; if(d.dscr>prev*(1+1e-9)+1e-12) mono=false; prev=d.dscr; }
+      ok(mono,"broker: coverage falls as the price rises",ctx(s,f)); }
+    /* the highest financeable price: every price below it passes coverage and the valuation, the named test fails just above */
+    const m=A.maxFinanced(s,f,V), t=S.dsc[f.type], pass=d=>d.dscr>=t&&!d.debtOverValue;
+    if(m.noLoan) ok(share<=1e-9&&(f.extra||0)*(1-f.cash)<1&&[1e4,p,1e9].every(q=>A.debtCheck(s,q,f,V).loan===0),"broker: no loan only when none is needed at any price",ctx(s,f));
+    else if(m.price===0) ok(!pass(A.debtCheck(s,1e3,f,V)),"broker: no financeable price only when even $1,000 fails",ctx(s,f));
+    else if(m.price===Infinity) ok(pass(A.debtCheck(s,1e11,f,V))&&pass(A.debtCheck(s,1e7,f,V)),"broker: no limit only when the largest price passes",ctx(s,f));
+    else { const a=A.debtCheck(s,m.price,f,V), b=A.debtCheck(s,m.price*(1+1e-9),f,V);
+      ok(pass(a)&&pass(A.debtCheck(s,m.price*.9,f,V))&&(m.bind==="coverage"?b.dscr<t:b.debtOverValue)&&m.equityShort===!a.equityOK
+         &&(m.bind!=="value"||m.covPrice>=m.price*(1-1e-9)),"broker: the highest financeable price passes both tests and the named one fails just above",ctx(s,f,{mp:m.price,bind:m.bind})); }
+    if(!m.noLoan&&share>=.1&&f.cash<.85){ const more=A.maxFinanced(s,{...f,cash:f.cash+.1},V), cap=A.maxFinanced(s,{...f,capex:(f.capex||0)+s.ern*.05},V);
+      ok(more.price>=m.price*(1-1e-9)&&cap.price<=m.price*(1+1e-9),"broker: more buyer cash finances more, capital spending less",ctx(s,f)); }
+    /* the worksheet: linear in every line, expense lines add back their size, deductions always deduct, every basis inside the years' range */
+    const yr=()=>({rev:s.rev*(.8+.4*rnd()),ni:s.ern*(rnd()-.2),owner:s.ern*.3*rnd(),ptax:s.ern*.02*(rnd()-.2),dep:s.ern*.1*(rnd()-.1),int:s.ern*.05*rnd(),
+      tax:s.ern*.02*rnd(),once:s.ern*.1*rnd(),rent:s.ern*.03*(rnd()-.5),nonop:s.ern*.05*(rnd()-.5)});
+    const ws={entity:pick(Object.keys(A.RECAST_ENTITY)),years:[yr(),rnd()<.7?yr():{},rnd()<.5?yr():{rev:s.rev*rnd()}]};
+    const L=A.recastSDE({...ws,weight:"latest"}), y0=ws.years[0], ab=Math.abs;
+    ok(Math.abs(L.sde-(y0.ni+ab(y0.owner)+ab(y0.ptax)+ab(y0.dep)+ab(y0.int)+ab(y0.tax)+y0.once+y0.rent-ab(y0.nonop)))<1e-6&&Math.abs(L.sde-(L.ni+L.add+L.less))<1e-6&&L.less<=0,
+       "broker: SDE is income plus add-backs less deductions",ctx(s,{y0}));
+    const bump=A.recastSDE({...ws,weight:"latest",years:[{...y0,perks:(y0.perks||0)+1000,xowner:5000},ws.years[1],ws.years[2]]});
+    ok(Math.abs(bump.sde-L.sde-(1000-5000))<1e-6,"broker: each line moves SDE by its amount, a deduction down",ctx(s));
+    const used=L.years.filter(y=>y.has), sdes=used.map(y=>y.sde);
+    for(const w of ["w321","avg"]){ const R=A.recastSDE({...ws,weight:w}); ok(R.n===used.length&&R.sde>=Math.min(...sdes)-1e-6&&R.sde<=Math.max(...sdes)+1e-6,"broker: every basis lies within the years entered",ctx(s,{w})); }
+    ok(L.years.every(y=>y.has||y.sde===y.ni+y.add+y.less)&&(!L.years[2].hasRev||L.years[2].has||L.flags.includes("rev_only"))&&(L.discShare===null||L.discShare>=0)
+       &&L.flags.every(k=>A.recastNotes(L).some(o=>o.k===k)||k==="sde_falling"&&!L.cmp),"broker: a year with revenue alone is flagged and left out; every flag has its note",ctx(s));
+    /* a deal is predicted by the model at its listing price */
+    const d=A.dealPredict({inputs:s,listPrice:p*1.1}), rl=A.model({...s,ask:p*1.1});
+    ok(d.pc===rl.PC&&d.priceMed===rl.Vreal&&d.pExp===rl.Vmean&&d.tMed===rl.tMed&&d.pVar>=0&&d.tVar>0&&(d.F===null||(d.F>=0&&d.F<=1+1e-12)),"broker: a deal's prediction is the model at its listing price",ctx(s));
+    { const x=[1+.3*(rnd()-.5),1+.3*(rnd()-.5),1+.3*(rnd()-.5)], Q=A.sampleSummary(x,false,d.pVar);
+      ok(Q.lo<=Q.factor+1e-12&&Q.factor<=Q.hi+1e-12&&Math.min(1,Q.factor)-1e-12<=Q.shrunk&&Q.shrunk<=Math.max(1,Q.factor)+1e-12,"broker: a record's interval holds its factor, and the read toward the model lies between",ctx(s,{x})); }
+    /* the report's figures are the model's at the optimizer's asks (every tenth business: it runs the optimizer) */
+    if(i%10===0){ const D=A.reportData(s,{fin:f}), rs=A.bestRatio(s,0,0), mS=A.model({...s,ask:V*rs});
+      ok(Math.abs(D.sell.ask/(V*rs)-1)<1e-12&&D.sell.pc===mS.PC&&D.sell.tMed===mS.tMed&&D.sell.ev===mS.EVp&&D.sell.mean===mS.Vmean&&D.cur.ask===s.ask
+         &&D.cur.fin.dscr===A.debtCheck(s,s.ask,f,V).dscr&&D.maxFin.price===m.price,"broker: the report reads the model at the optimizer's asks",ctx(s,f));
+      ok(D.sens.length<=3&&D.sens.every((g,j)=>g.gain>V*.001&&(j===0||D.sens[j-1].gain>=g.gain)&&g.keys.every(k=>A.RAIL_BEST[k]!==undefined&&(k==="own"||k==="cc"||k==="plt"?s[k]>A.RAIL_BEST[k]:s[k]<A.RAIL_BEST[k]))),
+         "broker: the report names only levers with room left on the rail, largest first",ctx(s));
+      const h=A.reportHTML(D,{business:"<b>x</b>",broker:"y",firm:"z"});
+      ok(!/NaN|undefined|Infinity|−\d\.\d\d×|-\d\.\d\d×/.test(h)&&!h.includes("<b>x</b>")&&h.includes(A.covFmt(D.cur.fin)),"broker: the report is finite, escapes what is typed and prints coverage as the console does",ctx(s,f));
+      ok((Math.abs(D.qFactor-1)>.005)===/Model value <span class="rp-bx">/.test(h)&&(D.extrap.length>0)===/Extrapolated/.test(h),"broker: the report's value badge and extrapolation note follow the console's rules",ctx(s)); } }
 }
 
 const names=Object.keys(fails);
