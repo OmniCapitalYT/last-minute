@@ -295,7 +295,7 @@ for(let i=0;i<N;i++){
   /* 10. the broker tools, on the same random businesses (AUDIT.md, "Broker tools"): the financing check's identities and
      monotonicity, the highest financeable price, coverage as printed, the worksheet's arithmetic, a deal's prediction and
      the report's figures */
-  { const V=r.V, f={type:pick(["initial","expansion","buyout"]),cash:pick([0,.05,.1,.2,.5,.9]),note:pick([0,.05,.1,.3]),noteRate:pick([0,4,6,9]),
+  { const V=r.V, f={type:pick(["initial","expansion","buyout"]),cash:pick([0,.05,.1,.2,.5,.9]),note:pick([0,.05,.1,.3,.9]),noteRate:pick([0,4,6,9]),
       noteYears:pick([1,5,10,25]),standby:rnd()<.3,extra:rnd()<.5?0:V*.2*rnd(),capex:rnd()<.5?0:s.ern*.3*rnd(),draw:rnd()<.5?null:s.ern*rnd()};
     const p=s.ask, c=A.debtCheck(s,p,f,V), S=A.SBA_COO, share=1-f.cash-f.note;
     ok([c.loan,c.cash,c.note,c.ds,c.cf,c.rate,c.draw,c.equityNeed,c.equityIn,c.debt].every(fin)&&(fin(c.dscr)||c.dscr===Infinity),"broker: debt check finite",ctx(s,f));
@@ -305,7 +305,7 @@ for(let i=0;i<N;i++){
        &&Math.abs(c.cf-(s.ern-c.draw-c.capex))<1e-6&&(f.draw!==null||Math.abs(c.draw-A.gmSalary(s)*A.IVC.gm.loading)<1e-6),"broker: coverage is cash available, after the loaded market pay, over the payments",ctx(s,f));
     ok(!f.standby||c.loan===0||(c.notePay===0&&c.debt===c.loan&&c.equityIn<=c.cash+S.standbyShare*c.equityNeed+1e-6),"broker: a standby note is no payment, no debt, at most half the equity",ctx(s,f));
     ok(!(c.loan===0&&c.note>0)||(!c.standby&&Math.abs(c.notePay-A.annualPayment(c.note,f.noteRate,f.noteYears))<1e-6),"broker: with no SBA loan a note is paid on its own terms, standby or not",ctx(s,f));
-    ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?p:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(p<=S.ownValuationMax&&f.type!=="buyout"),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
+    ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?p:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(p<=S.ownValuationMax),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
     ok(c.debtOverValue===(c.loan>0&&c.debt>V*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
     /* coverage as printed: rounded down, never the minimum it fails */
     { const t=A.covFmt(c), x=parseFloat(t);
@@ -326,6 +326,15 @@ for(let i=0;i<N;i++){
        a price either passes at every lower price or names its floor; the price shown, rounded down, never exceeds it */
     if(m.equityFrom) ok(!A.debtCheck(s,m.equityFrom*.995,f,V).equityOK&&A.debtCheck(s,m.equityFrom*1.0001,f,V).equityOK&&m.equityFrom<=Math.min(m.price,1e11)*(1+1e-9),"broker: equity passes from the edge named, not below it",ctx(s,f,{ef:m.equityFrom}));
     if(m.equityTo) ok(A.debtCheck(s,m.equityTo*.9999,f,V).equityOK&&!A.debtCheck(s,m.equityTo*1.005,f,V).equityOK,"broker: equity passes up to the edge named, not above it",ctx(s,f,{et:m.equityTo}));
+    /* each edge as printed is on its passing side: the floor rounded up, the ceiling rounded down (r4-financing-1) */
+    { const num=t=>{ const u=t.slice(-1); return parseFloat(t.replace(/[^0-9.]/g,""))*({B:1e9,M:1e6,k:1e3}[u]||1); };
+      if(m.equityFrom) ok(A.debtCheck(s,num(A.moneyUp(m.equityFrom)),f,V).equityOK,"broker: the equity floor as printed passes",ctx(s,f,{ef:m.equityFrom,t:A.moneyUp(m.equityFrom)}));
+      if(m.equityTo) ok(A.debtCheck(s,num(A.moneyDown(m.equityTo)),f,V).equityOK,"broker: the equity ceiling as printed passes",ctx(s,f,{et:m.equityTo,t:A.moneyDown(m.equityTo)}));
+      if(m.equityAbove) ok(m.capAt!==null&&m.equityAbove>=m.capAt*(1-1e-9)&&!A.debtCheck(s,Math.max(m.capAt,m.equityAbove*.995),f,V).equityOK&&A.debtCheck(s,m.equityAbove*1.0001,f,V).equityOK
+           &&A.debtCheck(s,m.equityAbove*3,f,V).equityOK&&A.debtCheck(s,num(A.moneyUp(m.equityAbove)),f,V).equityOK,
+           "broker: past the 7(a) maximum a short equity passes from the price named, as printed, and at every price beyond (r4-financing-2)",ctx(s,f,{ea:m.equityAbove,cap:m.capAt}));
+      /* no such price: the equity stays short as far as the console reaches (r4-report-2) */
+      if(m.capped&&m.equityShort&&!m.equityAbove) ok(!A.debtCheck(s,1e11,f,V).equityOK,"broker: an equity short past the cap with no price named stays short at every price",ctx(s,f)); }
     if(f.type==="initial"&&m.price>0&&!m.equityShort&&!m.noLoan) ok(A.debtCheck(s,1e3,f,V).equityOK||m.equityFrom>0,"broker: an initial acquisition's price stands only with its equity floor named",ctx(s,f));
     if(m.price>0&&isFinite(m.price)){ const t=A.moneyDown(m.price), u=t.slice(-1), x=parseFloat(t.replace(/[^0-9.]/g,""))*({B:1e9,M:1e6,k:1e3}[u]||1);
       const st={B:1e7,M:1e4,k:1e3}[A.money(m.price).slice(-1)]||1;
@@ -356,11 +365,13 @@ for(let i=0;i<N;i++){
          &&D.cur.fin.dscr===A.debtCheck(s,s.ask,f,V).dscr&&D.maxFin.price===m.price,"broker: the report reads the model at the optimizer's asks",ctx(s,f));
       ok(D.sens.length<=3&&D.sens.every((g,j)=>g.gain>V*.001&&(j===0||D.sens[j-1].gain>=g.gain)&&g.keys.every(k=>A.RAIL_BEST[k]!==undefined&&(k==="own"||k==="cc"||k==="plt"?s[k]>A.RAIL_BEST[k]:s[k]<A.RAIL_BEST[k]))),
          "broker: the report names only levers with room left on the rail, largest first",ctx(s));
-      /* each lever's gain is the model's own: one peer step toward its best, its best when nearer, or its best when the step
-         moves the value by less than 0.1% (past the -3.2 z limit); never a central slope. A line groups only steps the model
-         weights alike */
-      { const SE=A.sensitivity(s), at=(k,kind)=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, near=s[k]+(v.inv?-st:st);
-          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?room>=st-1e-9&&A.model({...s,[k]:near}).V-V<=V*.001:false;
+      /* each lever's gain is the model's own: one peer step toward its best, its best when nearer, or, when the step moves
+         the value by less than 0.1%, its best with the true reason: the factor's own z at its -3.2 limit ("far") or the
+         business past the bottom of the quality range ("bottom", r4-report-1); never a central slope. A line groups only
+         steps the model weights alike */
+      { const SE=A.sensitivity(s), r0=A.model(s), at=(k,kind)=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, near=s[k]+(v.inv?-st:st);
+          const rn=A.model({...s,[k]:near}), small=room>=st-1e-9&&rn.V-V<=V*.001;
+          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?small&&rn.z[k]===r0.z[k]:kind==="bottom"?small&&rn.z[k]!==r0.z[k]&&r0.qz<-3:false;
           return {okKind,g:A.model({...s,[k]:kind==="step"?near:best}).V-V}; };
         ok(D.sens.every(g=>g.full===(g.kind==="step")&&g.keys.every(k=>{ const o=at(k,g.kind); return o.okKind&&Math.abs(o.g/g.gain-1)<.006; })),"broker: every lever's gain is the model's own step, room or best",ctx(s));
         ok(D.sens.every(g=>g.n===1||(g.kind==="step"&&g.keys.every(k=>A.QW.w[k]===A.QW.w[g.keys[0]]))),"broker: a lever line groups only steps the model weights alike",ctx(s)); }
@@ -369,7 +380,9 @@ for(let i=0;i<N;i++){
       ok((Math.abs(D.qFactor-1)>.005)===/Model value <span class="rp-bx">/.test(h)&&(D.extrap.length>0)===/Extrapolated/.test(h),"broker: the report's value badge and extrapolation note follow the console's rules",ctx(s));
       /* SBA's minimum grades only the asks with an SBA loan; no claim that no price meets the equity minimum; the empty-lever
          text follows the business's place in the quality range; the quality step never reads "−0%" */
-      { const showCur=Math.abs(D.cur.ask/D.sell.ask-1)>.005&&Math.abs(D.cur.ask/D.walk.ask-1)>.005, shown=[D.sell].concat(D.same?[]:[D.walk],showCur?[D.cur]:[]);
+      ok(D.same===(A.money(D.sell.ask)===A.money(D.walk.ask))&&(D.qz>=-3||/all nine quality factors at their best would add about/.test(h)),
+         "broker: the two optimizer asks share a row exactly when they print alike; past the bottom of the quality range the report says what all nine factors add",ctx(s));
+      { const showCur=Math.abs(D.cur.ask/D.sell.ask-1)>1e-9&&Math.abs(D.cur.ask/D.walk.ask-1)>1e-9, shown=[D.sell].concat(D.same?[]:[D.walk],showCur?[D.cur]:[]);
         const want=shown.filter(a=>a.fin.loan>0&&a.fin.ds>0&&!a.fin.ok).length, got=(h.match(/<span class="rp-warn">below \d\.\d\d×<\/span>/g)||[]).length;
         ok(want===got&&!/no price meets/.test(h)&&(!/at every price up to about/.test(h)||m.capped)&&!/[−+]0% for quality/.test(h)&&(f.note>0||!/standby note/.test(h))
            &&!(D.mfAt&&D.mfAt.equityIn<=0&&/waives part of/.test(h))
