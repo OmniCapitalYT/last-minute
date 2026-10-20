@@ -303,7 +303,8 @@ for(let i=0;i<N;i++){
        &&c.cash>=Math.max(0,f.cash)*c.project*(1-1e-9)&&c.noteCut===(c.note<f.note*p-1e-6),"broker: the loan, cash and note make up the project, the loan within the 7(a) cap, the note cut only to fit",ctx(s,f));
     ok(Math.abs(c.ds-c.sbaPay-c.notePay)<1e-6&&(c.ds>0?Math.abs(c.dscr-c.cf/c.ds)<1e-9*Math.max(1,Math.abs(c.dscr)):c.dscr===Infinity)
        &&Math.abs(c.cf-(s.ern-c.draw-c.capex))<1e-6&&(f.draw!==null||Math.abs(c.draw-A.gmSalary(s)*A.IVC.gm.loading)<1e-6),"broker: coverage is cash available, after the loaded market pay, over the payments",ctx(s,f));
-    ok(!f.standby||(c.notePay===0&&c.debt===c.loan&&c.equityIn<=c.cash+S.standbyShare*c.equityNeed+1e-6),"broker: a standby note is no payment, no debt, at most half the equity",ctx(s,f));
+    ok(!f.standby||c.loan===0||(c.notePay===0&&c.debt===c.loan&&c.equityIn<=c.cash+S.standbyShare*c.equityNeed+1e-6),"broker: a standby note is no payment, no debt, at most half the equity",ctx(s,f));
+    ok(!(c.loan===0&&c.note>0)||(!c.standby&&Math.abs(c.notePay-A.annualPayment(c.note,f.noteRate,f.noteYears))<1e-6),"broker: with no SBA loan a note is paid on its own terms, standby or not",ctx(s,f));
     ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?p:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(p<=S.ownValuationMax&&f.type!=="buyout"),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
     ok(c.debtOverValue===(c.loan>0&&c.debt>V*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
     /* coverage as printed: rounded down, never the minimum it fails */
@@ -315,12 +316,12 @@ for(let i=0;i<N;i++){
       ok(mono,"broker: coverage falls as the price rises",ctx(s,f)); }
     /* the highest financeable price: every price below it passes coverage and the valuation, the named test fails just above */
     const m=A.maxFinanced(s,f,V), t=S.dsc[f.type], pass=d=>d.dscr>=t&&!d.debtOverValue;
-    if(m.noLoan) ok(share<=1e-9&&(f.extra||0)*(1-f.cash)<1&&[1e4,p,1e9].every(q=>A.debtCheck(s,q,f,V).loan===0),"broker: no loan only when none is needed at any price",ctx(s,f));
-    else if(m.price===0) ok(!pass(A.debtCheck(s,1e3,f,V)),"broker: no financeable price only when even $1,000 fails",ctx(s,f));
-    else if(m.price===Infinity) ok(pass(A.debtCheck(s,1e11,f,V))&&pass(A.debtCheck(s,1e7,f,V)),"broker: no limit only when the largest price passes",ctx(s,f));
+    if(m.noLoan) ok(m.price===Infinity&&!m.equityShort&&share<=1e-9&&(f.extra||0)*(1-f.cash)<1&&[1e4,p,1e9].every(q=>A.debtCheck(s,q,f,V).loan===0),"broker: no loan only when none is needed at any price",ctx(s,f));
+    else if(m.price===0) ok(m.bind==="cap"?A.debtCheck(s,1e3,f,V).over>0:!pass(A.debtCheck(s,1e3,f,V)),"broker: no financeable price only when even $1,000 fails, or the working capital alone takes the 7(a) maximum",ctx(s,f));
+    else if(m.price===Infinity) ok(m.capAt===null&&pass(A.debtCheck(s,1e11,f,V))&&pass(A.debtCheck(s,1e7,f,V)),"broker: no limit only when no loan grows with the price and the largest price passes",ctx(s,f));
     else { const a=A.debtCheck(s,m.price,f,V), b=A.debtCheck(s,m.price*(1+1e-9),f,V);
-      ok(pass(a)&&pass(A.debtCheck(s,m.price*.9,f,V))&&(m.bind==="coverage"?b.dscr<t:b.debtOverValue)&&m.equityShort===!a.equityOK
-         &&(m.bind!=="value"||m.covPrice>=m.price*(1-1e-9)),"broker: the highest financeable price passes both tests and the named one fails just above",ctx(s,f,{mp:m.price,bind:m.bind})); }
+      ok(pass(a)&&a.over===0&&pass(A.debtCheck(s,m.price*.9,f,V))&&(m.bind==="coverage"?b.dscr<t:m.bind==="value"?b.debtOverValue:b.over>0)&&m.equityShort===!a.equityOK
+         &&(m.bind!=="value"||m.covPrice>=m.price*(1-1e-9)),"broker: the highest financeable price passes both tests within the 7(a) maximum, and the named limit binds just above",ctx(s,f,{mp:m.price,bind:m.bind})); }
     if(!m.noLoan&&share>=.1&&f.cash<.85){ const more=A.maxFinanced(s,{...f,cash:f.cash+.1},V), cap=A.maxFinanced(s,{...f,capex:(f.capex||0)+s.ern*.05},V);
       ok(more.price>=m.price*(1-1e-9)&&cap.price<=m.price*(1+1e-9),"broker: more buyer cash finances more, capital spending less",ctx(s,f)); }
     /* the worksheet: linear in every line, expense lines add back their size, deductions always deduct, every basis inside the years' range */
@@ -334,7 +335,7 @@ for(let i=0;i<N;i++){
     ok(Math.abs(bump.sde-L.sde-(1000-5000))<1e-6,"broker: each line moves SDE by its amount, a deduction down",ctx(s));
     const used=L.years.filter(y=>y.has), sdes=used.map(y=>y.sde);
     for(const w of ["w321","avg"]){ const R=A.recastSDE({...ws,weight:w}); ok(R.n===used.length&&R.sde>=Math.min(...sdes)-1e-6&&R.sde<=Math.max(...sdes)+1e-6,"broker: every basis lies within the years entered",ctx(s,{w})); }
-    ok(L.years.every(y=>y.has||y.sde===y.ni+y.add+y.less)&&(!L.years[2].hasRev||L.years[2].has||L.flags.includes("rev_only"))&&(L.discShare===null||L.discShare>=0)
+    ok(L.years.every(y=>y.has||y.sde===y.ni+y.add+y.less)&&(!L.years[2].hasRev||L.years[2].has||L.flags.includes("rev_only")||L.flags.includes("rev_unused"))&&(L.discShare===null||L.discShare>=0)
        &&L.flags.every(k=>A.recastNotes(L).some(o=>o.k===k)||k==="sde_falling"&&!L.cmp),"broker: a year with revenue alone is flagged and left out; every flag has its note",ctx(s));
     /* a deal is predicted by the model at its listing price */
     const d=A.dealPredict({inputs:s,listPrice:p*1.1}), rl=A.model({...s,ask:p*1.1});
@@ -347,9 +348,19 @@ for(let i=0;i<N;i++){
          &&D.cur.fin.dscr===A.debtCheck(s,s.ask,f,V).dscr&&D.maxFin.price===m.price,"broker: the report reads the model at the optimizer's asks",ctx(s,f));
       ok(D.sens.length<=3&&D.sens.every((g,j)=>g.gain>V*.001&&(j===0||D.sens[j-1].gain>=g.gain)&&g.keys.every(k=>A.RAIL_BEST[k]!==undefined&&(k==="own"||k==="cc"||k==="plt"?s[k]>A.RAIL_BEST[k]:s[k]<A.RAIL_BEST[k]))),
          "broker: the report names only levers with room left on the rail, largest first",ctx(s));
+      /* each lever's gain is the model's own: one peer step toward its best, or the room left, never a central slope */
+      { const SE=A.sensitivity(s), own=k=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, full=room>=st-1e-9;
+          return {full,g:A.model({...s,[k]:full?s[k]+(v.inv?-st:st):best}).V-V}; };
+        ok(D.sens.every(g=>g.keys.every(k=>{ const o=own(k); return o.full===g.full&&Math.abs(o.g/g.gain-1)<.006; })),"broker: every lever's gain is the model's own step",ctx(s)); }
       const h=A.reportHTML(D,{business:"<b>x</b>",broker:"y",firm:"z"});
       ok(!/NaN|undefined|Infinity|−\d\.\d\d×|-\d\.\d\d×/.test(h)&&!h.includes("<b>x</b>")&&h.includes(A.covFmt(D.cur.fin)),"broker: the report is finite, escapes what is typed and prints coverage as the console does",ctx(s,f));
-      ok((Math.abs(D.qFactor-1)>.005)===/Model value <span class="rp-bx">/.test(h)&&(D.extrap.length>0)===/Extrapolated/.test(h),"broker: the report's value badge and extrapolation note follow the console's rules",ctx(s)); } }
+      ok((Math.abs(D.qFactor-1)>.005)===/Model value <span class="rp-bx">/.test(h)&&(D.extrap.length>0)===/Extrapolated/.test(h),"broker: the report's value badge and extrapolation note follow the console's rules",ctx(s));
+      /* SBA's minimum grades only the asks with an SBA loan; no claim that no price meets the equity minimum; the empty-lever
+         text follows the business's place in the quality range; the quality step never reads "−0%" */
+      { const showCur=Math.abs(D.cur.ask/D.sell.ask-1)>.005&&Math.abs(D.cur.ask/D.walk.ask-1)>.005, shown=[D.sell].concat(D.same?[]:[D.walk],showCur?[D.cur]:[]);
+        const want=shown.filter(a=>a.fin.loan>0&&a.fin.ds>0&&!a.fin.ok).length, got=(h.match(/<span class="rp-warn">below \d\.\d\d×<\/span>/g)||[]).length;
+        ok(want===got&&!/no price meets/.test(h)&&(!/at every price up to about/.test(h)||m.capped)&&!/[−+]0% for quality/.test(h)
+           &&(D.sens.length>0||(D.qPct<.5?/bottom of the quality range/:/already at its best/).test(h)),"broker: the report grades, bounds and words its lender and lever lines by what holds",ctx(s,f,{want,got})); } } }
 }
 
 const names=Object.keys(fails);
