@@ -2045,6 +2045,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
     <div class="rc-ctl"><label>Source<select id="rc_ent"></select></label><label>Basis<select id="rc_wt"></select></label></div>
     <div class="tw"><table class="rc-t" id="rc_tbl"></table></div>
     <div class="rc-sum" id="rc_sum"></div>
+    <p class="tools-msg" id="rc_msg" role="status" aria-live="polite"></p>
     <div class="ovl-acts"><label class="fin-chk"><input type="checkbox" id="rc_grw" checked> Also set revenue growth from the last two years</label>
       <button class="btn tool" id="rc_clear" type="button">Clear</button>
       <button class="btn tool prime" id="rc_use" type="button">Use in the console</button></div>
@@ -2059,6 +2060,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
     <span class="rp-acts"><button class="btn tool prime" id="rp_print" type="button">Print or save as PDF</button>
       <button class="btn tool" id="rp_dl" type="button">Download (.html)</button>
       <button class="btn tool" id="rp_close" type="button">Close</button></span>
+    <p class="tools-msg" id="rp_msg" role="status" aria-live="polite"></p>
   </div>
   <div class="rp-wrap"><div class="rp-paper" id="rp_paper"></div></div>
 </div>
@@ -4437,8 +4439,10 @@ function debtCheck(s,price,f,V){
   const equityNeed=SBA_COO.equity*(type==="buyout"?price:project);
   const standbyCredit=sb?Math.min(note,SBA_COO.standbyShare*equityNeed):0;
   const equityIn=cash+standbyCredit, debt=loan+(sb?0:note);
-  /* a paid note on any of the starting structure's terms (its share, rate or term) rests on that convention (judgment) */
-  const noteConv=notePay>0&&(f.note===FIN_DEFAULTS.note||f.noteRate===FIN_DEFAULTS.noteRate||f.noteYears===FIN_DEFAULTS.noteYears);
+  /* a paid note on any of the starting structure's terms (its share, rate or term) rests on that convention (judgment), and
+     so does a note on full standby at the starting share, which sizes the loan and the debt (r5-financing-5) */
+  const noteConv=notePay>0&&(f.note===FIN_DEFAULTS.note||f.noteRate===FIN_DEFAULTS.noteRate||f.noteYears===FIN_DEFAULTS.noteYears)
+    ||sb&&note>0&&f.note===FIN_DEFAULTS.note;
   return {price,project,cash,note,noteCut:note<noteAsked-1e-6,loan,over,rate,sbaPay,notePay,noteConv,ds,draw,drawMarket:market,
     capex,cf,dscr,min,ok:dscr>=min,equityNeed,equityIn,equityOK:equityIn>=equityNeed*(1-1e-9),equityShare:equityNeed>0?equityIn/(equityNeed/SBA_COO.equity):1,debt,
     debtOverValue:loan>0&&V>0&&debt>V*(1+1e-9),qoe:price>=SBA_COO.qoeMin&&type!=="buyout",
@@ -4456,6 +4460,18 @@ function moneyUp(v){
   const t=money(v); if(!(v>0)||!isFinite(v)) return t;
   const u=t.slice(-1), x=parseFloat(t.replace(/[^0-9.]/g,""))*({B:1e9,M:1e6,k:1e3}[u]||1);
   return x>=v*(1-1e-12)?t:money(x+({B:1e7,M:1e4,k:1e3}[u]||1));
+}
+/* the amount a money() figure stands for */
+const moneyVal=t=>parseFloat(String(t).replace(/[^0-9.]/g,""))*({B:1e9,M:1e6,k:1e3}[String(t).slice(-1)]||1);
+/* the highest financed price and the price where the equity starts passing, each printed on its passing side; when the
+   two roundings would cross (the passing window is under one printed unit), both in whole dollars, and none when no
+   whole dollar passes (r5-financing-2) */
+function finEdges(mf){
+  const top=mf.price>0&&isFinite(mf.price)?mf.price:null, from=mf.equityFrom||null;
+  const t=top===null?null:moneyDown(top), f=from===null?null:moneyUp(from);
+  if(t===null||f===null||moneyVal(f)<=moneyVal(t)) return {top:t,from:f,none:false};
+  const a=Math.ceil(from-1e-9), b=Math.floor(top+1e-9);
+  return {top:"$"+b.toLocaleString("en-US"),from:"$"+a.toLocaleString("en-US"),none:a>b};
 }
 /* a share to one decimal, as the table and the report print shares (9.5% is not "10%"; the boxes echo 0.01%) */
 const pct1=v=>{ const x=Math.round(v*1000)/10; return (Number.isInteger(x)?x.toFixed(0):x.toFixed(1))+"%"; };
@@ -4485,8 +4501,8 @@ function covFmt(f){
    Below the cap the equity is a fixed share, except with working capital: a standby note's credit then grows as a share
    of the project with the price, so an initial acquisition or an expansion passes only from some price up (equityFrom),
    and an owner buyout's cash, a share of the project measured against 10% of the price, shrinks, so it passes only up to
-   some price (equityTo); each edge is found by bisection, the first passing price shown rounded up (moneyUp) and the last
-   rounded down (moneyDown), so each edge printed passes. noLoan: cash and the note leave no SBA loan at any price.
+   some price (equityTo); each edge is found by bisection over the prices that carry an SBA loan, the first passing price
+   shown rounded up (moneyUp) and the last rounded down (moneyDown), so each edge printed passes (finEdges). noLoan: cash and the note leave no SBA loan at any price.
    covPrice: what coverage alone allows, when the valuation binds. */
 /* why coverage leaves no price: with something left after the new owner's pay, the working capital and closing costs
    financed in the loan already take more payments than that covers at SBA's minimum, before any price (r3-core-4).
@@ -4498,12 +4514,14 @@ function maxFinanced(s,f,V,target){
   const cash=Math.min(1,Math.max(0,f.cash)), extra=Math.max(0,f.extra||0), share=Math.max(0,1-cash-Math.max(0,f.note));
   const fx={...f,draw:f.draw===null||f.draw===undefined||!isFinite(f.draw)?marketPay(s):f.draw};
   const at=p=>debtCheck(s,p,fx,V), pass=c=>c.dscr>=t&&!c.debtOverValue;
-  /* where the loan, (p + extra)(1 - cash) - note p, reaches the maximum */
-  const capAt=share>1e-9?Math.max(0,(SBA_COO.maxLoan-extra*(1-cash))/share):null, noLoan=share<=1e-9&&extra*(1-cash)<1;
+  /* where the loan, (p + extra)(1 - cash) - note p, reaches the maximum: a hair under it, so a rounding error at a price
+     in the billions never puts the loan past the maximum there */
+  const capAt=share>1e-9?Math.max(0,(SBA_COO.maxLoan-extra*(1-cash))/share)*(1-1e-12):null, noLoan=share<=1e-9&&extra*(1-cash)<1;
   const res=(price,bind,c)=>{ let equityFrom=null, equityTo=null;
-    if(c&&price>0){ const pe=isFinite(price)?price:c.price, ok0=at(P0).equityOK, okP=c.equityOK, edge=(a,b,okB)=>{
-        for(let i=0;i<48;i++){ const m=Math.sqrt(a*b); if(at(m).equityOK===okB) b=m; else a=m; } return b; };
-      if(!ok0&&okP) equityFrom=edge(P0,pe,true); else if(ok0&&!okP) equityTo=edge(pe,P0,true); }
+    if(c&&price>0){ const pe=isFinite(price)?price:c.price;
+      if(PL<pe){ const ok0=at(PL).equityOK, okP=c.equityOK, edge=(a,b,okB)=>{
+          for(let i=0;i<48;i++){ const m=Math.sqrt(a*b); if(at(m).equityOK===okB) b=m; else a=m; } return b; };
+        if(!ok0&&okP) equityFrom=edge(PL,pe,true); else if(ok0&&!okP) equityTo=edge(pe,PL,true); } }
     /* past the 7(a) maximum the rest of the price is buyer cash, a share that grows with the price: an equity short at
        the cap reaches 10% at some higher price (equityAbove), whatever binds first, or, with a paid seller note of about
        90% of the price, never does */
@@ -4516,14 +4534,19 @@ function maxFinanced(s,f,V,target){
       covPrice:bind==="value"&&V>0?maxFinanced(s,f,undefined,t).price:null}; };
   /* from $1,000 to the 7(a) maximum, or to the largest ask the console accepts (MONEY.ask.hard) */
   const P0=1e3, PMAX=1e11, top=capAt!==null?Math.min(capAt,PMAX):PMAX;
+  /* the lowest price with an SBA loan of at least $1 (debtCheck counts less as cash): below it there is no SBA loan, so
+     no SBA equity rule, and an edge there would be the loan's, not the equity's (r5-financing-1) */
+  const PL=share>1e-9?Math.max(P0,(1-extra*(1-cash))/share*(1+1e-9)):P0;
   /* no SBA loan at any price: SBA's tests do not apply, and nothing limits the price */
   if(noLoan) return res(Infinity,null,null);
   /* the working capital and closing costs alone already take the whole 7(a) maximum */
   if(top<P0||extra*(1-cash)>SBA_COO.maxLoan) return res(0,"cap",at(P0));
-  const c0=at(P0);
+  /* the scan starts where there is an SBA loan: below it SBA's tests do not apply, and a note on full standby is paid
+     there as no SBA-financed price pays it, so a 90% standby note read "no price" where every financed price passed */
+  const L0=Math.min(top,Math.max(P0,PL)), c0=at(L0);
   if(!pass(c0)) return res(0,c0.dscr<t?"coverage":"value",c0);
-  let lo=P0, hi=0;
-  for(let p=P0*1.05;p<top;p*=1.05){ if(pass(at(p))) lo=p; else { hi=p; break; } }
+  let lo=L0, hi=0;
+  for(let p=L0*1.05;p<top;p*=1.05){ if(pass(at(p))) lo=p; else { hi=p; break; } }
   if(!hi){ const ct=at(top); if(pass(ct)) return res(capAt!==null?top:Infinity,capAt!==null?"cap":null,ct); hi=top; }
   for(let i=0;i<48;i++){ const m=Math.sqrt(lo*hi); if(pass(at(m))) lo=m; else hi=m; }
   return res(lo,at(hi).dscr<t?"coverage":"value",at(lo));
@@ -4556,7 +4579,8 @@ const RECAST_ROWS=[
    guaranteed payment, and a partnership deducts no partner's retirement contributions; pass-through returns state interest, capital gains, charitable gifts and section 179 on
    Schedule K, outside ordinary income; depreciation inside cost of goods sold is not on the depreciation line; the energy
    efficient commercial buildings deduction (section 179D, its own line on the 2025 forms) is a capital cost expensed, as
-   section 179 is; another partnership's (or an estate's or trust's) ordinary income is inside each return's starting line */
+   section 179 is; another partnership's (or an estate's or trust's) ordinary income is inside the starting line of Form
+   1120-S, Form 1120 and Form 1065 (a sole proprietor reports it on Schedule E, outside Schedule C) */
 const RECAST_ENTITY={
   scorp:{n:"S corporation (Form 1120-S)",src:"Form 1120-S returns",ni:"Ordinary business income (loss)",owner:"Compensation of officers, plus any in cost of goods sold (Form 1125-E; one working owner's share)",
     ptax:"The employer's share on that pay, inside Taxes and licenses",perks:"Retirement, vehicle, phone; a 2% shareholder's health insurance is usually already inside that compensation",
@@ -4767,8 +4791,11 @@ function dealsStats(deals){
     se:Math.sqrt(ps.reduce((a,p)=>a+p*(1-p),0))/n}:{n:0};
   const po=done.map(d=>({y:d.status==="closed"?1:0,b:P.get(d).b,F:P.get(d).F,gap:P.get(d).gap})).filter(x=>x.F!==null);
   const nAbove=po.filter(x=>x.gap>=DEAL_MIN.penGap).length, nAt=po.filter(x=>!(x.gap>0)).length;
+  /* a listing more than 200% above value is past the survey's grid, where the penalty is not 0.45 F: it is left out of
+     the fit and counted, so the card says so (r5-deals-10) */
+  const nFar=done.length-po.length;
   const penReady=po.length>=DEAL_MIN.pen&&nAbove>=DEAL_MIN.penAbove&&nAt>=DEAL_MIN.penAt;
-  const penFit=()=>penReady?{...fitPenaltyScale(po),nAt,ready:true}:{n:po.length,nAbove,nAt,ready:false};
+  const penFit=()=>penReady?{...fitPenaltyScale(po),nAt,nFar,ready:true}:{n:po.length,nAbove,nAt,nFar,ready:false};
   const qualityFit=()=>{ const dims=MODELS.value.quality_band.dimensions, qd=closed.filter(d=>P.get(d).point>0);
     let quality={n:qd.length,enough:qd.length>=DEAL_MIN.quality,ready:false,dropped:[]};
     if(quality.enough){
@@ -4799,10 +4826,10 @@ const RAIL_BEST={own:.14,mgt:.92,rec:1,cc:.01,fin:.96,grw:.70,gm:.97,ret:.99,plt
    (sensitivity()'s step, one peer sd toward the lever's best, the unit the console's sensitivity ranks every lever in,
    selects included); "room", the lever at its best, when that is nearer than a step. When the step does not register
    (under 0.1% of the value) but the lever's best does, the line says why, with what its best adds: "far", the factor
-   sits so far below its peers that the step leaves it at the -3.2 z limit; "bottom", the business sits past the bottom
-   of the quality range, where the composite is held at -3 (r4-report-1). sensitivity()'s slope is a central
-   difference, which across either limit quoted a gain the step does not have. A lever with no room, or whose gain is
-   under 0.1% of the value for any other reason, is not named. Steps of equal weight (QW) within 0.5% of each other (the
+   sits at or past its -3.2 z limit, so the step leaves its z there or lifts it a sliver (r5-report-1); "bottom", the
+   business sits past the bottom of the quality range, where the composite is held at -3 (r4-report-1); "flat", any
+   other reason, said as the step's size. sensitivity()'s slope is a central difference, which across either limit
+   quoted a gain the step does not have. A lever with no room, or whose best adds under 0.1% of the value, is not named. Steps of equal weight (QW) within 0.5% of each other (the
    seven weighted equally) are one line; the three largest lines are shown. */
 function reportLevers(s,V){
   const L=[], r0=model(s);
@@ -4813,8 +4840,8 @@ function reportLevers(s,V){
     const kind0=room>=step-1e-9?"step":"room", x=kind0==="step"?s[k]+(v.inv?-step:step):best, rx=model({...s,[k]:x});
     let gain=rx.V-V, kind=kind0;
     if(!(gain>V*.001)&&kind==="step"){ const g=model({...s,[k]:best}).V-V;
-      /* the step leaves the factor's own z where it was (at its limit), or the composite where it is held */
-      if(g>V*.001){ if(rx.z[k]===r0.z[k]){ gain=g; kind="far"; } else if(r0.qz<-3){ gain=g; kind="bottom"; } } }
+      /* the factor's own z at its limit before the step (less of an inverse factor is better), else the composite held */
+      if(g>V*.001){ gain=g; kind=(v.inv?r0.z[k]>=3.2:r0.z[k]<=-3.2)?"far":r0.qz<-3?"bottom":"flat"; } }
     if(isFinite(gain)&&gain>V*.001) L.push({k,n:v.n,gain,kind,w:QW.w[k],i}); });
   L.sort((a,b)=>b.gain-a.gain);
   const G=[];
@@ -4834,11 +4861,17 @@ function reportData(s,opt){
   const sell=at(V*rhoSell), walk=at(V*rhoWalk), cur=at(s.ask);
   /* the optimizer's two asks are one row when they print as the same price, the console's rule (optNote, the
      financing table) */
-  const tab=interventionTable(s,r).filter(t=>t.k!=="reprice"&&t.net>0).slice(0,3);
+  /* each change measured with the ask reset to the recommended ratio of the value after it, which the report states */
+  const tab=interventionTable({...s,rhoSell},r).filter(t=>t.k!=="reprice"&&t.net>0).slice(0,3);
+  /* the console's qualifiers on the patient-seller ask (optNote): the ask cap's judgment and its flat top, a range when
+     another ask is close to a tie, a coin toss when it gains under 1% of value (r5-report-2) */
+  const on=optNote({...s,rhoSell,optRho:rhoWalk},V,model({...s,ask:V*rhoSell}),model({...s,ask:V*rhoWalk}));
+  const walkQ={cap:on.kind==="higher"&&rhoWalk>RHO_MAX-.02,flat:on.flat,coin:on.kind!=="same"&&on.coin,gain:on.gain,
+    range:on.alt?[Math.min(on.alt.m,rhoWalk),Math.max(on.alt.m,rhoWalk)]:null};
   /* the highest financeable price, and the structure at it (its badge follows what binds it) */
   const mf=maxFinanced(s,opt.fin,V), mfAt=mf.price>0&&isFinite(mf.price)?debtCheck(s,mf.price,opt.fin,V):null;
   return {s,V,point:r.fv.point,qFactor:r.qFactor,qPct:r.qPct,qz:r.qz,conf:r.conf,confLabel:r.confLabel,confOutside:!!r.confOutside,extrap:r.extrap||[],mult:r.M,
-    sell,walk,cur,same:money(V*rhoSell)===money(V*rhoWalk),sens:reportLevers(s,V),allBest:model({...s,...RAIL_BEST}).V-V,fixes:tab,maxFin:mf,mfAt,
+    sell,walk,cur,same:money(V*rhoSell)===money(V*rhoWalk),walkQ,rhoSell,sens:reportLevers(s,V),allBest:model({...s,...RAIL_BEST}).V-V,fixes:tab,maxFin:mf,mfAt,
     recast:opt.recast||null,calib:opt.calib||null,sde:s.ern,rev:s.rev,ind:(ownKey(IND,s.ind)?IND[s.ind]:IND.prof).n,date:opt.date||null,fin:opt.fin||null};
 }
 function hEsc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -4866,8 +4899,16 @@ function reportHTML(D,meta){
     <td class="n">${pc(a.pc)}</td><td class="n">${toMonths(a.tMed)} mo</td><td class="n">${money(a.price)}</td><td class="n">${money(a.ev)}</td>
     <td class="n">${covFmt(F)}${F.loan>0&&F.ds>0&&!F.ok?warn(`below ${F.min.toFixed(2)}×`):F.loan>0?"":`<br><span>no SBA loan</span>`}</td></tr>${sub?`<tr class="rp-sub"><td colspan="7">${sub}</td></tr>`:""}`; };
   const f=D.cur.fin, R=D.recast, mf=D.maxFin, C=D.calib, T=ownKey(DSC_NAMES,f.type)?DSC_NAMES[f.type]:DSC_NAMES.initial;
+  /* the console's qualifiers beside the patient-seller ask (optNote): a coin toss, the ask cap (a judgment) with its flat
+     top, a range when another ask is close to a tie; on the one row both asks share, those that apply to it */
+  const walkQ=one=>{ const Q=D.walkQ||{}, atCap=one?D.rhoSell>RHO_MAX-.02:Q.cap;
+    return [!one&&Q.coin?`To this owner it is worth only ${money(Q.gain)} more than the price above, close to a coin toss.`:"",
+      atCap?`${RHO_MAX.toFixed(2)}× value is the console&rsquo;s cap on the ask (a judgment), not an optimum${Q.flat!=null?`: asks from ${Q.flat.toFixed(2)}× up come within 1% of value of it`:""}.`:"",
+      Q.range?`${one?"For a seller who can walk away, close":"Close"} to a tie with another ask: read it as ${Q.range[0].toFixed(2)}–${Q.range[1].toFixed(2)}× value.`:""].filter(Boolean).join(" "); };
   const nShare=D.fin&&typeof D.fin.note==="number"?D.fin.note:FIN_DEFAULTS.note;
   const capJ=!mf.noLoan&&mf.bind==="cap"&&mf.price>0&&isFinite(mf.price)&&nShare>0&&nShare===FIN_DEFAULTS.note;
+  /* a note on full standby at the starting share sizes the debt the model value caps (r5-financing-5) */
+  const valJ=!mf.noLoan&&mf.bind==="value"&&mf.standby&&mf.price>0&&isFinite(mf.price)&&nShare>0&&nShare===FIN_DEFAULTS.note;
   const head=`<header class="rp-head"><div><div class="rp-kicker">Business valuation and sale outlook</div>
       <h1${String(meta.business||D.ind).length>56?' class="rp-long"':""}>${hEsc(meta.business||D.ind)}</h1>
       <div class="rp-meta">${hEsc(D.ind)}${D.s.st?` · ${hEsc(D.s.st)}`:""}${D.s.franchise?" · franchise":""} · revenue ${moneyIn(D.rev)} · SDE ${moneyIn(D.sde)}</div></div>
@@ -4882,8 +4923,8 @@ function reportHTML(D,meta){
     ${C&&C.n?`<p class="rp-cal">Track record ${jdg}: this broker&rsquo;s ${C.n} closed deal${C.n>1?"s":""} sold at ${C.factor.toFixed(2)}× the model&rsquo;s expected price${C.lo!==null?` (90% interval ${C.lo.toFixed(2)}–${C.hi.toFixed(2)}×)`:""}. Read with the weight of ${CALIB_K} deals toward the model, that is ${C.shrunk.toFixed(2)}×: about ${money(D.sell.mean*C.shrunk)} if it sells at the recommended ask, against the model&rsquo;s expected ${money(D.sell.mean)}.</p>`:""}`;
   const asks=`<section><h2>What to ask</h2><div class="rp-tw"><table class="rp-t"><thead><tr><th></th><th class="n">Ask</th><th class="n">Chance it sells<br>${pB}</th>
       <th class="n">Median time to close<br>${tB}</th><th class="n">Median price if it sells<br>${jdg}</th><th class="n">Expected proceeds<br>${jdg}</th><th class="n">Lender coverage<br>${cB}</th></tr></thead><tbody>
-      ${askRow("If you need to sell",D.sell,"Maximizes expected proceeds: the price times the chance of getting it.")}
-      ${D.same?"":askRow("If you can walk away",D.walk,`Also counts keeping the business, if it doesn't sell, as worth ${pc(D.s.theta)} of its value, and charges $${Math.round(D.s.lamT).toLocaleString("en-US")} a day of delay.`)}
+      ${askRow("If you need to sell",D.sell,"Maximizes expected proceeds: the price times the chance of getting it."+(D.same&&walkQ(true)?" "+walkQ(true):""))}
+      ${D.same?"":askRow("If you can walk away",D.walk,`Also counts keeping the business, if it doesn't sell, as worth ${pc(D.s.theta)} of its value, and charges $${Math.round(D.s.lamT).toLocaleString("en-US")} a day of delay.`+(walkQ(false)?" "+walkQ(false):""))}
       ${showCur?askRow("Your ask",D.cur,""):""}
     </tbody></table></div></section>`;
   const costs=f.project>f.price?` plus ${moneyIn(f.project-f.price)} of working capital and closing costs (${money(f.project)} in all)`:"";
@@ -4908,11 +4949,12 @@ function reportHTML(D,meta){
        seller note's share also sets: at the starting structure's (judgment), the price carries that too */
     const fA=D.mfAt||f, at0=fA.loan>0&&fA.equityIn<=0, spend=f.capex>0?" and capital spending":"";
     const eq=mf.equityShort?(at0?" if the lender eliminates the 10% equity":" if the lender waives part of the 10% equity"):"";
-    const mB=mf.bind==="value"?vB:mf.bind==="cap"?(capJ?BX("a","published data"):agg):D.mfAt?covB(D.mfAt):cB;
+    const mB=mf.bind==="value"?(valJ?BX("f","fitted"):vB):mf.bind==="cap"?(capJ?BX("a","published data"):agg):D.mfAt?covB(D.mfAt):cB;
     /* with working capital the equity can pass or fail from some price on: name the edge below the highest price */
-    const eqEdge=mf.equityFrom?` Below about ${moneyUp(mf.equityFrom)} the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum${mf.equityWaivable
+    const E=finEdges(mf);
+    const eqEdge=mf.equityFrom?` Below about ${E.from} the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum${mf.equityWaivable
         ?`: ${EQUITY_WAIVER}.`:", which cannot be waived for an initial acquisition, so the structure works only from that price up."}`
-      :mf.equityTo?` ${mf.equityAbove?`Between about ${moneyDown(mf.equityTo)} and ${moneyUp(mf.equityAbove)}`:`Above about ${moneyDown(mf.equityTo)}`} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price: ${EQUITY_WAIVER}.${mf.equityAbove
+      :mf.equityTo&&mf.type==="buyout"?` ${mf.equityAbove?`Between about ${moneyDown(mf.equityTo)} and ${moneyUp(mf.equityAbove)}`:`Above about ${moneyDown(mf.equityTo)}`} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price: ${EQUITY_WAIVER}.${mf.equityAbove
         ?` Past the 7(a) maximum the rest of the price is buyer cash, which brings it back to 10% from ${moneyUp(mf.equityAbove)}.`:""}`:"";
     /* no equity at all: the lender must eliminate the requirement, and SBA then bars working capital from the loan */
     const said=f.loan>0&&!f.equityOK&&f.equityIn<=0&&f.project>f.price&&f.type!=="initial";
@@ -4926,20 +4968,22 @@ function reportHTML(D,meta){
         :mf.equityAbove?` below about ${moneyUp(mf.equityAbove)}: past ${moneyDown(mf.capAt)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, a larger share than this structure sets, which reaches 10% there.`
         :`: past ${moneyDown(mf.capAt)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, but with this seller note that never reaches 10%.`}`
       :mf.price===Infinity?`Neither coverage nor the valuation limits the price: the SBA loan${f.loan>0?`, ${money(f.loan)} for working capital and closing costs,`:""} does not grow with it.`+eqEdge+wcBar
-      :(mf.bind==="value"?`At this structure the highest price an SBA lender would finance${eq} is about <b>${moneyDown(mf.price)}</b>${sp(mB)}, where the acquisition debt reaches the model value${mf.covPrice>mf.price*1.005?"; coverage alone would allow more":""}.`
-      :mf.bind==="cap"?`At this structure the SBA loan reaches the 7(a) maximum of ${money(SBA_COO.maxLoan)} at about <b>${moneyDown(mf.price)}</b>${sp(mB)}${eq}, with coverage and the debt still within SBA&rsquo;s limits; a higher price takes more buyer cash, or a larger seller note, than this structure sets.`
-      :`At this structure the highest price that meets ${mf.target.toFixed(2)}×${eq} is about <b>${moneyDown(mf.price)}</b>${sp(mB)}.`)+eqEdge+wcBar); }
+      :E.none?`No whole-dollar price passes every test at this structure: the buyer&rsquo;s equity, with the standby note&rsquo;s credit, reaches SBA&rsquo;s 10% minimum only from about ${E.from}, and the structure stops working above ${E.top}.`
+      :(mf.bind==="value"?`At this structure the highest price an SBA lender would finance${eq} is about <b>${E.top}</b>${sp(mB)}, where the acquisition debt reaches the model value${mf.covPrice>mf.price*1.005?"; coverage alone would allow more":""}.`
+      :mf.bind==="cap"?`At this structure the SBA loan reaches the 7(a) maximum of ${money(SBA_COO.maxLoan)} at about <b>${E.top}</b>${sp(mB)}${eq}, with coverage and the debt still within SBA&rsquo;s limits; a higher price takes more buyer cash, or a larger seller note, than this structure sets.`
+      :`At this structure the highest price that meets ${mf.target.toFixed(2)}×${eq} is about <b>${E.top}</b>${sp(mB)}.`)+(E.none?"":eqEdge)+wcBar); }
   const finance=`<section><h2>What a buyer&rsquo;s lender will see</h2><p>${lend} ${more.join(" ")}</p></section>`;
   const lever=g=>g.kind==="step"?`one peer step better${g.n>1?", each,":""} is worth about ${money(g.gain)}${g.n>1?" (weighted equally)":""}`
     :g.kind==="far"?`too far below its peers for one step to register; at its best it would add about ${money(g.gain)}`
     :g.kind==="bottom"?`one step does not register past the bottom of the quality range; at its best it would add about ${money(g.gain)}`
+    :g.kind==="flat"?`one step adds under 0.1% of the value; at its best it would add about ${money(g.gain)}`
     :`the room left before its best is worth about ${money(g.gain)}`;
   /* past the bottom of the quality range the report says what all nine factors at their best would add, beside any lines */
   const nine=`all nine quality factors at their best would add about ${money(D.allBest)} together`, low=D.qz<-3;
   const drivers=`<section class="rp-two"><div><h2>What moves the value most ${jdg}</h2>${D.sens.length?`<ul>${D.sens.map(g=>`<li><b>${hEsc(g.names)}</b>: ${lever(g)}</li>`).join("")}</ul>${low?`<p>The business sits past the bottom of the quality range: ${nine}.</p>`:""}`
       :low||D.qPct<.5?`<p>The business sits at the bottom of the quality range, past where one peer step better in a single factor moves the value; ${nine}.</p>`
       :"<p>Every quality factor is already at its best, or the business sits at the top of the quality range: no single factor, even at its best, moves the value.</p>"}</div>
-    <div><h2>Worth doing before listing ${jdg}</h2>${D.fixes.length?`<ul>${D.fixes.map(t=>`<li><b>${hEsc(t.n)}</b>: about ${money(t.c)} and ${t.days} days; adds ${money(t.dE)} of expected proceeds</li>`).join("")}</ul>`:"<p>None of the modelled improvements pays for itself here.</p>"}</div></section>`;
+    <div><h2>Worth doing before listing ${jdg}</h2>${D.fixes.length?`<ul>${D.fixes.map(t=>`<li><b>${hEsc(t.n)}</b>: about ${money(t.c)} and ${t.days} days; adds ${money(t.dE)} of expected proceeds</li>`).join("")}</ul><p>Each gain assumes the ask reset to ${D.rhoSell.toFixed(2)}× the new value.</p>`:"<p>None of the modelled improvements pays for itself here.</p>"}</div></section>`;
   const basis={latest:"read on the most recent year",w321:recastWeighting(R||{}),avg:"averaged over the years"};
   const earn=R&&R.n?`<section><h2>Earnings basis</h2><p>SDE of ${moneyIn(R.sde)}, built by the broker from ${R.n} year${R.n>1?"s":""} of ${hEsc(ownKey(RECAST_ENTITY,R.entity)?RECAST_ENTITY[R.entity].src:"financial statements")}${R.n>1?` and ${ownKey(basis,R.weight)?basis[R.weight]:basis.latest}`:""}:
     income before taxes ${moneyIn(R.ni)}, add-backs ${moneyIn(R.add)}${R.less<-.5?`, less ${moneyIn(-R.less)} of deductions`:""}${R.discShare>0&&!R.flags.includes("heavy_discretionary")?`; one-time and discretionary add-backs are ${pc(R.discShare,R.discShare<.1?1:0)} of SDE`:""}.
@@ -4948,7 +4992,7 @@ function reportHTML(D,meta){
      share where it sets the highest financed price at the 7(a) maximum */
   const fins=rows.map(a=>a.fin).concat([f]), covJ=[fins.some(F=>F.noteConv)?"the seller-note convention":"",f.drawMarket?"the pay&rsquo;s rank by firm size":""].filter(Boolean);
   const how=[jV?"the quality position (value)":"",jP?`the price-gap penalty&rsquo;s scale above value${thin?" and the thin-pool factor":""} (chance it sells)`:"",
-    jT?"the overpricing multiplier (time to close)":"",covJ.length?covJ.join(" and ")+" (coverage)":"",capJ?"the seller-note convention (the highest financed price)":""].filter(Boolean);
+    jT?"the overpricing multiplier (time to close)":"",covJ.length?covJ.join(" and ")+" (coverage)":"",capJ||valJ?"the seller-note convention (the highest financed price)":""].filter(Boolean);
   const foot=`<footer class="rp-foot"><p><b>Sources.</b> Value: a regression on ${MODELS.value.n_fit.toLocaleString()} closed sales (BIZCOMPS) ${fit}.
     Chance of selling: Pepperdine Private Capital Markets surveys ${agg}. Time to close: IBBA / M&amp;A Source Market Pulse histograms ${fit}.
     Loan terms: SBA rate spreads ${fit} and ${hEsc(SBA_COO.sop)} ${agg}. Labels: ${fit} estimated from data; ${agg} read from published figures or
@@ -5013,13 +5057,13 @@ const RP_CSS=`.rp,.rp *,.rp *::before,.rp *::after{all:revert;box-sizing:border-
 .rp-foot p{margin:0 0 4px}
 @media (max-width:640px){.rp{padding:22px 18px}.rp-head{flex-direction:column;align-items:flex-start}.rp-prep{text-align:left;max-width:none}
   .rp section.rp-value,.rp section.rp-two{grid-template-columns:1fr;gap:12px}.rp-big{font-size:27px}}
-@media print{.rp{max-width:none;margin:0;padding:0;font-size:9.6px;line-height:1.22}
+@media print{.rp{max-width:none;margin:0;padding:0;font-size:9.6px;line-height:1.2}
   .rp-head{display:block;padding-bottom:5px}.rp h1{font-size:18px;margin:1px 0 2px}.rp h1.rp-long{font-size:14px}.rp-meta,.rp-prep{font-size:9.5px}.rp-prep{text-align:left;max-width:none;margin-top:1px}
   .rp h1,.rp-prep{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.rp-prep{-webkit-line-clamp:3}
   .rp-prep span{display:inline}.rp-prep span+span::before{content:" · "}.rp-prep.rp-long{font-size:8.5px}
-  .rp h2{font-size:11.5px;margin-bottom:3px}.rp p{margin-bottom:4px}.rp section{margin-top:5px}.rp section.rp-value{padding:6px 0;gap:12px}
-  .rp-big{font-size:22px;margin:3px 0 2px}.rp-mid{font-size:15px;margin:4px 0 2px}.rp-s{font-size:9.6px;line-height:1.22}.rp-kicker,.rp-k{font-size:9px}
-  .rp table.rp-t{font-size:9.6px}.rp-t th,.rp-t td{padding:2px 4px}.rp-t thead th{font-size:8.5px;line-height:1.15}.rp-t thead .rp-b{margin-top:1px}.rp-t td span{font-size:8.6px}.rp-t tr.rp-sub td{font-size:9px}
+  .rp h2{font-size:11.5px;margin-bottom:3px}.rp p{margin-bottom:3px}.rp section{margin-top:4px}.rp section.rp-value{padding:6px 0;gap:12px}
+  .rp-big{font-size:22px;margin:3px 0 2px}.rp-mid{font-size:15px;margin:4px 0 2px}.rp-s{font-size:9.6px;line-height:1.2}.rp-kicker,.rp-k{font-size:9px}
+  .rp table.rp-t{font-size:9.6px}.rp-t th,.rp-t td{padding:2px 4px}.rp-t thead th{font-size:8.5px;line-height:1.15}.rp-t thead .rp-b{margin-top:1px}.rp-t td span{font-size:8.6px}.rp-t tr.rp-sub td{font-size:8.8px}
   .rp-b{font-size:7.5px}.rp li{margin-bottom:1px}.rp section.rp-two{gap:14px}
   .rp-cal,.rp-ext{margin-top:5px;font-size:9.2px;padding:2px 0 2px 8px}.rp-foot{margin-top:6px;padding-top:4px;font-size:8px;line-height:1.2}.rp-foot p{margin-bottom:2px}}`;
 /* a sheet with every selector under pre (also inside @media): the page's copy of RP_CSS. Commas inside :is(), :not()
@@ -5123,10 +5167,10 @@ function parseAmount(t){
   /* two amounts are not one ("512,000 470,000", "$45,000 $50,000", "512,000, 470,000" or a row of cells pasted, each
      read as a single number): never a tab or a line break; a dollar sign only first (after a sign) or last; a comma only
      between digits; whitespace between digits only as a space-grouped number ("1 450 000", grouped with a plain,
-     no-break or thin space) */
+     no-break or thin space, one kind throughout: a column of cells pasted turns its line breaks into plain spaces) */
   if(/[\t\r\n]/.test(t)||/(^|\D),|,(\D|$)/.test(t)) return NaN;
   { const u=t.replace(/^[-\u2212]\s*/,"").replace(/^\$/,"").replace(/\$$/,"");
-    if(u.includes("$")||(/\d\s+\d/.test(u)&&!/^\s*\d{1,3}([ \u00a0\u2007\u2009\u202f]\d{3})+(\.\d+)?\s*([kmb%]|\/day|years?|of ?value)?$/.test(u))) return NaN; }
+    if(u.includes("$")||(/\d\s+\d/.test(u)&&!/^\s*\d{1,3}([ \u00a0\u2007\u2009\u202f])\d{3}(?:\1\d{3})*(\.\d+)?\s*([kmb%]|\/day|years?|of ?value)?$/.test(u))) return NaN; }
   t=t.replace(/[$,\s]/g,"").replace(/\u2212/g,"-");
   if(t==="none") return 0;
   t=t.replace(/(\/day|years?|ofvalue)$/,"");
@@ -7062,7 +7106,7 @@ function renderData(){
         <td>the weight is <b>judgment</b>; the records move no model figure, and the opt-in line only displays</td></tr>
       <tr><td>When the Deals tab fits a judgment number</td><td>the price-gap penalty&rsquo;s scale (${PEN_MAX.toFixed(2)} today), with your own close rate at
         value fitted alongside it, from ${DEAL_MIN.pen} finished listings, ${DEAL_MIN.penAbove} of them listed at least ${DEAL_MIN.penGap}% above value and
-        ${DEAL_MIN.penAt} at or below value, which fix the close rate;
+        ${DEAL_MIN.penAt} at or below value, which fix the close rate (a listing more than 200% above value, past the survey&rsquo;s range, is left out);
         the nine quality effects from ${DEAL_MIN.quality} closed deals, leaving out a factor that never varies</td>
         <td>maximum likelihood with a 90% profile-likelihood interval, and least squares, on your own deals; the minimums are <b>judgment</b></td></tr>
       </tbody></table></div></div></section>`; }
@@ -7924,7 +7968,8 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   const keep=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }
     catch(e){ STORE_ERR=e&&(e.name==="QuotaExceededError"||e.name==="NS_ERROR_DOM_QUOTA_REACHED"||e.code===22||e.code===1014)?"full":"blocked"; return false; } };
   let STORE_OK=keep("omni.probe",1); try{ localStorage.removeItem("omni.probe"); }catch(e){}
-  const storeMsg=()=>STORE_ERR==="full"?"This browser’s storage for this page is full, so the change is not kept: export your deals, then delete some or shorten long notes."
+  const storeMsg=()=>STORE_ERR==="unreadable"?"The deals stored here could not be read and there is no room to copy them aside, so nothing is saved over them: download them from the Deals tab first."
+    :STORE_ERR==="full"?"This browser’s storage for this page is full, so the change is not kept: export your deals, then delete some or shorten long notes."
     :"This browser is not keeping data (a private window or blocked storage): export from the Deals tab to keep it.";
   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STATUS={valuing:"Valuing",listed:"Listed",loi:"Under LOI",closed:"Closed",withdrawn:"Withdrawn",expired:"Expired"};
@@ -7934,9 +7979,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* a real calendar day (2026-02-31 is not) in a plausible year: 1980 to next year */
   const isoDay=v=>{ if(typeof v!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null; const t=Date.parse(v), y=+v.slice(0,4);
     return isFinite(t)&&new Date(t).toISOString().slice(0,10)===v&&y>=1980&&y<=new Date().getFullYear()+1?v:null; };
-  /* a time with a four-digit year (a Date holds times to the year 275760, where an edit's stamp could not follow) */
+  /* a time with a four-digit year, no more than a day past this computer's clock: a later one (a clock far ahead, or the
+     latest time a Date holds) counts as no time, so an edit can always be stamped after the copy it was made from, and a
+     restore after its deletion (r5-deals-9) */
   const TMAX=Date.UTC(9999,11,31,23,59,59,999);
-  const isoTime=v=>{ if(typeof v!=="string"||v.length>=40) return null; const t=Date.parse(v); return isFinite(t)&&t<=TMAX?v:null; };
+  const isoTime=v=>{ if(typeof v!=="string"||v.length>=40) return null; const t=Date.parse(v); return isFinite(t)&&t<=Math.min(TMAX,Date.now()+864e5)?v:null; };
   const today=()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
   const newId=()=>"d"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
   const indName=k=>(ownKey(IND,k)?IND[k]:IND.prof).n;
@@ -8001,6 +8048,32 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     return o;
   }
   const wsHas=w=>!!w&&w.years.some(y=>Object.keys(y).length>0);
+  /* three ways, field by field (r5-worksheet-1): a field changed here since the base b keeps this tab's value (m), every
+     other field takes the store's (t); a field both changed, to different values, is a clash. A worksheet's fields are
+     its source, basis and growth box and each year's lines ("0.ni") */
+  const sameV=(a,b)=>typeof a==="number"&&typeof b==="number"?Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(a)):a===b;
+  const merge3=(b,m,t)=>{ b=b||{}; m=m||{}; t=t||{}; const o={}, clash=[];
+    for(const k of new Set([...Object.keys(b),...Object.keys(m),...Object.keys(t)])){
+      if(!sameV(m[k],b[k])){ if(m[k]!==undefined) o[k]=m[k]; if(!sameV(t[k],b[k])&&!sameV(t[k],m[k])) clash.push(k); }
+      else if(t[k]!==undefined) o[k]=t[k]; }
+    return {o,clash}; };
+  const wsFields=w=>{ const c=w?cleanWS(w):null, o={}; if(!c||!wsHas(c)) return o; o.entity=c.entity; o.weight=c.weight; o.grw=c.grw;
+    c.years.forEach((y,i)=>{ for(const k in y) o[i+"."+k]=y[k]; }); return o; };
+  const wsFromFields=o=>{ const w={entity:o.entity,weight:o.weight,grw:o.grw,years:[{},{},{}]};
+    for(const k in o){ const x=/^([0-2])\.(\w+)$/.exec(k); if(x) w.years[+x[1]][x[2]]=o[k]; }
+    const c=cleanWS(w); return c&&wsHas(c)?c:null; };
+  /* a deal changed in this tab (m) from the copy as stored (b), over a newer stored copy (t): this tab's changes on it */
+  const TOPF=["name","autoName","copy","status","listPrice","listDate","salePrice","closeDate","cashAtClose","buyers","offers","business","preparedFor","notes"];
+  function mergeDeal3(b,m,t){ const x={...t};
+    for(const k of TOPF) if(!sameV(m[k],b[k])) x[k]=m[k];
+    x.inputs=cleanInputs(merge3(b.inputs,m.inputs,t.inputs).o)||t.inputs; x.fin=cleanFin(merge3(b.fin,m.fin,t.fin).o);
+    x.ws=wsFromFields(merge3(wsFields(b.ws),wsFields(m.ws),wsFields(t.ws)).o); return x; }
+  /* deals changed in this tab that the store refused (full or blocked), each with its copy as stored: a merge keeps this
+     tab's changes over a newer stored copy, so they stay in this tab (the console, the Deals tab, an export) until a
+     write succeeds (r5-deals-4) */
+  const UNSTORED=new Map();
+  const storedOf=d=>d&&UNSTORED.get(d.id)||d;
+  const cloneDeal=d=>JSON.parse(JSON.stringify(d));
   /* an id is the record's own (letters, digits, - and _; never "__proto__"), or for a record that has none, or repeats
      one, a hash of the record itself (FNV-1a), so every tab and every import of the same record gives it the same id */
   const okId=v=>typeof v==="string"&&/^[\w-]{1,40}$/.test(v)&&v!=="__proto__";
@@ -8041,10 +8114,14 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* stored deals: a record this page cannot read is kept as it was and written back with the rest (KEPT), a stored list
      that is not JSON is copied aside once before a save can replace it, and a missing or repeated id is derived from the
      record (storeIds) */
-  let DEALS=[], KEPT=[], UNREADABLE=false;
+  let DEALS=[], KEPT=[], UNREADABLE=false, NOCOPY=null;
   { let txt=null, raw=[]; try{ txt=localStorage.getItem(K_DEALS); }catch(e){}
-    if(txt!==null){ try{ raw=JSON.parse(txt); }catch(e){ raw=null; UNREADABLE=true;
-      try{ if(localStorage.getItem(K_DEALS+".unreadable")===null) localStorage.setItem(K_DEALS+".unreadable",txt); }catch(e2){} } }
+    if(txt!==null){ try{ raw=JSON.parse(txt); }catch(e){ raw=null; let has=false;
+      try{ if(localStorage.getItem(K_DEALS+".unreadable")===null) localStorage.setItem(K_DEALS+".unreadable",txt); }catch(e2){}
+      try{ has=localStorage.getItem(K_DEALS+".unreadable")!==null; }catch(e3){}
+      /* the copy is said to be kept only once it is; with no room for it, nothing is saved over the unreadable deals until
+         they are downloaded from the Deals tab (NOCOPY holds them; r5-deals-8) */
+      if(has) UNREADABLE=true; else NOCOPY=txt; } }
     const list=Array.isArray(raw)?raw:raw&&typeof raw==="object"?[raw]:[], ids=storeIds(list);
     list.forEach((r,i)=>{ const d=cleanDeal(r); if(!d){ KEPT.push(r); return; } d.id=ids[i]; DEALS.push(d); }); }
   let STATS=null, CUR=null, EDIT=null, PENDING=null;
@@ -8066,18 +8143,24 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* does the store hold a deal with this id */
   const storeHas=id=>{ try{ const raw=JSON.parse(localStorage.getItem(K_DEALS)); return Array.isArray(raw)&&storeIds(raw).includes(id); }catch(e){ return false; } };
   function mergeStore(){
-    let txt=null; try{ txt=localStorage.getItem(K_DEALS); }catch(e){ return; }
+    let txt=null, changed=false; try{ txt=localStorage.getItem(K_DEALS); }catch(e){ return false; }
     mergeGone();
     let raw=[]; if(txt!==null){ try{ raw=JSON.parse(txt); }catch(e){ raw=[]; } }
     const list=Array.isArray(raw)?raw:[], ids=storeIds(list), byId=new Map(DEALS.map(d=>[d.id,d])), seen=new Set(KEPT.map(r=>JSON.stringify(r)));
     list.forEach((r,i)=>{
       const d=cleanDeal(r); if(!d){ const k=JSON.stringify(r); if(!seen.has(k)){ seen.add(k); KEPT.push(r); } return; }
       d.id=ids[i]; const m=byId.get(d.id);
-      /* a stored copy with no time of its own is the oldest: it never replaces a copy here */
-      if(!m){ DEALS.push(d); byId.set(d.id,d); } else if(isoTime(r.updated)&&Date.parse(d.updated)>Date.parse(m.updated)) DEALS[DEALS.indexOf(m)]=d; });
-    DEALS=DEALS.filter(d=>!goneAfter(d));
+      /* a stored copy with no time of its own is the oldest: it never replaces a copy here. A newer copy of a deal changed
+         in this tab that the store refused takes this tab's changes over it, field by field (r5-deals-4) */
+      if(!m){ DEALS.push(d); byId.set(d.id,d); changed=true; }
+      else if(isoTime(r.updated)&&Date.parse(d.updated)>Date.parse(m.updated)){ const b=UNSTORED.get(d.id), x=b?mergeDeal3(b,m,d):d;
+        if(b) UNSTORED.set(d.id,d); DEALS[DEALS.indexOf(m)]=x; byId.set(d.id,x); changed=true; } });
+    const n=DEALS.length; DEALS=DEALS.filter(d=>!goneAfter(d));
+    return changed||DEALS.length!==n;
   }
-  function saveDeals(){ mergeStore(); STATS=null; STORE_OK=keep(K_DEALS,DEALS.concat(KEPT)); if(STORE_OK) STORE_ERR=null; return STORE_OK; }
+  function saveDeals(){ mergeStore(); STATS=null;
+    if(NOCOPY!==null){ STORE_ERR="unreadable"; STORE_OK=false; return false; }
+    STORE_OK=keep(K_DEALS,DEALS.concat(KEPT)); if(STORE_OK){ STORE_ERR=null; UNSTORED.clear(); } return STORE_OK; }
   /* the list of deletions, merged with the stored one first so no tab drops another's, the 1,000 most recent kept */
   function writeGone(){ mergeGone();
     const k=Object.keys(GONE).sort((a,b)=>Date.parse(GONE[b])-Date.parse(GONE[a]));
@@ -8087,10 +8170,12 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* the deal whose worksheet the dialog holds: the one opened, the one in the console when the worksheet was edited or
      Use was pressed, or one saved with it or with none ("draft" for the unsaved valuation) */
   let WS_OWNER=null;
-  /* the deal in the console as this tab last opened, saved or took it up: its parts (inputs, financing structure,
-     worksheet) as they were then. A save writes only the parts changed here since, and a part another tab saves that is
-     unchanged here is taken up (takeUp), so neither tab's save erases the other's (r4-worksheet-7) */
-  let CUR_SNAP=null;
+  /* the deal in the console as stored when this tab last opened, saved or took it up: its parts (inputs, financing
+     structure, worksheet) as they were then, the base of a three-way merge. A field another tab saves that is unchanged
+     here is taken up (takeUp) and a save writes the console over the result, so neither tab's save erases the other's
+     change to another field (r4-worksheet-7, r5-worksheet-1); a field both changed keeps this tab's value, and the page
+     says so (CLASH, the parts) */
+  let CUR_SNAP=null; const CLASH=new Set();
   const snapDeal=d=>{ CUR_SNAP=d?{id:d.id,v:d.updated,inputs:d.inputs,fin:{...d.fin},ws:JSON.stringify(d.ws)}:null; };
 
   /* ---- the toolbar: the deal in the console, and the opt-in price record ---- */
@@ -8099,26 +8184,60 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* the worksheet a save writes for deal d: the one in the dialog while it set the console's SDE, or while it is d's own
      (opened with d, or used with d in the console, "draft" for the unsaved valuation), even if edited since; else none */
   const wsFor=d=>wsHas(WS)&&(wsInUse()||(d?WS_OWNER===d.id:WS_OWNER==="draft"))?cleanWS(WS):null;
+  /* the worksheet this tab holds for a saved deal d: the dialog's while it set the console's SDE or is d's own (null when
+     it is empty); undefined while the dialog is another's, so a save leaves d's as stored */
+  const wsMine=d=>wsInUse()||WS_OWNER===d.id?(wsHas(WS)?cleanWS(WS):null):undefined;
   /* what "Save changes" would write differs from the deal as saved: its inputs, its financing structure, or its worksheet */
-  const unsaved=d=>!sameInputs(snap(),d.inputs)||!sameFin(FIN,d.fin)||JSON.stringify(wsFor(d))!==JSON.stringify(d.ws);
-  /* the parts of deal d, as now stored, that this tab has not changed since S (CUR_SNAP), into the console: the
-     structure and the worksheet first, then the inputs, whose render redraws the financing check; the parts taken up */
+  const unsaved=d=>!sameInputs(snap(),d.inputs)||!sameFin(FIN,d.fin)||(w=>w!==undefined&&JSON.stringify(w)!==JSON.stringify(d.ws))(wsMine(d));
+  /* deal d as now stored against S (CUR_SNAP), field by field: the fields saved since that this tab has not changed come
+     into the console (the structure and the worksheet first, then the inputs, whose render redraws the financing check);
+     a field changed both here and there keeps this tab's value. The parts taken up, and the parts with such a clash */
   function takeUp(d,S){
-    if(!d||!S||S.id!==d.id) return [];
-    const I=snap(), w=JSON.stringify(wsFor(d)), hid=$("view-console").hidden;
-    const tI=!!I&&!sameInputs(I,d.inputs)&&sameInputs(I,S.inputs), tF=!sameFin(FIN,d.fin)&&sameFin(FIN,S.fin), tW=w!==JSON.stringify(d.ws)&&w===S.ws;
-    if(tF){ FIN=cleanFin(d.fin); PREFS.fin={...FIN}; finFill(true); }
-    if(tW){ WS=d.ws?cleanWS(d.ws):emptyWS(); WS_OWNER=d.id; PREFS.ws=WS;
+    const out={took:[],clash:[]}; if(!d||!S||S.id!==d.id) return out;
+    const I=snap()||S.inputs, hid=$("view-console").hidden, bW=JSON.parse(S.ws), mine=wsMine(d);
+    const mi=merge3(S.inputs,I,d.inputs), mf=merge3(S.fin,FIN,d.fin), mw=merge3(wsFields(bW),wsFields(mine===undefined?bW:mine),wsFields(d.ws));
+    const nI=cleanInputs(mi.o)||I, nF=cleanFin(mf.o), nW=wsFromFields(mw.o);
+    /* the worksheet comes into the dialog while it is this deal's own, or empty */
+    const tI=!sameInputs(nI,I), tF=!sameFin(nF,FIN), tW=(mine!==undefined||!wsHas(WS))&&JSON.stringify(nW)!==JSON.stringify(mine===undefined?null:mine);
+    if(tF){ FIN=nF; PREFS.fin={...FIN}; finFill(true); }
+    if(tW){ WS=nW||emptyWS(); WS_OWNER=d.id; PREFS.ws=WS;
       if(OPEN&&OPEN.id==="recast"){ const a=document.activeElement, y=a&&a.dataset?a.dataset.y:undefined, k=a&&a.dataset?a.dataset.k:undefined; wsBuild();
         const e=y!==undefined&&k?$("rc_tbl").querySelector(`.rc-in[data-y="${y}"][data-k="${k}"]`):null; if(e) e.focus({preventScroll:true}); } }
-    if(tI&&!hid) applyInputs(d.inputs); else { if(tI) PENDING=d.inputs; if(tF) renderFinance(); }
-    return [tI?"inputs":"",tF?"financing structure":"",tW?"worksheet":""].filter(Boolean);
+    if(tI&&!hid) applyInputs(nI); else { if(tI) PENDING=nI; if(tF) renderFinance(); }
+    out.took=[tI?"inputs":"",tF?"financing structure":"",tW?"worksheet":""].filter(Boolean);
+    out.clash=[mi.clash.length?"inputs":"",mf.clash.length?"financing structure":"",mw.clash.length&&mine!==undefined?"worksheet":""].filter(Boolean);
+    return out;
   }
   const andList=a=>a.length>1?a.slice(0,-1).join(", ")+" and "+a[a.length-1]:a[0]||"";
+  /* the deal that was in the console when it was found deleted in another tab (LOST): the console keeps its valuation,
+     unsaved, and the next save keeps its name, business, recipient and worksheet as a new deal, however the deletion was
+     found: the storage event, any read of the store, or the save itself (r4-deals-7, r5-deals-3, r5-worksheet-2). HELD is
+     the deal in the console as last seen */
+  let LOST=null, HELD=null;
+  function lose(held,say_){ CUR=null; CUR_SNAP=null; CLASH.clear(); if(!held) return;
+    LOST=held; DRAFT={business:held.business,preparedFor:held.preparedFor}; if(WS_OWNER===held.id) WS_OWNER="draft";
+    if(say_) say("tl_msg",`“${held.name}” was deleted in another tab. The console keeps its valuation, unsaved: saving it makes a new deal under its name.`,0); }
+  const who=src=>src==="import"?"The import":"Another tab";
+  /* after a read of the store: the deal in the console is brought up to it. Its fields saved elsewhere that are unchanged
+     here are taken up (an open report is rebuilt on them, and the toolbar's message says so), a field both changed keeps
+     this tab's value, and a deal deleted elsewhere is LOST. src names who changed it ("tab", "import"); a save says it in
+     its own message */
+  function syncCur(held,src){
+    const out={took:[],clash:[],lost:null}; if(!CUR) return out;
+    const c=dealById(CUR);
+    if(!c){ out.lost=held||null; lose(held,!!src); return out; }
+    if(CUR_SNAP&&CUR_SNAP.id===c.id&&c.updated!==CUR_SNAP.v){ const r=takeUp(c,CUR_SNAP); out.took=r.took; out.clash=r.clash; r.clash.forEach(p=>CLASH.add(p)); snapDeal(storedOf(c));
+      if(r.took.length&&OPEN&&OPEN.id==="report"&&STATE.s) REPORT=reportData(STATE.s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()});
+      if(src&&(r.took.length||r.clash.length)) say("tl_msg",(r.took.length?`${who(src)} saved changes to this deal’s ${andList(r.took)}, which the console now shows.`:"")
+        +(r.clash.length?(r.took.length?" It also changed":`${who(src)} saved changes to`)+` fields of this deal’s ${andList(r.clash)} that this tab has also changed: this tab keeps its own, and saving here writes them over the other’s.`:""),r.clash.length?0:12000); }
+    return out;
+  }
+  /* read the store (another tab may have saved since), then sync the console's deal; whether anything changed */
+  function mergeCur(src){ const held=CUR?dealById(CUR):null, changed=mergeStore(); STATS=null; const out=syncCur(held,src); out.changed=changed||!!out.lost; toolbar(); return out; }
   function toolbar(){
-    const d=CUR&&dealById(CUR); if(CUR&&!d) CUR=null;
+    const d=CUR&&dealById(CUR); if(d) HELD=d; else if(CUR) lose(HELD&&HELD.id===CUR?HELD:null,true);
     const ed=d&&unsaved(d);
-    $("tl_deal").innerHTML=d?`<span class="tl-k">Deal</span><b class="tl-n">${hEsc(d.name)}</b><span class="tl-st st-${d.status}">${STATUS[d.status]}</span>${ed?'<span class="tl-ed">unsaved changes</span>':""}`
+    $("tl_deal").innerHTML=d?`<span class="tl-k">Deal</span><b class="tl-n">${hEsc(d.name)}</b><span class="tl-st st-${d.status}">${STATUS[d.status]}</span>${ed?'<span class="tl-ed">unsaved changes</span>':UNSTORED.has(d.id)?'<span class="tl-ed">kept in this tab only</span>':""}`
       :'<span class="tl-k">Unsaved valuation</span>';
     $("tl_save").textContent=d?(ed?"Save changes":"Update deal"):"Save deal";
     $("tl_saveas").hidden=!d;
@@ -8128,37 +8247,36 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     else { el.hidden=true; el.textContent=""; }
   }
   function saveCurrent(asNew,from){
-    const I=snap(); if(!I) return;
-    /* another tab may have changed the deal since: start from the store as it now stands */
-    const held=CUR?dealById(CUR):null, S=CUR_SNAP&&held&&CUR_SNAP.id===held.id?CUR_SNAP:null;
-    mergeStore();
-    const now=new Date().toISOString(), base=CUR?dealById(CUR):null;
-    /* the deal in the console was deleted in another tab: the valuation is saved as a new deal under its name, and the
-       message says why (r4-deals-7) */
-    const lost=held&&!base?held:null; if(lost) CUR=null;
-    let d=!asNew&&base?base:null, made=false, took=[];
-    /* the worksheet goes with a deal while it set the deal's SDE or is the deal's own; of the deal in the console, only the
-       parts changed in this tab are written, and another tab's save of the rest stands */
-    if(d){ const w=wsFor(d);
-      if(!S||!sameInputs(I,S.inputs)) d.inputs=I;
-      if(!S||!sameFin(FIN,S.fin)) d.fin={...FIN};
-      if(!S||JSON.stringify(w)!==S.ws) d.ws=w;
+    if(!snap()) return;
+    /* the store as it now stands first: the fields of the deal in the console saved elsewhere and unchanged here come into
+       the console, a field both changed keeps this tab's value, and a deal deleted elsewhere is found (LOST) */
+    const m=mergeCur(), I=snap(); if(!I) return;
+    const now=new Date().toISOString(), base=CUR?dealById(CUR):null, lost=!base&&LOST?LOST:null;
+    let d=!asNew&&base?base:null, made=false, prev=null;
+    /* the deal in the console takes the console's parts, which now hold the store's with this tab's changes over them; its
+       worksheet only while the dialog holds this deal's */
+    if(d){ prev=cloneDeal(d); d.inputs=I; d.fin={...FIN}; const w=wsMine(d); if(w!==undefined) d.ws=w;
       if(d.autoName) d.name=autoNameOf(d); d.updated=stamp(d.updated); }
     else { const src=lost||base, auto=!src||src.autoName;
-      /* a new deal, or a new valuation of the deal in the console: its listing and outcome start empty */
+      /* a new deal, or a new valuation of the deal in the console: its listing and outcome start empty. A deal deleted
+         elsewhere keeps its name, its worksheet and the business and recipient (DRAFT, taken from it) */
       d=cleanDeal({id:newId(),name:auto?nameFor(I):lost?lost.name:base.name+" (copy)",autoName:auto,status:"valuing",created:now,updated:now,
-        inputs:I,fin:FIN,ws:wsFor(src||(from?dealById(from):null)),business:src?src.business:DRAFT.business,preparedFor:src?src.preparedFor:DRAFT.preparedFor});
-      DEALS.unshift(d); CUR=d.id; made=true; if(!src) DRAFT={business:"",preparedFor:""}; }
+        inputs:I,fin:FIN,ws:lost?wsFor(lost)||wsFor(null):wsFor(src||(from?dealById(from):null)),
+        business:base?base.business:DRAFT.business,preparedFor:base?base.preparedFor:DRAFT.preparedFor});
+      DEALS.unshift(d); CUR=d.id; made=true; if(!base) DRAFT={business:"",preparedFor:""}; if(lost) LOST=null; }
     const ok=saveDeals();
-    if(!made) took=takeUp(d,S);
+    /* a write the store refuses keeps the change in this tab (UNSTORED), and the snapshot stays the copy as stored */
+    if(!ok&&prev&&!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev);
     /* the dialog is the saved deal's own when it holds the deal's worksheet as saved, or nothing: what is typed in it next
        is marked and saved with the deal (r4-worksheet-1); a worksheet left from elsewhere stays no deal's */
     if(!wsHas(WS)||JSON.stringify(cleanWS(WS))===JSON.stringify(d.ws)) WS_OWNER=d.id;
-    snapDeal(d); toolbar();
+    snapDeal(storedOf(d)); toolbar();
+    const cl=ok&&!made?[...CLASH]:[]; if(ok) CLASH.clear();
     say("tl_msg",ok?(lost?`“${lost.name}” was deleted in another tab, so this valuation is saved as a new deal, “${d.name}”.`
         :made?`Saved as “${d.name}”. Rename it and record its outcome in the Deals tab.`
-        :"Deal updated."+(took.length?` Another tab had saved changes to its ${andList(took)}, which the console now shows.`:""))
-      :(made?`“${d.name}” is in this tab only. `:"Updated in this tab only. ")+storeMsg(),ok?(lost||took.length?12000:7000):0);
+        :"Deal updated."+(m.took.length?` Another tab had saved changes to its ${andList(m.took)}, which the console now shows.`:"")
+          +(cl.length?` Where both tabs changed its ${andList(cl)}, this tab’s values replaced the other’s.`:""))
+      :(made?`“${d.name}” is in this tab only. `:"Updated in this tab only. ")+storeMsg(),ok?(lost||m.took.length||cl.length?12000:7000):0);
     return d;
   }
 
@@ -8186,7 +8304,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   }
   function finFill(keep){ $("f_type").value=FIN.type; $("f_type_h").textContent=DSC_HINT[FIN.type]; $("f_standby").checked=FIN.standby;
     for(const k in FF){ const e=$(FF[k]); if(keep&&e===document.activeElement) continue; e.value=FFMT[k](FIN[k]); e.classList.remove("bad"); } }
-  function finChanged(){ PREFS.fin={...FIN}; savePrefs("fin"); renderFinance(); toolbar(); }
+  function finChanged(){ PREFS.fin={...FIN}; if(!savePrefs("fin")) say("tl_msg",storeMsg()); renderFinance(); toolbar(); }
   function renderFinance(){
     const s=STATE.s, r=STATE.r; if(!s||!r) return;
     const V=r.V, cols=[];
@@ -8203,7 +8321,8 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       ${row("Price",f=>`<b>${money(f.price)}</b>${sub((f.price/V).toFixed(2)+"× model value"+(f.project>f.price?"; "+money(f.project)+" with working capital and costs":""))}`)}
       ${row("SBA 7(a) loan",f=>money(f.loan)+sub(f.loan>0?f.rate.toFixed(2)+"%, "+SBA_COO.amortYears+" years"+(f.over>0?"; at the 7(a) maximum":""):"none"))}
       ${row("Seller note",f=>money(f.note)+sub(f.note>0?(f.standby?"full standby":FFMT.noteRate(FIN.noteRate)+", "+FFMT.noteYears(FIN.noteYears)):"none"))}
-      ${row("Buyer cash",f=>money(f.cash)+(f.loan>0&&!f.equityOK?flag((f.standby&&f.note>0?"equity "+pctDown(f.equityShare)+" with the standby note":pctDown(f.equityShare))+": under SBA’s 10%")
+      ${row("Buyer cash",f=>money(f.cash)+(f.loan>0&&!f.equityOK?flag((f.standby&&f.note>0?"equity "+pctDown(f.equityShare)+(f.type==="buyout"?" of the price":"")+" with the standby note"
+          :pctDown(f.equityShare)+(f.type==="buyout"?" of the price":""))+": under SBA’s 10%")
         :sub(p1(f.cash/Math.max(f.project,1))+" of the project")))}
       ${row("Acquisition debt",f=>money(f.debt)+(f.debtOverValue?flag(money(f.debt-V)+" over value"):sub(f.loan>0?(f.debt/V).toFixed(2)+"× model value":"no SBA loan")))}
       ${row("Payments a year",f=>money(f.ds)+sub(money(f.monthly)+" a month"))}
@@ -8213,7 +8332,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
         :f.loan===0?`<b class="fin-cov">${covFmt(f)}</b>${sub("the note’s own: with no SBA loan, no SBA minimum")}`
         :`<b class="fin-cov ${f.ok?"ok":"no"}">${covFmt(f)}</b>${sub((f.ok?"meets ":"below ")+f.min.toFixed(2)+"×")}`)}
     </tbody>`;
-    const mf=maxFinanced(s,FIN,V), nm=ownKey(DSC_NAMES,FIN.type)?DSC_NAMES[FIN.type]:DSC_NAMES.initial;
+    const mf=maxFinanced(s,FIN,V), nm=ownKey(DSC_NAMES,FIN.type)?DSC_NAMES[FIN.type]:DSC_NAMES.initial, E=finEdges(mf);
     let big, txt;
     if(mf.noLoan){ big="no loan"; txt="Buyer cash and the seller note pay the whole price, whatever it is: SBA’s tests do not apply."; }
     else if(mf.price===0){ big="none"; txt=mf.bind==="cap"?`The working capital and closing costs alone take the 7(a) maximum loan of ${money(SBA_COO.maxLoan)}.`
@@ -8227,17 +8346,18 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     else if(mf.price===Infinity){ const lw=debtCheck(s,s.ask,FIN,V).loan; big="no limit";
       txt=`Coverage and the valuation do not limit the price: the SBA loan${lw>0?`, ${money(lw)} for working capital and closing costs,`:""} does not grow with it.`
         +(mf.equityShort&&!mf.equityTo?` The buyer’s equity is under SBA’s 10% minimum: for ${nm} ${EQUITY_WAIVER}.`:""); }
-    else { big=moneyDown(mf.price);
+    else if(E.none){ big="none"; txt=`No whole-dollar price passes every test at this structure: the buyer’s equity, with the standby note’s credit, reaches SBA’s 10% minimum only from ${E.from}, and the structure stops working above ${E.top}.`; }
+    else { big=E.top;
       txt=(mf.bind==="value"?`Here the acquisition debt reaches the model value of ${money(V)}, which stands in for the lender’s business valuation: SBA caps the debt at it, so above this price the buyer puts in the difference as equity, cash or a seller note on full standby${mf.covPrice>mf.price*1.005?"; coverage alone would allow more":""}.`
         :mf.bind==="cap"?`Here the SBA loan reaches the 7(a) maximum of ${money(SBA_COO.maxLoan)}, with coverage and the debt still within SBA’s limits; a higher price takes more buyer cash, or a larger seller note, than this structure sets.`
         :`Here coverage falls to ${mf.target.toFixed(2)}×; above it the buyer needs more cash, a larger note on full standby or a lower price.`)
         +` ${(mf.price/V).toFixed(2)}× model value, ${(mf.price/s.ern).toFixed(2)}× SDE.`+(mf.equityShort&&!mf.equityTo?` The buyer’s equity is under SBA’s 10% minimum: for ${nm} ${EQUITY_WAIVER}.`:""); }
     /* with working capital the equity can pass or fail from some price on, and with none at all SBA bars working capital
        from the loan */
-    if(mf.price>0&&!mf.noLoan){
+    if(mf.price>0&&!mf.noLoan&&!E.none){
       /* each edge printed on its passing side: the first passing price rounded up, the last rounded down */
-      if(mf.equityFrom) txt+=` Below ${moneyUp(mf.equityFrom)} the buyer’s equity, with the standby note’s credit, is under SBA’s 10% minimum${mf.equityWaivable?`: for ${nm} ${EQUITY_WAIVER}.`:", which for an initial acquisition cannot be waived: the structure works only from that price up."}`;
-      else if(mf.equityTo) txt+=` ${mf.equityAbove?`Between ${moneyDown(mf.equityTo)} and ${moneyUp(mf.equityAbove)}`:`Above ${moneyDown(mf.equityTo)}`} the buyer’s equity is under SBA’s 10% minimum of the price: for ${nm} ${EQUITY_WAIVER}.${mf.equityAbove
+      if(mf.equityFrom) txt+=` Below ${E.from} the buyer’s equity, with the standby note’s credit, is under SBA’s 10% minimum${mf.equityWaivable?`: for ${nm} ${EQUITY_WAIVER}.`:", which for an initial acquisition cannot be waived: the structure works only from that price up."}`;
+      else if(mf.equityTo&&mf.type==="buyout") txt+=` ${mf.equityAbove?`Between ${moneyDown(mf.equityTo)} and ${moneyUp(mf.equityAbove)}`:`Above ${moneyDown(mf.equityTo)}`} the buyer’s equity is under SBA’s 10% minimum of the price: for ${nm} ${EQUITY_WAIVER}.${mf.equityAbove
         ?` Past the 7(a) maximum the rest of the price is buyer cash, which brings it back to 10% from ${moneyUp(mf.equityAbove)}.`:""}`;
       const fA=isFinite(mf.price)?debtCheck(s,mf.price,FIN,V):debtCheck(s,s.ask,FIN,V);
       if(mf.equityShort&&mf.equityWaivable&&fA.loan>0&&fA.equityIn<=0&&fA.project>fA.price) txt+=` With no equity the lender would have to eliminate it, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business’s own cash or a line of credit.`; }
@@ -8308,7 +8428,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   }
   /* every edit in the dialog comes here: the worksheet edited is the one of the deal in the console, or of the unsaved
      valuation, whichever deal it came from (r4-worksheet-1) */
-  function wsSave(){ WS_OWNER=CUR||"draft"; PREFS.ws=WS; savePrefs("ws"); toolbar(); }
+  function wsSave(){ WS_OWNER=CUR||"draft"; PREFS.ws=WS; if(!savePrefs("ws")) say("rc_msg",storeMsg()); toolbar(); }
   function wsUse(){
     const R=recastSDE(WS); if(!wsReady(R)) return;
     /* the message goes beside the control the dialog was opened from */
@@ -8370,12 +8490,17 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* the report's fields typed in since they were last filled: another tab's save refreshes only the others (the business
      field has the focus as the report opens, so the focus alone cannot say what is being typed) */
   const RP_TYPED=new Set();
+  /* the broker, the firm and the opt-in record as stored (another tab may have changed them) */
+  const readNames=()=>{ const p=load(K_PREFS,null); if(p&&typeof p==="object"){
+    if(typeof p.broker==="string") PREFS.broker=p.broker.slice(0,120); if(typeof p.firm==="string") PREFS.firm=p.firm.slice(0,120); PREFS.calib=p.calib===true; } };
   const longDate=()=>new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
   const reportMeta=()=>({business:$("rp_biz").value.trim(),preparedFor:$("rp_for").value.trim(),broker:$("rp_broker").value.trim(),firm:$("rp_firm").value.trim()});
   function reportOpen(opener){
     /* a change committed by this very click (a money box it took the focus from) is still queued for the next frame:
        draw it first, so the report reads the console as it now stands */
     if(_rq){ cancelAnimationFrame(_rq); _rq=0; render(); }
+    /* the store and the preferences first: a tab that missed another's save opens with the names stored (r5-deals-6) */
+    mergeCur("tab"); readNames(); say("rp_msg","");
     const s=STATE.s; if(!s) return;
     const d=CUR&&dealById(CUR);
     $("rp_broker").value=PREFS.broker; $("rp_firm").value=PREFS.firm;
@@ -8393,10 +8518,12 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     if(e.type==="input") RP_TYPED.add(e.target.id);
     if(e.type!=="change"||!ownKey(RP_FIELD,e.target.id)) return;
     const k=RP_FIELD[e.target.id], v=e.target.value.trim().slice(0,120); RP_TYPED.delete(e.target.id);
-    if(k==="broker"||k==="firm"){ PREFS[k]=v; savePrefs(k); return; }
-    mergeStore(); const d=CUR&&dealById(CUR);
-    /* a change to the deal moves its updated time, so an export carries it to another browser */
-    if(d){ if(d[k]!==v){ d[k]=v; d.updated=stamp(d.updated); saveDeals(); } }
+    if(k==="broker"||k==="firm"){ PREFS[k]=v; if(!savePrefs(k)) say("rp_msg",storeMsg(),0); return; }
+    mergeCur("tab"); const d=CUR&&dealById(CUR);
+    /* a change to the deal moves its updated time, so an export carries it to another browser; a write the store refuses
+       keeps it in this tab and says so (r5-report-4) */
+    if(d){ if(d[k]!==v){ const prev=cloneDeal(d); d[k]=v; d.updated=stamp(d.updated);
+        if(!saveDeals()){ if(!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev); say("rp_msg",storeMsg(),0); } } }
     else DRAFT={...DRAFT,[k]:v};
   }
   const slug=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,48);
@@ -8416,7 +8543,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
        when the deal changed since the form opened (r4-deals-1); a form moved to another deal (a copy) is built for it */
     if(EDIT&&dealById(EDIT)){ if(!FORM_DIRTY||FORM_ID!==EDIT) dealsEdit(EDIT);
       else if(dealById(EDIT).updated!==FORM_V) say("dl_form_msg","This deal was changed since this form opened; saving here applies only the fields changed in this form.",0); }
-    else { EDIT=null; delArm=null; $("dl_edit_sec").hidden=true; }
+    else { if(EDIT) say("dl_msg","The deal being edited was deleted in another tab.",0); EDIT=null; delArm=null; $("dl_edit_sec").hidden=true; }
     document.querySelectorAll("#view-deals .sec").forEach(x=>x.classList.add("landed"));
   }
   function dealsTable(S){
@@ -8455,18 +8582,20 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   }
   function dealsFit(S){
     const pen=S.pen, q=S.quality, above=`listed at least ${DEAL_MIN.penGap}% above value`, atV="listed at or below value";
+    /* listings past the survey's range are left out of the fit and of its counts, and the card says so (r5-deals-10) */
+    const far=pen.nFar?` ${pen.nFar} finished listing${pen.nFar===1?"":"s"} priced more than 200% above value, past the survey&rsquo;s range, ${pen.nFar===1?"is":"are"} left out.`:"";
     /* a fit at the edge of its search is said to be one: the scale's top (0.99) or a close rate at its floor */
     const penTxt=pen.ready&&pen.cLo?`<p class="dl-fitres">Not fitted: of your ${pen.n} finished listings, those at or below value closed too seldom to fit your own close rate,
-        so the scale cannot be told apart from it. More listings that close will settle it.</p>`
+        so the scale cannot be told apart from it. More listings that close will settle it.${far}</p>`
       :pen.ready?(()=>{ const inside=PEN_MAX>=pen.lo&&PEN_MAX<=pen.hi, top=x=>x>=.99-1e-3?"0.99, the top of its range":x.toFixed(2);
         return `<p class="dl-fitres">Fitted on your ${pen.n} finished listings, ${pen.nAbove} of them ${above}: <b>${top(pen.pen)}</b>
           (90% interval ${pen.lo.toFixed(2)}–${top(pen.hi)}) against the console&rsquo;s ${PEN_MAX.toFixed(2)}. ${inside?"Your listings are consistent with the console&rsquo;s number.":
           pen.pen>PEN_MAX?"Your listings say pricing above value costs more than the console assumes.":"Your listings say pricing above value costs less than the console assumes."}
           ${pen.cBound?`Fitted with it, your close rate at value reaches the model&rsquo;s 95% ceiling on every listing, so it is known only to be at least ${pen.c.toFixed(2)}&times; the model&rsquo;s base rate; the close-rate card above compares the two directly.`
-            :`Fitted with it, your listings close at ${pen.c.toFixed(2)}&times; the model&rsquo;s base rate${Math.abs(pen.c-1)>.1?", a difference the close-rate card above also reflects":""}.`}</p>`; })()
+            :`Fitted with it, your listings close at ${pen.c.toFixed(2)}&times; the model&rsquo;s base rate${Math.abs(pen.c-1)>.1?", a difference the close-rate card above also reflects":""}.`}${far}</p>`; })()
       :`<p>${prog(Math.min(pen.n,DEAL_MIN.pen),DEAL_MIN.pen)}${pen.n>=DEAL_MIN.pen?`${pen.n} finished listings, enough`:`${pen.n} of the ${DEAL_MIN.pen} finished listings it needs`}; ${pen.nAbove>=DEAL_MIN.penAbove
         ?`${pen.nAbove} ${above}, enough`:`${pen.nAbove} of the ${DEAL_MIN.penAbove} ${above} it needs`}; ${pen.nAt>=DEAL_MIN.penAt
-        ?`${pen.nAt} ${atV}, enough`:`${pen.nAt} of the ${DEAL_MIN.penAt} ${atV} it needs`}.</p>`;
+        ?`${pen.nAt} ${atV}, enough`:`${pen.nAt} of the ${DEAL_MIN.penAt} ${atV} it needs`}.${far}</p>`;
     const qTxt=q.ready?`<div class="tw"><table class="dl-q"><thead><tr><th scope="col">Factor</th><th class="n" scope="col">Effect on price per peer step</th><th class="n" scope="col">SE</th></tr></thead><tbody>
         ${q.dims.map((k,i)=>`<tr><th scope="row">${FACTOR[k]||k}</th><td class="n">${(q.beta[i]>=0?"+":"−")+Math.abs(q.beta[i]*100).toFixed(1)}%</td><td class="n">${(q.se[i]*100).toFixed(1)}%</td></tr>`).join("")}</tbody></table></div>
         <p class="note">Least squares of the log of each sale price over the fitted value before quality, on the factors in peer standard deviations.${q.dropped.length
@@ -8485,6 +8614,8 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   function dealsStore(S){
     let kb=0; try{ kb=(localStorage.getItem(K_DEALS)||"").length/1024; }catch(e){}
     const odd=KEPT.length+(S&&S.unread||0);
+    if(NOCOPY!==null){ $("dl_store").innerHTML=`<b>The deals stored here could not be read</b>, and this browser has no room to copy them aside, so this page saves nothing over them${DEALS.length?`: the ${DEALS.length} deal${DEALS.length===1?"":"s"} here ${DEALS.length===1?"is":"are"} in this tab only`:""}.
+      <button class="btn tool" id="dl_unread" type="button">Download them</button> to keep them as a file; saving then goes on.`; return; }
     $("dl_store").innerHTML=(STORE_OK
       ?`${DEALS.length} deal${DEALS.length===1?"":"s"} kept in this browser (${kb<1?"under 1":Math.round(kb)} KB). They do not follow you to another browser or device, and clearing this site&rsquo;s data deletes them: export a copy now and then.`
       :STORE_ERR==="full"?`<b>This browser&rsquo;s storage for this page is full</b>: the latest changes are kept in this tab only. Export the deals to keep them, then delete some or shorten long notes.`
@@ -8527,8 +8658,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     FORM_SNAP={}; for(const [k,v] of new FormData($("dl_form")).entries()) FORM_SNAP[k]=String(v); FORM_V=d.updated;
   }
   function dealsSubmit(form){
-    mergeStore(); const d=dealById(EDIT);
-    if(!d){ EDIT=null; renderDeals(); say("dl_msg","This deal was deleted in another tab, so the changes were not saved."); return; }
+    mergeCur("tab"); const d=dealById(EDIT);
+    if(!d){ EDIT=null; renderDeals(); say("dl_msg","This deal was deleted in another tab, so the changes were not saved.",0); return; }
+    const prev=cloneDeal(d);
     const F=new FormData(form), bad=[], get=k=>String(F.get(k)||"").trim();
     form.querySelectorAll(".bad").forEach(e=>e.classList.remove("bad"));
     const mark=k=>{ bad.push(k); const e=form.elements[k]; if(e) e.classList.add("bad"); };
@@ -8560,13 +8692,16 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       if(x!==null&&(x>1.5||x<.3)) tips.push(`The sale price is ${x.toFixed(2)}× ${d.listPrice>0?"the listing price":"the ask saved with it"}: check it, since one mistyped sale moves your price record.`); }
     if(d.status==="closed"&&!d.salePrice) tips.push("Add the sale price to count this deal in your price record.");
     if(d.status==="closed"&&!(d.listDate&&d.closeDate)) tips.push("Add both dates to count its time to close.");
-    const ok=saveDeals(); FORM_DIRTY=false; renderDeals(); toolbar();
+    const ok=saveDeals(); if(!ok&&!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev); FORM_DIRTY=false; renderDeals(); toolbar();
     say("dl_form_msg",(bad.length?"Not saved, check the marked fields: "+bad.map(k=>LAB[k]||k).join(", ")+"."+(ok?" The rest is saved. ":" "):ok?"Saved. ":"")
       +tips.join(" ")+(ok?"":(tips.length?" ":"")+storeMsg()),bad.length||tips.length||!ok?12000:5000);
     bad.forEach(k=>{ const e=$("dl_form")&&$("dl_form").elements[k]; if(e) e.classList.add("bad"); });
   }
   let delArm=null, delN=0;
   function dealsAct(act,id,btn){
+    /* a copy, an open or an edit reads the store first, as the list did when it was drawn (r5-deals-5) */
+    if(act==="dup"||act==="open"||act==="edit"){ const m=mergeCur("tab"); if(m.changed) renderDeals();
+      if(!dealById(id)){ say("dl_msg","That deal was deleted in another tab.",0); return; } }
     const d=dealById(id); if(!d) return;
     if(act==="edit"){ dealsEdit(id); $("dl_edit_sec").scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"}); return; }
     if(act==="open") return openDeal(id);
@@ -8580,7 +8715,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       /* the press arms the button for four seconds; only that arming's own timer disarms it */
       if(delArm!==id){ const n=++delN; delArm=id; btn.textContent="Press again to delete";
         setTimeout(()=>{ if(delN===n&&delArm===id){ delArm=null; if(btn.isConnected) btn.textContent="Delete"; } },4000); return; }
-      delArm=null; mergeStore();
+      delArm=null; mergeCur("tab");
       const cur=dealById(id)||d, at=DEALS.indexOf(cur), pg=ownKey(GONE,id)?GONE[id]:null;
       GONE[id]=stamp(Math.max(Date.parse(cur.updated)||0,pg?Date.parse(pg):0));
       DEALS=DEALS.filter(x=>x.id!==id);
@@ -8597,7 +8732,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   function openDeal(id){
     const d=dealById(id); if(!d) return;
     CUR=id; FIN=cleanFin(d.fin); finFill(); PREFS.fin={...FIN}; DRAFT={business:"",preparedFor:""};
-    WS=d.ws?cleanWS(d.ws):emptyWS(); WS_OWNER=d.id; PREFS.ws=WS; savePrefs("fin","ws"); snapDeal(d);
+    WS=d.ws?cleanWS(d.ws):emptyWS(); WS_OWNER=d.id; PREFS.ws=WS; if(!savePrefs("fin","ws")) say("tl_msg",storeMsg()); snapDeal(storedOf(d)); LOST=null; CLASH.clear();
     const t=document.querySelector('.nav .tab[data-v="console"]');
     /* a dispatched click, not t.click(): with reduced motion the nav's warp re-clicks the tab at once, and a browser
        ignores click() on an element whose own click() is still running */
@@ -8607,7 +8742,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   const csvCell=v=>{ let t=v===null||v===undefined?"":String(v); if(/^[=+\-@\t\r]/.test(t)) t="'"+t; return /[",\n\r]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
   /* the exports, like the Deals tab, read the store first: a tab that missed another's save backs up what is stored */
   function exportCSV(){
-    mergeStore(); STATS=null; const S=stats(), H=["id","name","status","industry","state","franchise","revenue","sde","ask","list_price","list_date","sale_price","close_date",
+    mergeCur("tab"); const S=stats(), H=["id","name","status","industry","state","franchise","revenue","sde","ask","list_price","list_date","sale_price","close_date",
       "cash_at_close_share","buyers_contacted","offers","model_value_today","model_expected_price_at_list_or_ask","model_median_price_at_list_or_ask",
       "model_close_chance_at_list_or_ask","model_median_days_at_list_or_ask","notes"];
     const rows=DEALS.map(d=>{ let p=S.pred.get(d); if(!p) try{ p=dealPredict(d); }catch(e){ p=null; } const I=d.inputs;
@@ -8618,7 +8753,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     download(`omni-deals-${today()}.csv`,"text/csv",[H.join(","),...rows].join("\r\n")+"\r\n");
   }
   function exportJSON(){
-    mergeStore(); STATS=null; const out={format:"omni.deals",version:1,exported:new Date().toISOString(),deals:DEALS};
+    mergeCur("tab"); const out={format:"omni.deals",version:1,exported:new Date().toISOString(),deals:DEALS};
     if(KEPT.length) out.unreadable=KEPT;
     download(`omni-deals-${today()}.json`,"application/json",JSON.stringify(out,null,1)+"\n");
   }
@@ -8630,19 +8765,22 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     rd.onload=()=>{ let j=null; try{ j=JSON.parse(String(rd.result)); }catch(e){}
       const list=Array.isArray(j)?j:j&&Array.isArray(j.deals)?j.deals:null;
       if(!list){ say("dl_msg","Not a deals file: export one from this page (JSON) to import it."); return; }
-      mergeStore();
-      const before=DEALS.slice(), wasOK=STORE_OK;
+      mergeCur("tab"); const held=CUR?dealById(CUR):null;
+      const before=DEALS.slice(), wasOK=STORE_OK, addIds=[], updIds=[];
       let add=0, upd=0, skip=Math.max(0,list.length-IMPORT_MAX);
       for(const raw of list.slice(0,IMPORT_MAX)){ const d=cleanDeal(raw); if(!d){ skip++; continue; }
         /* a record with no time of its own counts as the oldest: it never replaces a copy here */
         const dated=!!(raw&&isoTime(raw.updated)), i=DEALS.findIndex(x=>x.id===d.id);
         /* importing a deal deleted here brings it back, as the later act: it is stamped now, after its deletion, which every
            tab's list of deletions then lets stand */
-        if(i<0){ if(ownKey(GONE,d.id)) d.updated=stamp(GONE[d.id]); DEALS.push(d); add++; }
-        else if(dated&&Date.parse(d.updated)>Date.parse(DEALS[i].updated)){ DEALS[i]=d; upd++; } else skip++; }
+        if(i<0){ if(ownKey(GONE,d.id)) d.updated=stamp(GONE[d.id]); DEALS.push(d); addIds.push(d.id); }
+        else if(dated&&Date.parse(d.updated)>Date.parse(DEALS[i].updated)){ DEALS[i]=d; updIds.push(d.id); } else skip++; }
       const ok=saveDeals();
       if(!ok&&STORE_ERR==="full"){ DEALS=before; STATS=null; STORE_OK=wasOK; renderDeals(); toolbar();
         say("dl_msg",`Nothing imported: with these deals the store would be past what this browser keeps for the page. Import fewer deals, or delete some here first.`,12000); return; }
+      /* counted as imported only if the save kept it (r5-deals-9); the deal in the console is taken up as from a tab */
+      add=addIds.filter(dealById).length; upd=updIds.filter(dealById).length; skip+=addIds.length+updIds.length-add-upd;
+      syncCur(held,"import");
       renderDeals(); toolbar();
       say("dl_msg",`Imported ${add} new deal${add===1?"":"s"} and updated ${upd}; ${skip} skipped (invalid, or not newer than the copy here${list.length>IMPORT_MAX?`, or past the first ${IMPORT_MAX.toLocaleString("en-US")} records`:""}).`
         +(ok?"":" "+storeMsg()),12000); };
@@ -8675,7 +8813,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   $("tl_saveas").addEventListener("click",()=>saveCurrent(true));
   /* "Reset to the framework example" starts a new valuation: the deal the inputs came from stays as saved, out of reach
      of a later "Save changes", and the report's business and recipient start empty */
-  $("reset").addEventListener("click",()=>{ DRAFT={business:"",preparedFor:""}; WS_OWNER=null; const d=CUR&&dealById(CUR); if(!d) return; CUR=null; toolbar();
+  $("reset").addEventListener("click",()=>{ DRAFT={business:"",preparedFor:""}; WS_OWNER=null; LOST=null; CLASH.clear(); const d=CUR&&dealById(CUR); if(!d) return; CUR=null; toolbar();
     say("tl_msg",`Back at the framework example; “${d.name}” is unchanged in the Deals tab.`); });
   $("rc_close").addEventListener("click",closeDlg);
   $("rc_ent").addEventListener("change",()=>{ WS.entity=ownKey(RECAST_ENTITY,$("rc_ent").value)?$("rc_ent").value:"scorp"; wsSave(); wsBuild(); });
@@ -8716,31 +8854,38 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* another tab saved deals: merge them in and redraw; an edit form with nothing typed in it shows the deal as it now
      stands, one being typed in keeps what is typed and says the deal changed */
   window.addEventListener("storage",e=>{
-    if(e.key===K_PREFS){ const p=load(K_PREFS,null); if(p&&typeof p==="object"){
-        if(typeof p.broker==="string") PREFS.broker=p.broker.slice(0,120); if(typeof p.firm==="string") PREFS.firm=p.firm.slice(0,120); PREFS.calib=p.calib===true;
+    if(e.key===K_PREFS){ const p=load(K_PREFS,null); if(p&&typeof p==="object"){ readNames();
         if(OPEN&&OPEN.id==="report"){ for(const [id,v] of [["rp_broker",PREFS.broker],["rp_firm",PREFS.firm]]) if(!RP_TYPED.has(id)) $(id).value=v;
           if(REPORT) $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta()); }
         const cb=$("dl_calib"); if(cb) cb.checked=PREFS.calib; toolbar(); } return; }
     if(e.key!==null&&e.key!==K_DEALS&&e.key!==K_GONE) return;
     const was=EDIT&&dealById(EDIT), v=was?was.updated:null;
-    mergeStore(); STATS=null;
+    mergeCur("tab");
     /* the Deals tab's table, cards and fits redraw only while it shows: opening it draws them (renderDeals), so a tab
        showing the console does not run the fits on every save made elsewhere (r3-core-7) */
     if(!$("view-deals").hidden){ const S=stats(); dealsTable(S); dealsTrack(S); dealsFit(S); dealsStore(S); }
-    /* the deal in the console: the parts another tab saved that this tab has not changed are taken up */
     const c=CUR&&dealById(CUR);
-    if(c&&CUR_SNAP&&CUR_SNAP.id===c.id&&c.updated!==CUR_SNAP.v){ const took=takeUp(c,CUR_SNAP); snapDeal(c);
-      /* an open report is rebuilt on the console as it now stands */
-      if(took.length&&OPEN&&OPEN.id==="report"&&STATE.s) REPORT=reportData(STATE.s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()}); }
     /* the report's business and recipient follow the deal, as its broker and firm follow the preferences */
     if(c&&OPEN&&OPEN.id==="report"){ for(const [id,v] of [["rp_biz",c.business],["rp_for",c.preparedFor]]) if(!RP_TYPED.has(id)) $(id).value=v;
       if(REPORT) $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta()); }
     toolbar();
     if(!EDIT) return;
     const d=dealById(EDIT);
-    if(!d){ EDIT=null; delArm=null; $("dl_edit_sec").hidden=true; say("dl_msg","The deal being edited was deleted in another tab."); return; }
+    if(!d){ EDIT=null; delArm=null; $("dl_edit_sec").hidden=true; say("dl_msg","The deal being edited was deleted in another tab.",0); return; }
     if(d.updated!==v){ if(FORM_DIRTY) say("dl_form_msg","This deal was changed in another tab; saving here applies only the fields changed in this form.",0); else dealsEdit(EDIT); } });
-  $("dl_track").addEventListener("change",e=>{ if(e.target.id!=="dl_calib") return; PREFS.calib=e.target.checked; savePrefs("calib"); toolbar(); });
+  $("dl_track").addEventListener("change",e=>{ if(e.target.id!=="dl_calib") return; PREFS.calib=e.target.checked; if(!savePrefs("calib")) say("dl_msg",storeMsg()); toolbar(); });
+  /* the unreadable deals that could not be copied aside, as a file; then this page saves again (r5-deals-8) */
+  $("dl_store").addEventListener("click",e=>{ if(!e.target.closest("#dl_unread")||NOCOPY===null) return;
+    download(`omni-deals-unreadable-${today()}.txt`,"text/plain",NOCOPY); NOCOPY=null; STORE_ERR=null; STORE_OK=true;
+    const ok=saveDeals(); dealsStore(stats()); toolbar();
+    say("dl_msg","Downloaded the deals that could not be read as a file"+(ok?"; this page saves here again.":". "+storeMsg()),12000); });
+  /* a column or a row of cells pasted into a money box arrives with its line breaks and tabs as spaces, which can read as
+     one grouped number ("512" over "470" as 512,470): a paste with a line break or a tab between figures is refused and
+     the box marked (r5-core-1, r5-worksheet-5) */
+  document.addEventListener("paste",e=>{ const el=e.target;
+    if(!el||!el.matches||!el.matches('input.v,input.fin-v,input.rc-in,#dl_form input[name="listPrice"],#dl_form input[name="salePrice"],#dl_form input[name="cashAtClose"],#dl_form input[name="buyers"],#dl_form input[name="offers"]')) return;
+    const t=e.clipboardData?e.clipboardData.getData("text"):"";
+    if(/\S[\t\r\n]+\s*\S/.test(t)){ e.preventDefault(); el.classList.add("bad"); } },true);
 
   /* after every render: the financing table and the toolbar follow the console */
   const r0=window.render;
@@ -8748,7 +8893,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   window.OMNI_BROKER={
     /* the tab handler calls this once a view is showing: a deal opened from the Deals tab lands in the console only now,
        so the console renders while it is visible */
-    tab(v){ if(v==="deals"){ mergeStore(); STATS=null; renderDeals(); } else if(v==="console"&&PENDING){ const p=PENDING; PENDING=null; applyInputs(p); } },
+    tab(v){ if(v==="deals"){ mergeCur("tab"); renderDeals(); } else if(v==="console"&&PENDING){ const p=PENDING; PENDING=null; applyInputs(p); } },
     /* for the browser tests */
     state:()=>({deals:DEALS,kept:KEPT,cur:CUR,fin:{...FIN},ws:WS,prefs:{...PREFS},draft:{...DRAFT},store:STORE_OK}),
     applyInputs,snap,openDeal,saveCurrent,reportFile
@@ -15278,7 +15423,8 @@ function start(){
 .btn.tool.sm{min-height:32px;padding:5px 12px;font-size:12.5px}
 .btn.tool:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
 .btn.tool:focus-visible{outline:2px solid #d8ecff;outline-offset:2px}
-.tools-msg{margin:0;font:400 12.5px/1.5 var(--sans);color:var(--ink2,#b9c3d8)}
+.tools-msg{margin:0;font:400 12.5px/1.5 var(--sans);color:var(--ink2,#b9c3d8);overflow-wrap:anywhere}
+.rp-bar .tools-msg{flex:1 1 100%}
 .tools-msg:empty{display:none}
 
 /* the toolbar above the hero */

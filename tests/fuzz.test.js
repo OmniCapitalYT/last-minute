@@ -295,7 +295,7 @@ for(let i=0;i<N;i++){
   /* 10. the broker tools, on the same random businesses (AUDIT.md, "Broker tools"): the financing check's identities and
      monotonicity, the highest financeable price, coverage as printed, the worksheet's arithmetic, a deal's prediction and
      the report's figures */
-  { const V=r.V, f={type:pick(["initial","expansion","buyout"]),cash:pick([0,.05,.1,.2,.5,.9]),note:pick([0,.05,.1,.3,.9]),noteRate:pick([0,4,6,9]),
+  { const V=r.V, f={type:pick(["initial","expansion","buyout"]),cash:pick([0,.05,.0995,.1,.2,.5,.9]),note:pick([0,.05,.1,.3,.9]),noteRate:pick([0,4,6,9]),
       noteYears:pick([1,5,10,25]),standby:rnd()<.3,extra:rnd()<.5?0:V*.2*rnd(),capex:rnd()<.5?0:s.ern*.3*rnd(),draw:rnd()<.5?null:s.ern*rnd()};
     const p=s.ask, c=A.debtCheck(s,p,f,V), S=A.SBA_COO, share=1-f.cash-f.note;
     ok([c.loan,c.cash,c.note,c.ds,c.cf,c.rate,c.draw,c.equityNeed,c.equityIn,c.debt].every(fin)&&(fin(c.dscr)||c.dscr===Infinity),"broker: debt check finite",ctx(s,f));
@@ -310,9 +310,11 @@ for(let i=0;i<N;i++){
     /* coverage as printed: rounded down, never the minimum it fails */
     { const t=A.covFmt(c), x=parseFloat(t);
       ok(!(c.ds>0)?/^no (payments|debt)$/.test(t):!(c.cf>0)?t==="none":(/^\d+\.\d\d×$/.test(t)&&x<=c.dscr+1e-9&&(c.ok?x>=c.min-1e-9:x<c.min-1e-9)),"broker: coverage prints rounded down, below the minimum when it fails",ctx(s,f,{t})); }
-    /* coverage never rises with the price below the cap, for shares that leave the loan to the price */
-    if(share>=0){ let prev=Infinity, mono=true; for(let k=0;k<12;k++){ const q=p*Math.pow(1.35,k-6), d=A.debtCheck(s,q,f,V);
-        if(d.over>0||!(d.cf>0)) break; if(d.dscr>prev*(1+1e-9)+1e-12) mono=false; prev=d.dscr; }
+    /* coverage never rises with the price below the cap, for shares that leave the loan to the price, while a standby
+       note stays as it is: with no SBA loan in front of it a note on full standby is paid, so coverage jumps where the
+       loan first appears */
+    if(share>=0){ let prev=Infinity, sb=null, mono=true; for(let k=0;k<12;k++){ const q=p*Math.pow(1.35,k-6), d=A.debtCheck(s,q,f,V);
+        if(d.over>0||!(d.cf>0)) break; if(sb!==null&&d.standby!==sb) prev=Infinity; if(d.dscr>prev*(1+1e-9)+1e-12) mono=false; prev=d.dscr; sb=d.standby; }
       ok(mono,"broker: coverage falls as the price rises",ctx(s,f)); }
     /* the highest financeable price: every price below it passes coverage and the valuation, the named test fails just above */
     const m=A.maxFinanced(s,f,V), t=S.dsc[f.type], pass=d=>d.dscr>=t&&!d.debtOverValue;
@@ -336,6 +338,14 @@ for(let i=0;i<N;i++){
       /* no such price: the equity stays short as far as the console reaches (r4-report-2) */
       if(m.capped&&m.equityShort&&!m.equityAbove) ok(!A.debtCheck(s,1e11,f,V).equityOK,"broker: an equity short past the cap with no price named stays short at every price",ctx(s,f)); }
     if(f.type==="initial"&&m.price>0&&!m.equityShort&&!m.noLoan) ok(A.debtCheck(s,1e3,f,V).equityOK||m.equityFrom>0,"broker: an initial acquisition's price stands only with its equity floor named",ctx(s,f));
+    /* an equity edge lies where there is an SBA loan on both sides, and only an owner buyout's equity stops passing as the
+       price rises (r5-financing-1) */
+    ok((!m.equityTo||f.type==="buyout")&&[m.equityTo,m.equityFrom].every(e=>!e||A.debtCheck(s,e*.999,f,V).loan>=1),
+       "broker: an equity edge has an SBA loan on both sides, and a ceiling is an owner buyout's alone (r5-financing-1)",ctx(s,f,{et:m.equityTo,ef:m.equityFrom}));
+    /* the highest price and the equity floor as printed never cross, and each passes every test as printed (r5-financing-2) */
+    { const E=A.finEdges(m);
+      if(E.top&&E.from&&!E.none) ok(A.moneyVal(E.from)<=A.moneyVal(E.top)&&A.debtCheck(s,A.moneyVal(E.top),f,V).equityOK&&pass(A.debtCheck(s,A.moneyVal(E.from),f,V)),
+        "broker: the printed equity floor is never above the printed highest price, and each passes every test (r5-financing-2)",ctx(s,f,E)); }
     if(m.price>0&&isFinite(m.price)){ const t=A.moneyDown(m.price), u=t.slice(-1), x=parseFloat(t.replace(/[^0-9.]/g,""))*({B:1e9,M:1e6,k:1e3}[u]||1);
       const st={B:1e7,M:1e4,k:1e3}[A.money(m.price).slice(-1)]||1;
       ok(x<=m.price*(1+1e-12)&&m.price-x<st*(1+1e-9),"broker: the highest price is shown rounded down, by less than one unit of money's precision",ctx(s,f,{t,mp:m.price})); }
@@ -371,11 +381,25 @@ for(let i=0;i<N;i++){
          steps the model weights alike */
       { const SE=A.sensitivity(s), r0=A.model(s), at=(k,kind)=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, near=s[k]+(v.inv?-st:st);
           const rn=A.model({...s,[k]:near}), small=room>=st-1e-9&&rn.V-V<=V*.001;
-          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?small&&rn.z[k]===r0.z[k]:kind==="bottom"?small&&rn.z[k]!==r0.z[k]&&r0.qz<-3:false;
+          const lim=v.inv?r0.z[k]>=3.2:r0.z[k]<=-3.2;
+          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?small&&lim:kind==="bottom"?small&&!lim&&r0.qz<-3:kind==="flat"?small&&!lim&&r0.qz>=-3:false;
           return {okKind,g:A.model({...s,[k]:kind==="step"?near:best}).V-V}; };
         ok(D.sens.every(g=>g.full===(g.kind==="step")&&g.keys.every(k=>{ const o=at(k,g.kind); return o.okKind&&Math.abs(o.g/g.gain-1)<.006; })),"broker: every lever's gain is the model's own step, room or best",ctx(s));
-        ok(D.sens.every(g=>g.n===1||(g.kind==="step"&&g.keys.every(k=>A.QW.w[k]===A.QW.w[g.keys[0]]))),"broker: a lever line groups only steps the model weights alike",ctx(s)); }
+        ok(D.sens.every(g=>g.n===1||(g.kind==="step"&&g.keys.every(k=>A.QW.w[k]===A.QW.w[g.keys[0]]))),"broker: a lever line groups only steps the model weights alike",ctx(s));
+        /* every lever whose best adds over 0.1% of the value is named, or three lines name larger gains (r5-report-1) */
+        const miss=SE.filter(v=>!v.pinned&&v.h!==null&&A.RAIL_BEST[v.k]!==undefined).filter(v=>{ const k=v.k, best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k];
+            if(!(room>1e-9)) return false; const gB=A.model({...s,[k]:best}).V-V; if(!(gB>V*.001)) return false;
+            const st=2*v.h, gS=room>=st-1e-9?A.model({...s,[k]:s[k]+(v.inv?-st:st)}).V-V:gB, g=gS>V*.001?gS:gB;
+            return !D.sens.some(L=>L.keys.includes(k))&&!(D.sens.length===3&&D.sens[2].gain>=g*(1-.006)); });
+        ok(!miss.length,"broker: every lever whose best moves the value is named, or ranks below three larger lines (r5-report-1)",ctx(s,{miss:miss.map(v=>v.k)})); }
       const h=A.reportHTML(D,{business:"<b>x</b>",broker:"y",firm:"z"});
+      /* the patient-seller ask carries the console's own qualifiers (optNote): the ask cap, a range, a coin toss (r5-report-2);
+         the improvements say the ask they are measured at (r5-report-3) */
+      { const rs=D.sell.ratio, rw=D.walk.ratio, on=A.optNote({...s,rhoSell:rs,optRho:rw},V,A.model({...s,ask:V*rs}),A.model({...s,ask:V*rw}));
+        const capX=on.kind==="higher"&&rw>A.RHO_MAX-.02;
+        ok(D.same||((!capX||h.includes("cap on the ask (a judgment), not an optimum"))&&(!on.alt||/close to a tie with another ask: read it as/i.test(h))&&(!on.coin||h.includes("close to a coin toss"))),
+           "broker: the patient-seller ask carries the console's qualifiers: the ask cap, a range, a coin toss (r5-report-2)",ctx(s,{cap:capX,alt:!!on.alt,coin:on.coin}));
+        ok(!D.fixes.length===!h.includes(`Each gain assumes the ask reset to ${rs.toFixed(2)}× the new value.`),"broker: the improvements state the ask they are measured at (r5-report-3)",ctx(s)); }
       ok(!/NaN|undefined|Infinity|−\d\.\d\d×|-\d\.\d\d×/.test(h)&&!h.includes("<b>x</b>")&&h.includes(A.covFmt(D.cur.fin)),"broker: the report is finite, escapes what is typed and prints coverage as the console does",ctx(s,f));
       ok((Math.abs(D.qFactor-1)>.005)===/Model value <span class="rp-bx">/.test(h)&&(D.extrap.length>0)===/Extrapolated/.test(h),"broker: the report's value badge and extrapolation note follow the console's rules",ctx(s));
       /* SBA's minimum grades only the asks with an SBA loan; no claim that no price meets the equity minimum; the empty-lever

@@ -1692,8 +1692,8 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        "43: cash and a note typed to more than the price: the note is cut to what the cash leaves, and the parts still add up to the price");
     ok(whole.loan===0&&whole.sbaPay===0&&!sb.standby&&Math.abs(sb.notePay-A.annualPayment(sb.note,6,10))<1e-9&&sb.debt===sb.note&&sb.ds===sb.notePay&&/^\d+\.\d\d×$/.test(A.covFmt(sb)),
        "43: cash and a note that pay the whole price leave no loan; a note marked standby with no loan to stand behind is paid on its own terms");
-    ok(A.debtCheck(s0,s0.ask,{},V).noteConv&&!A.debtCheck(s0,s0.ask,{note:.07,noteRate:7,noteYears:7},V).noteConv&&!A.debtCheck(s0,s0.ask,{standby:true},V).noteConv&&!A.debtCheck(s0,s0.ask,{note:0},V).noteConv,
-       "43: a paid note on the starting structure's terms rests on that convention; the broker's own terms, a standby note or no note do not");
+    ok(A.debtCheck(s0,s0.ask,{},V).noteConv&&!A.debtCheck(s0,s0.ask,{note:.07,noteRate:7,noteYears:7},V).noteConv&&A.debtCheck(s0,s0.ask,{standby:true},V).noteConv&&!A.debtCheck(s0,s0.ask,{standby:true,note:.07},V).noteConv&&!A.debtCheck(s0,s0.ask,{note:0},V).noteConv,
+       "43: a paid note on the starting structure's terms, or a standby note at its share, rests on that convention; the broker's own terms or no note do not (r5-financing-5)");
     const t=A.debtCheck(s0,2e6,{type:"constructor"},V), m=A.maxFinanced(s0,{type:"__proto__"},V);
     ok(t.min===1.25&&t.type==="initial"&&m.target===1.25&&m.type==="initial"&&A.recastSDE({weight:"constructor",years:[{rev:1e6,ni:1e5},{rev:9e5,ni:3e5}]}).sde===1e5
        &&A.dealsStats([{inputs:{...s0,ind:"constructor"},status:"closed",salePrice:1e6}]).n===0&&A.ownKey(A.IND,"medical")&&!A.ownKey(A.IND,"toString"),
@@ -2074,12 +2074,13 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        report still says what all nine at their best would add */
     const sR={...s0,ind:"rest",own:.95,mgt:.08,fin:.14,rev:8e5,ern:1.2e5,ask:4e5,grw:-.25,gm:.12,rec:0,cc:.14,ret:.05,plt:.95,yrs:1}, DR=A.reportData(sR,{}), hR=A.reportHTML(DR,{}), rR=A.model(sR);
     const step=(s,k)=>{ const v=A.sensitivity(s).find(r=>r.k===k); return s[k]+(v.inv?-2*v.h:2*v.h); };
+    const lim=k=>A.sensitivity(sR).find(r=>r.k===k).inv?rR.z[k]>=3.2:rR.z[k]<=-3.2;
     ok(DR.qz===rR.qz&&rR.qz<-3&&DR.sens.length>0&&DR.sens.every(g=>g.kind==="bottom"||g.kind==="far")&&DR.sens.some(g=>g.kind==="bottom")
-       &&DR.sens.filter(g=>g.kind==="far").every(g=>g.keys.every(k=>A.model({...sR,[k]:step(sR,k)}).z[k]===rR.z[k]))
-       &&DR.sens.filter(g=>g.kind==="bottom").every(g=>g.keys.every(k=>A.model({...sR,[k]:step(sR,k)}).z[k]!==rR.z[k]))
+       /* "far": the factor's own z at its limit before the step, which the step leaves there or lifts a sliver (r5-report-1) */
+       &&DR.sens.filter(g=>g.kind==="far").every(g=>g.keys.every(k=>lim(k)))&&DR.sens.filter(g=>g.kind==="bottom").every(g=>g.keys.every(k=>!lim(k)&&A.model({...sR,[k]:step(sR,k)}).z[k]!==rR.z[k]))
        &&/one step does not register past the bottom of the quality range; at its best it would add about/.test(hR)
        &&hR.includes(`The business sits past the bottom of the quality range: all nine quality factors at their best would add about ${A.money(DR.allBest)} together.`)
-       &&!/too far below its peers/.test(hR.replace(/<li><b>(Gross margin)<\/b>[^<]*<\/li>/,"")),
+       &&DR.sens.every(g=>/too far below its peers/.test(hR.split(`<li><b>${g.names}</b>`)[1].split("</li>")[0])===(g.kind==="far")),
        `43: a restaurant past the bottom of the quality range (composite ${rR.qz.toFixed(2)}): each line gives the true reason a step does not register, and the report adds what all nine at their best would add (r4-report-1)`);
     /* r4-report-6: in print the business holds to two lines and the date-first block after it to three */
     const W=n=>"W".repeat(n), hN=A.reportHTML(A.reportData(s0,{date:"October 20, 2026"}),{business:W(120),preparedFor:W(120),broker:W(120),firm:W(120)});
@@ -2100,6 +2101,57 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
           for(const keys of [[it.k],["reprice",it.k]]){ const x=A.model(A.applyAll(s,r,keys,s.rhoSell)); if(x.EVp-c>b.V.net){ out={k:it.k,c}; break; } } }
         if(out) named++; if(b.U===b.V||JSON.stringify(out)!==JSON.stringify(b.V.blocked)) wrong++; } }
     ok(seen>=20&&named>=5&&wrong===0,`43: when both cards keep the empty programme, the proceeds card names the change its own search finds, not the utility card's (${seen} businesses, ${named} with a change, ${wrong} wrong; r4-core-1)`); }
+  /* ---- round 5 ---- */
+  { const EX={ind:"medical",rev:10**6.778,ern:10**6.161,ask:10**6.508,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:10**(4+2.778*.36),lamT:900,theta:.75,rate:10.5};
+    const VX=A.model(EX).V, txt=h=>h.replace(/<[^>]+>/g," ").replace(/&rsquo;/g,"’").replace(/\s+/g," ");
+    /* r5-report-1: a factor at its z limit whose step lifts its z only a sliver is named at its best, with the reason */
+    const lev=(s,k)=>A.reportData(s,{}).sens.find(g=>g.keys.includes(k));
+    const l1=lev({...EX,ind:"saas",ret:.34},"ret"), l2=lev({...EX,ind:"saas",gm:.21},"gm");
+    const sT={...EX,...A.RAIL_BEST,ind:"saas",gm:.25}, DT=A.reportData(sT,{}), hT=A.reportHTML(DT,{}), VT=A.model(sT).V;
+    ok(!!l1&&l1.kind==="far"&&l1.gain>5e5&&!!l2&&l2.kind==="far"&&l2.gain>1e6&&A.model({...sT,gm:.97}).V-VT>VT*.001&&DT.sens.some(g=>g.keys.includes("gm"))
+       &&!/no single factor, even at its best, moves the value/.test(hT),
+       `43: a factor at its z limit whose step lifts its z only a sliver is named at its best (retention ${l1?A.money(l1.gain):"missing"}, gross margin ${l2?A.money(l2.gain):"missing"}), and near the top of the range the report does not say no factor moves the value (r5-report-1)`);
+    /* r5-report-2: the patient-seller ask carries the console's qualifiers */
+    const hC=txt(A.reportHTML(A.reportData({...EX,theta:.95,lamT:0},{}),{})), h0=txt(A.reportHTML(A.reportData(EX,{}),{}));
+    ok(/If you can walk away \$[\d.]+M 1\.50× value.*1\.50× value is the console’s cap on the ask \(a judgment\), not an optimum: asks from 1\.\d\d× up come within 1% of value of it\./.test(hC)
+       &&/If you can walk away .*Close to a tie with another ask: read it as 1\.20–1\.26× value\./.test(h0),
+       "43: the patient-seller ask carries the console's qualifiers: at the 1.5x cap a judgment, not an optimum, with the asks within 1% of value of it; a range where another ask is close to a tie (r5-report-2)");
+    /* r5-report-3: the improvements are measured, and say they are, with the ask reset to the recommended ratio of the value after them */
+    const D3=A.reportData(EX,{}), h3=txt(A.reportHTML(D3,{})), rs=A.bestRatio(EX,0,0), t3=A.interventionTable({...EX,rhoSell:rs},A.model(EX)).filter(t=>t.k!=="reprice"&&t.net>0).slice(0,3);
+    ok(D3.fixes.length===3&&D3.fixes.every((t,i)=>t.k===t3[i].k&&Math.abs(t.dE-t3[i].dE)<1e-6)&&h3.includes(`Each gain assumes the ask reset to ${rs.toFixed(2)}× the new value.`),
+       `43: the improvements are measured, and say they are, with the ask reset to ${rs.toFixed(2)}x the business's value after the change (r5-report-3)`);
+    /* r5-financing-1: a loan under a dollar at small prices names no equity edge */
+    const mz=["initial","expansion","buyout"].map(type=>A.maxFinanced(EX,{type,cash:.0995,note:.9},VX));
+    const hz=txt(A.reportHTML(A.reportData(EX,{fin:{type:"initial",cash:.0995,note:.9}}),{}));
+    ok(mz.every(m=>m.equityTo===null&&m.equityFrom===null)&&/at every price this structure finances\./.test(hz)&&!/Above about \$/.test(hz),
+       "43: 9.95% buyer cash beside a 90% note names no equity edge where the loan passes a dollar: an initial acquisition is short at every price it finances (r5-financing-1)");
+    /* r5-financing-2: the highest price and the equity floor print so they never cross */
+    { const f={type:"initial",cash:.06,note:.1,standby:true,extra:4e5,draw:1e5}; let hit=null;
+      for(let ern=1.5e5;ern<6e5&&!hit;ern*=1.0005){ const s={...EX,ern,rev:ern/.25,ask:1e6}, V2=A.model(s).V, m=A.maxFinanced(s,f,V2);
+        if(m.price>0&&isFinite(m.price)&&m.equityFrom&&A.moneyVal(A.moneyUp(m.equityFrom))>A.moneyVal(A.moneyDown(m.price))) hit={s,V2,m}; }
+      const E=hit?A.finEdges(hit.m):{}, top=A.moneyVal(E.top), from=A.moneyVal(E.from);
+      ok(!!hit&&from<=top&&A.debtCheck(hit.s,top,f,hit.V2).equityOK&&!A.debtCheck(hit.s,from,f,hit.V2).debtOverValue&&E.top==="$"+Math.floor(hit.m.price).toLocaleString("en-US"),
+         `43: where the equity floor rounded up would print above the highest price rounded down, both print in whole dollars and both pass (${E.from} to ${E.top}; r5-financing-2)`); }
+    /* r5-financing-5: a seller note on full standby at the starting share sizes the loan */
+    const fS={standby:true}, DS=A.reportData(EX,{fin:fS}), hS=A.reportHTML(DS,{});
+    ok(A.debtCheck(EX,EX.ask,fS,VX).noteConv&&!A.debtCheck(EX,EX.ask,{standby:true,note:.07},VX).noteConv&&DS.maxFin.bind==="value"&&hS.includes("the seller-note convention (the highest financed price)"),
+       "43: a seller note on full standby at the starting 5% share moves the highest financed price and coverage, so they carry x judgment and the footer names the convention (r5-financing-5)");
+    /* r5-deals-10: listings past the survey's range are left out of the penalty fit and counted */
+    const LP=(n,x)=>Array.from({length:n},(_,i)=>({inputs:{...s0},listPrice:V*x,status:i%2?"closed":"expired",salePrice:i%2?V:null}));
+    const Df=A.dealsStats(LP(10,1.25).concat(LP(5,3.2),LP(5,.95)));
+    ok(Df.pen.nFar===5&&Df.pen.n===15&&Df.pen.nAbove===10&&!Df.pen.ready,"43: a finished listing more than 200% above value is left out of the penalty fit and counted, so its card can say so (r5-deals-10)");
+    /* r5-worksheet-5, r5-core-1: a number grouped with spaces uses one kind throughout */
+    { const src=HTML.slice(HTML.indexOf("function parseAmount(t){")), pa=new Function(src.slice(0,src.indexOf("\n}\n")+2)+";return parseAmount;")();
+      const NB=String.fromCharCode(160), NN=String.fromCharCode(0x202f), TH=String.fromCharCode(0x2009);
+      const two=["512"+NN+"000 470"+NN+"000","45"+NN+"000 500","1"+NB+"450 000","512"+NB+"000 470"+NB+"000","1"+TH+"450"+NN+"000"], one=["1 450 000","1"+NB+"450"+NB+"000","1"+NN+"450"+NN+"000","$ 1 450 000","6"+TH+"200"+TH+"000"];
+      ok(two.every(t=>isNaN(pa(t)))&&one.every(t=>pa(t)>1e6),"43: a number grouped with spaces uses one kind throughout, so a pasted column of cells grouped with no-break spaces is two amounts (r5-worksheet-5, r5-core-1)"); }
+    /* found while testing round 5: a loan share of 0.05% (9.95% cash beside a 90% note) puts the 7(a) maximum at a $10B
+       price, where a rounding error read as a loan past it; and a 90% note on full standby, paid below the price where an
+       SBA loan first appears, read "no price" though every financed price passed */
+    { const sF={...EX,ind:"fit",rev:49868000,ern:17035000,ask:12469000}, fF={type:"initial",cash:.0995,note:.9,noteRate:4,noteYears:25,standby:true}, VF=A.model(sF).V, mF=A.maxFinanced(sF,fF,VF);
+      const sA={...EX,ind:"auto",rev:11549,ern:4371.9,ask:9455.4}, fA={type:"initial",cash:.0995,note:.9,noteRate:30,noteYears:1,standby:true,draw:3800}, VA=A.model(sA).V, mA=A.maxFinanced(sA,fA,VA), dA=A.debtCheck(sA,mA.price,fA,VA);
+      ok(mF.bind==="cap"&&A.debtCheck(sF,mF.price,fF,VF).over===0&&mA.price>2e3&&dA.loan>0&&dA.ok&&!dA.debtOverValue,
+         `43: at the 7(a) maximum a rounding error is no loan past it, and a standby note paid below the first SBA loan does not stop the search for the highest price (${A.money(mA.price)}; found in round 5)`); } }
   /* the page wiring */
   ok(HTML.includes('<button class="tab" data-v="deals">Deals</button>')&&HTML.includes('<section class="sec" id="sec_fin" data-norender>')
      &&HTML.includes('<div id="view-deals" hidden data-norender>')&&HTML.includes('if(el.closest("[data-norender]")) return;')
