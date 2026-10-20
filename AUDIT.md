@@ -1388,12 +1388,14 @@ Asked what in the console would help a working business broker, I named four too
 
 None of them changes a figure the model reports. They read the model, and the Data tab's tallies (565 fitted, 156 aggregate, 345 judgment) are unchanged.
 
+This section describes the tools as they now stand. "Skeptic review of the broker tools" below records what that review found and changed.
+
 ### How it is built
 - **Pure functions in the model half of the script,** before the test loader's cut, so the tests run them without a browser:
-  - `debtCheck` and `maxFinanced`, with `annualPayment` and `sbaRateLoan`;
-  - `recastSDE`;
-  - `dealPredict`, `dealsStats`, `fitPenaltyScale`, `olsFit` and `logSummary`;
-  - `reportData` and `reportHTML`, with the paper's stylesheet `RP_CSS`.
+  - `debtCheck`, `maxFinanced`, `noPriceWC` and `covFmt`, with `annualPayment`, `sbaRateLoan`, `marketPay` and the rounding helpers `moneyDown` and `moneyUp`;
+  - `recastSDE` and `recastNotes`;
+  - `dealPredict`, `dealsStats`, `fitPenaltyScale`, `olsFit`, `sampleSummary` and `t95`;
+  - `reportData`, `reportLevers` and `reportHTML`, with the paper's stylesheet `RP_CSS`, its page size `RP_PAGE`, the page's copy of the sheet (`rpScope`) and the downloaded file (`reportFileHTML`).
 - **The page code** comes at the end of the main script. It adds:
   - a toolbar above the hero;
   - a "Financing check" section after the budget optimizer;
@@ -1404,25 +1406,27 @@ None of them changes a figure the model reports. They read the model, and the Da
 - **Inputs that skip the full render.** Inputs inside `[data-norender]` (the financing check, the Deals tab and the dialogs) redraw only their own part. A keystroke there no longer re-runs the whole console and its 2,048-call optimizer: the browser test counts zero renders.
 - **Storage.** Deals and preferences stay in this browser, under `localStorage` keys `omni.deals.v1` and `omni.prefs.v1`:
   - everything read back is cleaned first, imports included, because both are untrusted;
-  - when storage is refused (a private window), every save says so and the Deals tab says the deals last only until the page closes;
+  - when storage is refused (a private window), every save says so and the Deals tab says the deals last only until the page closes; a full store is named as full;
+  - another tab of the page writes the same store, so every save first merges with it: the newer copy of a deal wins, and an edit's time is always after the copy it was made from, whatever the clock. A deletion is kept with its time (`omni.deals.v1.deleted`, merged before it is written) so an older tab cannot bring the deal back, and a backup that restores a deal is stamped after its deletion. A missing or repeated id is derived from the record, so every tab gives it the same id. The edit form saves only the fields typed in it, and the preferences only the keys changed. Other tabs redraw when the store changes, the Deals tab's fits only while it shows;
   - deals export to JSON and CSV and import from JSON.
 
 ### The financing check
 - **The rules** are read from SBA's own SOP 50 10 8.1 (the docx and the procedural notice on sba.gov). Appendix 15 governs 7(a) changes of ownership for applications numbered from October 1, 2026. They are published rules, labelled aggregate:
+  - **Transaction types,** three of Appendix 15's four categories. A business expansion is a business operating 2+ full fiscal years under its current owners buying all of one in its own 4-digit NAICS industry group. An owner buyout is owners or employees active in the business for the last 24 months buying out an owner; anyone else may take under half and not become the largest owner, or the deal is an initial acquisition. The fourth category, a purchase by an ESOP or a cooperative, has rules of its own that the check does not model. Anything else is an initial acquisition.
   - **Coverage.** At least 1.25× debt service coverage for an initial acquisition or an owner buyout, and 1.15× for a business expansion. It is tested on the last fiscal year or the average of the last two, historical or adjusted (Para. C.2.b).
-  - **Equity.** At least 10% of the total project cost; for an owner buyout, 10% of the price. Seller debt on full standby for the life of the loan may supply at most half of it.
+  - **Equity.** At least 10% of the total project cost; for an owner buyout, 10% of the price. Seller debt on full standby for the life of the loan may supply at most half of it. For a business expansion or an owner buyout the lender may reduce or eliminate it when the business keeps the liquidity and working capital to run, with no negative net worth, and a loan whose equity is eliminated may not fund working capital; for an initial acquisition it cannot be reduced.
   - **Loan terms.** Amortization of at most 10 years without real estate. The maximum Standard 7(a) loan is $5,000,000.
-  - **The debt cap.** All acquisition debt, including a seller note not on full standby, is limited to the business valuation.
-  - **Due diligence.** The lender may value a business priced at $350,000 or less itself (Para. C.1.a). From a $3M price it also needs a Quality of Earnings report, except for an owner buyout.
+  - **The debt cap.** All acquisition debt, including a seller note not on full standby, is limited to the business valuation; any price above it is paid in equity: cash, or a seller note on full standby.
+  - **Due diligence.** The lender may value a business priced at $350,000 or less itself, unless buyer and seller have a close relationship, such as existing owners or family (Para. C.1.a); the check takes an owner buyout as one. From a $3M price it also needs a Quality of Earnings report, except for an owner buyout.
 
   Paragraph letters are cited only where SBA's own cross-references give them. The other rules are cited by section name.
 - **Coverage** is SDE, less the new owner's pay and any capital spending, over a year of payments on the SBA loan and the seller note (none when the note is on full standby).
-- **Two fitted tables are reused:**
-  - **The rate** is today's prime plus the fitted SBA spread, read on the loan's own size.
-  - **The new owner's pay** defaults to a general manager's market pay for the industry and size (BLS).
+- **Two of the console's tables are reused:**
+  - **The rate** is today's prime plus the fitted SBA spread, read on the loan's own size. The prime moves no model figure; this is its one reader.
+  - **The new owner's pay** defaults to a general manager's market pay for the industry and size (BLS OEWS, aggregate; reading it at the firm's size rank is judgment), with the employer's payroll taxes and benefits (×1.24, BLS ECEC, the loading the console's GM hire uses), because SDE adds the seller's back.
 - **The starting structure** is 10% buyer cash and a 5% seller note at 6% over 10 years. The cash is SBA's minimum; the note is a common structure (judgment). Every part is editable.
-- **The table** shows each ask (the two optimizer asks and the broker's own) as price, loan, note, cash, payments, cash available and coverage, against the minimum.
-- **The highest price this structure finances** is found by bisection on coverage. Above the 7(a) maximum the rest is buyer cash, so the cap, not coverage, can bind; the check says which one does.
+- **The table** shows each ask (the two optimizer asks and the broker's own; the broker's shares a column only at the same price) as price, loan, note, cash, acquisition debt (flagged above the model value), payments, cash available and coverage. Coverage prints rounded down, so a ratio just under the minimum never reads as the minimum, and SBA's minimum grades it only where there is an SBA loan. With no loan a note on full standby has nothing to stand behind, so it is paid on its own terms.
+- **The highest price this structure finances** is the highest price at which coverage meets the minimum and the acquisition debt stays within the model value, which stands in for the lender's valuation, with the shares as typed. A scan in 5% steps finds the first price that fails and a bisection its edge. The search stops where the loan reaches the 7(a) maximum: past it the shares no longer hold, since the rest of the price would be buyer cash. It prints rounded down, so the price shown passes its own tests, and the box names what binds (coverage, the value or the cap). Where working capital and a standby note make the equity share move with the price, it names the price where the equity starts or stops passing; past the 7(a) maximum a short equity runs to the price where buyer cash reaches 10%. For an initial acquisition a structure short of 10% works at no price below that. With no equity at all the lender would have to eliminate the requirement, and SBA then bars working capital from the loan: the box says so. When the working capital and closing costs in the loan alone take more payments than coverage allows, the box says that, not that the business covers no loan.
 - **Notes** cover equity short of 10%, debt above the model value, the QoE threshold and the lender's valuation.
 
 ### The add-back worksheet
@@ -1431,20 +1435,26 @@ None of them changes a figure the model reports. They read the model, and the Da
   - one working owner's pay with its payroll taxes and perks;
   - depreciation and amortization;
   - interest;
+  - income taxes deducted above the income line (state and local, or a pass-through entity tax);
   - one-time, personal or above-market items.
 
-  It subtracts non-operating income and the pay to bring any other working owner to market.
-- **Line names, not line numbers, for each source:**
+  It subtracts non-operating income and the pay to bring any other working owner to market. Expense lines are read as amounts spent, so "(12,000)" there adds back 12,000; a "Less" line always deducts, and says so when given a negative.
+- **Line names, not line numbers, for each source,** with what each form already leaves out (interest, capital gains, charitable gifts and section 179 on a pass-through's Schedule K; payroll taxes that Schedule C and Form 1065 never deduct) and what it puts elsewhere (officer pay in cost of goods sold, on Form 1125-E; a C corporation's charitable contributions, inside its starting line):
   - Form 1120-S, Form 1120 and Form 1065;
   - Schedule C, whose owner's pay is the net profit itself;
   - an income statement.
 - **Basis.** The most recent year, a 3:2:1 weighting, or an average of the years entered.
 - **Warnings** (judgment thresholds that change no figure):
-  - add-backs above 15% of SDE;
-  - SDE more than 15% below the year before;
+  - one-time and discretionary add-backs (the items above zero) over 15% of SDE;
+  - SDE more than 15% below the year compared, named;
   - no positive earnings;
-  - a Schedule C owner's pay counted twice.
-- **"Use in the console"** sets SDE, revenue and, if wanted, growth. It leaves the ask alone.
+  - a Schedule C owner's pay counted twice;
+  - payroll taxes or income taxes that the source never deducted;
+  - an expense or a deduction typed as a negative;
+  - a year with revenue alone, named: it stays out of SDE, and sets the growth only as one of the two most recent years.
+
+  The report states only the flags of the years the SDE's basis reads, naming the amounts added back. Two amounts in one cell, or a pasted row of cells, are refused, as is a negative revenue.
+- **"Use in the console"** sets SDE, revenue and, if wanted, growth. It leaves the ask alone. A figure past the console's range is held to it, marked as a typed one is, and named in the message, which echoes each figure as its box shows it.
 
 ### The seller report
 - **One page,** with:
@@ -1456,10 +1466,10 @@ None of them changes a figure the model reports. They read the model, and the Da
   - the earnings basis, when the worksheet set the SDE;
   - the sources and a disclaimer.
 
-  Every figure carries its badge.
+  Every figure carries the console's badge for it. Where a judgment input also moves a fitted or published figure (the quality position, the price-gap penalty above value, the overpricing time multiplier, the seller-note convention and the pay's rank), the badge adds "× judgment"; coverage's own badge follows what moves it (the SBA rate's fitted spread where there is a loan, the market pay, the seller-note convention). An extrapolated value carries the console's warning. Each value lever is the model's own gain for one peer step toward its best (the unit the console's sensitivity ranks every lever in, selects included), for the room left before its best when that is nearer, or, for a factor too far below its peers for a step to register, at its best. A line groups only levers the model weights alike; a lever with no room or no gain is not offered, and a business past the bottom of the quality range is told what all nine factors at their best would add.
 - **Text typed into the report is escaped.**
-- **The paper** has its own stylesheet, which reverts the page's styles inside it. The preview, the print and the downloaded `.html` file look alike, and the file has no script and no link.
-- **Printing** while the report is open prints the paper alone. It fits one Letter page; the browser test checks the PDF's page count.
+- **The paper** has its own stylesheet, which reverts the page's styles inside it. The page holds it under the paper's id, so no page rule outranks it, and the page's few `!important` rules stop at the paper: the preview and the print lay out exactly as the downloaded `.html` file does, and the browser test compares every computed property of every element. The file has no script and no link.
+- **Printing** while the report is open prints the paper alone, on Letter with .3in top and bottom margins and .4in at the sides. It fits one page: the tallest report three searches could reach prints at 953 of the page's 998 px, and the browser test prints the tallest the reviewers found, from the page and from the file, and checks the PDF's page count.
 - **Remembered fields.** The broker's name and firm are kept for the next report; the business and recipient are kept with the deal.
 
 ### Saved deals
@@ -1470,13 +1480,13 @@ None of them changes a figure the model reports. They read the model, and the Da
   - the cash at closing, the buyers contacted, the offers received and notes.
 - **The comparison is with today's model,** run at each deal's listing price.
 - **The track record:**
-  - **Sale price** over the model's median, from 3 closed deals, as a factor with a 90% interval.
-  - **Time to close** over the model's median, from 3 closed deals with both dates.
+  - **Sale price** over the model's expected price if it sells, at the listing price, from 3 closed deals: the mean of the ratios, which is 1 for deals that sell as the model expects. Its 90% interval pools the deals' own spread with the model's, counted as ten deals, and reads Student's t.
+  - **Time to close** over the model's median, from 3 closed deals with both dates, with or without a sale price.
   - **The close rate** of finished listings against the rate the model expected at those prices, from 5.
 - **The opt-in price record** shows beside the console's value and in the report. It is display only, read with the weight of ten deals toward the model (`CALIB_K`, judgment).
 - **What the deals can fit:**
-  - **The price-gap penalty's scale** (0.45, judgment), by maximum likelihood with an SE from the curvature, once 20 finished listings include 5 listed above value.
-  - **The nine quality effects,** by least squares, once there are 60 closed deals.
+  - **The price-gap penalty's scale** (0.45, judgment), fitted together with the broker's own close rate at value by maximum likelihood (a grid refined by golden section, since each listing's 95% cap can give the likelihood more than one peak), with a 90% profile-likelihood interval, once 20 finished listings include 5 listed at least 10% above value. When every listing at value closed, the close rate is stated only as a lower bound.
+  - **The nine quality effects,** by least squares, once there are 60 closed deals, leaving out a factor that never varies.
 
   Until then the tab shows the progress. The Data tab's "Still judgment" note now points to the Deals tab, and a new Data tab section lists every rule and convention the tools use, with its badge.
 
@@ -1489,6 +1499,7 @@ None of them changes a figure the model reports. They read the model, and the Da
 - **On a phone the deals table hid all but two columns.** It now uses the page's own card layout for tables.
 
 ### Tests
+As first built; the skeptic review below added to them, and its table has the counts now.
 - **Section 43 of model.test.js** (37 checks):
   - SBA's rule values;
   - the annuity and the loan's rate;
@@ -1521,3 +1532,216 @@ None of them changes a figure the model reports. They read the model, and the Da
   | `node tests/browser.inputs.js` | 15 checks pass |
   | `node tests/browser.sweep.js` | 121 input states at each of 1440 and 390 px pass (118 before: the sweep walks every console select, and the financing check's transaction type adds three) |
   | `node tests/browser.broker.js` | 38 checks pass (new) |
+
+## Skeptic review of the broker tools, October 2026
+
+The owner asked: "go through everything one last time with a team of skeptics and test invariants/sanity checks to make sure eveyrthing is correct.  repeat until it is 100% waterproof".
+
+### How it ran
+- **Each round** sends five reviewers, one per area: the financing check, the add-back worksheet, the seller report, saved deals, and the rest of the app (the core models, the page, the Data tab).
+- **Each reviewer must reproduce** every finding with code it ran, and test invariants and sanity checks with code rather than by reading.
+- **A skeptic per area** then re-runs each finding with its own script and tries to refute it. A finding counts only if its skeptic confirms it, in full or in part; one it cannot reproduce is refuted.
+- **Rounds repeat** until one finds nothing new. Each round after the first is told what earlier rounds fixed, and checks those fixes too.
+
+### Round 1: 66 of 69 findings confirmed
+Two were high, 21 medium and 43 low. All 66 were fixed in one commit, each with a test.
+
+- **Financing check (11).**
+  - **The highest financed price ignored SBA's debt cap** (high). All acquisition debt, with a seller note not on full standby, may not exceed the business valuation. The price checked only coverage and the $5M loan. At the framework example it quoted $5.88M where the cap allows $4.50M. Over 500 SBA-sized businesses, 78% carried debt above value at the quoted price.
+
+    The price is now the highest at which both tests pass, and the box names the test that binds. Above the 7(a) cap the search continues, because a paid seller note keeps growing there.
+  - **The equity minimum was ignored.** A structure under 10% buyer equity, which an initial acquisition cannot waive, still got a price. Now no price works, and the report says why.
+  - **The new owner's pay was a bare wage,** while SDE adds back the seller's payroll taxes and benefits. It now carries them (×1.24), as the console's GM hire does.
+  - **Cash and a note over 100%.** Typed to more than the price, the note kept its full payments. It is now cut to what the cash leaves.
+  - **Smaller defects:**
+    - "no loan" and "no debt" contradicted the table;
+    - coverage just under the minimum printed as the minimum;
+    - an owner buyout was offered the lender's own valuation, which the close-relationship exception rules out;
+    - the type labels dropped SBA's conditions;
+    - a changed structure was not marked unsaved;
+    - the pay was labelled fitted;
+    - "1" meant 100% in a share box;
+    - the lede claimed most buyers borrow under SBA's program, at any size.
+- **Worksheet (16).**
+  - **Hints that told users to double count.** The line hints told S corporation, partnership and Schedule C users to deduct income their starting line already leaves out. They also invited adding back payroll taxes that Schedule C and Form 1065 never deduct.
+  - **State income taxes deducted above the income line** had no row.
+  - **Signs.** A negative on a "Less" line was silently flipped, and add-back rows took impossible negatives.
+  - **A revenue-only year** counted as $0 SDE.
+  - **A rejected entry** kept a keystroke's prefix.
+  - **Dragging the dialog's scrollbar closed it.**
+  - **Growth past the rail's range** was capped without a word.
+  - **Smaller slips:** Enter and Clear, accessible names, a stale SDE in deal names, gaps in the warnings, and a report that ran to two pages with long names.
+
+  Every source now names each line and what its form leaves out. An income-taxes row was added. Expense lines read as amounts spent, and a deduction always deducts and says so.
+- **Seller report (14).**
+  - **Badges** were fixed where the console shows "× judgment".
+  - **Missing caveats.** An extrapolated value was quoted with no caveat. A failed equity minimum and debt above value went unmentioned.
+  - **Levers.** "What moves the value most" promised gains a lever at its best on the rail cannot give, and broke a seven-way tie by rounding.
+  - **Stale state.** A report opened straight from a money box read the previous value, and a business name typed before saving was lost.
+  - **Printing.** The Letter page size leaked into printing the console, and the worst case ran to two pages.
+
+  Every figure now carries the console's tier. Levers with no room are left out and ties are one line. The worst case, with 120-character names and every optional section, prints on one page.
+- **Saved deals (17).**
+  - **The price record was biased** (high). It averaged log sale prices against the model's median of a distribution capped at the ask. A broker exactly on the model read 0.90×.
+
+    It now compares each sale with the model's expected price, a mean of ratios, which reads 1.00 for such a broker. Its intervals, which covered 76% with three deals, now pool the deals' spread with the model's own, counted as ten deals. On deals drawn from the model they cover 95%, 93% and 91% with 3, 5 and 10 deals.
+  - **The penalty-scale fit blamed the penalty for the broker's close rate.** It fixed the base rate at the model's, so a broker whose at-value listings close more often read as a smaller penalty. It now fits the broker's close rate alongside the penalty, with a 90% profile-likelihood interval. Over 500 simulated brokers that interval covers 89.6–91%.
+  - **Smaller defects:**
+    - duplicates copied a finished outcome, so a sale counted twice;
+    - inherited names such as `constructor` passed cleaning and blanked the tab;
+    - an unreadable stored record was deleted by the next save;
+    - the time record required a sale price;
+    - delete fired on one press after a redraw;
+    - a factor that never varies stopped the quality fit;
+    - impossible dates, booleans, fractional counts and repeated ids passed cleaning;
+    - the CSV's model columns, error messages that named fields by code, and long names on a phone.
+- **The rest of the app (8).**
+  - **The Data tab's new section took Still judgment's place.** Moved after the live self-audit, it has its own id, index star, emblem and hue, and the seven sections before it keep theirs.
+  - **Text corrections.** The prime-rate sentences now name the financing check as the prime's one reader. The overlaps with the other lanes (badges, the pay's label, the lede, the share boxes and exact echoes of entered amounts) were fixed with them.
+
+### Round 2: 46 of 52 findings confirmed
+Two were high, 9 medium and 35 low; six were refuted as harmless or by design. Three were found in two areas at once. Every survivor was fixed in one commit, each with a test that fails on the code before it: 27 of the browser checks and 16 of the model checks.
+
+- **Financing check (14).**
+  - **The highest financed price assumed unlimited buyer cash past the 7(a) maximum** (medium). Above the cap the rest of the price is buyer cash, so a paid seller note kept the debt test alive at 3 to 19 times the model value.
+
+    The search now stops where the loan reaches the maximum, since past it the typed shares no longer hold. The box and the report say so and badge it as the published rule.
+  - **"No price meets the 10% equity minimum" sat beside asks that met it** with buyer cash above the cap. The equity sentence is now bounded by the cap: the structure falls short up to that price.
+  - **A merged "Your ask" column was read at the optimizer's price.** It now keeps its own column unless the prices are equal.
+  - **Smaller defects:**
+    - a failing share printed as the minimum;
+    - cash and a note over 100% shrank the loan as the price rose;
+    - "no limit" described a working-capital loan as one at the cap;
+    - the owner buyout's 24 months, and the equity waiver's conditions, were missing;
+    - a standby note was said to need buyer cash above the valuation;
+    - the transaction types were cited to the wrong section;
+    - capital spending went unnamed where it left nothing to cover;
+    - a negative cash flow with no payments printed infinity;
+    - two figures carried no badge;
+    - the scroll chip covered the coverage row on a phone.
+- **Worksheet (9).**
+  - **Saving a deal after editing its own worksheet without "Use" dropped the worksheet** (high). The deal's worksheet is now the one in the dialog while it belongs to that deal.
+  - **The Form 1065 hint told users to add back partners' retirement contributions** (medium), which a partnership never deducts.
+  - **Smaller defects:**
+    - a revenue-only year was said to set the growth when it set nothing;
+    - the add-back share printed twice;
+    - cells clipped 8-digit and negative amounts on a phone, and asked for a keypad with no minus sign;
+    - "Use" without growth cleared growth's held-to-range mark;
+    - below-market rent made the add-backs read negative;
+    - the C corporation hint left out dividends.
+- **Seller report (6, two shared with other areas).**
+  - **"One peer step better is worth about $X" quoted the sensitivity's central slope** (medium, also found in the core area). Across a factor's ±3.2 z limit that promised $273k for a step worth $0. Each lever is now the model's own forward step, or the room left before its best.
+  - **A business at the bottom of the quality range was told it sat at the top** (medium, found in the core area). The report now says where it sits and what all nine factors at their best would add.
+  - **The worst case printed on two pages,** with the disclaimer alone on page 2. The page now has .3in top and bottom margins and tighter print lines. The tallest report the reviewers could reach prints on one page with about 30 px to spare, and the browser test prints that report.
+  - **Smaller defects:**
+    - with no SBA loan the note was graded against SBA's minimum, and a standby note behind no loan had no payments;
+    - coverage's badge and the footer were fixed text;
+    - a typing instruction reached the seller;
+    - "−0% for quality";
+    - "buyer cash pay".
+- **Saved deals (12).**
+  - **Two tabs of the page erased each other's deals** (high). Each save now merges with the store first, and the newer copy of a deal wins. Deletions are kept with their time, so an older tab cannot bring a deal back. Other tabs redraw on the storage event, and an edit form being typed in keeps its entries.
+  - **The quality fit's panel ran 98 px past a phone's screen** (medium). Its columns can now shrink below their table, which scrolls.
+  - **Smaller defects:**
+    - stored inputs that were not numbers became a $1k business;
+    - a half-typed date erased the stored date;
+    - the report's draft names followed into another deal;
+    - a sale typed ten times too high saved without a word;
+    - the penalty fit's golden-section search stopped at a local maximum in about 2% of histories, and quoted a search bound as the close rate;
+    - a record with no time replaced a newer copy;
+    - a full store was blamed on a private window, beside "Saved.";
+    - the report's names did not move the deal's time;
+    - a duplicate kept a stale SDE in its name;
+    - the penalty card read "7 of the 5".
+- **The rest of the app (5).**
+  - **Overlaps.** The bottom-of-range text and the lever slope, above.
+  - **Echoes.** The worksheet echoed SDE as "$46k" under a box reading $45.5k.
+  - **Data tab.** It now names SBA's fourth transaction category (ESOP and cooperative) as not modelled. Its lede now says which conventions are editable or opt-in.
+
+### Round 3: 44 of 51 findings confirmed
+Five were medium and 39 low. Seven were refuted, as harmless or by design, and four repeat another area's finding. Every survivor was fixed in one commit, each with a test that fails on the code before it: 26 of the model checks, 273 of the fuzz checks at 300 businesses, and 18 of the first 107 browser checks (the run then stops where the old merge has lost a deal).
+
+- **Financing check (9).**
+  - **An initial acquisition's equity was checked only at the highest price** (low). With working capital and a standby note the equity share moves with the price, so lower prices, the ask among them, failed SBA's 10% while the box quoted a price with no caveat. The check now finds the price where the equity starts or stops passing and names it. For an initial acquisition the structure works only from that price up.
+  - **With no equity the box still financed working capital** (low, in part). The lender must then eliminate the requirement, not "waive part of" it, and SBA bars working capital from such a loan, though closing costs may stay in it. The box and the report now say "eliminates" and name the bar.
+  - **Smaller defects:**
+    - the highest price printed rounded to nearest, so the figure shown could fail its own test; it now prints rounded down;
+    - the initial-acquisition label still said "a buyer new to this business";
+    - the buyer-cash box echoed 9.96% as "10%";
+    - the equation stated SBA's minimum with no SBA loan, and echoed typed amounts as "$91k";
+    - with no loan the report said the cash "covered" 0.34× of the note's payments;
+    - a ticked standby box with a 0% note was called "the standby note".
+- **Worksheet (8).**
+  - **"Save as new" dropped the deal's own worksheet** (medium). The copy now takes the worksheet in the dialog, from the deal it was made from, as does the Deals tab's new deal.
+  - **Smaller defects:**
+    - on the default latest-year basis the report stated flags from years the SDE does not read;
+    - the report echoed SDE and its parts in whole thousands, so the parts stopped adding up;
+    - the officer-pay hint left out pay counted in cost of goods sold (Form 1125-E);
+    - "512,000 470,000", or a pasted row of cells, became $512,000,470,000, in a cell or a rail box;
+    - a negative revenue was averaged in;
+    - an empty stored worksheet marked a deal unsaved;
+    - two text slips.
+- **Seller report (10).**
+  - **The preview and the print did not lay out like the downloaded file.** Three of the page's `!important` rules, and rules more specific than the paper's own, reached the paper. Labels lost their capitals, table cells took the page's fonts, and the file printed 12 to 24 px taller than the page the test measured.
+
+    The page now holds the paper's stylesheet under the paper's id, and the three rules stop at the paper. The browser test compares every computed property of every element of the page's paper and the file.
+
+    Measured on the file, round 3's own added text had pushed the tallest reachable report past one page (1,027 px against 998). The print sizes are tightened, and three searches from different starts now top out at 953 px.
+  - **A stale tab erased the broker and firm typed in another** (medium), and with them the worksheet and financing structure typed for an unsaved valuation. A preference save now writes only the keys it changed, and other tabs take up the names.
+  - **Smaller defects:**
+    - past the 7(a) maximum the equity sentence stopped at the cap, not where buyer cash reaches 10%;
+    - a failing equity printed equal amounts ("$324k against $324k"), and a passing 9.5% share as "10%";
+    - the track record scaled an expected price the report never showed;
+    - the QoE exemption dropped SBA's 24 months;
+    - with factors too far below their peers for a step to register, the report said every factor was at its best; it now names what each at its best would add;
+    - "(weighted equally)" grouped levers the model weights differently;
+    - "Your ask" merged with an optimizer ask within 0.5%;
+    - the earnings basis said there were no payroll or income taxes to add back while its SDE had added them back.
+- **Saved deals (12).**
+  - **A deal stamped later than this computer's clock could not be edited or deleted** (medium). Each action said it worked and was then undone by the merge. An edit's time is now always later than the copy it was made from.
+  - **Restoring a deleted deal from a backup was undone by any other tab** (medium). The restored deal is now stamped after its deletion.
+  - **A tab that missed the storage event:**
+    - dropped another tab's deletion when it deleted;
+    - erased another tab's recorded outcome through its edit form or the report's business name.
+
+    Deletions now merge before they are written, and the form saves only the fields typed in it.
+  - **With the store full a deletion was not recorded** but the page said "Deleted", and another tab wrote the deal back. The page now says so.
+  - **Smaller defects:**
+    - entries typed in the edit form were wiped by a look at the console;
+    - a stored record with no time lost its first edit;
+    - "Save the console as a new deal" said "Saved" when it was not;
+    - two tabs gave a record with no id, or a repeated one, different ids; ids are now derived from the record;
+    - a deal with the id "__proto__" could never be deleted;
+    - the penalty card quoted the fit's search bounds as fitted values;
+    - round 2's "deaf tab" test heard the storage event after all.
+- **The rest of the app (5).**
+  - **Two stored deals that shared an id collapsed into one on the first save:** round 2's merge had undone round 1's fix. The derived ids keep both.
+  - **Working capital whose payments alone break coverage** was reported as the new owner's pay leaving nothing. The box and the report now name the working capital.
+  - **Overlaps:** a future time (saved deals), the labels and the QoE exemption (financing), and closing costs (financing).
+- **Refuted, and what changed anyway.**
+  - **Escape in a worksheet cell** keeps what was typed, as Close does. A cell applies as it is typed, so a revert would drop an amount typed in full.
+  - **A select lever quoted at its next option.** "One peer step" is the unit the console's sensitivity ranks every lever in, and the options sit 0.8 to 1.2 steps apart. The report keeps the step.
+  - **The type select clipping its labels** is cosmetic. The conditions moved to a line under the select anyway, for the confirmed label fix.
+  - **Re-imported records with no id** are by design, as in round 2. The ids now derived from the record make the same record match itself on a second import.
+  - **An empty worksheet marking a deal unsaved** was refuted as harmless in one area and confirmed in another; it is fixed.
+  - **The fits running in a tab showing the console** were refuted as harmless. The storage handler leaves them to the Deals tab anyway.
+
+### Where it stands
+| Round | Findings | Confirmed (in part) | Refuted | Fixed in |
+|---|---|---|---|---|
+| 1 | 69 | 66 | 3 | 6664c6e |
+| 2 | 52 | 46 | 6 | f96e2ec |
+| 3 | 51 | 44 | 7 | the round-3 commit |
+
+Round 4 runs on the round-3 commit, with every finding above as known.
+
+Suites on the round-3 build:
+
+| Suite | Result |
+|---|---|
+| `node tests/model.test.js` | 7,663 pass |
+| `node tests/fuzz.test.js 1500` | 208,806 checks pass |
+| `node tests/browser.inputs.js` | pass |
+| `node tests/browser.broker.js` | 138 checks pass |
+| `node tests/browser.sweep.js` | 121 input states at each of 1440 and 390 px pass |
+| `node tests/invariants.test.js --browser` | 253 invariants pass |

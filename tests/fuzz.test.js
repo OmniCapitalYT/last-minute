@@ -322,6 +322,14 @@ for(let i=0;i<N;i++){
     else { const a=A.debtCheck(s,m.price,f,V), b=A.debtCheck(s,m.price*(1+1e-9),f,V);
       ok(pass(a)&&a.over===0&&pass(A.debtCheck(s,m.price*.9,f,V))&&(m.bind==="coverage"?b.dscr<t:m.bind==="value"?b.debtOverValue:b.over>0)&&m.equityShort===!a.equityOK
          &&(m.bind!=="value"||m.covPrice>=m.price*(1-1e-9)),"broker: the highest financeable price passes both tests within the 7(a) maximum, and the named limit binds just above",ctx(s,f,{mp:m.price,bind:m.bind})); }
+    /* equity across the prices below the one found: a named edge is where it turns, and an initial acquisition that shows
+       a price either passes at every lower price or names its floor; the price shown, rounded down, never exceeds it */
+    if(m.equityFrom) ok(!A.debtCheck(s,m.equityFrom*.995,f,V).equityOK&&A.debtCheck(s,m.equityFrom*1.0001,f,V).equityOK&&m.equityFrom<=Math.min(m.price,1e11)*(1+1e-9),"broker: equity passes from the edge named, not below it",ctx(s,f,{ef:m.equityFrom}));
+    if(m.equityTo) ok(A.debtCheck(s,m.equityTo*.9999,f,V).equityOK&&!A.debtCheck(s,m.equityTo*1.005,f,V).equityOK,"broker: equity passes up to the edge named, not above it",ctx(s,f,{et:m.equityTo}));
+    if(f.type==="initial"&&m.price>0&&!m.equityShort&&!m.noLoan) ok(A.debtCheck(s,1e3,f,V).equityOK||m.equityFrom>0,"broker: an initial acquisition's price stands only with its equity floor named",ctx(s,f));
+    if(m.price>0&&isFinite(m.price)){ const t=A.moneyDown(m.price), u=t.slice(-1), x=parseFloat(t.replace(/[^0-9.]/g,""))*({B:1e9,M:1e6,k:1e3}[u]||1);
+      const st={B:1e7,M:1e4,k:1e3}[A.money(m.price).slice(-1)]||1;
+      ok(x<=m.price*(1+1e-12)&&m.price-x<st*(1+1e-9),"broker: the highest price is shown rounded down, by less than one unit of money's precision",ctx(s,f,{t,mp:m.price})); }
     if(!m.noLoan&&share>=.1&&f.cash<.85){ const more=A.maxFinanced(s,{...f,cash:f.cash+.1},V), cap=A.maxFinanced(s,{...f,capex:(f.capex||0)+s.ern*.05},V);
       ok(more.price>=m.price*(1-1e-9)&&cap.price<=m.price*(1+1e-9),"broker: more buyer cash finances more, capital spending less",ctx(s,f)); }
     /* the worksheet: linear in every line, expense lines add back their size, deductions always deduct, every basis inside the years' range */
@@ -348,10 +356,14 @@ for(let i=0;i<N;i++){
          &&D.cur.fin.dscr===A.debtCheck(s,s.ask,f,V).dscr&&D.maxFin.price===m.price,"broker: the report reads the model at the optimizer's asks",ctx(s,f));
       ok(D.sens.length<=3&&D.sens.every((g,j)=>g.gain>V*.001&&(j===0||D.sens[j-1].gain>=g.gain)&&g.keys.every(k=>A.RAIL_BEST[k]!==undefined&&(k==="own"||k==="cc"||k==="plt"?s[k]>A.RAIL_BEST[k]:s[k]<A.RAIL_BEST[k]))),
          "broker: the report names only levers with room left on the rail, largest first",ctx(s));
-      /* each lever's gain is the model's own: one peer step toward its best, or the room left, never a central slope */
-      { const SE=A.sensitivity(s), own=k=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, full=room>=st-1e-9;
-          return {full,g:A.model({...s,[k]:full?s[k]+(v.inv?-st:st):best}).V-V}; };
-        ok(D.sens.every(g=>g.keys.every(k=>{ const o=own(k); return o.full===g.full&&Math.abs(o.g/g.gain-1)<.006; })),"broker: every lever's gain is the model's own step",ctx(s)); }
+      /* each lever's gain is the model's own: one peer step toward its best, its best when nearer, or its best when the step
+         moves the value by less than 0.1% (past the -3.2 z limit); never a central slope. A line groups only steps the model
+         weights alike */
+      { const SE=A.sensitivity(s), at=(k,kind)=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, near=s[k]+(v.inv?-st:st);
+          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?room>=st-1e-9&&A.model({...s,[k]:near}).V-V<=V*.001:false;
+          return {okKind,g:A.model({...s,[k]:kind==="step"?near:best}).V-V}; };
+        ok(D.sens.every(g=>g.full===(g.kind==="step")&&g.keys.every(k=>{ const o=at(k,g.kind); return o.okKind&&Math.abs(o.g/g.gain-1)<.006; })),"broker: every lever's gain is the model's own step, room or best",ctx(s));
+        ok(D.sens.every(g=>g.n===1||(g.kind==="step"&&g.keys.every(k=>A.QW.w[k]===A.QW.w[g.keys[0]]))),"broker: a lever line groups only steps the model weights alike",ctx(s)); }
       const h=A.reportHTML(D,{business:"<b>x</b>",broker:"y",firm:"z"});
       ok(!/NaN|undefined|Infinity|−\d\.\d\d×|-\d\.\d\d×/.test(h)&&!h.includes("<b>x</b>")&&h.includes(A.covFmt(D.cur.fin)),"broker: the report is finite, escapes what is typed and prints coverage as the console does",ctx(s,f));
       ok((Math.abs(D.qFactor-1)>.005)===/Model value <span class="rp-bx">/.test(h)&&(D.extrap.length>0)===/Extrapolated/.test(h),"broker: the report's value badge and extrapolation note follow the console's rules",ctx(s));
@@ -359,7 +371,8 @@ for(let i=0;i<N;i++){
          text follows the business's place in the quality range; the quality step never reads "−0%" */
       { const showCur=Math.abs(D.cur.ask/D.sell.ask-1)>.005&&Math.abs(D.cur.ask/D.walk.ask-1)>.005, shown=[D.sell].concat(D.same?[]:[D.walk],showCur?[D.cur]:[]);
         const want=shown.filter(a=>a.fin.loan>0&&a.fin.ds>0&&!a.fin.ok).length, got=(h.match(/<span class="rp-warn">below \d\.\d\d×<\/span>/g)||[]).length;
-        ok(want===got&&!/no price meets/.test(h)&&(!/at every price up to about/.test(h)||m.capped)&&!/[−+]0% for quality/.test(h)
+        ok(want===got&&!/no price meets/.test(h)&&(!/at every price up to about/.test(h)||m.capped)&&!/[−+]0% for quality/.test(h)&&(f.note>0||!/standby note/.test(h))
+           &&!(D.mfAt&&D.mfAt.equityIn<=0&&/waives part of/.test(h))
            &&(D.sens.length>0||(D.qPct<.5?/bottom of the quality range/:/already at its best/).test(h)),"broker: the report grades, bounds and words its lender and lever lines by what holds",ctx(s,f,{want,got})); } } }
 }
 

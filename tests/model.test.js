@@ -1735,8 +1735,30 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const cut=A.debtCheck(s0,2e6,{cash:.5,note:.6,extra:2e5},V);
     let rising=true, pl=-1; for(let p=1e5;p<2e7;p*=1.2){ const l=A.debtCheck(s0,p,{cash:.5,note:.6,extra:2e5},V).loan; if(l<pl-1e-6) rising=false; pl=l; }
     ok(cut.noteCut&&Math.abs(cut.note-1e6)<1e-6&&Math.abs(cut.loan-1e5)<1e-6&&rising,"43: a note cut to fit leaves the working capital's loan, and the loan never falls as the price rises");
-    ok(A.pctDown(.0996)==="9.9%"&&A.pctDown(.05)==="5%"&&A.pctDown(.1)==="10%"&&/net worth/.test(A.EQUITY_WAIVER)&&/active in the business 24\+ months/.test(A.DSC_TYPES.buyout),
-       "43: a failing share prints rounded down; the waiver states SBA's conditions; the buyout type states its 24 months"); }
+    ok(A.pctDown(.0996)==="9.9%"&&A.pctDown(.05)==="5%"&&A.pctDown(.1)==="10%"&&/net worth/.test(A.EQUITY_WAIVER)&&/active in the business for the last 24 months/.test(A.DSC_HINT.buyout)
+       &&/under 24 months/.test(A.DSC_HINT.initial)&&!/new to/.test(A.DSC_HINT.initial)&&Object.values(A.DSC_TYPES).every(t=>t.length<=20),
+       "43: a failing share prints rounded down; the waiver states SBA's conditions; each type's conditions sit under its short name");
+    /* round 3: with working capital and a standby note an initial acquisition's equity passes only from some price up */
+    const fE={cash:.06,note:.1,standby:true,extra:4e5}, mE=A.maxFinanced(s0,fE,V);
+    ok(mE.price>0&&mE.equityFrom>0&&mE.equityFrom<mE.price&&!A.debtCheck(s0,mE.equityFrom*.99,fE,V).equityOK&&A.debtCheck(s0,mE.equityFrom*1.0001,fE,V).equityOK&&!mE.equityShort
+       &&/Below about \$[\d.]+[kM] the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum, which cannot be waived for an initial acquisition, so the structure works only from that price up/.test(A.reportHTML(A.reportData(s0,{fin:fE}),{})),
+       `43: an initial acquisition whose standby credit grows with the price works only from $${(mE.equityFrom/1e6).toFixed(2)}M up, and the report says so`);
+    const fB={type:"buyout",cash:.07,note:0,extra:8e5}, mB=A.maxFinanced(s0,fB,V);
+    ok(mB.equityTo>0&&mB.equityTo<mB.price&&A.debtCheck(s0,mB.equityTo*.99,fB,V).equityOK&&!A.debtCheck(s0,mB.equityTo*1.01,fB,V).equityOK,
+       "43: an owner buyout's cash, measured against 10% of the price, passes only up to some price, which the check finds");
+    /* the highest price is shown rounded down, so the figure shown passes */
+    ok(A.moneyDown(1296951)==="$1.29M"&&A.moneyDown(1.3e6)==="$1.30M"&&A.moneyDown(398618)==="$398k"&&A.moneyDown(999700)==="$990k"&&A.moneyDown(99951)==="$99k",
+       "43: the highest financed price prints rounded down at money's precision");
+    /* no equity at all: eliminating the requirement bars working capital from the loan */
+    const h0=A.reportHTML(A.reportData(s0,{fin:{type:"expansion",cash:0,note:.05,extra:3e5}}),{});
+    ok(/if the lender eliminates the 10% equity/.test(h0)&&!/waives part of/.test(h0)&&(h0.match(/SBA then bars working capital from the loan/g)||[]).length===1&&/with none it must be eliminated/.test(h0),
+       "43: with no equity the report says the lender would eliminate it, and that SBA then bars working capital from the loan");
+    ok(/unless owners or employees active in the business for the last 24 months buy out an owner/.test(A.reportHTML(A.reportData({...s0,ask:3.5e6},{}),{})),
+       "43: the Quality of Earnings exemption is SBA's owner buyout, not any partner or employee");
+    const hq=A.reportHTML(A.reportData({...s0,ern:2e5,rev:1.2e6,ask:9e5},{fin:{cash:.5,note:.5,noteYears:2}}),{});
+    ok(/are covered only \d\.\d\d×/.test(hq)&&!/are covered 0\./.test(hq),"43: with no loan, a note's payments the cash left cannot meet are 'covered only'");
+    ok(!/standby note/.test(A.reportHTML(A.reportData(s0,{fin:{cash:.05,note:0,standby:true}}),{}))&&!A.maxFinanced(s0,{cash:.05,note:0,standby:true},V).standby,
+       "43: with no note, nothing speaks of a standby note"); }
   /* the add-back worksheet */
   { const ws={entity:"scorp",years:[{rev:6e6,ni:5e5,owner:2e5,ptax:15e3,perks:2e4,dep:8e4,int:3e4,once:2e4,pers:1e4},{rev:5.5e6,ni:4.5e5,owner:2e5,dep:7e4},{rev:5e6,ni:4e5,owner:1.9e5}]};
     const L=A.recastSDE({...ws,weight:"latest"}), W=A.recastSDE({...ws,weight:"w321"}), G=A.recastSDE({...ws,weight:"avg"});
@@ -1771,6 +1793,17 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        "43: a revenue-only year is named, and told apart from one that sets nothing");
     const E=A.RECAST_ENTITY;
     ok(/retirement contributions are not deducted/.test(E.partnership.perks)&&/^Dividends/.test(E.ccorp.nonop),"43: a partnership deducts no partner's retirement; a C corporation's dividends are inside its starting line");
+    ok(/cost of goods sold \(Form 1125-E/.test(E.scorp.owner)&&/cost of goods sold \(Form 1125-E/.test(E.ccorp.owner)&&/^Charitable contributions, deducted inside the starting line/.test(E.ccorp.pers),
+       "43: officer pay counted in cost of goods sold is part of the owner's pay; a C corporation's charitable gifts are inside its starting line");
+    /* round 3: the report's notes and the revenue note cover only the years the basis reads */
+    const lt=A.recastSDE({entity:"schc",weight:"latest",years:[{rev:1e6,ni:2e5,dep:1e4},{rev:9e5,ni:2e5,owner:5e4,nonop:-2e4}]}), w3=A.recastSDE({entity:"schc",weight:"w321",years:[{rev:1e6,ni:2e5,dep:1e4},{rev:9e5,ni:2e5,owner:5e4,nonop:-2e4}]});
+    ok(lt.flags.includes("schc_owner_pay")&&!(lt.sdeFlags||[]).includes("schc_owner_pay")&&!(lt.sdeFlags||[]).includes("neg_less")&&(w3.sdeFlags||[]).includes("schc_owner_pay")
+       &&!A.recastSDE({weight:"latest",years:[{rev:1e6,ni:2e5},{ni:1.5e5}]}).flags.includes("rev_missing")&&A.recastSDE({weight:"avg",years:[{rev:1e6,ni:2e5},{ni:1.5e5}]}).flags.includes("rev_missing"),
+       "43: on the latest basis the report's notes and the missing-revenue note leave out years the SDE does not read");
+    const nr=A.recastSDE({weight:"avg",years:[{rev:-1e6,ni:2e5},{rev:1e6,ni:3e5}]});
+    ok(nr.rev===1e6&&!nr.years[0].hasRev,"43: a negative revenue is no revenue");
+    ok(/^The most recent year and the year before have revenue alone: they set the growth and stay out of SDE\.$/.test(A.recastNotes(A.recastSDE({years:[{rev:1e6},{rev:9e5},{rev:8e5,ni:1e5}]})).find(o=>o.k==="rev_only").t),
+       "43: two revenue-only years take a plural verb");
     ok(Object.values(E).every(e=>e.ni&&e.n&&e.src)&&/Leave blank/.test(E.schc.ptax)&&/Leave blank/.test(E.schc.tax)&&/Leave blank/.test(E.partnership.ptax)&&/2% shareholder/.test(E.scorp.perks)
        &&/Schedule K/.test(E.scorp.nonop)&&/cost of goods sold/.test(E.ccorp.dep)&&A.RECAST_ROWS.some(R=>R.k==="tax"&&R.pos),"43: each source's hints name its lines and what the form already leaves out"); }
   /* a broker's deals against the model */
@@ -1837,7 +1870,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const keys=x=>A.reportData(x,{}).sens.flatMap(g=>g.keys);
     ok(["rec","cc","gm","ret","plt","fin"].every(k=>!keys({...s,[k]:RB[k]}).includes(k)),"43: a lever already at its best on the rail is not offered as a gain");
     const all={...s,...RB}, Dall=A.reportData(all,{}), hall=A.reportHTML(Dall,{});
-    ok(Dall.sens.length===0&&/no single step moves the value/.test(hall),"43: with every factor at its best the report says no single step moves the value");
+    ok(Dall.sens.length===0&&/no single factor, even at its best, moves the value/.test(hall),"43: with every factor at its best the report says no single factor moves the value");
     const tie=D.sens.find(g=>g.n>1);
     ok(!!tie&&tie.keys.every((k,i)=>i===0||["own","mgt","rec","cc","fin","grw","gm","ret","plt"].indexOf(tie.keys[i-1])<["own","mgt","rec","cc","fin","grw","gm","ret","plt"].indexOf(k)),
        "43: levers worth the same (the seven weighted equally) are one line, in the console's order, not ranked by rounding");
@@ -1863,6 +1896,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     ok(/\$1,450 a day/.test(hx),"43: a $1,450-a-day cost of delay prints as itself, not $1k");
     const neg=A.reportHTML({...A.reportData({...s,ern:5e4},{}),s:{...s,ern:5e4}},{});
     ok(/nothing is left to pay acquisition debt/i.test(neg)&&!/−\d\.\d\d×|-\d\.\d\d×/.test(neg),"43: with nothing left after the new owner's pay the report says so instead of printing a negative coverage");
+    /* r3-core-4: working capital financed in the loan whose payments alone break coverage is what leaves no price */
+    const fWC={extra:1.5e6}, sWC={...s0,ern:3e5,rev:1.2e6,ask:9e5}, DWC=A.reportData(sWC,{fin:fWC}), hWC=A.reportHTML(DWC,{}), zWC=A.noPriceWC(sWC,fWC,DWC.V);
+    ok(DWC.maxFin.price===0&&DWC.maxFin.bind==="coverage"&&!!zWC&&zWC.cf>0&&zWC.dscr<zWC.min&&Math.abs(zWC.loan-1.5e6*.9)<1
+       &&hWC.includes(`The working capital and closing costs financed in the loan, ${A.money(zWC.loan)}, already take ${A.money(zWC.ds)} a year of payments before any price`)&&!/does not cover any loan/.test(hWC)
+       &&A.noPriceWC({...s0,ern:5e4},{},V)===null&&/After the new owner&rsquo;s pay the business does not cover any loan/.test(neg)&&A.maxFinanced(sWC,{},DWC.V).price>0,
+       `43: when the working capital in the loan alone breaks coverage (${zWC?A.covFmt(zWC)+" on "+A.money(zWC.loan):"not found"}) the report names it; with nothing left after the pay it still says so`);
     const C=A.sampleSummary([1.05,1.1,1,1.08],false,.04), hc=A.reportHTML({...D,calib:C},{});
     ok(hc.includes("Track record <span class=\"rp-b rp-j\">judgment")&&!h.includes("Track record")&&hc.includes(C.shrunk.toFixed(2)+"×")&&hc.includes(A.money(D.sell.mean*C.shrunk))&&/expected price/.test(hc),
        "43: the track-record line appears only when the broker opts in, against the expected price, badged as judgment");
@@ -1876,21 +1915,47 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        "43: the earnings basis appears when the worksheet set the SDE, with add-backs and deductions apart");
     const Rs=A.recastSDE({entity:"schc",years:[{rev:1e6,ni:2e5,owner:5e4}]});
     ok(A.reportHTML({...D,recast:Rs},{}).includes("counts it twice"),"43: the report repeats the Schedule C double count");
-    const hr2=A.reportHTML({...A.reportData(s0,{}),recast:{...A.recastSDE({years:[{rev:6e6,ni:5e5}]}),entity:"toString",weight:"constructor"}},{});
+    /* round 3: entered amounts at three figures; a small share with a decimal; no basis phrase for one year */
+    const Rx=A.recastSDE({years:[{rev:5e5,ni:3e4,owner:15500,pers:300}]}), hx2=A.reportHTML({...A.reportData({...s0,ern:45500,rev:5e5,ask:1.4e5},{}),recast:Rx},{});
+    ok(/SDE of \$45\.8k, built by the broker from 1 year of Form 1120-S returns:/.test(hx2)&&/income before taxes \$30k, add-backs \$15\.8k/.test(hx2)&&/SDE \$45\.5k/.test(hx2)&&/are 0\.7% of SDE/.test(hx2),
+       "43: the report echoes entered amounts as their boxes do, a small add-back share with a decimal, and no weighting for one year");
+    const hr2=A.reportHTML({...A.reportData(s0,{}),recast:{...A.recastSDE({years:[{rev:6e6,ni:5e5},{rev:5e6,ni:4e5}]}),entity:"toString",weight:"constructor"}},{});
     ok(/of financial statements and read on the most recent year/.test(hr2)&&!/function|native code/.test(hr2),"43: the report's earnings basis ignores an inherited source or basis key");
     ok(/all:revert/.test(A.RP_CSS)&&!/@page/.test(A.RP_CSS)&&/^@page\{size:letter;margin:\.3in \.4in\}/.test(A.RP_PAGE)&&/break-inside:avoid/.test(A.RP_CSS)&&/overflow-wrap:anywhere/.test(A.RP_CSS)
        &&A.hEsc('<a href="x">&')==="&lt;a href=&quot;x&quot;&gt;&amp;","43: the paper's stylesheet stands alone, wraps long names and keeps the page size apart, for the report alone");
     /* round 2. Past the 7(a) maximum the asks meet the equity minimum with buyer cash: the equity sentence is bounded by the cap */
     const sB={...s0,ern:5e6,rev:2e7,ask:2e7}, DB=A.reportData(sB,{fin:{cash:.05,note:0}}), hB=A.reportHTML(DB,{});
-    ok(DB.maxFin.capped&&DB.maxFin.equityShort&&DB.cur.fin.equityOK&&DB.cur.fin.over>0&&/at every price up to about \$5\.26M, where the SBA loan reaches the 7\(a\) maximum; above it the rest of the price is buyer cash/.test(hB)&&!/no price meets/.test(hB),
-       "43: past the 7(a) maximum the report does not say no price meets the equity minimum: the 5% structure falls short only up to the cap");
-    /* a lever is quoted at the model's own forward step: a factor past the ±3.2 z limit has none to give */
-    const fwd=(x,k)=>{ const v=A.sensitivity(x).find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?x[k]-best:best-x[k], step=2*v.h;
-      return A.model({...x,[k]:room>=step-1e-9?x[k]+(v.inv?-step:step):best}).V-A.model(x).V; };
+    const mB=DB.maxFin, eqAt=p=>A.debtCheck(sB,p,{cash:.05,note:0},DB.V).equityOK;
+    ok(mB.capped&&mB.equityShort&&DB.cur.fin.equityOK&&DB.cur.fin.over>0&&mB.equityAbove>mB.capAt*1.01&&!eqAt(mB.equityAbove*.999)&&eqAt(mB.equityAbove*1.001)&&!eqAt((mB.capAt+mB.equityAbove)/2)
+       &&hB.includes(`at every price below about ${A.moneyUp(mB.equityAbove)}: past ${A.moneyDown(mB.capAt)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash`)&&!/no price meets/.test(hB),
+       `43: past the 7(a) maximum the report does not say no price meets the equity minimum, and bounds the shortfall where buyer cash reaches 10% (${A.money(mB.equityAbove||0)}), not at the cap (${A.money(mB.capAt||0)})`);
+    /* a lever is quoted at the model's own forward step, one peer sd toward its best (the unit the console's sensitivity ranks
+       every lever in, selects included: r3-report-6, refuted), at its best when that is nearer, or at its best when one step
+       does not register (past the -3.2 z limit, r3-report-7); a factor past the +3.2 limit has nothing to give */
+    const to=(x,k,kind)=>{ const v=A.sensitivity(x).find(r=>r.k===k), best=A.RAIL_BEST[k]; return kind==="room"||kind==="far"?best:x[k]+(v.inv?-2*v.h:2*v.h); };
+    const rng=k=>opt("i_"+k).length?[Math.min(...opt("i_"+k)),Math.max(...opt("i_"+k))]:[Math.min(...sl("i_"+k)),Math.max(...sl("i_"+k))];
+    const fwd=(x,k,kind)=>A.model({...x,[k]:to(x,k,kind)}).V-A.model(x).V, onRail=(k,y)=>y>=rng(k)[0]-1e-9&&y<=rng(k)[1]+1e-9;
     const sG={...s0,ind:"dist",rev:6e6,ern:1.45e6,gm:.733}, DG=A.reportData(sG,{});
-    ok(Math.abs(fwd(sG,"gm"))<1&&A.sensitivity(sG).find(r=>r.k==="gm").dV>1e4&&!DG.sens.some(g=>g.keys.includes("gm"))&&DG.sens.length>0
-       &&[sG,s0,{...s0,ret:.368}].every(x=>A.reportData(x,{}).sens.every(g=>g.keys.every(k=>Math.abs(fwd(x,k)/g.gain-1)<.006))),
-       "43: a factor past the z limit is not offered as a gain (its central slope is not a step it has), and every lever quoted is the model's own step");
+    const sF={...s0,...RB,gm:sl("i_gm")[0],ret:sl("i_ret")[0]}, DF=A.reportData(sF,{}), hF=A.reportHTML(DF,{}), VF=A.model(sF).V;
+    const pool=[sG,s0,{...s0,ret:.368},sF,{...s0,own:.95,mgt:.08,fin:.14},{...s0,own:.42,mgt:.66,fin:.74}];
+    ok(Math.abs(fwd(sG,"gm","step"))<1&&A.sensitivity(sG).find(r=>r.k==="gm").dV>1e4&&!DG.sens.some(g=>g.keys.includes("gm"))&&DG.sens.length>0
+       &&pool.every(x=>A.reportData(x,{}).sens.every(g=>g.keys.every(k=>Math.abs(fwd(x,k,g.kind)/g.gain-1)<.006&&onRail(k,to(x,k,g.kind))
+         &&["step","room","far"].includes(g.kind)))),
+       "43: a factor past the upper z limit is not offered (its central slope is not a step it has); every lever quoted is the model's own value, within the lever's range");
+    const gO=D.sens.find(g=>g.keys.includes("own")), hO=A.sensitivity(s0).find(r=>r.k==="own").h;
+    ok(s0.own===.72&&gO&&gO.full&&Math.abs(gO.gain-(A.model({...s0,own:.72-2*hO}).V-V))<1e-6&&h.includes("<b>Owner independence</b>: one peer step better is worth about "+A.money(gO.gain)),
+       `43: a select lever moves one peer step, as the console's sensitivity ranks every lever (owner independence .72 to ${(.72-2*hO).toFixed(2)}: ${A.money(gO&&gO.gain)})`);
+    const fF=DF.sens.filter(g=>g.kind==="far");
+    ok(fF.length>0&&fF.every(g=>g.keys.every(k=>A.model({...sF,[k]:to(sF,k,"step")}).V-VF<=VF*.001))&&fF.some(g=>g.keys.includes("ret"))&&DF.sens.some(g=>g.kind==="step"&&g.keys.includes("gm"))
+       &&/too far below its peers for one step to register; at its best it would add about/.test(hF)&&!/already at its best/.test(hF),
+       "43: gross margin and retention at the rail's worst, the rest at their best: the report quotes gross margin's step and what retention, too far below its peers for a step, adds at its best; not that every factor is at its best");
+    /* the reviewer's own state: a SaaS business with both at the rail's worst, at the 85th percentile */
+    const sS={...s0,...RB,ind:"saas",ern:3.7e6,rev:9.6e6,gm:.12,ret:.05}, DS=A.reportData(sS,{}), hS=A.reportHTML(DS,{});
+    ok(["gm","ret"].every(k=>DS.sens.some(g=>g.kind==="far"&&g.keys.includes(k)))&&!/already at its best/.test(hS)&&DS.qPct>.5,
+       `43: a SaaS business with gross margin and retention at the rail's worst names both as too far below their peers for a step (${DS.sens.map(g=>g.keys.join("+")+":"+g.kind).join(", ")})`);
+    ok(pool.concat([s]).every(x=>A.reportData(x,{}).sens.every(g=>g.n===1||(g.kind==="step"&&g.keys.every(k=>A.QW.w[k]===A.QW.w[g.keys[0]]))))
+       &&pool.concat([s]).every(x=>{ const Dx=A.reportData(x,{}), hx=A.reportHTML(Dx,{}); return (hx.match(/weighted equally/g)||[]).length===Dx.sens.filter(g=>g.n>1).length; }),
+       "43: a lever line groups only steps the model weights alike, and says 'weighted equally' only then");
     /* the bottom of the quality range */
     const sW={...s0,ind:"rest",own:.95,mgt:.08,fin:.14,rev:8e5,ern:1.2e5,ask:4e5,grw:-.25,gm:.12,rec:0,cc:.7,ret:.05,plt:.95,yrs:1}, DW=A.reportData(sW,{}), hW=A.reportHTML(DW,{});
     ok(DW.sens.length===0&&DW.qPct<.01&&DW.allBest>0&&/bottom of the quality range/.test(hW)&&hW.includes(A.money(DW.allBest))&&!/already at its best/.test(hW)&&/already at its best/.test(hall),
@@ -1907,6 +1972,24 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const hP=A.reportHTML(A.reportData(s0,{fin:{draw:1.5e5,note:0}}),{}), hP2=A.reportHTML(A.reportData(s0,{fin:{cash:.6,note:.4,draw:1.5e5,noteRate:7,noteYears:5}}),{});
     ok(/coverage<\/b> <span class="rp-b rp-f">fitted<\/span>,/.test(hP)&&!/\(coverage\)/.test(hP)&&/covered \d+\.\d\d× by the/.test(hP2)&&/\(coverage\)/.test(h),
        "43: coverage's badge follows what moves it: the fitted rate alone with a typed pay and no note, nothing from entries alone; the footer names its judgment only when used");
+    /* round 3. A failing equity test prints the amounts apart; a passing share with its decimal (r3-report-2) */
+    const hE=A.reportHTML(A.reportData(s0,{fin:{cash:.0996,note:0}}),{}), mE=hE.match(/the buyer brings (\$[\d.]+[kM]) against SBA&rsquo;s 10% minimum of (\$[\d.]+[kM])/), fE=A.debtCheck(s0,s0.ask,{cash:.0996,note:0},V);
+    ok(!!mE&&mE[1]!==mE[2]&&mE[1]===A.moneyDown(fE.equityIn)&&mE[2]===A.moneyUp(fE.equityNeed)&&/9\.9% buyer cash/.test(hE),`43: a failing equity test prints the buyer's amount rounded down and the minimum rounded up (${mE&&mE[1]} against ${mE&&mE[2]}), and the share as 9.9%`);
+    ok(/9\.5% buyer cash/.test(A.reportHTML(A.reportData(s0,{fin:{cash:.095,note:.05,standby:true}}),{})),"43: a passing 9.5% buyer cash prints as 9.5%, not 10%");
+    /* the track record names the expected price it scales (r3-report-3) */
+    ok(hc.includes("against the model&rsquo;s expected "+A.money(D.sell.mean)+".")&&hc.includes("about "+A.money(D.sell.mean*C.shrunk)+" if it sells at the recommended ask"),
+       "43: the track record states the model's expected price beside the figure it scales, so a 1.00× record reads as the model");
+    /* 'Your ask' keeps its row unless it is an optimizer's ask (r3-report-9) */
+    const near=A.reportHTML(A.reportData({...s0,ask:D.sell.ask*1.003},{}),{}), same=A.reportHTML(A.reportData({...s0,ask:D.sell.ask},{}),{});
+    ok(near.includes("Your ask")&&!same.includes("Your ask"),"43: an ask 0.3% from the recommended one keeps its own row; only the recommended ask itself merges");
+    /* the earnings notes name the amounts the SDE added back (r3-report-11) */
+    const Rt=A.recastSDE({entity:"schc",years:[{rev:1e6,ni:2e5,owner:47800,ptax:7170,tax:23900}]}), ht=A.reportHTML({...D,recast:Rt},{});
+    ok(Rt.ownerIn===47800&&Rt.ptaxIn===7170&&Rt.taxIn===23900&&ht.includes("The add-backs include "+A.moneyIn(47800)+" of the owner&#39;s pay".replace("&#39;","'"))
+       &&ht.includes("The add-backs include "+A.moneyIn(7170)+" of payroll tax that a Schedule C return never deducts, so this SDE is that much too high.")
+       &&ht.includes("The add-backs include "+A.moneyIn(23900)+" of income tax that a Schedule C return never deducts")&&!/none to add back/.test(ht),
+       "43: the earnings basis names the owner's pay, payroll tax and income tax a Schedule C SDE added back, not that there are none");
+    const Rp=A.recastSDE({entity:"partnership",years:[{rev:1e6,ni:2e5,ptax:5000}]});
+    ok(Rp.flags.includes("ptax_none")&&A.reportHTML({...D,recast:Rp},{}).includes("of payroll tax that a partnership return never deducts"),"43: a partnership's payroll-tax note names the partnership return");
     ok(HTML.includes("SBA&rsquo;s fourth category, a purchase")&&HTML.includes("judgment where the table says so")&&HTML.includes("Your price and time records")&&!HTML.includes("each editable or opt-in"),
        "43: the Data tab names SBA's fourth transaction category and says which conventions are editable or opt-in"); }
   /* round 2: the penalty fit's close rate when every listing at value closed, and its search against a fine grid */
