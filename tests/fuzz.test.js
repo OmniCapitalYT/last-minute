@@ -379,12 +379,26 @@ for(let i=0;i<N;i++){
          the value by less than 0.1%, its best with the true reason: the factor's own z at its -3.2 limit ("far") or the
          business past the bottom of the quality range ("bottom", r4-report-1); never a central slope. A line groups only
          steps the model weights alike */
-      { const SE=A.sensitivity(s), r0=A.model(s), at=(k,kind)=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, near=s[k]+(v.inv?-st:st);
+      { const levOk=(s,V,sens)=>{ const SE=A.sensitivity(s), r0=A.model(s), at=(k,kind)=>{ const v=SE.find(r=>r.k===k), best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k], st=2*v.h, near=s[k]+(v.inv?-st:st);
           const rn=A.model({...s,[k]:near}), small=room>=st-1e-9&&rn.V-V<=V*.001;
-          const lim=v.inv?r0.z[k]>=3.2:r0.z[k]<=-3.2;
-          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?small&&lim:kind==="bottom"?small&&!lim&&r0.qz<-3:kind==="flat"?small&&!lim&&r0.qz>=-3:false;
+          /* "far" only when the step leaves the factor's own z at its limit or lifts it under half a step (r6-report-1) */
+          const lim=v.inv?r0.z[k]>=3.2:r0.z[k]<=-3.2, far=lim&&(v.inv?r0.z[k]-rn.z[k]:rn.z[k]-r0.z[k])<.5;
+          const okKind=kind==="step"?room>=st-1e-9:kind==="room"?room<st-1e-9:kind==="far"?small&&far:kind==="bottom"?small&&!far&&r0.qz<-3:kind==="flat"?small&&!far&&r0.qz>=-3:false;
           return {okKind,g:A.model({...s,[k]:kind==="step"?near:best}).V-V}; };
-        ok(D.sens.every(g=>g.full===(g.kind==="step")&&g.keys.every(k=>{ const o=at(k,g.kind); return o.okKind&&Math.abs(o.g/g.gain-1)<.006; })),"broker: every lever's gain is the model's own step, room or best",ctx(s));
+          return sens.every(g=>g.full===(g.kind==="step")&&g.keys.every(k=>{ const o=at(k,g.kind); return o.okKind&&Math.abs(o.g/g.gain-1)<.006; })); }, SE=A.sensitivity(s);
+        ok(levOk(s,V,D.sens),"broker: every lever's gain is the model's own step, room or best",ctx(s));
+        /* and on a low-quality copy of the same business, where factors sit at their z limits and the composite past the
+           bottom of the range: each line's reason is the one that holds (r6-report-1: retention lifted 0.97 sd was "far") */
+        { const sL={...s,grw:-.2,gm:Math.max(.12,s.gm*.4),rec:s.rec*.2,cc:Math.min(.7,s.cc+.3),ret:Math.max(.05,s.ret*.35),plt:Math.min(.95,s.plt+.3),own:.95,mgt:.08,fin:.14}, VL=A.model(sL).V;
+          ok(levOk(sL,VL,A.reportLevers(sL,VL)),"broker: on a low-quality copy each lever line gives the reason that holds (r6-report-1)",ctx(sL));
+          /* and a business drawn from low-quality ranges by a stream of its own (the main draws stay as they were), where
+             factors sit just past their z limits and the composite past -3 */
+          let q2=(i+1)*7919%2147483646+1; const r2=()=>{ q2=q2*48271%2147483647; return q2/2147483647; }, p2=a=>a[Math.floor(r2()*a.length)];
+          const rv=Math.exp(Math.log(2e5)+r2()*Math.log(5e4)), sQ={ind:p2(INDS),st:p2(STS),franchise:r2()<.2,rev:rv,ern:rv*(.05+r2()*.6),grw:Math.round(-25+r2()*30)/100,gm:Math.round(12+r2()*45)/100,
+            rec:Math.round(r2()*40)/100,cc:Math.round(20+r2()*50)/100,ret:Math.round(5+r2()*50)/100,plt:Math.round(30+r2()*65)/100,own:p2([.95,.72,.42]),mgt:p2([.08,.36,.66]),fin:p2([.14,.45,.74]),
+            yrs:1+Math.floor(r2()*12),buyers:5*(1+Math.floor(r2()*60)),budget:0,lamT:Math.floor(r2()*41)*50,theta:Math.floor(r2()*101)/100};
+          sQ.ask=A.model({...sQ,ask:1}).V*(.8+.8*r2()); const VQ=A.model(sQ).V;
+          ok(levOk(sQ,VQ,A.reportLevers(sQ,VQ)),"broker: on a low-quality business each lever line gives the reason that holds, not 'too far below its peers' where the step lifts most of a step (r6-report-1)",ctx(sQ)); }
         ok(D.sens.every(g=>g.n===1||(g.kind==="step"&&g.keys.every(k=>A.QW.w[k]===A.QW.w[g.keys[0]]))),"broker: a lever line groups only steps the model weights alike",ctx(s));
         /* every lever whose best adds over 0.1% of the value is named, or three lines name larger gains (r5-report-1) */
         const miss=SE.filter(v=>!v.pinned&&v.h!==null&&A.RAIL_BEST[v.k]!==undefined).filter(v=>{ const k=v.k, best=A.RAIL_BEST[k], room=v.inv?s[k]-best:best-s[k];
@@ -397,7 +411,10 @@ for(let i=0;i<N;i++){
          the improvements say the ask they are measured at (r5-report-3) */
       { const rs=D.sell.ratio, rw=D.walk.ratio, on=A.optNote({...s,rhoSell:rs,optRho:rw},V,A.model({...s,ask:V*rs}),A.model({...s,ask:V*rw}));
         const capX=on.kind==="higher"&&rw>A.RHO_MAX-.02;
-        ok(D.same||((!capX||h.includes("cap on the ask (a judgment), not an optimum"))&&(!on.alt||/close to a tie with another ask: read it as/i.test(h))&&(!on.coin||h.includes("close to a coin toss"))),
+        /* the report's range is the one the console note prints, over every near-tie peak (r6-core-1) */
+        const nr=/as a range, (\d\.\d\d–\d\.\d\d)× value/.exec(on.text), rr=/close to a tie with (?:another ask|other asks): read it as (\d\.\d\d–\d\.\d\d)× value/i.exec(h);
+        ok(!on.alt||(!!nr&&!!rr&&nr[1]===rr[1]),"broker: the report reads the patient-seller ask as the range the console note prints (r6-core-1)",ctx(s,{note:nr&&nr[1],report:rr&&rr[1]}));
+        ok(D.same||((!capX||h.includes("cap on the ask (a judgment), not an optimum"))&&(!on.alt||!!rr)&&(!on.coin||h.includes("close to a coin toss"))),
            "broker: the patient-seller ask carries the console's qualifiers: the ask cap, a range, a coin toss (r5-report-2)",ctx(s,{cap:capX,alt:!!on.alt,coin:on.coin}));
         ok(!D.fixes.length===!h.includes(`Each gain assumes the ask reset to ${rs.toFixed(2)}× the new value.`),"broker: the improvements state the ask they are measured at (r5-report-3)",ctx(s)); }
       ok(!/NaN|undefined|Infinity|−\d\.\d\d×|-\d\.\d\d×/.test(h)&&!h.includes("<b>x</b>")&&h.includes(A.covFmt(D.cur.fin)),"broker: the report is finite, escapes what is typed and prints coverage as the console does",ctx(s,f));

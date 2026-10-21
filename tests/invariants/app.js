@@ -658,8 +658,11 @@ function checkState(name,st,askTyped,S,E){
         const dt=E.rKeep.tMean-E.rSell.tMean; if(m[3]!==undefined&&!(dt>0)) bad.push("longer but dt="+dt); if(m[3]===undefined&&Math.round(Math.abs(dt))>=1) bad.push("time clause missing"); } }
     else bad.push("unknown branch");
     const coin=/close to a coin toss/.test(n); if(coin!==!!E.note.coin||(E.note.coin!==(E.note.kind!=="same"&&E.note.gain<.01*r.V))) bad.push("coin");
-    const rg=/read the patient-seller price as a range, ([\d.]+)–([\d.]+)× value/.exec(n);
-    if(rg&&!(rg[1]===Math.min(E.note.alt.m,E.optRho).toFixed(2)&&rg[2]===Math.max(E.note.alt.m,E.optRho).toFixed(2)&&tx.o_listp2.startsWith(E.optRho.toFixed(2)))) bad.push("range ends");
+    /* the range spans every near-tie peak with the walk-away ask (sixth skeptic round of the broker tools, r6-core-1): its
+       ends are the note's span, and the walk-away ask and every alternative the note names lie inside it */
+    const rg=/read the patient-seller price as a range, ([\d.]+)–([\d.]+)× value/.exec(n), sp=E.note.span;
+    if(rg&&!(sp&&rg[1]===sp[0].toFixed(2)&&rg[2]===sp[1].toFixed(2)&&sp[0]<=E.optRho+1e-9&&E.optRho<=sp[1]+1e-9
+      &&(E.note.alts||[]).every(a=>a.m>=sp[0]-1e-9&&a.m<=sp[1]+1e-9)&&tx.o_listp2.startsWith(E.optRho.toFixed(2)))) bad.push("range ends");
     ok("optnote-directions",!bad.length,ctx({bad,note:n.slice(0,300),tiles:[tx.o_list,tx.o_listp,tx.o_list2,tx.o_listp2]})); }
   { const bV=E.best.V, rRep=E.rRep, bad=[];
     if(bV.net<r.EVp-1e-6) bad.push("below today");

@@ -552,7 +552,7 @@ spread (s = 1) no alpha brings E[P|close]/ask up to the market averages.
   multiple of V, which carries no information: under the information reading such an ask faces the whole fan, and the
   whole fan or selection keep the cap. The whole fan, though, misses realisation at typical asks, so neither end is a data
   result. The decision was to ship the narrowed fan everywhere and show the patient-seller price as a range ("close to a
-  tie") whenever the other peak is within 1% of value; the tests check the near-tie, not the winner. Option B (not taken)
+  tie") whenever another peak is within 1% of value (every such peak, since the sixth skeptic round of the broker tools); the tests check the near-tie, not the winner. Option B (not taken)
   would have kept the 1.5x answer by giving bestRatio's candidate asks the whole fan (a `fanShare` argument to
   `fanNodes()`, `model({...s0,ask:V*m,fanShare:1})` inside bestRatio's U()) while the displayed price stays calibrated.
   This replaces the "about 1.57x" note under "Left as documented judgment".
@@ -1331,7 +1331,7 @@ The owner asked: "now, see if there are any other datasets you can use to fit mo
   - The knife edge at which the cap wins moves to 78% kept at $900 a day, 77% with no delay cost and 83% at $4,000.
   - The tail past the last knot decays from 200% over value, at half the old rate (k 0.000571).
 - **RHO_MAX's wording.** The cap stays 1.5× as a judgment. Its texts no longer call it "the highest ask the closing data resolve", because Pepperdine resolves gaps up to half the ask, 2× value.
-- **The walk-away note.** It now offers a range only for a real second peak: one with a dip of 0.01% of value, or one where the walk-away ask sits one 1% step of the share kept away. On the stated axis the framework example showed a 0.002% wiggle at 1.21×, which offered a range of 1.20–1.26× and hid the cap, 0.38% of value away.
+- **The walk-away note.** It now offers a range only for a real second peak: one with a dip of 0.01% of value, or one where the walk-away ask sits one 1% step of the share kept away. On the stated axis the framework example showed a 0.002% wiggle at 1.21×, which offered a range of 1.20–1.26× and hid the cap, 0.38% of value away. (The same range came back through the jump rule below: one step of the share kept away the walk-away ask is 1.20×, so that peak is real, and the note named only the best of the near-tie peaks. It still hid the cap until the sixth skeptic round of the broker tools; the range now spans every real peak within 1% of value, 1.20–1.50× here.)
   - The fuzz suite found that the dip rule alone was too strict. An MSP's walk-away ask jumped from 1.34× to 1.45× between 98% and 99% kept, over a dip under 0.01% of value, and at 98% the note showed no range. A peak the ask jumps to now counts as real however shallow its dip, and a test pins the case.
 - **The peer table.**
   - **At the medians.** A business entered at its industry's medians keeps its value exactly.
@@ -1407,7 +1407,7 @@ This section describes the tools as they now stand. "Skeptic review of the broke
 - **Storage.** Deals and preferences stay in this browser, under `localStorage` keys `omni.deals.v1` and `omni.prefs.v1`:
   - everything read back is cleaned first, imports included, because both are untrusted;
   - when storage is refused (a private window), every save says so and the Deals tab says the deals last only until the page closes; a full store is named as full;
-  - another tab of the page writes the same store, so every save first merges with it: the newer copy of a deal wins, and an edit's time is always after the copy it was made from, whatever the clock. A deletion is kept with its time (`omni.deals.v1.deleted`, merged before it is written) so an older tab cannot bring the deal back, and a backup that restores a deal is stamped after its deletion. A missing or repeated id is derived from the record, so every tab gives it the same id. The edit form saves only the fields typed in it, a field of the report only itself, and the preferences only the keys changed. A save from the console writes the fields changed in that tab (each input, each term of the financing structure, each worksheet cell) over the store's copy, and a field another tab saved that this tab has not changed is taken up; where both tabs changed one field, this tab keeps its value and the page says so. Every read of the store (another tab's save as it is heard, the Deals tab and its actions, an export, the report, an import) brings the deal in the console up to it the same way, and a deal deleted elsewhere keeps its name, business, recipient and worksheet for the next save, which says why. A change the store refuses stays in this tab, field by field, until a write succeeds. A record with no time of its own, or one more than a day past this computer's clock, is older than any copy or deletion; a reload applies the deletion list, and a deletion the store cannot take is not recorded either. A stored list that cannot be read is copied aside before a save can replace it; with no room for the copy nothing is saved over it until it is downloaded as a file. Other tabs redraw when the store changes, the Deals tab's fits only while it shows;
+  - another tab of the page writes the same store, so every save first merges with it: the newer copy of a deal wins, and an edit's time is always after the copy it was made from, whatever the clock. A deletion is kept with its time (`omni.deals.v1.deleted`, merged before it is written) so an older tab cannot bring the deal back, and a backup that restores a deal is stamped after its deletion. A missing or repeated id is derived from the record, so every tab gives it the same id. The edit form saves only the fields typed in it, a field of the report only itself, and the preferences only the keys changed. A save from the console writes the fields changed in that tab (each input, each term of the financing structure, each worksheet cell) over the store's copy, and a field another tab saved that this tab has not changed is taken up; where both tabs changed one field, this tab keeps its value and the page says so. Every read of the store (another tab's save as it is heard, the Deals tab and its actions, an export, the report, an import) brings the deal in the console up to it the same way, and a deal deleted elsewhere keeps its name, business, recipient and worksheet for the next save, which says why; restored from a backup, it is the console's again. A change the store refuses stays in this tab, field by field, until a write succeeds; merged over another tab's newer save, it is a new edit, stamped after both. A record with no time of its own, or one more than a day past this computer's clock, is older than any copy or deletion; a reload applies the deletion list, and a deletion the store cannot take is not recorded either. A stored list that cannot be read is copied aside before a save can replace it; with no room for the copy nothing is saved over it until it is downloaded as a file and the broker says the file is kept. Other tabs redraw when the store changes, the Deals tab's fits only while it shows;
   - deals export to JSON and CSV and import from JSON.
 
 ### The financing check
@@ -1417,7 +1417,7 @@ This section describes the tools as they now stand. "Skeptic review of the broke
   - **Equity.** At least 10% of the total project cost; for an owner buyout, 10% of the price. Seller debt on full standby for the life of the loan may supply at most half of it. For a business expansion or an owner buyout the lender may reduce or eliminate it when the business keeps the liquidity and working capital to run, with no negative net worth, and a loan whose equity is eliminated may not fund working capital; for an initial acquisition it cannot be reduced.
   - **Loan terms.** Amortization of at most 10 years without real estate. The maximum Standard 7(a) loan is $5,000,000.
   - **The debt cap.** All acquisition debt, including a seller note not on full standby, is limited to the business valuation; any price above it is paid in equity: cash, or a seller note on full standby.
-  - **Due diligence.** The lender may value a business priced at $350,000 or less itself, unless buyer and seller have a close relationship, such as existing owners or family (Para. C.1.a): an owner buyout between existing owners is one, and the check says so for an owner buyout at that price. From a $3M price it also needs a Quality of Earnings report, except for an owner buyout.
+  - **Due diligence.** The lender may value a business priced at $350,000 or less itself, unless buyer and seller have a close relationship, such as existing owners or family (Para. C.1.a): an owner buyout between existing owners is one, and the check says so for an owner buyout at that price. From a $3M price it also needs a Quality of Earnings report, except for an owner buyout (SBA's, a minority sale to anyone else included) or an ESOP or cooperative purchase.
 
   Paragraph letters are cited only where SBA's own cross-references give them. The other rules are cited by section name.
 - **Coverage** is SDE, less the new owner's pay and any capital spending, over a year of payments on the SBA loan and the seller note (none when the note is on full standby).
@@ -1469,7 +1469,7 @@ This section describes the tools as they now stand. "Skeptic review of the broke
   Every figure carries the console's badge for it. Where a judgment input also moves a fitted or published figure (the quality position, the price-gap penalty above value, the overpricing time multiplier, the seller-note convention and the pay's rank, and the starting note's share where the 7(a) maximum sets the highest price, or, on full standby, wherever it sizes the loan), the badge adds "× judgment"; coverage's own badge follows what moves it (the SBA rate's fitted spread where there is a loan, the market pay, the seller-note convention). An extrapolated value carries the console's warning. Each value lever is the model's own gain for one peer step toward its best (the unit the console's sensitivity ranks every lever in, selects included), for the room left before its best when that is nearer, or, when a step does not register, at its best with the reason: the factor's own z sits at or past its limit, so the step leaves it there or lifts it a sliver; the business sits past the bottom of the quality range; or, for any other reason, the step's size. Every lever whose best adds over 0.1% of the value is named, unless three larger lines are. A line groups only levers the model weights alike; a lever with no room or no gain is not offered, and a business past the bottom of the quality range is told what all nine factors at their best would add, beside any lines.
 - **Text typed into the report is escaped.**
 - **The paper** has its own stylesheet, which reverts the page's styles inside it. The page holds it under the paper's id, so no page rule outranks it, and the page's few `!important` rules stop at the paper: the preview and the print lay out exactly as the downloaded `.html` file does, and the browser test compares every computed property of every element. The file has no script and no link.
-- **Printing** while the report is open prints the paper alone, on Letter with .3in top and bottom margins and .4in at the sides. It fits one page. In print the business name holds to two lines and the block after it, the date first, to three, so names at the fields' 120-character limit fit too. The tallest report the searches of round 5 could reach, past the bottom of the quality range at the ask cap with realistic names at the fields' limit, measures 998 px against the page's 998 and prints on one page (the paper measures a few px over the page and still prints whole). The browser test prints it and the tallest the reviewers found, with 120 W's in each name, from the page and from the file, and checks the PDF's page count.
+- **Printing** while the report is open prints the paper alone, on Letter with .3in top and bottom margins and .4in at the sides. It fits one page. In print the business name holds to two lines and the block after it, the date first, to three, so names at the fields' 120-character limit fit too; a business name over 28 characters, or a block over 120, prints at the smaller size, so no shorter name prints taller. The tallest report the searches of rounds 5 and 6 could reach, past the bottom of the quality range at the ask cap with realistic names at the fields' limit, measures 1,001 px against the page's 998 and prints on one page (the paper measures a few px over the page and still prints whole). The browser test prints it and the tallest the reviewers found, with 120 W's in each name, from the page and from the file, and checks the PDF's page count.
 - **Remembered fields.** The broker's name and firm are kept for the next report; the business and recipient are kept with the deal.
 
 ### Saved deals
@@ -1822,6 +1822,59 @@ Two were medium and 26 low. Four were refuted, as harmless or by design, and fiv
   - **"45.000" read as $45** is the page's en-US reading, echoed at once; refusing dot-grouped numbers would be a locale change, not a fix.
   - **The deal form's counts reading "12,15" as 1,215** move no figure and are echoed at once.
 
+### Round 6: 34 of 39 findings confirmed
+Two were medium and 32 low. Five were refuted, as harmless or by design, and four repeat another area's finding. Every survivor was fixed in one commit. Each one has a test that fails on the code before it (19 of the model checks, 5 of the fuzz checks at 300 businesses, and 21 of the 217 browser checks).
+
+- **The rest of the app (3).**
+  - **The patient-seller range left out the 1.5× cap** (medium). At the framework example (75% kept, $900 a day) the note under the listing cards, and since round 5 the seller report, read the patient seller's ask as 1.20–1.26× value. The cap is a third real peak, 0.38% of value below the walk-away ask with a 0.26% dip between, inside the page's 1% tie. The two judgment scales the note names as deciding between the ends, the scatter at high asks and the price-gap penalty, move the walk-away ask to the cap (FAN_S 0.95 or PEN_MAX 0.41). The note kept only the best of the near-tie peaks. Its range now spans every real peak within 1% of value with the walk-away ask, 1.20–1.50× here, and names each, the cap as the cap; the report reads the same range. The model tests found the same gap at five other states they scan, so the Data tab's "the console shows both ends as a range when they are within 1% of value" was false until now. The invariant suite's check of the note's range now reads the span.
+  - **Smaller defects:**
+    - with the store full or blocked, a change to the financing structure said it was not kept only in the toolbar, about 16,000 px above the section, and for 7 seconds; the section has its own status line now, which stays until a save succeeds.
+  - **Overlap:** the seller report's paper in a tab that missed another tab's save (seller report).
+- **Saved deals (12).**
+  - **A change the full store refused, merged over another tab's newer save, kept that tab's time** (medium). The next write that succeeded here (deleting a deal, as the full-store message advises) stored the change at a time equal to the other tab's copy, so that tab never took it up, its next save of any deal wrote its own copy back, and the export the message advises skipped the change on import as not newer. Such a merge is now a new edit, stamped after both copies.
+  - **Smaller defects:**
+    - when the full store refused both tabs' changes to one deal, the one written first carried its earlier refused time, and the other tab, judging the store by its own later refused copy, never took it up and wrote its unchanged fields over it; a refused change is now merged whenever the stored copy changed since the copy the change was made from;
+    - in that merge a field both tabs changed kept this tab's value without the clash message the normal path gives; it now says so, as it hears the other tab and again as it saves;
+    - in that merge this tab's automatic name, moved by its own refused SDE, replaced a name typed in the other tab and froze; a name now merges with its automatic flag, and an automatic one follows the merged inputs;
+    - a take-up of another tab's save cleared every held-to-range mark on the rail, though the held values stayed; it now clears only the fields it took up;
+    - a deal deleted in another tab and restored from a backup stayed lost here: the message still said it was deleted, and the next save made a second deal of the same name; the console now takes the restored deal back, says so, and saving updates it;
+    - "Download them" wrote over the unreadable deals right after starting the download and said it was done, though the page cannot know the file was kept; nothing is saved over them now until the broker says the file is kept;
+    - a second tab opened on the same unreadable store still said the deals stored here could not be read after another tab had saved over them; it keeps its copy, which may be the only one, and now says what happened;
+    - Reset in a tab that missed the deletion of the deal in its console called the deal unchanged in the Deals tab; it reads the deletions first;
+    - with the store full, merely opening a deal said "the change is not kept"; a refused preference (the structure and worksheet in use, the broker and firm, the price record) now says what is not remembered after a reload, and that it applies in this tab.
+  - **Overlaps:** the cell being typed in rebuilt by a take-up (worksheet), the report's paper (seller report).
+- **Worksheet (7).**
+  - **Smaller defects:**
+    - a worksheet left in the dialog after Reset or a reload belonged to no deal, and when the deal in the console got its own from another tab or an import the dialog kept the leftover; one edit then made it the deal's and the save wrote it over the other tab's. Such a leftover now gives way to the deal's own when it arrives;
+    - the lasting messages, that the deal in the console was deleted in another tab or that both tabs changed one field, stayed after Reset or after opening another deal, stating what a save would do to a valuation no longer shown; they now go with their deal;
+    - Clear in one tab and a new cell from another reset the merged worksheet's source and basis to S corporation and "most recent year", which neither tab chose; emptying the cells no longer counts as changing those settings;
+    - a take-up that put another tab's SDE above 92% of this tab's revenue held it there silently and said the console showed the other tab's change; the held SDE is now marked and named, as a typed one is;
+    - "Save the console as a new deal" in a tab that missed the deletion of the deal in its console saved a generic deal without its name, business and worksheet; it reads the store first, as the toolbar's save does;
+    - another tab's save of the same deal's worksheet rebuilt the cell being typed in: its text reformatted, the caret at the start, and the rest of the number refused, or a part-typed amount deleted; the cell now keeps its text, caret and the value it held when focused, and the dialog says what changed.
+  - **Overlap:** the report's paper (seller report).
+- **Seller report (6).**
+  - **Smaller defects:**
+    - "too far below its peers for one step to register" was given to a factor at its z limit whose step lifts it almost a full sd, which registers nothing only because the composite stays past -3, the reason another factor on the same paper got; "far" now needs the step to leave the factor's z at its limit or lift it under half a step;
+    - the print sizes went by character count, so a business name of 56 characters or fewer, or a prepared-for block of 150 or fewer, could wrap at the larger size and print taller than the 120-character names the test used: round 5's tallest report, with 56 and 50 W's, printed on two pages. The smaller print size now starts where the larger could wrap: a business over 28 characters (37 W's fill a line), a prepared-for block over 120 characters, date and words between included (two lines hold 142 of the widest letters);
+    - in a tab that missed another tab's save, committing a report field took the save up into the report's data but left the paper drawn on the old figures, so Print and Download disagreed, and the other name field stayed stale; the paper is drawn again, the untyped fields follow the deal, and the take-up message shows in the dialog;
+    - when the two optimizer asks print alike, the report's one row said only "If you need to sell"; it is labelled for both sellers and gives the share kept and the cost of delay the walk-away ask counted;
+    - after a report field the full store refused, a later field that saved left "the change is not kept" in the report and "kept in this tab only" in the toolbar; a write that succeeds now takes both back, and the toolbar follows each write;
+    - the footer named the seller-note convention for "the highest financed price" in a report that prints none (an initial acquisition short of equity at every price); it now names the prices past the 7(a) maximum that the report prints, and badges them.
+- **Financing check (6).**
+  - **Smaller defects:**
+    - text dragged into a money box got past round 5's paste guard: Chromium joins a dropped selection's lines with a space, so two cells read as one amount ($91,450 of pay); a drop is now refused and marked as a paste is;
+    - with the note on full standby at the starting share, the debt above value moved with that convention but carried only the value's badge, and its repeat in the asks table none; both carry "× judgment" now (the table's line, shortened to "debt $X over value", keeps the report on one page), and the footer names it;
+    - round 5's "no whole-dollar price" ignored that an expansion's or an owner buyout's equity can be waived: where the highest price and the equity floor share one whole dollar, every price up to it passes the other tests; the box and the report now give it with the waiver, as at every neighbouring SDE, and "none" only for an initial acquisition;
+    - the report relied on an equity waiver ("if the lender waives part of the 10% equity") without SBA's conditions when no other sentence on the paper stated them; it now states them;
+    - the failing buyer cash printed rounded to nearest in the table beside the equity note's rounded-down figure ($284k beside $283k, and at 9.99% the minimum itself); a failing cell now rounds down too;
+    - the footer's Quality of Earnings exemption covered only buyers active in the business for 24 months; SBA exempts every owner buyout, a minority sale to anyone else included, and ESOP and cooperative purchases. The footer, the console's note and the Data tab now say so.
+- **Refuted.**
+  - **A deal restored from a backup in another tab** was refuted in one area (nothing lost, and the message's statements stay true) and confirmed in another (the message misleads and a same-named duplicate follows); the console now takes the restored deal back.
+  - **The take-up pairing one tab's revenue with the other's SDE above 92% of it** was refuted as the console's own rule in one area and confirmed in part in another, for the silence; the hold is now marked and named.
+  - **The report's "read on the most recent year"** beside a most recent column with revenue alone: the phrase reads as the most recent of the returns, the year the SDE reads, and the figure is right (round 4 ruled the same).
+  - **A far extrapolation's "margin wider than usual"** is not on the report: the report's sentence already says the value is less certain than it looks at every distance, and prints each input against the data's 99th percentile.
+  - **Two different imported records sharing an id** keep the newer: an id is a deal's identity across browsers, and the page's own export never repeats one.
+
 ### Where it stands
 | Round | Findings | Confirmed (in part) | Refuted | Fixed in |
 |---|---|---|---|---|
@@ -1829,17 +1882,18 @@ Two were medium and 26 low. Four were refuted, as harmless or by design, and fiv
 | 2 | 52 | 46 | 6 | f96e2ec |
 | 3 | 51 | 44 | 7 | abd7e00 |
 | 4 | 44 | 36 | 8 | 95b4935 |
-| 5 | 32 | 28 | 4 | the round-5 commit |
+| 5 | 32 | 28 | 4 | 4185ffc |
+| 6 | 39 | 34 | 5 | the round-6 commit |
 
-Round 5 still found two medium defects, so round 6 runs on the round-5 commit, with every finding above as known; the loop stops after the first round whose findings are all low, once those are fixed.
+Round 6 still found two medium defects, so round 7 runs on the round-6 commit, with every finding above as known; the loop stops after the first round whose findings are all low, once those are fixed.
 
-Suites on the round-5 build:
+Suites on the round-6 build:
 
 | Suite | Result |
 |---|---|
-| `node tests/model.test.js` | 7,684 pass |
-| `node tests/fuzz.test.js 1500` | 210,915 checks pass |
+| `node tests/model.test.js` | 7,781 pass |
+| `node tests/fuzz.test.js 1500` | 211,365 checks pass |
 | `node tests/browser.inputs.js` | pass |
-| `node tests/browser.broker.js` | 186 checks pass |
+| `node tests/browser.broker.js` | 217 checks pass |
 | `node tests/browser.sweep.js` | 121 input states at each of 1440 and 390 px pass |
 | `node tests/invariants.test.js --browser` | 253 invariants pass |
