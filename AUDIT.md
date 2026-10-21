@@ -1978,9 +1978,9 @@ One was medium and 24 low. Five were refuted, as harmless, by design or reachabl
 | 5 | 32 | 28 | 4 | 4185ffc |
 | 6 | 39 | 34 | 5 | 2f309d6 |
 | 7 | 38 | 33 | 5 | 2388c6c |
-| 8 | 30 | 25 | 5 | the round-8 commit |
+| 8 | 30 | 25 | 5 | a631a70 |
 
-Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in the round-8 commit, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule; round 8's fixes have their tests but no ninth review.
+Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule; round 8's fixes have their tests but no ninth review.
 
 Suites on the round-8 build:
 
