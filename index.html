@@ -2926,7 +2926,11 @@ const NL={recA:.44,recS:1.15,ccL:.30,ccQ:.16,          // §7 nonlinear terms
    60-70%. Above the median the benefit saturates; below it, small really is
    worse, so that side stays linear. */
 const AMAX=1.30;   // ceiling on what anchoring alone can add to the realized price
-const RHO_MAX=1.50; // a judgment cap: anchoring earns nothing past 1.5x value (a gap of a third of the ask; Pepperdine resolves gaps to half the ask, 2x value, but any cap above 1.5 leaves the patient seller at the cap)
+/* the walk-away asks and range peaks the soft cap on the ask sets, not measured optima: softMin's rounded corner (K=.012
+   in logs) sets every peak from RHO_MAX*e^(-3.5K), 1.44x printed; no peak the cap does not set lies above it, and a
+   walk-away ask there moves with the cap (eighth skeptic round, r8-core-1) */
+const capSet=m=>Math.round(m*100)/100>=RHO_BIND-1e-9;
+const RHO_MAX=1.50, RHO_BIND=Math.round(RHO_MAX*Math.exp(-3.5*.012)*100)/100; // a judgment cap: anchoring earns nothing past 1.5x value (a gap of a third of the ask; Pepperdine resolves gaps to half the ask, 2x value, but any cap above 1.5 leaves the patient seller at the cap)
 /* Price realism is convex, not linear. A linear penalty steep enough to punish
    gross overpricing also made a 10% overprice cut the close probability ~14%,
    an elasticity above 1. That forces the expected-proceeds optimum below the
@@ -3736,7 +3740,7 @@ function optNote(s,V,rSell,rKeep){
   const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<.01*V;
   /* the per-day cost exactly as entered: money() rounds $1,450 to "$1k" (AUDIT_FINDINGS R1-23) */
   const lamTxt="$"+Math.round(s.lamT).toLocaleString("en-US");
-  const atEdge=s.optRho>RHO_MAX-.02, days=Math.round(Math.abs(rSell.tMean-rKeep.tMean)), dd=days===1?"a day":`${days} days`;
+  const atEdge=capSet(s.optRho), days=Math.round(Math.abs(rSell.tMean-rKeep.tMean)), dd=days===1?"a day":`${days} days`;
   const lam=s.lamT>0?` and a cost of delay of ${lamTxt} a day`:"";
   let alt=null, flat=null, peak=null, alts=[], span=null;
   if(s.theta>0){
@@ -3796,9 +3800,9 @@ function optNote(s,V,rSell,rKeep){
         flat=f<=RHO_MAX-.1+1e-9?f:null; }
     }
   }
-  /* a peak printed as the cap is the cap; one just under it is the soft cap's rounded corner, where the cap binds
-     (r7-core-1: 1.48x was called the cap beside a range to 1.50x) */
-  const tie=a=>`${a.m.toFixed(2)}× value${a.m.toFixed(2)===RHO_MAX.toFixed(2)?" (the cap the console puts on the ask)":a.m>RHO_MAX-.02?` (where the console’s ${RHO_MAX.toFixed(2)}× cap on the ask binds)`:""}`, by=a=>pc(Math.max(0,U(rKeep)-a.u)/V,2);
+  /* a peak printed as the cap is the cap; one under it in the soft cap's rounded corner (capSet) is where the cap binds
+     (r7-core-1: 1.48x was called the cap beside a range to 1.50x; r8-core-1: the corner reaches down to 1.44x) */
+  const tie=a=>`${a.m.toFixed(2)}× value${a.m.toFixed(2)===RHO_MAX.toFixed(2)?" (the cap the console puts on the ask)":capSet(a.m)?` (where the console’s ${RHO_MAX.toFixed(2)}× cap on the ask binds)`:""}`, by=a=>pc(Math.max(0,U(rKeep)-a.u)/V,2);
   const range=alt?`Asking ${tie(alts[0])} instead is worth within ${by(alts[0])} of value to this owner${alts.slice(1).map((a,j,l)=>`${j===l.length-1?" and ":", "}${tie(a)} within ${by(a)}`).join("")}, close to a tie, so read the patient-seller price as a range, `
     +`${span[0].toFixed(2)}–${span[1].toFixed(2)}× value: which ${alts.length>1?"of these":"end"} wins turns on how widely prices scatter at high asks and on the size of the price-gap penalty (a judgment scale), which the data do not settle. `
     :flat===null?""
@@ -3826,7 +3830,7 @@ function optNote(s,V,rSell,rKeep){
     +`pays off if the owner genuinely can walk away: it assumes a failed process still leaves them `
     +`${pc(s.theta)} of the value. `
     +(coin?`Even then it is worth only ${money(gain)} more to this owner${s.lamT>0?" after the cost of delay":""}, so the two are close to a coin toss. `:"")
-    +(atEdge?`It sits at ${RHO_MAX.toFixed(1)}× value, the cap the console puts on the ask (a judgment), so read it as "test the market", not as a measured optimum. `:"")
+    +(atEdge?`It sits ${s.optRho.toFixed(2)===RHO_MAX.toFixed(2)?`at ${RHO_MAX.toFixed(1)}× value, the cap the console puts on the ask`:`where the ${RHO_MAX.toFixed(2)}× cap the console puts on the ask binds`} (a judgment), so read it as "test the market", not as a measured optimum. `:"")
     +range
     +`A seller who must exit should use the left-hand number.`};
 }
@@ -4088,7 +4092,7 @@ const tm=(v,d)=>"\\text{"+T(money(v,d))+"}";   // upright, not an italic variabl
 const tmi=v=>"\\text{"+T(moneyIn(v))+"}";        // the same at the input boxes' precision (moneyIn)
 const tp=(v,d)=>"\\text{"+T(pc(v,d))+"}";
 const tpts=v=>T(pp(v)).replace(" pts","\\text{ pts}");
-const tn=v=>T(Math.round(v).toLocaleString());
+const tn=v=>T(Math.round(v).toLocaleString("en-US"));
 /* free-text labels (unit strings, buyer and intervention names) can carry % or $
    and are interpolated into \text{}, so they need escaping just like figures */
 /* HTML-escaping sibling of tt(), which escapes for TeX. Industry names reach the
@@ -4234,7 +4238,7 @@ function drawCurve(r){
     el.innerHTML='<div class="rz"><div class="rzh">What the seller actually realises</div>'
       +row(r.Vbase>=2e6?'Market benchmark: sale price as a share of the advisor&rsquo;s benchmark (IBBA; deals this size usually list without an ask)':'Market average: sale price as a share of the ask', pc(r.ft.pctAsk,1),
            'IBBA size curve at '+money(r.Vbase)+': '+pc(r.ft.pctAskSize,1)
-           +(r.ft.indN?', &times;'+r.ft.indFactor.toFixed(3)+' for '+tt2(ind)+' ('+r.ft.indN.toLocaleString()+' closed sales)'
+           +(r.ft.indN?', &times;'+r.ft.indFactor.toFixed(3)+' for '+tt2(ind)+' ('+r.ft.indN.toLocaleString("en-US")+' closed sales)'
                       :' (no BizBuySell sector match for '+tt2(ind)+', so no industry adjustment)'))
       +row('This listing, expected price if it closes', pc(r.Vmean/STATE.s.ask,1),
            money(r.Vmean)+' on an ask of '+money(STATE.s.ask)+' (median '+money(r.Vreal)+')'
@@ -4248,7 +4252,7 @@ function drawCurve(r){
            DC.seller_financing[yi]+'% seller-financed &middot; '+DC.earnout[yi]
            +'% with an earnout &middot; '+DC.bank_loan[yi]+'% bank-funded'):'')
       +'<p class="rzf">Realisation combines the IBBA size band with BizBuySell&rsquo;s closed 2025 '
-      +'transactions by sector ('+(PR.n_total||0).toLocaleString()+' sales across '
+      +'transactions by sector ('+(PR.n_total||0).toLocaleString("en-US")+' sales across '
       +'137 subsectors). The cash share is IBBA&rsquo;s; the structure row is BVR&rsquo;s '
       +'DealStats consideration series. At the market&rsquo;s typical listing premium (a first ask about 7% above the '
       +'value) the model closes at about 89% of that ask at every size below $9M, about 90% of the ask '
@@ -4886,13 +4890,19 @@ function reportData(s,opt){
   /* the console's qualifiers on the patient-seller ask (optNote): the ask cap's judgment and its flat top, a range when
      another ask is close to a tie, a coin toss when it gains under 1% of value (r5-report-2) */
   const on=optNote({...s,rhoSell,optRho:rhoWalk},V,model({...s,ask:V*rhoSell}),model({...s,ask:V*rhoWalk}));
-  const walkQ={cap:on.kind==="higher"&&rhoWalk>RHO_MAX-.02,flat:on.flat,coin:on.kind!=="same"&&on.coin,gain:on.gain,
+  const walkQ={cap:on.kind==="higher"&&capSet(rhoWalk),flat:on.flat,coin:on.kind!=="same"&&on.coin,gain:on.gain,
     range:on.alt?on.span:null,others:on.alt?on.alts.length:0};
   /* the highest financeable price, and the structure at it (its badge follows what binds it) */
   const mf=maxFinanced(s,opt.fin,V), mfAt=mf.price>0&&isFinite(mf.price)?debtCheck(s,mf.price,opt.fin,V):null;
+  /* whether a hair's change of the note's share moves the price where buyer cash past the 7(a) maximum brings the equity
+     to 10%: a standby note's credit can offset the note exactly, so the price is the maximum's and SBA's alone
+     (r8-financing-2) */
+  const f0={...FIN_DEFAULTS,...(opt.fin||{})};
+  const aboveMoves=mf.equityAbove!=null&&f0.note>0&&[f0.note-1e-4,f0.note+1e-4].some(n=>{ const x=maxFinanced(s,{...f0,note:n},V).equityAbove;
+    return x==null||Math.abs(x-mf.equityAbove)>1e-6*mf.equityAbove; });
   return {s,V,point:r.fv.point,qFactor:r.qFactor,qPct:r.qPct,qz:r.qz,conf:r.conf,confLabel:r.confLabel,confOutside:!!r.confOutside,extrap:r.extrap||[],mult:r.M,
     sell,walk,cur,same:money(V*rhoSell)===money(V*rhoWalk),walkQ,rhoSell,sens:reportLevers(s,V),allBest:model({...s,...RAIL_BEST}).V-V,fixes:tab,maxFin:mf,mfAt,
-    recast:opt.recast||null,calib:opt.calib||null,sde:s.ern,rev:s.rev,ind:(ownKey(IND,s.ind)?IND[s.ind]:IND.prof).n,date:opt.date||null,fin:opt.fin||null};
+    aboveMoves,recast:opt.recast||null,calib:opt.calib||null,sde:s.ern,rev:s.rev,ind:(ownKey(IND,s.ind)?IND[s.ind]:IND.prof).n,date:opt.date||null,fin:opt.fin||null};
 }
 function hEsc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 const toMonths=d=>(d/30.44).toFixed(1);
@@ -4922,10 +4932,10 @@ function reportHTML(D,meta){
   /* the console's qualifiers beside the patient-seller ask (optNote): a coin toss, the ask cap (a judgment) with its flat
      top, a range when another ask is close to a tie; on the one row both asks share, those that apply to it */
   /* a range whose top is the ask cap says so, as the console's note does, unless the cap's own sentence is there (r7-report-4) */
-  const walkQ=one=>{ const Q=D.walkQ||{}, atCap=one?D.rhoSell>RHO_MAX-.02:Q.cap, rt=Q.range?Q.range[1]:0;
+  const walkQ=one=>{ const Q=D.walkQ||{}, atCap=one?capSet(D.rhoSell):Q.cap, rt=Q.range?Q.range[1]:0;
     return [!one&&Q.coin?`To this owner it is worth only ${money(Q.gain)} more than the price above, close to a coin toss.`:"",
       atCap?`${RHO_MAX.toFixed(2)}× value is the console&rsquo;s cap on the ask (a judgment), not an optimum${Q.flat!=null?`: asks from ${Q.flat.toFixed(2)}× up come within 1% of value of it`:""}.`:"",
-      Q.range?`${one?"For a seller who can walk away, close":"Close"} to a tie with ${Q.others>1?"other asks":"another ask"}: read it as ${Q.range[0].toFixed(2)}–${rt.toFixed(2)}× value${rt>RHO_MAX-.02&&!atCap
+      Q.range?`${one?"For a seller who can walk away, close":"Close"} to a tie with ${Q.others>1?"other asks":"another ask"}: read it as ${Q.range[0].toFixed(2)}–${rt.toFixed(2)}× value${capSet(rt)&&!atCap
         ?`; ${rt.toFixed(2)}× is ${rt.toFixed(2)===RHO_MAX.toFixed(2)?"the console&rsquo;s cap on the ask":`where the console&rsquo;s ${RHO_MAX.toFixed(2)}× cap on the ask binds`} (a judgment)`:""}.`:""].filter(Boolean).join(" "); };
   const nShare=D.fin&&typeof D.fin.note==="number"?D.fin.note:FIN_DEFAULTS.note, nConv=nShare>0&&nShare===FIN_DEFAULTS.note;
   /* the highest financed price is printed (with its badge) only past the branches that print none or the equity's bound;
@@ -4942,7 +4952,10 @@ function reportHTML(D,meta){
      equity to 10%; an owner buyout prints the second in its equity sentence; and the standby note's credit sets the
      equity's edge below the highest price (equityFrom, an owner buyout's equityTo) */
   const capAtJ=!mf.noLoan&&mf.price>0&&mf.equityShort&&!mf.equityWaivable&&mf.capped&&nConv;
-  const abvJ=edgeShown&&!mf.equityFrom&&mf.type==="buyout"&&!!mf.equityTo&&!!mf.equityAbove&&nConv;
+  /* the price where buyer cash brings the equity to 10% carries it only where the share moves it (D.aboveMoves): a standby
+     note's credit offsets the note there for an initial acquisition with working capital (r8-financing-2) */
+  const abJ=capAtJ&&!!D.aboveMoves;
+  const abvJ=edgeShown&&!mf.equityFrom&&mf.type==="buyout"&&!!mf.equityTo&&!!mf.equityAbove&&nConv&&!!D.aboveMoves;
   const edgeJ=mf.standby&&nConv&&(edgeShown&&(!!mf.equityFrom||mf.type==="buyout"&&!!mf.equityTo)||topShown&&E0.none);
   const rB=j=>j?BX("a","published data"):agg;
   /* the debt above value moves with the note's share where the share sizes the debt: on full standby below the 7(a)
@@ -5012,11 +5025,11 @@ function reportHTML(D,meta){
     const waive=eq&&!more.some(t=>t.includes(EQUITY_WAIVER))&&!eqEdge.includes(EQUITY_WAIVER)?` SBA lets the lender ${at0?"eliminate":"reduce"} the 10% equity ${WAIVE_IF}.`:"";
     more.push(mf.price===0?(mf.bind==="cap"?`The working capital and closing costs alone take the 7(a) maximum loan of ${money(SBA_COO.maxLoan)}.`
         :mf.bind==="value"?"Even at the smallest price the acquisition debt would be above the model value, so no SBA-financed price works at this structure."
-        :(z=>z?`The working capital and closing costs financed in the loan, ${money(z.loan)}, already take ${money(z.ds)} a year of payments before any price: the ${money(z.cf)} left after the new owner&rsquo;s pay${spend} covers them ${covFmt(z)}, under SBA&rsquo;s ${z.min.toFixed(2)}× minimum, so no SBA-financed price works until less of them is financed.`
+        :(z=>z?`The working capital and closing costs financed in the loan, ${money(z.loan)}, already take ${money(z.ds)} a year of payments before any price: the ${money(z.cf)} left after the new owner&rsquo;s pay${spend} covers them ${covFmt(z)}${sp(covB(z))}, under SBA&rsquo;s ${z.min.toFixed(2)}× minimum, so no SBA-financed price works until less of them is financed.`
           :`After the new owner&rsquo;s pay${spend} the business does not cover any loan, so no SBA-financed price works at this structure.`)(noPriceWC(D.s,D.fin,D.V)))
       /* below the 7(a) maximum the equity is a fixed share of the price; above it the rest of the price is buyer cash */
       :mf.equityShort&&!mf.equityWaivable?`At ${pctDown(mf.cash)} buyer cash${mf.standby?" with the standby note":""} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum, which cannot be waived for an initial acquisition, at every price${!mf.capped?" this structure finances."
-        :mf.equityAbove?` below about ${moneyUp(mf.equityAbove)}${sp(capAtB)}: past ${moneyDown(mf.capAt)}${sp(capAtB)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, a larger share than this structure sets, which reaches 10% there.`
+        :mf.equityAbove?` below about ${moneyUp(mf.equityAbove)}${sp(rB(abJ))}: past ${moneyDown(mf.capAt)}${sp(capAtB)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, a larger share than this structure sets, which reaches 10% there.`
         :`: past ${moneyDown(mf.capAt)}${sp(capAtB)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, but with this seller note that never reaches 10%.`}`
       :mf.price===Infinity?`Neither coverage nor the valuation limits the price: the SBA loan${f.loan>0?`, ${money(f.loan)} for working capital and closing costs,`:""} does not grow with it.`+eqEdge+wcBar
       :E.none?`No whole-dollar price passes every test at this structure: the buyer&rsquo;s equity, with the standby note&rsquo;s credit, reaches SBA&rsquo;s 10% minimum only from about ${E.from}${eB}, and the structure stops working above ${E.top}${sp(mB)}.`
@@ -5041,7 +5054,10 @@ function reportHTML(D,meta){
     ${recastNotes(R).filter(o=>RECAST_REPORT.includes(o.k)&&(R.sdeFlags||R.flags).includes(o.k)).map(o=>{ const t=RECAST_REPORT_T[o.k]; return hEsc(typeof t==="function"?t(R):t||o.t); }).join(" ")}</p></section>`:"";
   /* the judgment inputs coverage actually reads here: the note's convention and the market pay's rank; and the note's
      share where it sets the highest financed price at the 7(a) maximum */
-  const fins=rows.map(a=>a.fin).concat([f]), covJ=[fins.some(F=>F.noteConv)?"the seller-note convention":"",f.drawMarket?"the pay&rsquo;s rank by firm size":""].filter(Boolean);
+  /* and the structure at the highest financed price where coverage binds it, which its badge reads (covB(D.mfAt)): with
+     every ask past the 7(a) maximum the asks' own no longer name the note (r8-financing-1) */
+  const fins=rows.map(a=>a.fin).concat([f]), covTop=topShown&&mf.bind==="coverage"&&D.mfAt?[D.mfAt]:[];
+  const covJ=[fins.concat(covTop).some(F=>F.noteConv)?"the seller-note convention":"",f.drawMarket?"the pay&rsquo;s rank by firm size":""].filter(Boolean);
   const how=[jV?"the quality position (value)":"",jP?`the price-gap penalty&rsquo;s scale above value${thin?" and the thin-pool factor":""} (chance it sells)`:"",
     jT?"the overpricing multiplier (time to close)":"",covJ.length?covJ.join(" and ")+" (coverage)":"",
     (n=>n.length?`the seller-note convention (${n.join(", ")})`:"")([capJ||valJ?"the highest financed price":"",capAtJ||abvJ?"the prices past the 7(a) maximum":"",
@@ -5405,7 +5421,7 @@ function render(){
       +'<div class="qmark" style="left:'+(p*100).toFixed(1)+'%"></div></div>'
       +'<div class="qends"><span>'+money(r.Vbase*QB.lo)+'</span>'
       +'<span>'+money(r.Vbase)+'</span><span>'+money(r.Vbase*QB.hi)+'</span></div>'
-      +'<p class="qnote">Half of '+MODELS.value.n_fit.toLocaleString()+' closed sales landed between '
+      +'<p class="qnote">Half of '+MODELS.value.n_fit.toLocaleString("en-US")+' closed sales landed between '
       +QB.lo.toFixed(2)+'&times; and '+QB.hi.toFixed(2)+'&times; the model&rsquo;s point estimate. '
       +'<b>That spread is measured.</b> '
       +'The nine quality inputs decide where in it this business sits &mdash; here, the '+lab
@@ -5474,7 +5490,7 @@ function render(){
         pv.title="Fitted SBA charge-off hazard to 8 years, × "+k.tail.toFixed(2)+" for years 9-10, fitted on mature 7(a) loans and read at this note's size"; } }
     if(k.empBand!=null&&!capped){
       t+="SBA acquisition loans of "+k.empBandKey+": "+(k.empBand*100).toFixed(2)
-        +"% charged off within 5 years (Aalen-Johansen, "+k.empBandN.toLocaleString()+" loans). ";
+        +"% charged off within 5 years (Aalen-Johansen, "+k.empBandN.toLocaleString("en-US")+" loans). ";
       more+='<span class="sub2">'+band(k.empBandKey)+' loans: '+(k.empBand*100).toFixed(1)+'% observed by 5 years</span>';
     }
     t+="Charge-offs in 2025-26 ran about "+B.conditions.ratio.toFixed(2)+"× the 2023-24 rate (age-adjusted); taking either period as current puts this figure at about "
@@ -5491,7 +5507,7 @@ function render(){
   /* a no-break space keeps a slash from starting a line ("Search fund /" then "ETA buyer") */
   $("o_bb").textContent=r.best.n.replace("Private equity","PE").replace("Individual owner-operator","Owner-operator").replace(" / ","\u00a0/ ");
   /* each metric stays on one line with its value */
-  $("o_conf").innerHTML=`Fitted on ${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} acquisition loans — value <span class="nw">R² ${MODELS.value.cv_r2_log}</span>, 5-year risk <span class="nw">AUC ${MODELS.risk.cv_auc}</span>`;
+  $("o_conf").innerHTML=`Fitted on ${MODELS.value.n_fit.toLocaleString("en-US")} closed sales and ${MODELS.risk.n_fit.toLocaleString("en-US")} acquisition loans — value <span class="nw">R² ${MODELS.value.cv_r2_log}</span>, 5-year risk <span class="nw">AUC ${MODELS.risk.cv_auc}</span>`;
   $("o_cdot").style.background="var(--mint)";
 
   /* ---------- §4 normalization ---------- */
@@ -6011,7 +6027,7 @@ function renderData(){
       <div class="k">read from published market aggregates</div></div>
     <div><div class="n" style="color:#ff8e7a">${nJudg}</div>
       <div class="k">still chosen by judgment</div></div>
-    <div><div class="n" style="color:#d8ecff">${(V.n_fit+R.n_fit).toLocaleString()}</div>
+    <div><div class="n" style="color:#d8ecff">${(V.n_fit+R.n_fit).toLocaleString("en-US")}</div>
       <div class="k">transactions behind the fitted half</div></div>
   </div>`;
 
@@ -6068,7 +6084,7 @@ function renderData(){
 
     <div class="panel"><p class="grp-title">Model II — expected transaction value</p>
     <p class="note" style="margin-bottom:12px">Ordinary least squares on
-    <b>${V.n_fit.toLocaleString()}</b> BIZCOMPS closed sales, 2001&ndash;2026, in log space.
+    <b>${V.n_fit.toLocaleString("en-US")}</b> BIZCOMPS closed sales, 2001&ndash;2026, in log space.
     Multiples were trimmed to 0.2&times;&ndash;15&times; SDE to drop non-credible records.</p>
     <div class="eqbox" style="font-family:var(--mono);font-size:12.5px;background:var(--deep);
       border:1px solid var(--line);border-radius:3px;padding:12px 14px;margin-bottom:12px;overflow-x:auto">
@@ -6091,7 +6107,7 @@ function renderData(){
     4.14&times; at the top. Worst band bias was 32%.
     The knot sits at $150K of SDE because that is where the observed multiple actually bottoms out
     (1.72&times; at $100&ndash;150K, rising to 1.90&times;, 2.11&times;, 2.48&times; above it).
-    Above $3M of SDE only 56 of ${V.n_fit.toLocaleString()} rows remain, so the hinge switches to the
+    Above $3M of SDE only 56 of ${V.n_fit.toLocaleString("en-US")} rows remain, so the hinge switches to the
     slope that holds the multiple <i>flat</i> rather than extrapolating a gradient off the end of the
     data &mdash; or, worse, letting it fall, which is what freezing the term outright would have done.
     Worst band bias is now <b>8%</b>, and the hinge alone improved both cross-validated fit and error:
@@ -6114,9 +6130,9 @@ function renderData(){
     </div>
 
     <div class="panel" style="margin-top:14px"><p class="grp-title">Model V — post-acquisition survival risk</p>
-    <p class="note" style="margin-bottom:12px">Competing-risk hazard on <b>${R.n_fit.toLocaleString()}</b>
+    <p class="note" style="margin-bottom:12px">Competing-risk hazard on <b>${R.n_fit.toLocaleString("en-US")}</b>
     SBA 7(a) <i>acquisition</i> term loans (<code>BusinessAge = "Change of Ownership"</code>), FY2018&ndash;2026, SBA FOIA as of ${R.asof}:
-    ${R.n_chgoff.toLocaleString()} charged off, ${R.n_pif.toLocaleString()} paid in full and ${R.n_open.toLocaleString()} still open, which are
+    ${R.n_chgoff.toLocaleString("en-US")} charged off, ${R.n_pif.toLocaleString("en-US")} paid in full and ${R.n_open.toLocaleString("en-US")} still open, which are
     censored rather than dropped. Charge-off and payoff are fitted as two hazards by months on book, so the number reported is a
     probability with a horizon: <b>charged off within ${R.horizon_months/12} years</b>, and within ${R.term_months/12} years,
     <b>if ${R.conditions} conditions hold</b>.</p>
@@ -6220,7 +6236,7 @@ function renderData(){
     more series feed it as well. Four set the general-manager cost: Census&rsquo;s share of each industry&rsquo;s employment in
     firms smaller than this one, which ranks the firm inside BLS wage percentiles for general managers by industry
     (${MODELS.fitted.gm_wage.base}, carried to June 2026 by the ECI), BLS ECEC&rsquo;s employer-cost loading on that wage
-    (&times;${IVC.gm.loading.toFixed(2)}) and SHRM&rsquo;s median cost of an executive hire ($${IVC.gm.hire_cost.toLocaleString()}). The prime rate (${MODELS.fitted.sba_rate.prime.toFixed(2)}%, Fed H.15) is stored
+    (&times;${IVC.gm.loading.toFixed(2)}) and SHRM&rsquo;s median cost of an executive hire ($${IVC.gm.hire_cost.toLocaleString("en-US")}). The prime rate (${MODELS.fitted.sba_rate.prime.toFixed(2)}%, Fed H.15) is stored
     with the SBA spreads but is not counted: the survival risk reads only the spread over prime, so the prime level moves no model figure; it sets the loan rate in the broker tools&rsquo; financing check, which the tally leaves out.
     The badge also counts the second and third rounds&rsquo; published aggregates, listed in their tables under Fitted from
     public data: the peer margin, growth and retention medians, the MSPs&rsquo; recurring share, the largest customer&rsquo;s
@@ -6401,7 +6417,7 @@ function renderData(){
       <tr><td>The width of the band</td><td><span class="pv f"><i></i>fitted</span> &mdash; p25 and p75
         of the actual residual distribution across 18,941 sales</td></tr>
       <tr><td>Relative weight of owner dependence and management depth</td><td><span class="pv f"><i></i>fitted</span> &mdash;
-        ${MODELS.fitted.quality_weights.own.toFixed(2)} and ${MODELS.fitted.quality_weights.mgt.toFixed(2)} of an equal share, from ${MODELS.fitted.quality_weights.hedonic.n.toLocaleString()} broker listings
+        ${MODELS.fitted.quality_weights.own.toFixed(2)} and ${MODELS.fitted.quality_weights.mgt.toFixed(2)} of an equal share, from ${MODELS.fitted.quality_weights.hedonic.n.toLocaleString("en-US")} broker listings
         (asking multiples on description phrases), shrunk toward 1; standard errors about 0.3, so neither is
         clearly different from an equal share. Management depth is <b>weakly supported</b> (no out-of-sample value;
         ${QWC&&QWC.mgt?`about ${QWC.mgt.ratio[0].toFixed(2)} of an equal share against the other measured dimensions`:"not compared against the other measured dimensions in this build"})</td></tr>
@@ -6416,7 +6432,7 @@ function renderData(){
         price them. ${QWC ? (C=>{ const Q=C.grw.ef_quintiles.effect, pc=x=>Math.abs((Math.exp(x)-1)*100).toFixed(0),
           sig=v=>Math.abs(v[0]/v[1])>1.96;
           return `Recurring revenue and growth were also checked against
-        ${C.ef_n.toLocaleString()} online-business sales (Empire Flippers, sale multiples reconstructed per deal) and
+        ${C.ef_n.toLocaleString("en-US")} online-business sales (Empire Flippers, sale multiples reconstructed per deal) and
         ${C.flippa_n} Flippa micro-deal prices (${C.flippa_n-C.flippa_auctions} of them final asks, not sales).
         <b>Growth</b> shows a positive direction in the Empire Flippers sale prices, also out of sample, driven mainly
         by declining businesses being discounted: against the middle fifth of growth, the two shrinking fifths sell at
@@ -6424,7 +6440,7 @@ function renderData(){
         ${pc(Math.max(Math.abs(Q[3]-Q[2]),Math.abs(Q[4]-Q[2])))}% of it, so growth above zero adds little (Empire Flippers&rsquo; own
         tables agree: on the earnings it lists, declining businesses sell for ${pc(C.grw.ef_report_decreasing_vs_stable.window[0])}% less than
         stable ones, growing ones ${pc(C.grw.ef_report_increasing_vs_stable.window[0])}% ${C.grw.ef_report_increasing_vs_stable.window[0]<0?"less":"more"}${sig(C.grw.ef_report_increasing_vs_stable.window)?"":", not significant"}).
-        Its weight relative to the other dimensions is not identified: on the ${C.ef_12m_n.toLocaleString()} sales priced on
+        Its weight relative to the other dimensions is not identified: on the ${C.ef_12m_n.toLocaleString("en-US")} sales priced on
         twelve months of earnings it is ${Math.min(C.grw.ef_12m_own_sd[0],C.grw.ef_12m[0]).toFixed(2)}&ndash;${Math.max(C.grw.ef_12m_own_sd[0],C.grw.ef_12m[0]).toFixed(2)}
         of an equal share depending on which growth spread is used, ${C.grw.ef_ttm_rebased[0].toFixed(2)} with every full twelve-month
         record re-based to trailing earnings (partly mechanical: a growing business&rsquo;s trailing earnings lag its current ones),
@@ -6645,12 +6661,12 @@ function renderData(){
       <tr><td>SBA spread over prime by loan size (the survival risk reads only the spread)</td><td>a 10.5% note rate, flat</td>
         <td>${Math.min(...Fv.sba_rate.spread_knots.map(k=>k[1])).toFixed(2)}&ndash;${Math.max(...Fv.sba_rate.spread_knots.map(k=>k[1])).toFixed(2)} pts over the prime, smaller loans higher
         (the prime, ${Fv.sba_rate.prime.toFixed(2)}% since ${Fv.sba_rate.prime_asof}, moves no model figure; the financing check reads it for the loan&rsquo;s rate)</td>
-        <td>${Fv.sba_rate.n.toLocaleString()} variable-rate change-of-ownership 7(a) loans approved FY2025&ndash;26, including cancelled and undisbursed approvals (SBA FOIA as of 2026-06-30); spread over the prime on the first business day of the approval month, as SBA rules set it (Fed H.15); each size point &plusmn;${Math.min(...Fv.sba_rate.spread_knots_se).toFixed(2)}&ndash;${Math.max(...Fv.sba_rate.spread_knots_se).toFixed(2)} pts</td></tr>
+        <td>${Fv.sba_rate.n.toLocaleString("en-US")} variable-rate change-of-ownership 7(a) loans approved FY2025&ndash;26, including cancelled and undisbursed approvals (SBA FOIA as of 2026-06-30); spread over the prime on the first business day of the approval month, as SBA rules set it (Fed H.15); each size point &plusmn;${Math.min(...Fv.sba_rate.spread_knots_se).toFixed(2)}&ndash;${Math.max(...Fv.sba_rate.spread_knots_se).toFixed(2)} pts</td></tr>
       <tr><td>Survival risk: what the headline measures</td><td>a share of resolved loans only, with no horizon</td>
         <td>the chance the loan is charged off within ${MODELS.risk.term_months/12} years if ${MODELS.risk.conditions} conditions hold
         (${(MODELS.risk.base_cif.term*100).toFixed(1)}% for the average FY2024&ndash;26 acquisition loan), and within ${MODELS.risk.horizon_months/12}
         (${(MODELS.risk.base_cif.h60*100).toFixed(1)}%)</td>
-        <td>${MODELS.risk.n_fit.toLocaleString()} SBA 7(a) acquisition loans approved FY2018&ndash;26 (SBA FOIA as of ${MODELS.risk.asof}): charge-off and payoff
+        <td>${MODELS.risk.n_fit.toLocaleString("en-US")} SBA 7(a) acquisition loans approved FY2018&ndash;26 (SBA FOIA as of ${MODELS.risk.asof}): charge-off and payoff
         hazards, open loans censored; years 9&ndash;10 borrowed from mature 7(a) loans by the note&rsquo;s size (&times;${MODELS.risk.tail.factor.toFixed(2)} on average, fitted: second round, below);
         8-year level ${(MODELS.risk.base_cif.level_range.h96[0]*100).toFixed(1)}&ndash;${(MODELS.risk.base_cif.level_range.h96[1]*100).toFixed(1)}% across
         specifications and reference periods</td></tr>
@@ -6675,7 +6691,7 @@ function renderData(){
         plausible rankings give $68,000 to $149,000 instead of $90,000).</td></tr>
       <tr><td>Typical SDE margin by industry and size, and its spread</td><td>hand-set 7&ndash;21%, &times;1.0&ndash;1.45 size curve, sd 0.45</td>
         <td>fitted medians ${(()=>{ const m=Object.keys(IND).map(k=>typMargin(k,2e5)); return Math.round(Math.min(...m)*100)+"&ndash;"+Math.round(Math.max(...m)*100); })()}% at $200k SDE (shrunk toward the pooled level), +${Fv.sde_margin.slope.toFixed(3)} per log of SDE, sd ${Fv.sde_margin.sd.toFixed(2)}</td>
-        <td>${Object.values(Fv.sde_margin.n).reduce((a,b)=>a+b,0).toLocaleString()} broker listings with revenue and cash flow (DealLedger, CC0)</td></tr>
+        <td>${Object.values(Fv.sde_margin.n).reduce((a,b)=>a+b,0).toLocaleString("en-US")} broker listings with revenue and cash flow (DealLedger, CC0)</td></tr>
       <tr><td>Which buyer types are present at this deal size</td><td>a hand-set earnings window per archetype</td>
         <td>individual / strategic / financial shares by deal value (search funds keep a hand-set window, which contains Stanford&rsquo;s median search-fund deal: $2.0M of EBITDA in the 2026 study, $1.9M in 2024)</td>
         <td>IBBA Market Pulse buyer-type mix: ${MODELS.fitted.buyer_mix.n_complete.reduce((a,b)=>a+b,0)} complete band-quarters
@@ -6683,7 +6699,7 @@ function renderData(){
         ${MODELS.fitted.buyer_mix.n_complete[3]} in the $2&ndash;5M band</td></tr>
       <tr><td>Weight of owner dependence and management depth in the quality position</td><td>equal (1.00, 1.00)</td>
         <td>${Fv.quality_weights.own.toFixed(2)} and ${Fv.quality_weights.mgt.toFixed(2)} of an equal share</td>
-        <td>${Fv.quality_weights.hedonic.n.toLocaleString()} listings with descriptions: owner-operated asks
+        <td>${Fv.quality_weights.hedonic.n.toLocaleString("en-US")} listings with descriptions: owner-operated asks
         ${(Fv.quality_weights.hedonic.owner_operated[0]*100).toFixed(0)}% (se ${(Fv.quality_weights.hedonic.owner_operated[1]*100).toFixed(0)}), staff in place
         +${(Fv.quality_weights.hedonic.staff_in_place[0]*100).toFixed(0)}% (se ${(Fv.quality_weights.hedonic.staff_in_place[1]*100).toFixed(0)}).
         Unshrunk: ${Fv.quality_weights.raw.own[0].toFixed(2)} and ${Fv.quality_weights.raw.mgt[0].toFixed(2)}. Owner dependence uses the
@@ -6693,14 +6709,14 @@ function renderData(){
         other measured dimensions it sits at ${QWC.mgt.ratio[0].toFixed(2)} of an equal share (95% interval
         ${QWC.mgt.ratio[1].toFixed(2)} to ${QWC.mgt.ratio[2].toFixed(2)})`:""}, so its
         ${Fv.quality_weights.mgt.toFixed(2)} is kept as settled, not re-decided. ${QWC?`Recurring revenue and growth were checked against
-        ${QWC.ef_n.toLocaleString()} online-business sales (${QWC.source}) and keep an
+        ${QWC.ef_n.toLocaleString("en-US")} online-business sales (${QWC.source}) and keep an
         equal share: neither weight is identified (see Quality positioning).`:`Recurring revenue and growth keep an equal share.`}</td></tr>
       <tr><td>Shape of the time-to-close curve (how spread out closings are around the median)</td>
         <td>Weibull, shape k = ${KW} (judgment), scale re-solved to the band median</td>
         <td>log-logistic, &beta; ${Fv.ttc_shape.beta[0].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[0].toFixed(2)} under $500K and
         ${Fv.ttc_shape.beta[4].toFixed(2)} &plusmn; ${Fv.ttc_shape.beta_se[4].toFixed(2)} from $500K up, interpolated in ln(value);
         the median is fitted too (next row)</td>
-        <td>IBBA / M&amp;A Source Market Pulse per-band histograms of months to close: ${Fv.ttc_shape.n.reduce((a,b)=>a+b,0).toLocaleString()}
+        <td>IBBA / M&amp;A Source Market Pulse per-band histograms of months to close: ${Fv.ttc_shape.n.reduce((a,b)=>a+b,0).toLocaleString("en-US")}
         closed deals over ${Fv.ttc_shape.n_quarters} quarters (2020Q1&ndash;2021Q4, 2022Q2&ndash;2023Q3 and 2025Q4), interval-censored fit; beats the old
         curve on held-out quarters (12 of 15). Closed deals only; no gradient above $500K is identified</td></tr>
       ${Fv.ttc_medians?(()=>{ const M=Fv.ttc_medians, g=M.loqo_gain_per_deal, tg=M.temporal_gain_per_deal; return `<tr><td>Median time to close by size band (listing to close)</td>
@@ -6763,8 +6779,8 @@ function renderData(){
         re-expressed in offers (${COMP_H.toFixed(2)}), and &kappa; stays ${COMP_K.toFixed(2)}, judgment. Pool size is measured relative to the
         industry&rsquo;s typical pool (<code>IND</code> buyers, judgment)</td>
         <td>IBBA Market Pulse offers per closed deal by size band: ${Fc.band_quarters} band-quarter histograms (${Fc.quarters}; ${Fc.quarter_clusters}
-        quarters, so the standard errors rest on few clusters), about ${Fc.n_deals.toLocaleString()} closed deals (the published percentages fit
-        about ${Fc.n_deals_rounding_consistent.toLocaleString()} answering the offers question), zero-truncated negative binomial (r =
+        quarters, so the standard errors rest on few clusters), about ${Fc.n_deals.toLocaleString("en-US")} closed deals (the published percentages fit
+        about ${Fc.n_deals_rounding_consistent.toLocaleString("en-US")} answering the offers question), zero-truncated negative binomial (r =
         ${Fc.nb_r.toFixed(2)}, se ${Fc.nb_r_se.toFixed(2)}, weakly identified; used only to calibrate the scale). Held-out quarters: log-likelihood
         ${Fc.heldout_loglik_per_deal.nb.toFixed(3)} per deal for the negative binomial, against ${Fc.heldout_loglik_per_deal.poisson_own_scale.toFixed(3)}
         for a Poisson whose scale is refitted (${Fc.heldout_loglik_per_deal.poisson_own_scale_c.toFixed(2)}, not this scale), and
@@ -6841,14 +6857,14 @@ function renderData(){
         levels at $708k of SDE (.62, .42) stay judgment: the survey item bounds them (owner dependence
         ${C.mapping_bounds.own.range[0].toFixed(2)}&ndash;${C.mapping_bounds.own.range[1].toFixed(2)}, management depth
         ${C.mapping_bounds.mgt.range[0].toFixed(2)}&ndash;${C.mapping_bounds.mgt.range[1].toFixed(2)}) without fixing them, and so do reporting&rsquo;s line and spread</td>
-        <td>Federal Reserve Survey of Small Business Finances 2003 (${C.n.ssbf2003_firms.toLocaleString()} firms): whether an owner or a hired manager
+        <td>Federal Reserve Survey of Small Business Finances 2003 (${C.n.ssbf2003_firms.toLocaleString("en-US")} firms): whether an owner or a hired manager
         runs the business day to day, by sales, carried to SDE through a seller bridge fitted on broker listings. The owner slope
         is replicated by SSBF 1998, NSSBF 1993, the Census SBO 2007 and listing text (pooled &minus;${Math.abs(C.slopes.own.pooled[0]).toFixed(2)}); the management
         slope is checked against Census ABS 2023 management practices and listing text (pooled ${C.slopes.mgt_independent.pooled[0].toFixed(2)}). Below
         $45k of SDE the size clamp understates owner dependence (recorded)</td></tr>
       <tr><td>Width of the size z-score (category sub-scores only) &nbsp;<span class="st pub">fitted</span></td>
         <td>0.45 decades of SDE</td><td>${SIZE_SD.toFixed(2)} decades</td>
-        <td>the spread of log10 SDE across ${C.size_sd.n.toLocaleString()} DealLedger broker listings, $50k&ndash;$20M (broker-clustered SE ${S.size_sd_se.toFixed(3)})</td></tr>`; })()}
+        <td>the spread of log10 SDE across ${C.size_sd.n.toLocaleString("en-US")} DealLedger broker listings, $50k&ndash;$20M (broker-clustered SE ${S.size_sd_se.toFixed(3)})</td></tr>`; })()}
       ${(()=>{ const T=Fv.tailwind, e=Object.entries(T.by_industry).sort((a,b)=>a[1]-b[1]), se=Object.values(T.se),
           nm=k=>{ const t=IND[k].n.split(" (")[0]; return t.charAt(0).toLowerCase()+t.slice(1); }, f=v=>(v<0?"&minus;":"+")+Math.abs(v).toFixed(2);
         return `<tr><td>Industry tailwind &nbsp;<span class="st der">aggregate</span></td>
@@ -6887,12 +6903,12 @@ function renderData(){
           return j>0?`From a note of about ${money(Math.exp(K[j][0]))}, where the table spread stops falling, to the ${money(B.centres[3])} band centre`
                     :`Between the ${money(B.centres[2])} and ${money(B.centres[3])} band centres`; })()} the tail rises faster than the
         8-year figure falls, so there the 10-year figure can rise slightly with the note&rsquo;s size; the 5- and 8-year figures never do</td>
-        <td>${T.estimates.n_loans.toLocaleString()} SBA 7(a) term loans approved FY2010&ndash;15 (${T.estimates.n_chgoff.toLocaleString()} charge-offs), startups
+        <td>${T.estimates.n_loans.toLocaleString("en-US")} SBA 7(a) term loans approved FY2010&ndash;15 (${T.estimates.n_chgoff.toLocaleString("en-US")} charge-offs), startups
         excluded and matched to the acquisition book on loan size, term, sector, SBA Express and franchise: cumulative charge-off
         to month 120 over month 96, payoff competing. Late charge-offs come from 10-year notes (${rg(L.n120.q)} of those still
         on the books at year 8, against ${rg(L.long.q)} for longer notes, 2023&ndash;26); the size gradient holds in every vintage and
         out of time. No acquisition loan has reached year 9, so the tail is carried over, not observed</td></tr>`; })()}
-      ${(()=>{ const Q=IVC.qoe, d=v=>"$"+Math.round(v).toLocaleString();
+      ${(()=>{ const Q=IVC.qoe, d=v=>"$"+Math.round(v).toLocaleString("en-US");
         return `<tr><td>Quality-of-earnings report: cost &nbsp;<span class="st der">aggregate</span></td>
         <td>the larger of $22,000 and 0.45% of revenue</td>
         <td>the larger of ${d(Q.floor)} and ${(Q.share*100).toFixed(2)}% of revenue (SE ${d(Q.floor_se)} and ${(Q.share_se*100).toFixed(3)} pts)</td>
@@ -6900,7 +6916,7 @@ function renderData(){
         squares on log fees with source-clustered SEs. No tier sits below ${d(Q.min_tier_revenue)} of revenue, so the floor there is the
         form&rsquo;s extrapolation. The report&rsquo;s effect stays judgment: GF Data&rsquo;s +5.7% multiple with a QoE is for PE deals over
         $10M, and from October 2026 an SBA lender must commission its own report at a $3M price and up</td></tr>`; })()}
-      ${(()=>{ const G=IVC.gm, d=v=>"$"+Math.round(v).toLocaleString();
+      ${(()=>{ const G=IVC.gm, d=v=>"$"+Math.round(v).toLocaleString("en-US");
         return `<tr><td>Hire a general manager: cost and the charge on earnings &nbsp;<span class="st der">aggregate</span></td>
         <td>one year of the GM&rsquo;s wage, and the wage as the charge on earnings</td>
         <td>one year of the wage &times;${G.loading.toFixed(2)} (payroll taxes and benefits; range ${G.loading_range[0].toFixed(2)}&ndash;${G.loading_range[1].toFixed(2)}) plus
@@ -6908,7 +6924,7 @@ function renderData(){
         <td>BLS Employer Costs for Employee Compensation, June 2026: total compensation over wages plus paid leave for management,
         professional and related occupations, scaled to establishments of 1&ndash;49 workers; SHRM 2025 median executive cost-per-hire.
         The 210-day programme stays judgment (SHRM&rsquo;s executive time-to-fill is ${IVC.checks.gm_days.shrm_exec_time_to_fill_days} days)</td></tr>`; })()}
-      ${(()=>{ const F=IVC.growth_floor, e=Object.entries(F.by_industry).sort((a,b)=>a[1]-b[1]), d=v=>"$"+Math.round(v).toLocaleString(),
+      ${(()=>{ const F=IVC.growth_floor, e=Object.entries(F.by_industry).sort((a,b)=>a[1]-b[1]), d=v=>"$"+Math.round(v).toLocaleString("en-US"),
           nm=k=>{ const t=IND[k].n.split(" (")[0]; return t.charAt(0).toLowerCase()+t.slice(1); }, se=Object.values(F.se);
         return `<tr><td>Add sales capacity: the cost floor &nbsp;<span class="st der">aggregate</span></td>
         <td>$55,000 for every industry</td>
@@ -6927,8 +6943,8 @@ function renderData(){
         ${C.cut_moderate.toFixed(2)}, a convention); past ${C.extrap_x}&times; the fitted data, or with the earnings margin outside the
         1st&ndash;99th percentile of the fitted data, the label is Low, outside the fitted data.
         Years in business and reporting no longer move it</td>
-        <td>BIZCOMPS out-of-fold accuracy (${pc(C.level,1)} of ${C.n.bizcomps.toLocaleString()} sales within 25%) and residual fan; how the spread moves
-        with size and margin from ${C.n.listings.toLocaleString()} DealLedger Main-Street asks around the value (${C.n.brokers} brokers; each listing
+        <td>BIZCOMPS out-of-fold accuracy (${pc(C.level,1)} of ${C.n.bizcomps.toLocaleString("en-US")} sales within 25%) and residual fan; how the spread moves
+        with size and margin from ${C.n.listings.toLocaleString("en-US")} DealLedger Main-Street asks around the value (${C.n.brokers} brokers; each listing
         centred first, so a price trend is not counted as inaccuracy); comparables depth from the value model&rsquo;s 6-digit
         effects. It assumes the value sits on today&rsquo;s prices: if the median sale is ${C.reference.prices_over_V.toFixed(2)}&times; it, the
         reference business reads ${pc(C.reference.p_if_prices_over_V,1)}. The scale and the depth approximation are calibrated</td></tr>`; })()}
@@ -7020,7 +7036,7 @@ function renderData(){
           <td>buyers contacted per listing, and the strategic share of the buyers of small businesses, by industry</td>
           <td><span class="st free">${(()=>{ const P=MODELS.fitted.peer_checks, S=P.strat, B=P.buyers, f=v=>(v<0?"&minus;":"")+Math.abs(v).toFixed(2);
             return `no source measures either for small businesses. Checked only: Capstone Partners&rsquo; sector trackers
-          (${S.capstone.deals.toLocaleString()} institutional deals, which leave out individual buyers) put the strategic share at
+          (${S.capstone.deals.toLocaleString("en-US")} institutional deals, which leave out individual buyers) put the strategic share at
           ${S.capstone.strategic_share_range[0].toFixed(2)}&ndash;${S.capstone.strategic_share_range[1].toFixed(2)} by sector, rank correlation
           ${f(S.capstone.spearman_vs_console)} with the console&rsquo;s; institutional over SBA-financed acquisitions, ordering only,
           ${f(S.inst_vs_sba.spearman_vs_console)} (${S.inst_vs_sba.n} industries); Axial&rsquo;s pursuit rates by sector ${f(B.axial_pursuit_rank.spearman_vs_console)}
@@ -7248,13 +7264,13 @@ $("srcs").innerHTML=`
 </div>
 <ul>
 <li><span class="pv f"><i></i>fitted</span> <b>Model value, prediction interval, implied multiple</b> &mdash;
-log-linear regression on <b>${MODELS.value.n_fit.toLocaleString()}</b> BIZCOMPS closed sales (2001&ndash;2026).
+log-linear regression on <b>${MODELS.value.n_fit.toLocaleString("en-US")}</b> BIZCOMPS closed sales (2001&ndash;2026).
 5-fold CV R&sup2; <b>${MODELS.value.cv_r2_log}</b> in log space, median absolute error
 <b>${(MODELS.value.median_abs_pct_error*100).toFixed(1)}%</b>, ${(MODELS.value.within_25pct*100).toFixed(0)}% within &plusmn;25%.
 The p10&ndash;p90 span runs ${MODELS.value.prediction_intervals.p10.toFixed(2)}&times;&ndash;${MODELS.value.prediction_intervals.p90.toFixed(2)}&times; the point estimate &mdash; report the range.</li>
 
 <li><span class="pv f"><i></i>fitted</span> <b>Post-acquisition survival risk</b> &mdash;
-competing-risk hazard on <b>${MODELS.risk.n_fit.toLocaleString()}</b> SBA 7(a) acquisition loans; open loans are censored and payoff
+competing-risk hazard on <b>${MODELS.risk.n_fit.toLocaleString("en-US")}</b> SBA 7(a) acquisition loans; open loans are censored and payoff
 is a competing exit. Reported as the chance the loan is charged off within ${MODELS.risk.term_months/12} years (the term) and within
 ${MODELS.risk.horizon_months/12}, if ${String(MODELS.risk.conditions).replace("-","&ndash;")} conditions hold. Out-of-sample AUC <b>${MODELS.risk.cv_auc}</b> at 5 years, Brier ${MODELS.risk.cv_brier};
 loan-level effects shrunk &times;${MODELS.risk.co.lp_shrink.toFixed(2)} to match how they held up out of time.
@@ -7315,7 +7331,7 @@ seller-walk attribution, and before/after intervention records are likewise unav
 </ul>`;
 
 $("foot").innerHTML=`<svg class="foot-mark" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><ellipse cx="7" cy="7" rx="6" ry="2.6" transform="rotate(-24 7 7)"/><circle class="o" cx="7" cy="7" r="2"/><circle class="s" cx="12.1" cy="4.8" r="1.1"/></svg>The Omni Method <span class="ver">v2.0</span>. Value and survival risk are fitted to
-${MODELS.value.n_fit.toLocaleString()} closed sales and ${MODELS.risk.n_fit.toLocaleString()} SBA
+${MODELS.value.n_fit.toLocaleString("en-US")} closed sales and ${MODELS.risk.n_fit.toLocaleString("en-US")} SBA
 acquisition loans, and time to close to IBBA&rsquo;s per-band histograms of closed deals; closing probability is a
 market aggregate conditioning on deal size and price gap, with labelled judgment for a buyer pool thinner than typical
 (calibrated scale, judgment shape) and for time above value; the score,
@@ -8032,6 +8048,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      keeps only where a deal is kept: never with storage blocked, where nothing outlasts the tab (r7-financing-4) */
   const prefMsg=(what,tail)=>STORE_ERR==="full"?`This browser’s storage for this page is full, so ${what} not remembered after a reload${tail||""}: export your deals, then delete some or shorten long notes.`
     :`This browser is not keeping data (a private window or blocked storage), so ${what} not remembered after a reload.`;
+  /* what a refused write leaves after a deletion that stands: the other changes held here (r8-deals-3) */
+  const heldMsg=()=>STORE_ERR==="full"?"Other changes here are still kept in this tab only, since this browser’s storage for this page is full: export your deals, then delete some or shorten long notes."
+    :STORE_ERR==="unreadable"?storeMsg():"This browser is not keeping data (a private window or blocked storage), so the other deals here last only until the page closes: export them to keep them.";
   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STATUS={valuing:"Valuing",listed:"Listed",loi:"Under LOI",closed:"Closed",withdrawn:"Withdrawn",expired:"Expired"};
   const p1=v=>{ const x=Math.round(v*1000)/10; return (Number.isInteger(x)?x.toFixed(0):x.toFixed(1))+"%"; };
@@ -8195,10 +8214,21 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      the keys a refused save left unwritten (REFUSED, each with the stored value it was refused over): they stay this tab's
      until a write of them succeeds, or another tab stores the key since (r7-report-1, r7-deals-7) */
   const REFUSED=new Map();
-  const savePrefs=(...keys)=>{ const p=load(K_PREFS,null), o=p&&typeof p==="object"&&!Array.isArray(p)?{...p}:{}, ks=keys.length?keys:Object.keys(PREFS);
-    for(const k of new Set(ks.concat([...REFUSED.keys()]))) o[k]=PREFS[k];
+  /* another tab stored a key this tab's write of it was refused over: the later act stands. The broker, the firm and the
+     price record take the stored value; the structure and worksheet in use stay this tab's, unstored (r8-report-3) */
+  const dropRefused=(k,po)=>{ REFUSED.delete(k); if(k==="calib") PREFS.calib=po.calib===true;
+    else if(k==="broker"||k==="firm"){ PREFS[k]=typeof po[k]==="string"?po[k].slice(0,120):"";
+      const id=k==="broker"?"rp_broker":"rp_firm"; if(OPEN&&OPEN.id==="report"&&!RP_TYPED.has(id)) $(id).value=PREFS[k]; } };
+  const savePrefs=(...keys)=>{ const p=load(K_PREFS,null), po=p&&typeof p==="object"&&!Array.isArray(p)?p:{}, o={...po}, ks=keys.length?keys:Object.keys(PREFS);
+    /* a key refused before is written with this one only while the store still holds the value it was refused over
+       (r8-deals-1) */
+    for(const [k,v] of [...REFUSED]) if(!ks.includes(k)&&JSON.stringify(po[k])!==v) dropRefused(k,po);
+    const wk=[...new Set(ks.concat([...REFUSED.keys()]))];
+    for(const k of wk) o[k]=PREFS[k];
     const ok=keep(K_PREFS,o);
-    if(ok){ REFUSED.clear(); prefsKept(); } else for(const k of ks) if(!REFUSED.has(k)) REFUSED.set(k,JSON.stringify(p&&typeof p==="object"?p[k]:undefined));
+    /* a refusal records the stored value it is refused over, again at each refusal, so a value typed after another tab's
+       store stays this tab's (r8-deals-1) */
+    if(ok){ REFUSED.clear(); prefsKept(wk); } else for(const k of ks) REFUSED.set(k,JSON.stringify(po[k]));
     return ok; };
   /* stored deals: a record this page cannot read is kept as it was and written back with the rest (KEPT), a stored list
      that is not JSON is copied aside once before a save can replace it, and a missing or repeated id is derived from the
@@ -8294,17 +8324,23 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      a field changed both here and there keeps this tab's value. The parts taken up, and the parts with such a clash */
   function takeUp(d,S){
     const out={took:[],clash:[]}; if(!d||!S||S.id!==d.id) return out;
-    const I=snap()||S.inputs, hid=$("view-console").hidden, bW=JSON.parse(S.ws), mine=wsMine(d);
+    /* this tab's SDE as typed: readState holds it to 92% of the revenue only for display, so a revenue typed below
+       SDE/0.92 is no change of the SDE, and the take-up does not store the cap (r8-worksheet-2) */
+    const P0=snap()||S.inputs, raw=PENDING?PENDING.ern:IN.ern, hid=$("view-console").hidden, bW=JSON.parse(S.ws), mine=wsMine(d);
+    const I=P0&&typeof raw==="number"&&isFinite(raw)?{...P0,ern:clamp(raw,MONEY.ern.hard[0],MONEY.ern.hard[1])}:P0;
     /* a dialog holding no deal's worksheet (left after Reset or a reload, unedited since: an edit makes it the deal in the
        console's) takes up the deal's own when another tab or an import gives it one, so an edit there cannot write the
        leftover over it (r6-worksheet-1) */
     const free=mine===undefined&&WS_OWNER===null&&wsHas(WS)&&S.ws!==JSON.stringify(d.ws);
     const mi=merge3(S.inputs,I,d.inputs), mf=merge3(S.fin,FIN,d.fin), mw=merge3(wsFields(bW),wsFields(mine===undefined?bW:mine||WS,bW),wsFields(d.ws,bW));
-    const nI=cleanInputs(mi.o)||I, nF=cleanFin(mf.o), nW=wsFromFields(mw.o);
+    const nI0=cleanInputs(mi.o), nI=nI0&&typeof mi.o.ern==="number"?{...nI0,ern:clamp(mi.o.ern,MONEY.ern.hard[0],MONEY.ern.hard[1])}:nI0||I, nF=cleanFin(mf.o), nW=wsFromFields(mw.o);
     /* the worksheet comes into the dialog while it is this deal's own, or empty, or no deal's */
     const fc=document.activeElement, w0=fc&&fc.matches&&fc.matches(".rc-in")?WS.years[+fc.dataset.y][fc.dataset.k]:undefined;
     const tI=!sameInputs(nI,I), tF=!sameFin(nF,FIN), tW=(mine!==undefined||!wsHas(WS)||free)&&JSON.stringify(nW)!==JSON.stringify(mine===undefined?(free?cleanWS(WS):null):mine);
-    if(tF){ FIN=nF; PREFS.fin={...FIN}; finFill(true); }
+    /* the focused financing box shows the structure taken up unless it is typed in; a typed one keeps its text, and a value
+       kept over the other tab's change to that box is a clash (r8-financing-5) */
+    if(tF){ const fa=document.activeElement, fk=Object.keys(FF).find(k=>$(FF[k])===fa), was=fk!==undefined?FIN[fk]:undefined;
+      FIN=nF; PREFS.fin={...FIN}; finFill(true); if(fk!==undefined&&fa.__typed&&!sameV(FIN[fk],was)) fa.__th={v:FIN[fk]}; }
     /* a merge that leaves no cell (the other tab pressed Clear) keeps the merged source, basis and growth box, which
        neither tab reset (r7-worksheet-4) */
     if(tW){ WS=nW||cleanWS({entity:mw.o.entity,weight:mw.o.weight,grw:mw.o.grw}); WS_OWNER=d.id; PREFS.ws=WS;
@@ -8313,22 +8349,31 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
          goes back to the amount the worksheet now holds, and an entry kept over it is a clash (__theirs). A focused cell
          not typed in shows the merged amount (r7-worksheet-1) */
       if(OPEN&&OPEN.id==="recast"){ const a=document.activeElement, on=a&&a.matches&&a.matches(".rc-in"), y=on?a.dataset.y:undefined, k=on?a.dataset.k:undefined;
-        const keep=on&&a.__typed?{w0,v:a.value,s0:a.selectionStart,s1:a.selectionEnd,snap:a.__snap,bad:a.classList.contains("bad"),theirs:a.__theirs}:null;
+        const keep=on?{w0,v:a.value,s0:a.selectionStart,s1:a.selectionEnd,len:a.value.length,snap:a.__snap,bad:a.classList.contains("bad"),theirs:a.__theirs}:null;
+        /* typed text that reads as the amount the cell held when focused (a keystroke and Backspace) is no change of this
+           tab's: the cell then shows the merged amount, as one not typed in does (r8-worksheet-3) */
+        const typed=!!keep&&!!a.__typed&&!sameV(wsParse(keep.v),keep.snap);
         WS_SWAP=true; try{ wsBuild(); } finally { WS_SWAP=false; }
         const e=on?$("rc_tbl").querySelector(`.rc-in[data-y="${y}"][data-k="${k}"]`):null;
         if(e){ e.focus({preventScroll:true});
-          if(keep){ const w1=WS.years[+y][k]; e.value=keep.v; try{ e.setSelectionRange(keep.s0,keep.s1); }catch(x){} e.__typed=true; e.classList.toggle("bad",keep.bad);
-            if(!sameV(w1,keep.w0)){ e.__snap=w1; e.__theirs=w1; } else { e.__snap=keep.snap; e.__theirs=keep.theirs; } } } } }
+          if(typed){ const w1=WS.years[+y][k]; e.value=keep.v; try{ e.setSelectionRange(keep.s0,keep.s1); }catch(x){} e.__typed=true; e.classList.toggle("bad",keep.bad);
+            if(!sameV(w1,keep.w0)){ e.__snap=w1; e.__theirs=w1; } else { e.__snap=keep.snap; e.__theirs=keep.theirs; } }
+          /* the merged amount keeps the selection: all of it where all was selected (a cell entered by Tab), else the caret's
+             place from the end, so the amount typed next replaces or extends it as it would have (r8-worksheet-5) */
+          else { const n=e.value.length; try{ if(keep.len>0&&keep.s0===0&&keep.s1===keep.len) e.setSelectionRange(0,n);
+              else e.setSelectionRange(Math.max(0,n-(keep.len-keep.s0)),Math.max(0,n-(keep.len-keep.s1))); }catch(x){} } } } }
     /* the rail keeps its held-to-range marks but on the fields taken up; an SDE above 92% of this tab's revenue is held to
        it and marked, as a typed one is */
-    const changed=Object.keys(nI).filter(k=>!sameV(nI[k],I[k])), held=tI&&typeof mi.o.ern==="number"&&nI.ern<mi.o.ern-.5?mi.o.ern:null;
+    /* an SDE above 92% of the revenue where the take-up brought either of them shows held to it (readState), marked and
+       named; the SDE is kept as saved, so the hold ends once the revenue leaves room for it (holdCheck) */
+    const changed=Object.keys(nI).filter(k=>!sameV(nI[k],I[k])), held=tI&&typeof mi.o.ern==="number"&&(!sameV(mi.o.ern,I.ern)||!sameV(nI.rev,I.rev))&&mi.o.ern>nI.rev*.92+.5?mi.o.ern:null;
     const marks={clear:changed,mark:held!==null?["ern"]:[]};
     if(tI&&!hid) applyInputs(nI,marks);
     else { if(tI){ const P=PENDING_MARKS; PENDING=nI;
         PENDING_MARKS=P?{clear:[...new Set(P.clear.concat(changed))],mark:[...new Set(P.mark.filter(k=>!changed.includes(k)).concat(marks.mark))]}:marks; }
       if(tF) renderFinance(); }
     out.took=[tI?"inputs":"",tF?"financing structure":"",tW?"worksheet":""].filter(Boolean);
-    if(held!==null) HOLD={id:d.id,ern:nI.ern,t:` The SDE, ${moneyIn(held)}, is above 92% of the revenue, ${moneyIn(nI.rev)}, so the console holds it to ${moneyIn(nI.ern)} and marks it.`};
+    if(held!==null) HOLD={id:d.id,ern:nI.ern,t:` The SDE, ${moneyIn(held)}, is above 92% of the revenue, ${moneyIn(nI.rev)}, so the console holds it to ${moneyIn(clamp(nI.rev*.92,MONEY.ern.hard[0],MONEY.ern.hard[1]))} and marks it.`};
     else if(HOLD&&(HOLD.id!==d.id||!sameV(nI.ern,HOLD.ern))) HOLD=null;
     out.held=HOLD?HOLD.t:"";
     out.clash=[mi.clash.length?"inputs":"",mf.clash.length?"financing structure":"",mw.clash.length&&mine!==undefined?"worksheet":""].filter(Boolean);
@@ -8350,8 +8395,12 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      Deals tab shows) the message waits in the toolbar, its time starting when the console shows (TELL_HELD); a dialog
      opening after a read of the store shows the message that read gave (TELLS, LAST_TELL; r7-deals-4) */
   let TELL_HELD=null, TELLS=0, LAST_TELL=null;
-  const tell=(msg,ms)=>{ TELLS++; LAST_TELL={msg,ms}; const hid=$("view-console").hidden; TELL_HELD=hid?{msg,ms}:null; say("tl_msg",msg,hid?0:ms);
-    if(OPEN&&OPEN.id==="report") say("rp_msg",msg,ms); else if(OPEN&&OPEN.id==="recast") say("rc_msg",msg,ms); };
+  /* and while this browser tab is in the background (document.hidden): a take-up is heard only in tabs other than the one
+     that saved, so the broker is usually elsewhere (r8-core-3) */
+  const tell=(msg,ms)=>{ TELLS++; LAST_TELL={msg,ms}; const hid=$("view-console").hidden||document.hidden; TELL_HELD=hid?{msg,ms}:null; say("tl_msg",msg,hid?0:ms);
+    if(OPEN&&OPEN.id==="report") rpLine(msg,hid?0:ms); else if(OPEN&&OPEN.id==="recast") say("rc_msg",msg,hid?0:ms); };
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden||!TELL_HELD||$("view-console").hidden) return; const t=TELL_HELD; TELL_HELD=null;
+    for(const id of ["tl_msg","rp_msg","rc_msg"]) if($(id).textContent===t.msg) say(id,t.msg,t.ms); });
   /* after a read of the store: the deal in the console is brought up to it. Its fields saved elsewhere that are unchanged
      here are taken up (an open report is rebuilt on them, and the toolbar's message says so), a field both changed keeps
      this tab's value, and a deal deleted elsewhere is LOST. src names who changed it ("tab", "import"); a save says it in
@@ -8370,13 +8419,17 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       let x=c; if(B!==L||typed){ x=mergeDeal3(B,mine,c,cl); x.updated=stamp(Math.max(Date.parse(c.updated),Date.parse(L.updated)||0)); DEALS[DEALS.indexOf(c)]=x; UNSTORED.set(c.id,c); STATS=null; }
       if(WS_OWNER==="draft") WS_OWNER=c.id;
       snapDeal(B); const r=takeUp(x,CUR_SNAP); snapDeal(c);
-      if(typed&&saveDeals()) snapDeal(x);
-      const clash=[...new Set(r.clash.concat(cl))]; clash.forEach(p=>CLASH.add(p)); out.took=r.took; out.clash=clash; out.held=r.held; out.back=x.name;
+      const wrote=typed&&saveDeals(); if(wrote) snapDeal(x);
+      /* the details the re-attach wrote are stored over the restored ones already; the rest waits for a save (r8-deals-5) */
+      const clash=[...new Set(r.clash.concat(cl))], done=wrote?cl:[], pend=clash.filter(p=>!done.includes(p)); pend.forEach(p=>CLASH.add(p));
+      out.took=r.took; out.clash=clash; out.held=r.held; out.back=x.name;
       if(OPEN&&OPEN.id==="report"&&STATE.s) REPORT=reportData(STATE.s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()});
-      const only=UNSTORED.has(c.id);
-      tell(`“${x.name}”, deleted in another tab, is back: the console holds it again${r.took.length?`, with the ${andList(r.took)} as restored where this tab had not changed them`:""}, and saving updates it.${r.held}`
+      const only=UNSTORED.has(c.id), ms=pend.length||r.held||only?0:12000;
+      const text=`“${x.name}”, deleted in another tab, is back: the console holds it again${r.took.length?`, with the ${andList(r.took)} as restored where this tab had not changed them`:""}, and saving updates it.${r.held}`
         +(x!==c?` This tab’s changes to it stand over the restored copy${only?", kept in this tab only until a save succeeds":""}.`:"")
-        +(clash.length?` The restore also changed fields of its ${andList(clash)} that this tab has changed: this tab keeps its own, and saving here writes them over the restored ones.`:""),clash.length||r.held||only?0:12000);
+        +(done.length?` The restore also changed the ${andList(done)} this tab had changed, and this tab’s are now stored over the restored ones.`:"")
+        +(pend.length?` The restore also changed fields of its ${andList(pend)} that this tab has changed: this tab keeps its own, and saving here writes them over the restored ones.`:"");
+      tell(text,ms); if($("view-console").hidden) say("dl_msg",text,ms);
       return out; }
     if(!CUR) return out;
     const c=dealById(CUR);
@@ -8432,7 +8485,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const cl=ok&&!made?[...CLASH]:[]; if(ok){ CLASH.clear(); HOLD=null; say("rc_msg",""); }
     /* a copy made after a take-up says what the console took up, as an update does (r7-worksheet-8) */
     const tk=made&&base&&m.took.length?` Another tab had saved changes to “${base.name}”’s ${andList(m.took)}, which the console and the copy now show.${m.held||""}`:"";
-    say("tl_msg",ok?(lost?`“${lost.name}” was deleted in another tab, so this valuation is saved as a new deal, “${d.name}”.`
+    /* a restore of the deal deleted elsewhere that only this save's read of the store found is said with it (r8-deals-7) */
+    const back=m.back?`“${m.back}”, deleted in another tab, was restored from a backup. `:"";
+    say("tl_msg",ok?back+(lost?`“${lost.name}” was deleted in another tab, so this valuation is saved as a new deal, “${d.name}”.`
         :made?`Saved as “${d.name}”. Rename it and record its outcome in the Deals tab.`+tk
         :"Deal updated."+(m.took.length?` Another tab had saved changes to its ${andList(m.took)}, which the console now shows.${m.held||""}`:"")
           +(cl.length?` Where both tabs changed its ${andList(cl)}, this tab’s values replaced the other’s.`:""))
@@ -8463,7 +8518,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     return !pct&&(v===0||v>=1)&&v<1e10?v:NaN;
   }
   function finFill(keep){ $("f_type").value=FIN.type; $("f_type_h").textContent=DSC_HINT[FIN.type]; $("f_standby").checked=FIN.standby;
-    for(const k in FF){ const e=$(FF[k]); if(keep&&e===document.activeElement) continue; e.value=FFMT[k](FIN[k]); e.classList.remove("bad"); } }
+    /* a focused box typed in keeps its text; one not typed in shows the structure, its whole text selected again if it was */
+    for(const k in FF){ const e=$(FF[k]), on=e===document.activeElement; if(keep&&on&&e.__typed) continue;
+      const all=on&&e.value.length>0&&e.selectionStart===0&&e.selectionEnd===e.value.length; e.value=FFMT[k](FIN[k]); e.classList.remove("bad"); if(all) e.select(); } }
   function finChanged(){ PREFS.fin={...FIN}; say("fin_msg",savePrefs("fin")?"":prefMsg("the financing structure in use is","; a deal saved with it keeps it once its save succeeds"),0); renderFinance(); toolbar(); }
   function renderFinance(){
     const s=STATE.s, r=STATE.r; if(!s||!r) return;
@@ -8595,7 +8652,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* a preference write that succeeds stores every key refused before it: the lines that said one was not remembered go
      (r7-financing-3, r7-deals-6, r7-core-4) */
   let WS_REF="";
-  function prefsKept(){ say("fin_msg",""); if(WS_REF&&$("rc_msg").textContent===WS_REF) say("rc_msg",""); WS_REF=""; rpCheck(); }
+  function prefsKept(wk){ if(wk.includes("fin")) say("fin_msg",""); if(wk.includes("ws")){ if(WS_REF&&$("rc_msg").textContent===WS_REF) say("rc_msg",""); WS_REF=""; } rpCheck(); }
   function wsUse(){
     const R=recastSDE(WS); if(!wsReady(R)) return;
     /* the message goes beside the control the dialog was opened from */
@@ -8663,7 +8720,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   const readNames=()=>{ const p=load(K_PREFS,null); if(p&&typeof p==="object"){
     const mine=k=>{ if(!REFUSED.has(k)) return false; if(JSON.stringify(p[k])===REFUSED.get(k)) return true; REFUSED.delete(k); return false; };
     if(!mine("broker")&&typeof p.broker==="string") PREFS.broker=p.broker.slice(0,120); if(!mine("firm")&&typeof p.firm==="string") PREFS.firm=p.firm.slice(0,120);
-    if(!mine("calib")) PREFS.calib=p.calib===true; rpCheck(); } };
+    if(!mine("calib")) PREFS.calib=p.calib===true;
+    /* the structure and worksheet in use another tab stored since this tab's refusal: the refusal goes, so a later write
+       does not put this tab's back over them; this tab keeps its own in use (r8-financing-4, r8-worksheet-6) */
+    for(const k of ["fin","ws"]) if(REFUSED.has(k)&&JSON.stringify(p[k])!==REFUSED.get(k)) REFUSED.delete(k);
+    rpCheck(); } };
   const longDate=()=>new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
   const reportMeta=()=>({business:$("rp_biz").value.trim(),preparedFor:$("rp_for").value.trim(),broker:$("rp_broker").value.trim(),firm:$("rp_firm").value.trim()});
   function reportOpen(opener){
@@ -8672,13 +8733,16 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     if(_rq){ cancelAnimationFrame(_rq); _rq=0; render(); }
     /* the store and the preferences first: a tab that missed another's save opens with the names stored (r5-deals-6) */
     const n0=TELLS; mergeCur("tab"); readNames(); say("rp_msg",""); RP_REFUSED=null;
+    /* a refusal still standing is said again: the name stays in this tab, unstored, until a write stores it (r8-report-4) */
+    for(const k of ["broker","firm"]) if(REFUSED.has(k)) rpRefuse(prefMsg(k==="broker"?"the broker’s name is":"the firm’s name is"),k);
+    if(CUR&&UNSTORED.has(CUR)) rpRefuse(storeMsg(),null,CUR);
     const s=STATE.s; if(!s) return;
     const d=CUR&&dealById(CUR);
     $("rp_broker").value=PREFS.broker; $("rp_firm").value=PREFS.firm;
     $("rp_biz").value=d?d.business:DRAFT.business; $("rp_for").value=d?d.preparedFor:DRAFT.preparedFor; RP_TYPED.clear();
     REPORT=reportData(s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()});
     $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta());
-    openDlg("report",opener); if(TELLS!==n0&&LAST_TELL) say("rp_msg",LAST_TELL.msg,LAST_TELL.ms);
+    openDlg("report",opener); if(TELLS!==n0&&LAST_TELL) rpLine(LAST_TELL.msg,LAST_TELL.ms);
   }
   /* a change writes the field that changed, and only it: the broker and firm to the preferences, the business and the
      recipient to the deal in the console (or the unsaved valuation's), so another tab's save of the others stands */
@@ -8694,7 +8758,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   let RP_REFUSED=null;
   const rpRefuse=(t,pref,deal)=>{ const R=RP_REFUSED||{prefs:new Set(),deals:new Set()}; if(pref) R.prefs.add(pref); if(deal) R.deals.add(deal); R.t=t; RP_REFUSED=R; say("rp_msg",t,0); };
   function rpCheck(){ const R=RP_REFUSED; if(!R||[...R.prefs].some(k=>REFUSED.has(k))||[...R.deals].some(id=>UNSTORED.has(id))) return;
-    if($("rp_msg").textContent===R.t) say("rp_msg",""); RP_REFUSED=null; }
+    if($("rp_msg").textContent.includes(R.t)) say("rp_msg",""); RP_REFUSED=null; }
+  /* a message for the report's line keeps a standing refusal beside it, and then lasts with it (r8-report-4) */
+  function rpLine(msg,ms){ const R=RP_REFUSED; say("rp_msg",R?msg+" "+R.t:msg,R?0:ms); }
   function reportMetaChanged(e){
     if(!REPORT) return;
     $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta());
@@ -8803,7 +8869,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       $("dl_store").innerHTML=`${nocopyStored()?`<b>The deals stored here could not be read</b>, and this browser has no room to copy them aside`
         :`<b>When this tab opened, the deals stored here could not be read</b>, and another tab has since saved over them; this tab still holds them`}, so this page saves nothing over them${only?`: ${only<DEALS.length?`${only} of the ${DEALS.length} deals here`:`the ${only} deal${only===1?"":"s"} here`} ${only===1?"is":"are"} in this tab only`:""}.
       <button class="btn tool" id="dl_unread" type="button">Download them</button> to keep them as a file${NOCOPY_DL?`, then <button class="btn tool" id="dl_unread_ok" type="button">I have the file</button> and saving goes on.`:"; saving goes on once you have it."}`; return; }
-    $("dl_store").innerHTML=(STORE_OK
+    $("dl_store").innerHTML=(STORE_OK||STORE_ERR==="full"&&!UNSTORED.size
       ?`${DEALS.length} deal${DEALS.length===1?"":"s"} kept in this browser (${kb<1?"under 1":Math.round(kb)} KB). They do not follow you to another browser or device, and clearing this site&rsquo;s data deletes them: export a copy now and then.`
       :STORE_ERR==="full"?`<b>This browser&rsquo;s storage for this page is full</b>: the latest changes are kept in this tab only. Export the deals to keep them, then delete some or shorten long notes.`
       :`<b>This browser is not keeping data</b> (a private window, or storage blocked for this page). Deals last until the page closes: export them to keep them.`)
@@ -8881,8 +8947,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
        (r7-deals-5) */
     { let p=null; try{ p=dealPredict(d); }catch(e){}
       const lv=p&&d.listPrice>0?d.listPrice/p.V:null, sx=p&&d.status==="closed"&&d.salePrice>0&&p.pExp>0?d.salePrice/p.pExp:null;
+      /* one tip for one mistyped sale: the model's check only where the sale's ratio to its listing did not already flag it,
+         and at the ask saved with the deal where it has no listing price (r8-deals-4) */
+      const rt=tips.some(t=>t.startsWith("The sale price is"));
       if(lv!==null&&(lv>2.5||lv<.4)) tips.push(`The listing price is ${lv.toFixed(2)}× the model value of ${money(p.V)}: check it, since one mistyped listing moves your records.`);
-      else if(sx!==null&&(sx>3||sx<.3)) tips.push(`The sale price is ${sx.toFixed(2)}× the model’s expected price at that listing, ${money(p.pExp)}: check it, since one mistyped sale moves your price record.`); }
+      else if(sx!==null&&!rt&&(sx>3||sx<.3)) tips.push(`The sale price is ${sx.toFixed(2)}× the model’s expected price at ${d.listPrice>0?"that listing":"the ask saved with it"}, ${money(p.pExp)}: check it, since one mistyped sale moves your price record.`); }
     /* a deal cannot have closed after today: its time to close is left out until the date is corrected (r7-deals-10) */
     if(d.status==="closed"&&d.closeDate&&d.closeDate>today()) tips.push("The closing date is after today, so the deal cannot have closed yet: check it. Its time to close is left out until then.");
     if(d.status==="closed"&&!d.salePrice) tips.push("Add the sale price to count this deal in your price record.");
@@ -8921,9 +8990,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
         renderDeals(); toolbar(); say("dl_msg",`“${d.name}” is not deleted. `+storeMsg(),0); return; }
       /* the deletion stands (the store never held the deal, or the shorter list is stored): its refused change goes with it,
          and the store's refusal is said only while other changes here remain unstored (r7-deals-8) */
-      if(CUR===id) CUR=null; EDIT=null; UNSTORED.delete(id); MCLASH.delete(id);
+      /* the deal in the console deleted here takes its lasting messages, clash and hold with it, as Reset does (r8-worksheet-7) */
+      if(CUR===id){ CUR=null; CUR_SNAP=null; CLASH.clear(); HOLD=null; TELL_HELD=null; say("tl_msg",""); say("rc_msg",""); }
+      EDIT=null; UNSTORED.delete(id); MCLASH.delete(id);
       const okG=writeGone(); renderDeals(); toolbar();
-      say("dl_msg",`Deleted “${d.name}”.`+(!ok?(UNSTORED.size?" "+storeMsg():""):okG?"":" This browser’s storage is too full to record the deletion, so another open tab may bring the deal back: export your deals, then delete some or shorten long notes."));
+      say("dl_msg",`Deleted “${d.name}”.`+(!ok?(UNSTORED.size?" "+heldMsg():""):okG?"":" This browser’s storage is too full to record the deletion, so another open tab may bring the deal back: export your deals, then delete some or shorten long notes."));
     }
   }
   function openDeal(id){
@@ -8993,10 +9064,15 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const pg=document.createElement("style"); pg.id="rp-page"; pg.media="not all"; pg.textContent=RP_PAGE; document.head.appendChild(pg); }
   finFill();
   for(const k in FF){ const el=$(FF[k]);
-    el.addEventListener("input",()=>el.classList.remove("bad"));
+    el.addEventListener("focus",()=>{ el.__typed=false; el.__th=undefined; });
+    el.addEventListener("input",()=>{ el.__typed=true; el.classList.remove("bad"); });
     el.addEventListener("change",()=>{ const v=parseFin(k,el.value);
       if(v===null||isFinite(v)) FIN[k]=v; else el.classList.add("bad");
-      el.value=FFMT[k](FIN[k]); finChanged(); });
+      el.value=FFMT[k](FIN[k]);
+      /* a value kept over the one another tab saved to this box while it was typed in is a clash, said now and at the save */
+      if(el.__th&&!sameV(FIN[k],el.__th.v)){ CLASH.add("financing structure");
+        tell("Another tab saved a different value to this box of the financing structure while it was typed in: this tab keeps its own, and saving here writes it over the other’s.",0); }
+      el.__typed=false; el.__th=undefined; finChanged(); });
     el.addEventListener("keydown",e=>{ if(e.key==="Enter") el.blur(); });
     /* a box left unchanged shows the structure as it now stands (one taken up from another tab while it had the focus) */
     el.addEventListener("blur",()=>{ const t=FFMT[k](FIN[k]); if(el.value!==t){ el.value=t; el.classList.remove("bad"); } }); }
@@ -9020,8 +9096,8 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   $("reset").addEventListener("click",()=>{ DRAFT={business:"",preparedFor:""}; WS_OWNER=null; const lost=LOST; LOST=null; CLASH.clear(); const d=CUR&&dealById(CUR);
     say("rc_msg",""); HOLD=null; TELL_HELD=null;
     if(!d){ if(lost) say("tl_msg","Back at the framework example."); return; }
-    CUR=null; CUR_SNAP=null; mergeStore(); STATS=null; const del=!dealById(d.id); toolbar();
-    say("tl_msg",del?`Back at the framework example; “${d.name}” was deleted in another tab.`:`Back at the framework example; “${d.name}” is unchanged in the Deals tab.`); });
+    CUR=null; CUR_SNAP=null; mergeStore(); STATS=null; const m2=dealById(d.id), del=!m2; toolbar();
+    say("tl_msg",del?`Back at the framework example; “${d.name}” was deleted in another tab.`:`Back at the framework example; “${m2.name}” is unchanged in the Deals tab.`); });
   $("rc_close").addEventListener("click",closeDlg);
   $("rc_ent").addEventListener("change",()=>{ WS.entity=ownKey(RECAST_ENTITY,$("rc_ent").value)?$("rc_ent").value:"scorp"; wsSave(); wsBuild(); });
   $("rc_wt").addEventListener("change",()=>{ WS.weight=ownKey(RECAST_WEIGHTS,$("rc_wt").value)?$("rc_wt").value:"latest"; wsSave(); wsSum(); });
@@ -9054,9 +9130,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     download(`valuation-${slug(m.business||REPORT.ind)||"report"}-${today()}.html`,"text/html",reportFile()); });
   /* the store first, as the toolbar's save reads it: a deal deleted elsewhere keeps its name, business and worksheet in the
      new one (r6-worksheet-7) */
-  $("dl_new").addEventListener("click",()=>{ const m=mergeCur(), from=CUR&&dealById(CUR), prev=CUR; CUR=null; const d=saveCurrent(true,prev); if(!d) return; EDIT=d.id; renderDeals();
+  $("dl_new").addEventListener("click",()=>{ const m=mergeCur(), from=CUR&&dealById(CUR), prev=CUR, lostName=!CUR&&LOST?LOST.name:null; CUR=null; const d=saveCurrent(true,prev); if(!d) return; EDIT=d.id; renderDeals();
     const tk=from&&m.took.length?` Another tab had saved changes to “${from.name}”’s ${andList(m.took)}, which the console and the copy now show.${m.held||""}`:"";
-    say("dl_msg",STORE_OK?`Saved the console’s valuation as “${d.name}”: name it and record its listing below.`+tk:`“${d.name}” is in this tab only. `+storeMsg(),STORE_OK?(tk?(m.held?0:12000):7000):0); });
+    /* a deal deleted in another tab is said here too, where the broker is looking (r8-worksheet-9) */
+    say("dl_msg",STORE_OK?(lostName?`“${lostName}” was deleted in another tab, so this valuation is saved as a new deal, “${d.name}”: name it and record its listing below.`
+        :`Saved the console’s valuation as “${d.name}”: name it and record its listing below.`)+tk:`“${d.name}” is in this tab only. `+storeMsg(),STORE_OK?(tk||lostName?(m.held?0:12000):7000):0); });
   $("dl_json").addEventListener("click",exportJSON);
   $("dl_csv").addEventListener("click",exportCSV);
   $("dl_imp").addEventListener("click",()=>$("dl_file").click());
@@ -9109,9 +9187,18 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const t=e.dataTransfer?e.dataTransfer.getData("text"):"";
     if(/\S[\t\r\n]+\s*\S/.test(t)){ e.preventDefault(); el.classList.add("bad"); } },true);
 
+  /* a hold lasts while it holds: once the revenue leaves room for the SDE kept as saved, or another SDE is typed, the hold's
+     sentence goes from the messages and, where the SDE is still the one held, its mark from the box (r8-worksheet-2) */
+  function holdCheck(){ const H=HOLD; if(!H||PENDING) return; const same=CUR===H.id&&sameV(IN.ern,H.ern);
+    if(same&&IN.ern>IN.rev*.92+.5) return;
+    HOLD=null; if(same) $("v_ern").classList.remove("bad");
+    const t0=H.t.trim(), strip=t=>t.replace(H.t,"").replace(t0,"").trim(), ms=CLASH.size?0:12000;
+    for(const id of ["tl_msg","rc_msg","rp_msg"]){ const t=$(id).textContent; if(t.includes(t0)) say(id,strip(t),ms); }
+    if(TELL_HELD&&TELL_HELD.msg.includes(t0)) TELL_HELD={msg:strip(TELL_HELD.msg),ms};
+    if(LAST_TELL&&LAST_TELL.msg.includes(t0)) LAST_TELL={msg:strip(LAST_TELL.msg),ms}; }
   /* after every render: the financing table and the toolbar follow the console */
   const r0=window.render;
-  window.render=function(){ const out=r0.apply(this,arguments); try{ renderFinance(); toolbar(); }catch(e){ window.__brokerErr=e; } return out; };
+  window.render=function(){ const out=r0.apply(this,arguments); try{ renderFinance(); toolbar(); holdCheck(); }catch(e){ window.__brokerErr=e; } return out; };
   window.OMNI_BROKER={
     /* the tab handler calls this once a view is showing: a deal opened from the Deals tab lands in the console only now,
        so the console renders while it is visible */

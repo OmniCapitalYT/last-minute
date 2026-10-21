@@ -417,7 +417,8 @@ for(let i=0;i<N;i++){
       /* the patient-seller ask carries the console's own qualifiers (optNote): the ask cap, a range, a coin toss (r5-report-2);
          the improvements say the ask they are measured at (r5-report-3) */
       { const rs=D.sell.ratio, rw=D.walk.ratio, on=A.optNote({...s,rhoSell:rs,optRho:rw},V,A.model({...s,ask:V*rs}),A.model({...s,ask:V*rw}));
-        const capX=on.kind==="higher"&&rw>A.RHO_MAX-.02;
+        /* the soft cap's corner sets the walk-away ask from the printed 1.44x (r8-core-1) */
+        const capX=on.kind==="higher"&&A.capSet(rw);
         /* the report's range is the one the console note prints, over every near-tie peak (r6-core-1) */
         const nr=/as a range, (\d\.\d\d–\d\.\d\d)× value/.exec(on.text), rr=/close to a tie with (?:another ask|other asks): read it as (\d\.\d\d–\d\.\d\d)× value/i.exec(h);
         ok(!on.alt||(!!nr&&!!rr&&nr[1]===rr[1]),"broker: the report reads the patient-seller ask as the range the console note prints (r6-core-1)",ctx(s,{note:nr&&nr[1],report:rr&&rr[1]}));
@@ -434,7 +435,24 @@ for(let i=0;i<N;i++){
         const want=shown.filter(a=>a.fin.loan>0&&a.fin.ds>0&&!a.fin.ok).length, got=(h.match(/<span class="rp-warn">below \d\.\d\d×<\/span>/g)||[]).length;
         ok(want===got&&!/no price meets/.test(h)&&(!/at every price up to about/.test(h)||m.capped)&&!/[−+]0% for quality/.test(h)&&(f.note>0||!/standby note/.test(h))
            &&!(D.mfAt&&D.mfAt.equityIn<=0&&/waives part of/.test(h))
-           &&(D.sens.length>0||(D.qPct<.5?/bottom of the quality range/:/already at its best/).test(h)),"broker: the report grades, bounds and words its lender and lever lines by what holds",ctx(s,f,{want,got})); } } }
+           &&(D.sens.length>0||(D.qPct<.5?/bottom of the quality range/:/already at its best/).test(h)),"broker: the report grades, bounds and words its lender and lever lines by what holds",ctx(s,f,{want,got})); }
+      /* every x judgment the paper prints on the highest financed price has its input named in the footer, and the price where
+         buyer cash past the 7(a) maximum brings the equity to 10% carries it only where the starting share moves it: on the
+         random structure, and on two built to reach those sentences (r8-financing-1, r8-financing-2) */
+      { const tx=x=>x.replace(/<[^>]+>/g," ").replace(/&rsquo;/g,"’").replace(/\s+/g," ");
+        const chk=(Dx,hx,fx,mx,tag)=>{ const t=tx(hx), F={...A.FIN_DEFAULTS,...fx}, foot=(/× judgment: a judgment input also moves it, here [^.]*\./.exec(t)||[""])[0];
+          const top=!!Dx.mfAt&&mx.bind==="coverage"&&/the highest price that meets [\d.]+× is about \$[\d.]+[kMB]? fitted × judgment/.test(t);
+          ok(!top||((!Dx.mfAt.noteConv||foot.includes("the seller-note convention"))&&(!Dx.mfAt.drawMarket||foot.includes("the pay’s rank by firm size"))),
+             "broker: a highest financed price badged x judgment has its judgment input named in the footer (r8-financing-1)",ctx(s,fx,{tag,foot}));
+          const ab=/below about \$[\d.]+[kMB]? published data( × judgment)? : past \$[\d.]+[kMB]? published data( × judgment)? the SBA loan stays/.exec(t);
+          if(ab){ const mv=F.note>0&&[F.note-1e-4,F.note+1e-4].some(n=>{ const y=A.maxFinanced(s,{...F,note:n},V).equityAbove; return y==null||Math.abs(y-mx.equityAbove)>1e-6*mx.equityAbove; });
+            ok((!ab[1]||mv)&&(!ab[2]||!!ab[1]===mv),"broker: the price where buyer cash brings the equity to 10% carries x judgment exactly where the starting share moves it (r8-financing-2)",ctx(s,fx,{tag,ab:ab[0],mv})); } };
+        chk(D,h,f,m,"random");
+        const base={...s,rhoSell:rs,optRho:D.walk.ratio};
+        const f8={type:"initial",cash:.03,note:.05,standby:i%20===0,extra:V*.25}, m8=A.maxFinanced(s,f8,V);
+        if(m8.equityAbove&&m8.capped&&m8.equityShort){ const D8=A.reportData(base,{fin:f8}); chk(D8,A.reportHTML(D8,{}),f8,m8,"equity"); }
+        const f9={type:"initial",cash:.1,note:.05,standby:true,draw:s.ern*.4}, m9=A.maxFinanced(s,f9,V);
+        if(m9.bind==="coverage"&&m9.price>0&&isFinite(m9.price)&&[D.sell.ask,D.walk.ask,s.ask].every(a=>A.debtCheck(s,a,f9,V).over>0)){ const D9=A.reportData(base,{fin:f9}); chk(D9,A.reportHTML(D9,{}),f9,m9,"top"); } } } }
 }
 
 const names=Object.keys(fails);

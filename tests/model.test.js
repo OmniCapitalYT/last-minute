@@ -594,7 +594,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     /* the flat top: only at the cap, printed rounded UP, and the printed ask and every fine-grid ask above it within 1% */
     if(n.flat!==null&&n.flat!==undefined){
       const above=R.ms.map((m,j)=>[m,R.u[j]]).filter(v=>v[0]>=n.flat-1e-9);
-      ok(!n.alt&&ss.optRho>A.RHO_MAX-.02&&Math.abs(n.flat*100-Math.round(n.flat*100))<1e-9
+      ok(!n.alt&&A.capSet(ss.optRho)&&Math.abs(n.flat*100-Math.round(n.flat*100))<1e-9
         &&n.text.includes(`every ask from ${n.flat.toFixed(2)}× value up comes within 1% of value of the cap`)
         &&uK-R.U(n.flat)<=.01*V&&above.every(v=>uK-v[1]<=.01*V),`flat-top ask ${n.flat}: it and every ask above it within 1% ${tag}`);
       if(/There is no second peak/.test(n.text)) ok(!n.peak&&!R.pk.some(p=>p.here&&p.d>.03&&p.depth>3e-4),`'no second peak' only when there is none ${tag}`);
@@ -2253,6 +2253,53 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       const yr=new Date().getFullYear(), past=[d(1,"2025-01-06","2025-09-01"),d(2,"2025-02-03","2025-10-01"),d(3,"2025-03-03","2025-11-03")];
       const S0=A.dealsStats(past), S1=A.dealsStats(past.concat([d(4,"2026-03-02",(yr+1)+"-11-30")]));
       ok(S0.time.n===3&&S1.time.n===3&&S1.price.n===4,"43: a closed deal whose closing date is after today is left out of the time record until the date is corrected (r7-deals-10)"); }
+  }
+  /* ---- round 8 ---- */
+  { const txt=h=>h.replace(/<[^>]+>/g," ").replace(/&rsquo;/g,"’").replace(/\s+/g," ");
+    const FW={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75,rate:10.5};
+    const capSet=typeof A.capSet==="function"?A.capSet:()=>false;
+    /* r8-core-1: the soft cap's rounded corner sets every walk-away ask and range peak from the printed 1.44x: such a peak
+       moves with the cap, so the note says it is where the cap binds and gives the flat top, the report's row says the cap
+       is a judgment, and a range top there is labelled, whatever its unprinted third decimal */
+    { const one=lam=>{ const s={...FW,ind:"auto",rev:1333110,ern:551076,theta:1,lamT:lam}, V=A.model({...s,ask:1}).V; s.ask=V;
+        s.rhoSell=A.bestRatio(s,0,0); s.optRho=A.bestRatio(s,1,lam);
+        const n=A.optNote(s,V,A.model({...s,ask:V*s.rhoSell}),A.model({...s,ask:V*s.optRho})), t=txt(A.reportHTML(A.reportData(s,{}),{}));
+        return {m:s.optRho,n,t}; };
+      const a=one(3900), b=one(4000), cs=/It sits where the 1\.50× cap the console puts on the ask binds \(a judgment\), so read it as "test the market", not as a measured optimum\./;
+      const row=/If you can walk away \$2\.06M 1\.48× value .*?1\.50× value is the console’s cap on the ask \(a judgment\), not an optimum: asks from 1\.2\d× up come within 1% of value of it\./;
+      const EXO={grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,rate:10.5};
+      const P=A.peerMedians("medical",1.45e6,1.45e6/.24), r={...EXO,ind:"medical",ern:1.45e6,rev:1.45e6/.24,grw:P.grw,gm:P.gm,rec:P.rec,ret:P.ret,theta:.76,lamT:4000,jobs:40};
+      const Vr=A.model({...r,ask:1}).V; r.ask=Vr; r.rhoSell=A.bestRatio(r,0,0); r.optRho=A.bestRatio(r,.76,4000);
+      const nr=A.optNote(r,Vr,A.model({...r,ask:Vr*r.rhoSell}),A.model({...r,ask:Vr*r.optRho})), tr=txt(A.reportHTML(A.reportData(r,{}),{})), pk=(nr.alts||[]).map(x=>x.m);
+      ok(A.RHO_BIND===1.44&&a.m>1.48&&b.m<1.48&&b.m.toFixed(2)==="1.48"&&capSet(a.m)&&capSet(b.m)&&cs.test(a.n.text)&&cs.test(b.n.text)&&b.n.flat>1.2&&b.n.flat<1.3
+         &&row.test(a.t)&&row.test(b.t)&&pk.some(x=>x<1.48&&x.toFixed(2)==="1.48")
+         &&nr.text.includes("Asking 1.48× value (where the console’s 1.50× cap on the ask binds) instead")&&tr.includes("read it as 1.19–1.48× value; 1.48× is where the console’s 1.50× cap on the ask binds (a judgment).")
+         &&!capSet(1.4349)&&capSet(1.4351),
+         "43: a walk-away ask or range peak the soft cap sets from the printed 1.44x says so, with its flat top, on the console and the report, whatever its unprinted third decimal (r8-core-1)"); }
+    const s={...FW,ern:3e6,rev:1.2e7,ask:9e6};
+    /* r8-financing-1, r8-report-2: a coverage-bound highest price keeps x judgment from a standby note's starting share,
+       and the footer names the convention, though every ask is past the 7(a) maximum */
+    { const fin={type:"initial",cash:.1,note:.05,standby:true,draw:2.2e6}, D=A.reportData(s,{fin}), t=txt(A.reportHTML(D,{}));
+      const mv=[.04,.06].map(note=>A.maxFinanced(s,{...fin,note},D.V).price);
+      ok([D.sell,D.walk,D.cur].every(a=>a.fin.over>0&&!a.fin.noteConv)&&D.mfAt&&D.mfAt.noteConv&&D.maxFin.bind==="coverage"&&mv[0]<D.maxFin.price-1e3&&mv[1]>D.maxFin.price+1e3
+         &&/the highest price that meets 1\.25× is about \$[\d.]+M fitted × judgment/.test(t)&&/× judgment: a judgment input also moves it, here [^.]*the seller-note convention \(coverage\)/.test(t),
+         "43: a coverage-bound highest price badged x judgment by a standby note's starting share has the convention named in the footer when every ask is past the 7(a) maximum (r8-financing-1, r8-report-2)"); }
+    /* r8-financing-2, r8-report-1: past the 7(a) maximum a standby note's share does not move the price where buyer cash
+       brings an initial acquisition's equity to 10%, which prints plain published data; a paid note's moves it */
+    { const fS={type:"initial",cash:.03,note:.05,standby:true,extra:1e6}, DS=A.reportData(s,{fin:fS}), tS=txt(A.reportHTML(DS,{}));
+      const fP={...fS,standby:false}, DP=A.reportData(s,{fin:fP}), tP=txt(A.reportHTML(DP,{}));
+      const eS=[0,.04,.05,.06].map(note=>A.maxFinanced(s,{...fS,note},DS.V).equityAbove);
+      ok(eS.every(x=>Math.abs(x-eS[2])<1e-6)&&/at every price below about \$4\.56M published data : past \$[\d.]+M published data × judgment the SBA loan stays/.test(tS)
+         &&tS.includes("the seller-note convention (the prices past the 7(a) maximum)")&&DS.aboveMoves===false&&DP.aboveMoves===true
+         &&/at every price below about \$[\d.]+M published data × judgment : past \$[\d.]+M published data × judgment the SBA loan stays/.test(tP),
+         "43: the price where buyer cash past the 7(a) maximum brings an initial acquisition's equity to 10% carries x judgment only where the note's starting share moves it (r8-financing-2, r8-report-1)"); }
+    /* r8-financing-3: the working capital's own coverage, where no price works, carries its badge */
+    { const t=txt(A.reportHTML(A.reportData({...FW},{fin:{extra:2e6,draw:1.2e6}}),{}));
+      ok(/the \$250k left after the new owner’s pay covers them 0\.91× fitted , under SBA’s 1\.25× minimum/.test(t),
+         "43: the report's coverage of the working capital financed in the loan, where no price works, carries the badge every other coverage figure does (r8-financing-3)"); }
+    /* r8-core-2: the page prints counts and amounts in en-US in every browser, not only on the report */
+    { const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8"), bare=(HTML.match(/\.toLocaleString\(\)/g)||[]).length;
+      ok(bare===0&&(HTML.match(/\.toLocaleString\("en-US"\)/g)||[]).length>=40,`43: every count and amount the page formats is en-US, on the console and the Data tab as on the report (${bare} bare toLocaleString calls; r8-core-2)`); }
   }
   /* the page wiring */
   ok(HTML.includes('<button class="tab" data-v="deals">Deals</button>')&&HTML.includes('<section class="sec" id="sec_fin" data-norender>')

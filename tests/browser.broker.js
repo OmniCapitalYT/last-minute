@@ -1511,7 +1511,145 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     await A9.click("#rp_close"); await settle(A9);
     ok(st.r0==="6"&&st.r1==="7"&&!st.r2.paper&&!st.r2.file,`an open report's price record follows another tab's closed deal and opt-out, as the toolbar does (${JSON.stringify(st)}; r7-report-5)`);
     ok(o39a.errs.length===0&&o39b.errs.length===0,"no page errors in round 7's price-record check: "+o39a.errs.concat(o39b.errs).slice(0,3).join(" | "));
-    await c39.close(); }
+    await c39.close();
+    /* ---- round 8 ---- */
+    const pref8=(q,k)=>q.evaluate(k=>{ const p=JSON.parse(localStorage.getItem("omni.prefs.v1")||"null"); return p?p[k]:undefined; },k);
+    const rpSet8=async(q,id,v,keep)=>{ if(!(await q.evaluate(()=>!document.getElementById("rp_paper").closest("[hidden]")&&!!document.getElementById("rp_paper").offsetParent))){ await q.click("#tl_report"); await settle(q); }
+      await q.fill(id,v); await q.press(id,"Tab"); await settle(q); if(!keep){ await q.click("#rp_close"); await settle(q); } };
+    const prefsFull8=()=>{ const set=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(window.__prefsFull&&k==="omni.prefs.v1") throw new DOMException("The quota has been exceeded.","QuotaExceededError"); return set.call(this,k,v); }; };
+    /* a refused preference is not written over another tab's later store of that key: the structure in use in a tab that heard
+       it (r8-financing-4, r8-worksheet-6, r8-report-3), a name in a tab that missed it (r8-deals-1); a key refused again
+       records the store it was refused over, so the name typed last stays this tab's, and the reopened report says it is
+       not remembered (r8-deals-1, r8-deals-2, r8-report-4) */
+    const c41=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); await c41.addInitScript(deafInit); await c41.addInitScript(prefsFull8);
+    const o41a=await open(c41), R8a=o41a.p, o41b=await open(c41), R8b=o41b.p, o41d=await open(c41,"?deaf"), R8d=o41d.p;
+    await R8a.evaluate(()=>{ window.__prefsFull=true; }); await box(R8a,"#f_cash","20"); st={a0:await msg(R8a,"fin_msg")}; await R8a.evaluate(()=>{ window.__prefsFull=false; });
+    await box(R8b,"#f_cash","30"); await settle(R8a); st.b=(await pref8(R8b,"fin")||{}).cash;
+    await rpSet8(R8a,"#rp_broker","Pat Lee"); st.after=(await pref8(R8a,"fin")||{}).cash; st.broker=await pref8(R8a,"broker"); st.box=await R8a.evaluate(()=>document.getElementById("f_cash").value);
+    ok(/financing structure in use is not remembered/.test(st.a0)&&st.b===.3&&st.after===.3&&st.broker==="Pat Lee"&&st.box==="20%",
+       `a structure in use the store refused is not written over the one another tab stored since, by a later write of another preference (${JSON.stringify({b:st.b,after:st.after,broker:st.broker,box:st.box})}; r8-financing-4, r8-worksheet-6, r8-report-3)`);
+    /* the tab that misses the stores keeps its report open throughout, so nothing reads the store in between */
+    await R8d.evaluate(()=>{ window.__prefsFull=true; }); await rpSet8(R8d,"#rp_broker","Lee Deaf",true); await R8d.evaluate(()=>{ window.__prefsFull=false; });
+    await rpSet8(R8b,"#rp_broker","Robin Ortiz"); await rpSet8(R8d,"#rp_firm","Ortiz & Co"); st={s:await pref8(R8d,"broker")+" / "+await pref8(R8d,"firm")};
+    await rpSet8(R8b,"#rp_broker","S1"); await R8d.evaluate(()=>{ window.__prefsFull=true; }); await rpSet8(R8d,"#rp_broker","A1",true); await rpSet8(R8b,"#rp_broker","S2"); await rpSet8(R8d,"#rp_broker","A2",true);
+    await R8d.click("#rp_close"); await settle(R8d); await R8d.click("#tl_report"); await settle(R8d); st.field=await R8d.evaluate(()=>document.getElementById("rp_broker").value); st.line=await msg(R8d,"rp_msg"); st.stored=await pref8(R8d,"broker");
+    await R8d.click("#rp_close"); await settle(R8d); await R8d.evaluate(()=>{ window.__prefsFull=false; });
+    ok(st.s==="Robin Ortiz / Ortiz & Co"&&st.field==="A2"&&/broker’s name is not remembered/.test(st.line)&&st.stored==="S2",
+       `a tab that missed another tab's store of a name does not write its refused name over it; a name refused again stays this tab's, and the reopened report says it is not remembered (${JSON.stringify(st)}; r8-deals-1, r8-deals-2, r8-report-4)`);
+    /* with the report open, a take-up's message keeps the refusal beside it, and both last (r8-report-4) */
+    x=await pair(R8a,R8b); await R8a.click("#tl_report"); await settle(R8a); await R8a.evaluate(()=>{ window.__prefsFull=true; }); await rpSet8(R8a,"#rp_broker","Kim Park",true);
+    await ern(R8b,1.3e6); await R8b.click("#tl_save"); await settle(R8b); await has(R8a,x,"d.inputs.ern===1300000"); await settle(R8a);
+    st={now:await msg(R8a,"rp_msg")}; await R8a.waitForTimeout(12500); st.later=await msg(R8a,"rp_msg"); await R8a.click("#rp_close"); await settle(R8a); await R8a.evaluate(()=>{ window.__prefsFull=false; });
+    ok(/Another tab saved changes to this deal’s inputs/.test(st.now)&&/broker’s name is not remembered/.test(st.now)&&/broker’s name is not remembered/.test(st.later),
+       `with the report open a take-up's message keeps the refused name's warning beside it, and the warning lasts (${JSON.stringify({now:st.now.slice(0,70),later:st.later.slice(0,70)})}; r8-report-4)`);
+    ok(o41a.errs.length===0&&o41b.errs.length===0&&o41d.errs.length===0,"no page errors in round 8's refused-preference checks: "+o41a.errs.concat(o41b.errs,o41d.errs).slice(0,3).join(" | "));
+    await c41.close();
+
+    /* take-ups in two hearing tabs: a focused financing box (r8-financing-5), the console's display-only 92% cap
+       (r8-worksheet-2), focused worksheet cells (r8-worksheet-3, r8-worksheet-5), a deal deleted here (r8-worksheet-7),
+       a take-up heard in a background tab (r8-core-3) */
+    const c42=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const o42a=await open(c42), S8a=o42a.p, o42b=await open(c42), S8b=o42b.p;
+    x=await pair(S8a,S8b); await S8a.click("#f_cash"); await settle(S8a);
+    await box(S8b,"#f_cash","20"); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"d.fin&&Math.abs(d.fin.cash-.2)<1e-9"); await settle(S8a);
+    st={f0:await S8a.evaluate(()=>({v:document.getElementById("f_cash").value,on:document.activeElement.id}))};
+    await S8a.keyboard.press("Control+A"); await S8a.keyboard.type("15",{delay:5});
+    await box(S8b,"#f_cash","30"); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"d.fin&&Math.abs(d.fin.cash-.3)<1e-9"); await settle(S8a);
+    await S8a.bringToFront(); await S8a.focus("#f_cash"); await S8a.keyboard.press("End"); await S8a.keyboard.press("Enter"); await settle(S8a); st.m=await msg(S8a,"tl_msg");
+    await S8a.click("#tl_save"); await settle(S8a); st.s=await msg(S8a,"tl_msg"); st.cash=((await stored(S8a,x)).fin||{}).cash;
+    ok(st.f0.on==="f_cash"&&st.f0.v==="20%"&&/Another tab saved a different value to this box of the financing structure/.test(st.m)&&/Where both tabs changed its financing structure/.test(st.s)&&st.cash===.15,
+       `a focused financing box not typed in shows the structure taken up, and a value typed over another tab's change to it is a clash, said at once and at the save (${JSON.stringify({f0:st.f0,m:st.m.slice(0,60),s:st.s.slice(0,80),cash:st.cash})}; r8-financing-5)`);
+    x=await pair(S8a,S8b); await box(S8a,"#v_rev","1,000,000"); await slider(S8b,"i_gm",60); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"Math.abs(d.inputs.gm-.6)<1e-9"); await settle(S8a);
+    st={in:await S8a.evaluate(()=>IN.ern)}; await box(S8a,"#v_rev","6,000,000"); st.back=await S8a.evaluate(()=>STATE.s.ern);
+    x=await pair(S8a,S8b); await box(S8a,"#v_rev","1,000,000"); await box(S8b,"#v_ern","1,200,000"); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"d.inputs.ern===1200000"); await settle(S8a);
+    const mk8=q=>q.evaluate(()=>document.getElementById("v_ern").classList.contains("bad"));
+    st.m=await msg(S8a,"tl_msg"); st.mk0=await mk8(S8a); await box(S8a,"#v_rev","6,000,000"); st.ern=await S8a.evaluate(()=>STATE.s.ern); st.m2=await msg(S8a,"tl_msg"); st.mk1=await mk8(S8a);
+    await S8a.click("#tl_save"); await settle(S8a); st.s=(await stored(S8a,x)).inputs.ern;
+    x=await pair(S8a,S8b); await box(S8a,"#v_ern","1,600,000"); await box(S8b,"#v_rev","1,700,000"); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"d.inputs.rev===1700000"); await settle(S8a);
+    st.r=await S8a.evaluate(()=>({m:document.getElementById("tl_msg").textContent,shown:STATE.s.ern,raw:IN.ern,bad:document.getElementById("v_ern").classList.contains("bad")}));
+    ok(st.in===1.45e6&&st.back===1.45e6&&!/also changed/.test(st.m)&&/The SDE, \$1\.20M, is above 92% of the revenue, \$1\.00M, so the console holds it to \$920k and marks it\./.test(st.m)&&st.mk0
+       &&st.ern===1.2e6&&!/holds it/.test(st.m2)&&/Another tab saved changes to this deal’s inputs/.test(st.m2)&&!st.mk1&&st.s===1.2e6
+       &&Math.abs(st.r.shown-1.564e6)<1&&st.r.raw===1.6e6&&st.r.bad&&/The SDE, \$1\.60M, is above 92% of the revenue, \$1\.70M, so the console holds it to \$1\.56M and marks it\./.test(st.r.m),
+       `a take-up while this tab's revenue holds the SDE to 92% for display neither stores the cap nor counts it as this tab's change; the SDE taken up is held, named and marked only while the revenue holds it, as is this tab's unsaved SDE under a revenue taken up (${JSON.stringify({in:st.in,back:st.back,m:st.m.slice(-110),mk0:st.mk0,ern:st.ern,m2:st.m2.slice(0,60),mk1:st.mk1,s:st.s,r:{...st.r,m:st.r.m.slice(-110)}})}; r8-worksheet-2)`);
+    x=await pair(S8a,S8b); await S8a.click("#tl_recast"); await settle(S8a); for(const [k,v] of [["rev","6,000,000"],["ni","900,000"],["owner","300,000"],["dep","40,000"]]) await cell(S8a,k,0,v);
+    await settle(S8a); await S8a.click("#rc_close"); await settle(S8a); await S8a.click("#tl_save"); await settle(S8a); await has(S8b,x,"d.ws&&d.ws.years[0].dep===40000"); await settle(S8b);
+    const bSave8=async(k,y,v,test)=>{ await S8b.click("#tl_recast"); await settle(S8b); await cell(S8b,k,y,v); await settle(S8b); await S8b.click("#rc_close"); await settle(S8b); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,test); await S8a.bringToFront(); await S8a.waitForTimeout(400); };
+    await S8a.click("#tl_recast"); await settle(S8a); await S8a.click('.rc-in[data-k="dep"][data-y="0"]'); await S8a.keyboard.press("End"); await S8a.keyboard.type("1",{delay:5}); await S8a.keyboard.press("Backspace");
+    await bSave8("dep",0,"55,000","d.ws&&d.ws.years[0].dep===55000");
+    st={cell:await S8a.evaluate(()=>({v:document.activeElement.value,k:document.activeElement.dataset.k,ws:OMNI_BROKER.state().ws.years[0].dep}))};
+    await S8a.click("#rc_close"); await settle(S8a); await S8a.click("#tl_recast"); await settle(S8a); await S8a.click('.rc-in[data-k="dep"][data-y="0"]'); await S8a.keyboard.press("Control+A");
+    await bSave8("int",0,"30,000","d.ws&&d.ws.years[0].int===30000");
+    st.sel=await S8a.evaluate(()=>{ const e=document.activeElement; return [e.dataset.k,e.selectionStart,e.selectionEnd,e.value.length]; });
+    await S8a.keyboard.type("45000",{delay:5}); await S8a.keyboard.press("Tab"); await settle(S8a); st.dep=await S8a.evaluate(()=>OMNI_BROKER.state().ws.years[0].dep);
+    await S8a.click("#rc_close"); await settle(S8a);
+    ok(st.sel[0]==="dep"&&st.sel[1]===0&&st.sel[2]===st.sel[3]&&st.dep===45000&&st.cell.k==="dep"&&st.cell.v==="$55,000"&&st.cell.ws===55000,
+       `a focused worksheet cell typed in and brought back to its amount shows the amount another tab saved, and one with its amount selected keeps the whole selection through another tab's save, so the amount typed next replaces it (${JSON.stringify(st)}; r8-worksheet-5, r8-worksheet-3)`);
+    x=await pair(S8a,S8b); await slider(S8a,"i_gm",50); await slider(S8b,"i_gm",70); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"Math.abs(d.inputs.gm-.7)<1e-9"); await settle(S8a);
+    st={m0:await msg(S8a,"tl_msg")}; await toDeals(S8a); await del2(S8a,x); await toConsole(S8a); st.m1=await msg(S8a,"tl_msg");
+    ok(/also changed/.test(st.m0)&&!/also changed|writes them over/.test(st.m1),`deleting the deal in the console from this tab's Deals tab takes its lasting message with it (${JSON.stringify({m0:st.m0.slice(0,60),m1:st.m1.slice(0,60)})}; r8-worksheet-7)`);
+    x=await pair(S8a,S8b);
+    await S8a.evaluate(()=>{ Object.defineProperty(document,"hidden",{configurable:true,get:()=>!!window.__hid}); Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>window.__hid?"hidden":"visible"});
+      window.__hid=true; document.dispatchEvent(new Event("visibilitychange")); });
+    await slider(S8b,"i_gm",55); await S8b.click("#tl_save"); await settle(S8b); await has(S8a,x,"Math.abs(d.inputs.gm-.55)<1e-9"); await settle(S8a);
+    await S8a.waitForTimeout(12500); st={hid:await msg(S8a,"tl_msg")};
+    await S8a.evaluate(()=>{ window.__hid=false; document.dispatchEvent(new Event("visibilitychange")); }); await settle(S8a); st.back=await msg(S8a,"tl_msg");
+    await S8a.waitForTimeout(12500); st.later=await msg(S8a,"tl_msg");
+    ok(/Another tab saved changes to this deal’s inputs/.test(st.hid)&&st.back===st.hid&&st.later==="",`a take-up heard while this browser tab is in the background waits until the broker comes back, then goes as usual (${JSON.stringify({hid:st.hid.slice(0,60),back:st.back.slice(0,30),later:st.later})}; r8-core-3)`);
+    ok(o42a.errs.length===0&&o42b.errs.length===0,"no page errors in round 8's take-up checks: "+o42a.errs.concat(o42b.errs).slice(0,3).join(" | "));
+    await c42.close();
+
+    /* a tab that missed another tab's acts: Reset names the deal as stored (r8-deals-6), the Deals tab's new deal says the
+       deletion it found (r8-worksheet-9), a save says the restore it found (r8-deals-7) */
+    const c43=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:true}); await c43.addInitScript(deafInit);
+    const o43a=await open(c43,"?deaf"), T8d=o43a.p, o43b=await open(c43), T8b=o43b.p;
+    x=await pair(T8d,T8b); await name(T8d,x,"Ash Dental"); await toConsole(T8d); await has(T8b,x,"d.name==='Ash Dental'"); await settle(T8b); await name(T8b,x,"Birch Dental"); await has(T8d,x,"d.name==='Birch Dental'");
+    await T8d.click("#reset"); await settle(T8d); st={reset:await msg(T8d,"tl_msg")};
+    x=await pair(T8d,T8b); await name(T8d,x,"Smith Dental"); await has(T8b,x,"d.name==='Smith Dental'"); await settle(T8b); await toDeals(T8b); await del2(T8b,x); await gone(T8d,x);
+    await T8d.click("#dl_new"); await settle(T8d); st.dl=await msg(T8d,"dl_msg");
+    x=await pair(T8d,T8b); await name(T8d,x,"Lake Dental"); await toConsole(T8d); await has(T8b,x,"d.name==='Lake Dental'"); await settle(T8b);
+    const jp81=await backup(T8b,"r8a.json"); await del2(T8b,x); await gone(T8d,x);
+    await T8d.click("#tl_recast"); await settle(T8d); await T8d.click("#rc_close"); await settle(T8d); st.lost=await msg(T8d,"tl_msg");
+    await restore(T8b,jp81); await has(T8d,x,"true"); await ern(T8d,1.2e6); await T8d.click("#tl_save"); await settle(T8d); st.save=await msg(T8d,"tl_msg"); st.s=(await stored(T8d,x)||{inputs:{}}).inputs.ern;
+    ok(/“Birch Dental” is unchanged in the Deals tab/.test(st.reset)&&/“Smith Dental” was deleted in another tab, so this valuation is saved as a new deal/.test(st.dl)
+       &&/was deleted in another tab/.test(st.lost)&&/^“Lake Dental”, deleted in another tab, was restored from a backup\./.test(st.save)&&st.s===1.2e6,
+       `a tab that missed another tab's acts says them: Reset names the deal as stored, the Deals tab's new deal the deletion, a save the restore it found (${JSON.stringify({reset:st.reset.slice(0,70),dl:st.dl.slice(0,80),save:st.save.slice(0,80),s:st.s})}; r8-deals-6, r8-worksheet-9, r8-deals-7)`);
+    ok(o43a.errs.length===0&&o43b.errs.length===0,"no page errors in round 8's checks in a tab that missed acts: "+o43a.errs.concat(o43b.errs).slice(0,3).join(" | "));
+    await c43.close();
+
+    /* a restore's re-attach that stored this tab's business says it is stored (r8-deals-5) */
+    const c44=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:true}); const o44a=await open(c44), U8a=o44a.p, o44b=await open(c44), U8b=o44b.p;
+    x=await pair(U8a,U8b); await rpSet8(U8a,"#rp_biz","Backup Biz"); await has(U8b,x,"d.business==='Backup Biz'"); const jp82=await backup(U8b,"r8b.json");
+    await rpSet8(U8a,"#rp_biz","Current Biz"); await has(U8b,x,"d.business==='Current Biz'"); await settle(U8b); await del2(U8b,x); await gone(U8a,x); await settle(U8a);
+    await rpSet8(U8a,"#rp_biz","Draft Biz"); await restore(U8b,jp82); await has(U8a,x,"true"); await settle(U8a);
+    st={m:await msg(U8a,"tl_msg"),s:(await stored(U8a,x)).business};
+    ok(st.s==="Draft Biz"&&/this tab’s are now stored over the restored ones/.test(st.m)&&!/saving here writes them over the restored ones/.test(st.m),
+       `a restore's re-attach that stores this tab's business says it is stored, not that a save will write it (${JSON.stringify({s:st.s,m:st.m.slice(-150)})}; r8-deals-5)`);
+    ok(o44a.errs.length===0&&o44b.errs.length===0,"no page errors in round 8's restore check: "+o44a.errs.concat(o44b.errs).slice(0,3).join(" | "));
+    await c44.close();
+
+    /* the Deals tab: a deletion that stands is said done beside the changes still held, and the store line follows what is
+       held (r8-deals-3); one tip for one mistyped sale, and no listing named where there is none (r8-deals-4) */
+    const c45=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); await c45.addInitScript(fullInit); const o45=await open(c45), W8=o45.p;
+    await W8.evaluate(()=>{ window.__full=true; }); await W8.click("#tl_save"); await settle(W8); const w81=await cur(W8); await ern(W8,7e5); await W8.click("#tl_saveas"); await settle(W8); const w82=await cur(W8);
+    await toDeals(W8); await del2(W8,w81); st={d1:await msg(W8,"dl_msg")}; await del2(W8,w82); st.line=(await msg(W8,"dl_store")).replace(/\s+/g," "); await W8.evaluate(()=>{ window.__full=false; });
+    ok(w81!==w82&&/^Deleted “[^”]+”\. Other changes here are still kept in this tab only/.test(st.d1)&&!/the change is not kept/.test(st.d1)&&!/latest changes are kept in this tab only/.test(st.line),
+       `a deletion beside other changes held in this tab is said done, and the store line goes with the last held change (${JSON.stringify({d1:st.d1.slice(0,90),line:st.line.slice(0,90)})}; r8-deals-3)`);
+    await toConsole(W8); await W8.click("#reset"); await settle(W8); await W8.click("#tl_save"); await settle(W8); const w83=await cur(W8); await toDeals(W8); await W8.click(`#dl_tbl tr[data-id="${w83}"] .dl-name`); await settle(W8);
+    const form81=async kv=>{ for(const [k,v] of kv){ if(k==="status") await W8.selectOption('#dl_form select[name="status"]',v); else await W8.fill(`#dl_form input[name="${k}"]`,v); } await W8.click('#dl_form button[type="submit"]'); await settle(W8); return msg(W8,"dl_form_msg"); };
+    st={t1:await form81([["status","closed"],["listPrice","3,240,000"],["salePrice","30,377,640"],["listDate","2025-02-03"],["closeDate","2025-09-01"]])};
+    st.t2=await form81([["listPrice",""]]); const nTip8=t=>(t.match(/one mistyped sale moves your price record/g)||[]).length;
+    ok(nTip8(st.t1)===1&&nTip8(st.t2)===1&&!/at that listing/.test(st.t2),`one sale typed ten times too high gets one tip, and none names a listing the deal does not have (${JSON.stringify({t1:st.t1.slice(0,120),t2:st.t2.slice(0,120)})}; r8-deals-4)`);
+    ok(o45.errs.length===0,"no page errors in round 8's Deals tab checks: "+o45.errs.slice(0,3).join(" | "));
+    await c45.close();
+
+    /* the console and the Data tab print counts and amounts in en-US in a German browser (r8-core-2) */
+    const c46=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",locale:"de-DE"}); const o46=await open(c46), L8x=o46.p;
+    st={conf:await msg(L8x,"o_conf"),de:await L8x.evaluate(()=>(1234).toLocaleString())};
+    await L8x.click('.tab[data-v="data"]'); await L8x.waitForTimeout(1500); const dt8=await L8x.evaluate(()=>document.body.innerText);
+    st.dollar=(dt8.match(/\$\d{1,3}\.\d{3}(?![\d.]*[MkB%])/g)||[]).slice(0,3); st.count=(dt8.match(/\b\d{1,3}\.\d{3} (closed sales|acquisition loans|SBA acquisition loans|combinations)/g)||[]).slice(0,3);
+    ok(st.de==="1.234"&&/18,941 closed sales/.test(st.conf)&&!st.dollar.length&&!st.count.length&&/\$16,400/.test(dt8),
+       `the console and the Data tab print counts and amounts in en-US in a German browser (${JSON.stringify({conf:st.conf.slice(0,60),dollar:st.dollar,count:st.count})}; r8-core-2)`);
+    ok(o46.errs.length===0,"no page errors in a German browser (round 8): "+o46.errs.slice(0,3).join(" | "));
+    await c46.close(); }
 
   /* a phone with the quality fit showing: the fits panel stays inside its box, its table scrolls */
   const c7=await b3.newContext({viewport:{width:390,height:844},reducedMotion:"reduce"});
