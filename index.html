@@ -3796,8 +3796,10 @@ function optNote(s,V,rSell,rKeep){
         flat=f<=RHO_MAX-.1+1e-9?f:null; }
     }
   }
-  const tie=a=>`${a.m.toFixed(2)}×${a.m>RHO_MAX-.02?" (the cap the console puts on the ask)":""}`, by=a=>pc(Math.max(0,U(rKeep)-a.u)/V,2);
-  const range=alt?`Asking ${tie(alts[0])} value instead is worth within ${by(alts[0])} of value to this owner${alts.slice(1).map((a,j,l)=>`${j===l.length-1?" and ":", "}${tie(a)} within ${by(a)}`).join("")}, close to a tie, so read the patient-seller price as a range, `
+  /* a peak printed as the cap is the cap; one just under it is the soft cap's rounded corner, where the cap binds
+     (r7-core-1: 1.48x was called the cap beside a range to 1.50x) */
+  const tie=a=>`${a.m.toFixed(2)}× value${a.m.toFixed(2)===RHO_MAX.toFixed(2)?" (the cap the console puts on the ask)":a.m>RHO_MAX-.02?` (where the console’s ${RHO_MAX.toFixed(2)}× cap on the ask binds)`:""}`, by=a=>pc(Math.max(0,U(rKeep)-a.u)/V,2);
+  const range=alt?`Asking ${tie(alts[0])} instead is worth within ${by(alts[0])} of value to this owner${alts.slice(1).map((a,j,l)=>`${j===l.length-1?" and ":", "}${tie(a)} within ${by(a)}`).join("")}, close to a tie, so read the patient-seller price as a range, `
     +`${span[0].toFixed(2)}–${span[1].toFixed(2)}× value: which ${alts.length>1?"of these":"end"} wins turns on how widely prices scatter at high asks and on the size of the price-gap penalty (a judgment scale), which the data do not settle. `
     :flat===null?""
     :peak?`The objective has another peak, at ${peak.m.toFixed(2)}× value, but to this owner it is worth ${pc(Math.max(0,U(rKeep)-peak.u)/V,2)} of value less than the cap, beyond a tie. `
@@ -4448,9 +4450,10 @@ function debtCheck(s,price,f,V){
   const standbyCredit=sb?Math.min(note,SBA_COO.standbyShare*equityNeed):0;
   const equityIn=cash+standbyCredit, debt=loan+(sb?0:note);
   /* a paid note on any of the starting structure's terms (its share, rate or term) rests on that convention (judgment), and
-     so does a note on full standby at the starting share, which sizes the loan and the debt (r5-financing-5) */
+     so does a note on full standby at the starting share, which sizes the loan and the debt (r5-financing-5), but only
+     below the 7(a) maximum: past it the loan stays at the maximum whatever the note (r7-financing-1) */
   const noteConv=notePay>0&&(f.note===FIN_DEFAULTS.note||f.noteRate===FIN_DEFAULTS.noteRate||f.noteYears===FIN_DEFAULTS.noteYears)
-    ||sb&&note>0&&f.note===FIN_DEFAULTS.note;
+    ||sb&&note>0&&f.note===FIN_DEFAULTS.note&&over===0;
   return {price,project,cash,note,noteCut:note<noteAsked-1e-6,loan,over,rate,sbaPay,notePay,noteConv,ds,draw,drawMarket:market,
     capex,cf,dscr,min,ok:dscr>=min,equityNeed,equityIn,equityOK:equityIn>=equityNeed*(1-1e-9),equityShare:equityNeed>0?equityIn/(equityNeed/SBA_COO.equity):1,debt,
     debtOverValue:loan>0&&V>0&&debt>V*(1+1e-9),qoe:price>=SBA_COO.qoeMin&&type!=="buyout",
@@ -4795,7 +4798,10 @@ function dealsStats(deals){
   const price=sampleSummary(closed.map(d=>d.salePrice/P.get(d).pExp),false,avg(closed,"pVar"));
   /* time: closed deals with both dates, with or without a sale price; the log of the days over the model's median,
      the centre of its log-logistic time to close */
-  const timed=D.filter(d=>d.status==="closed"&&daysBetween(d.listDate,d.closeDate)>0);
+  /* a closing date after today (this computer's calendar day) is a typo or a date still expected: no time to close yet
+     (r7-deals-10) */
+  const now=new Date(), day=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+  const timed=D.filter(d=>d.status==="closed"&&daysBetween(d.listDate,d.closeDate)>0&&!(d.closeDate>day));
   const time=sampleSummary(timed.map(d=>Math.log(daysBetween(d.listDate,d.closeDate)/P.get(d).tMed)),true,avg(timed,"tVar"));
   const ys=done.map(d=>d.status==="closed"?1:0), ps=done.map(d=>P.get(d).pc), n=done.length;
   const close=n?{n,obs:ys.reduce((a,v)=>a+v,0)/n,pred:ps.reduce((a,v)=>a+v,0)/n,
@@ -4915,21 +4921,34 @@ function reportHTML(D,meta){
   const f=D.cur.fin, R=D.recast, mf=D.maxFin, C=D.calib, T=ownKey(DSC_NAMES,f.type)?DSC_NAMES[f.type]:DSC_NAMES.initial;
   /* the console's qualifiers beside the patient-seller ask (optNote): a coin toss, the ask cap (a judgment) with its flat
      top, a range when another ask is close to a tie; on the one row both asks share, those that apply to it */
-  const walkQ=one=>{ const Q=D.walkQ||{}, atCap=one?D.rhoSell>RHO_MAX-.02:Q.cap;
+  /* a range whose top is the ask cap says so, as the console's note does, unless the cap's own sentence is there (r7-report-4) */
+  const walkQ=one=>{ const Q=D.walkQ||{}, atCap=one?D.rhoSell>RHO_MAX-.02:Q.cap, rt=Q.range?Q.range[1]:0;
     return [!one&&Q.coin?`To this owner it is worth only ${money(Q.gain)} more than the price above, close to a coin toss.`:"",
       atCap?`${RHO_MAX.toFixed(2)}× value is the console&rsquo;s cap on the ask (a judgment), not an optimum${Q.flat!=null?`: asks from ${Q.flat.toFixed(2)}× up come within 1% of value of it`:""}.`:"",
-      Q.range?`${one?"For a seller who can walk away, close":"Close"} to a tie with ${Q.others>1?"other asks":"another ask"}: read it as ${Q.range[0].toFixed(2)}–${Q.range[1].toFixed(2)}× value.`:""].filter(Boolean).join(" "); };
+      Q.range?`${one?"For a seller who can walk away, close":"Close"} to a tie with ${Q.others>1?"other asks":"another ask"}: read it as ${Q.range[0].toFixed(2)}–${rt.toFixed(2)}× value${rt>RHO_MAX-.02&&!atCap
+        ?`; ${rt.toFixed(2)}× is ${rt.toFixed(2)===RHO_MAX.toFixed(2)?"the console&rsquo;s cap on the ask":`where the console&rsquo;s ${RHO_MAX.toFixed(2)}× cap on the ask binds`} (a judgment)`:""}.`:""].filter(Boolean).join(" "); };
   const nShare=D.fin&&typeof D.fin.note==="number"?D.fin.note:FIN_DEFAULTS.note, nConv=nShare>0&&nShare===FIN_DEFAULTS.note;
-  /* the highest financed price is printed (with its badge) only past the branches that print none or the equity's bound */
-  const E0=finEdges(mf), topShown=!mf.noLoan&&mf.price>0&&isFinite(mf.price)&&!(mf.equityShort&&!mf.equityWaivable)&&!E0.none;
+  /* the highest financed price is printed (with its badge) only past the branches that print none or the equity's bound;
+     the equity's edges below it (eqEdge) only where a highest price is printed, and the floor also where no whole dollar
+     passes (E0.none) */
+  const E0=finEdges(mf), topShown=!mf.noLoan&&mf.price>0&&isFinite(mf.price)&&!(mf.equityShort&&!mf.equityWaivable);
+  const edgeShown=!mf.noLoan&&mf.price!==0&&!(mf.equityShort&&!mf.equityWaivable)&&!E0.none;
   const capJ=topShown&&mf.bind==="cap"&&nConv;
   /* a note on full standby at the starting share sizes the debt the model value caps (r5-financing-5) */
   const valJ=topShown&&mf.bind==="value"&&mf.standby&&nConv;
-  /* an initial acquisition short of equity at every price prints, past the 7(a) maximum, where the loan reaches it and
-     where buyer cash brings the equity to 10%: the note's starting share sets both (r6-report-7) */
+  /* the prices the report derives from the 7(a) maximum and SBA's 10% rule carry that rule's badge, and the note's share
+     sets each, so at the starting share they carry x judgment too (r6-report-7, r7-financing-2): an initial acquisition
+     short of equity at every price prints, past the maximum, where the loan reaches it and where buyer cash brings the
+     equity to 10%; an owner buyout prints the second in its equity sentence; and the standby note's credit sets the
+     equity's edge below the highest price (equityFrom, an owner buyout's equityTo) */
   const capAtJ=!mf.noLoan&&mf.price>0&&mf.equityShort&&!mf.equityWaivable&&mf.capped&&nConv;
-  /* with the note on full standby the debt is the loan, which the note's starting share sizes (r6-financing-2) */
-  const dvJ=F=>F.debtOverValue&&F.standby&&F.note>0&&nConv, dvB=F=>dvJ(F)?BX("f","fitted"):vB;
+  const abvJ=edgeShown&&!mf.equityFrom&&mf.type==="buyout"&&!!mf.equityTo&&!!mf.equityAbove&&nConv;
+  const edgeJ=mf.standby&&nConv&&(edgeShown&&(!!mf.equityFrom||mf.type==="buyout"&&!!mf.equityTo)||topShown&&E0.none);
+  const rB=j=>j?BX("a","published data"):agg;
+  /* the debt above value moves with the note's share where the share sizes the debt: on full standby below the 7(a)
+     maximum, where the debt is the loan (r6-financing-2), and a paid note past it, where the loan stays at the maximum
+     and the debt is the maximum and the note (r7-financing-1) */
+  const dvJ=F=>F.debtOverValue&&F.note>0&&nConv&&(F.over>0?!F.standby:F.standby), dvB=F=>dvJ(F)?BX("f","fitted"):vB;
   /* in print a business name over 28 characters, or a prepared-for block over 120 (the date and the words between
      included), takes the smaller size: 37 W's fill one line of the name at the larger size and two lines of the block
      hold 142 of the widest letters, so the larger size never wraps past what the smaller one clamps (r6-report-2) */
@@ -4977,13 +4996,14 @@ function reportHTML(D,meta){
        seller note's share also sets: at the starting structure's (judgment), the price carries that too */
     const fA=D.mfAt||f, at0=fA.loan>0&&fA.equityIn<=0, spend=f.capex>0?" and capital spending":"";
     const eq=mf.equityShort?(at0?" if the lender eliminates the 10% equity":" if the lender waives part of the 10% equity"):"";
-    const mB=mf.bind==="value"?(valJ?BX("f","fitted"):vB):mf.bind==="cap"?(capJ?BX("a","published data"):agg):D.mfAt?covB(D.mfAt):cB, capAtB=capAtJ?BX("a","published data"):"";
+    const mB=mf.bind==="value"?(valJ?BX("f","fitted"):vB):mf.bind==="cap"?(capJ?BX("a","published data"):agg):D.mfAt?covB(D.mfAt):cB, capAtB=rB(capAtJ);
     /* with working capital the equity can pass or fail from some price on: name the edge below the highest price */
     const E=finEdges(mf);
-    const eqEdge=mf.equityFrom?` Below about ${E.from} the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum${mf.equityWaivable
+    const eB=sp(rB(edgeJ)), aB=sp(rB(abvJ));
+    const eqEdge=mf.equityFrom?` Below about ${E.from}${eB} the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum${mf.equityWaivable
         ?`: ${EQUITY_WAIVER}.`:", which cannot be waived for an initial acquisition, so the structure works only from that price up."}`
-      :mf.equityTo&&mf.type==="buyout"?` ${mf.equityAbove?`Between about ${moneyDown(mf.equityTo)} and ${moneyUp(mf.equityAbove)}`:`Above about ${moneyDown(mf.equityTo)}`} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price: ${EQUITY_WAIVER}.${mf.equityAbove
-        ?` Past the 7(a) maximum the rest of the price is buyer cash, which brings it back to 10% from ${moneyUp(mf.equityAbove)}.`:""}`:"";
+      :mf.equityTo&&mf.type==="buyout"?` ${mf.equityAbove?`Between about ${moneyDown(mf.equityTo)}${eB} and ${moneyUp(mf.equityAbove)}${aB}`:`Above about ${moneyDown(mf.equityTo)}${eB}`} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price: ${EQUITY_WAIVER}.${mf.equityAbove
+        ?` Past the 7(a) maximum the rest of the price is buyer cash, which brings it back to 10% from ${moneyUp(mf.equityAbove)}${aB}.`:""}`:"";
     /* no equity at all: the lender must eliminate the requirement, and SBA then bars working capital from the loan */
     const said=f.loan>0&&!f.equityOK&&f.equityIn<=0&&f.project>f.price&&f.type!=="initial";
     const wcBar=!said&&at0&&mf.equityShort&&mf.equityWaivable&&fA.project>fA.price?" With no equity the lender would have to eliminate it, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business&rsquo;s own cash or a line of credit.":"";
@@ -4999,7 +5019,7 @@ function reportHTML(D,meta){
         :mf.equityAbove?` below about ${moneyUp(mf.equityAbove)}${sp(capAtB)}: past ${moneyDown(mf.capAt)}${sp(capAtB)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, a larger share than this structure sets, which reaches 10% there.`
         :`: past ${moneyDown(mf.capAt)}${sp(capAtB)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash, but with this seller note that never reaches 10%.`}`
       :mf.price===Infinity?`Neither coverage nor the valuation limits the price: the SBA loan${f.loan>0?`, ${money(f.loan)} for working capital and closing costs,`:""} does not grow with it.`+eqEdge+wcBar
-      :E.none?`No whole-dollar price passes every test at this structure: the buyer&rsquo;s equity, with the standby note&rsquo;s credit, reaches SBA&rsquo;s 10% minimum only from about ${E.from}, and the structure stops working above ${E.top}.`
+      :E.none?`No whole-dollar price passes every test at this structure: the buyer&rsquo;s equity, with the standby note&rsquo;s credit, reaches SBA&rsquo;s 10% minimum only from about ${E.from}${eB}, and the structure stops working above ${E.top}${sp(mB)}.`
       :(mf.bind==="value"?`At this structure the highest price an SBA lender would finance${eq} is about <b>${E.top}</b>${sp(mB)}, where the acquisition debt reaches the model value${mf.covPrice>mf.price*1.005?"; coverage alone would allow more":""}.`
       :mf.bind==="cap"?`At this structure the SBA loan reaches the 7(a) maximum of ${money(SBA_COO.maxLoan)} at about <b>${E.top}</b>${sp(mB)}${eq}, with coverage and the debt still within SBA&rsquo;s limits; a higher price takes more buyer cash, or a larger seller note, than this structure sets.`
       :`At this structure the highest price that meets ${mf.target.toFixed(2)}×${eq} is about <b>${E.top}</b>${sp(mB)}.`)+waive+(E.none?"":eqEdge)+wcBar); }
@@ -5024,8 +5044,9 @@ function reportHTML(D,meta){
   const fins=rows.map(a=>a.fin).concat([f]), covJ=[fins.some(F=>F.noteConv)?"the seller-note convention":"",f.drawMarket?"the pay&rsquo;s rank by firm size":""].filter(Boolean);
   const how=[jV?"the quality position (value)":"",jP?`the price-gap penalty&rsquo;s scale above value${thin?" and the thin-pool factor":""} (chance it sells)`:"",
     jT?"the overpricing multiplier (time to close)":"",covJ.length?covJ.join(" and ")+" (coverage)":"",
-    (n=>n.length?`the seller-note convention (${n.join(", ")})`:"")([capJ||valJ?"the highest financed price":"",capAtJ?"the prices past the 7(a) maximum":"",fins.some(dvJ)?"the debt above value":""].filter(Boolean))].filter(Boolean);
-  const foot=`<footer class="rp-foot"><p><b>Sources.</b> Value: a regression on ${MODELS.value.n_fit.toLocaleString()} closed sales (BIZCOMPS) ${fit}.
+    (n=>n.length?`the seller-note convention (${n.join(", ")})`:"")([capJ||valJ?"the highest financed price":"",capAtJ||abvJ?"the prices past the 7(a) maximum":"",
+      edgeJ?"the equity&rsquo;s 10% edge":"",fins.some(dvJ)?"the debt above value":""].filter(Boolean))].filter(Boolean);
+  const foot=`<footer class="rp-foot"><p><b>Sources.</b> Value: a regression on ${MODELS.value.n_fit.toLocaleString("en-US")} closed sales (BIZCOMPS) ${fit}.
     Chance of selling: Pepperdine Private Capital Markets surveys ${agg}. Time to close: IBBA / M&amp;A Source Market Pulse histograms ${fit}.
     Loan terms: SBA rate spreads ${fit} and ${hEsc(SBA_COO.sop)} ${agg}. Labels: ${fit} estimated from data; ${agg} read from published figures or
     rules; ${jdg} set by reasoning where no data measure the number; × judgment: a judgment input also moves it, here ${how.join("; ")}.</p>
@@ -8007,9 +8028,10 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     :STORE_ERR==="full"?"This browser’s storage for this page is full, so the change is not kept: export your deals, then delete some or shorten long notes."
     :"This browser is not keeping data (a private window or blocked storage): export from the Deals tab to keep it.";
   /* a preference the store refuses (the structure and worksheet in use, the broker and firm, the price record): it applies
-     in this tab and is not remembered after a reload; nothing in a deal is lost (r6-deals-14) */
+     in this tab and is not remembered after a reload; nothing in a deal is lost (r6-deals-14). The tail says what a deal
+     keeps only where a deal is kept: never with storage blocked, where nothing outlasts the tab (r7-financing-4) */
   const prefMsg=(what,tail)=>STORE_ERR==="full"?`This browser’s storage for this page is full, so ${what} not remembered after a reload${tail||""}: export your deals, then delete some or shorten long notes.`
-    :`This browser is not keeping data (a private window or blocked storage), so ${what} not remembered after a reload${tail||""}.`;
+    :`This browser is not keeping data (a private window or blocked storage), so ${what} not remembered after a reload.`;
   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
   const STATUS={valuing:"Valuing",listed:"Listed",loi:"Under LOI",closed:"Closed",withdrawn:"Withdrawn",expired:"Expired"};
   const p1=v=>{ const x=Math.round(v*1000)/10; return (Number.isInteger(x)?x.toFixed(0):x.toFixed(1))+"%"; };
@@ -8057,7 +8079,10 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* put a deal's inputs in the rail: money in IN, sliders through EXACT (kept exactly), selects to their option */
   /* the rail box of each input, for the marks a take-up keeps or sets */
   const VBOX={rev:"v_rev",ern:"v_ern",ask:"v_ask",budget:"v_bud",grw:"v_grw",gm:"v_gm",rec:"v_rec",cc:"v_cc",ret:"v_ret",plt:"v_plt",yrs:"v_yrs",buyers:"v_buy",lamT:"v_lam",theta:"v_th"};
-  let PENDING_MARKS=null, WS_SWAP=false;
+  /* the marks take-ups heard while the console is hidden leave for it, combined: every field taken up is cleared, and a
+     held SDE stays marked until a later take-up changes it (r7-core-5); a deal opened drops them (r7-worksheet-3). HOLD
+     is the last take-up's hold, named again by a later take-up while the SDE stays held */
+  let PENDING_MARKS=null, WS_SWAP=false, HOLD=null;
   function applyInputs(o,marks){
     /* a deal opened clears every mark; a take-up (marks) clears only the fields it took up, and marks a held one */
     if(!marks) document.querySelectorAll("input.v.bad").forEach(e=>e.classList.remove("bad"));
@@ -8166,9 +8191,15 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       PREFS.fin=cleanFin(p.fin); PREFS.ws=cleanWS(p.ws);
       PREFS.broker=typeof p.broker==="string"?p.broker.slice(0,120):""; PREFS.firm=typeof p.firm==="string"?p.firm.slice(0,120):"";
       PREFS.calib=p.calib===true; } }
-  /* another tab writes the same preferences: a save writes only the keys it changed, over what the store holds now */
-  const savePrefs=(...keys)=>{ const p=load(K_PREFS,null), o=p&&typeof p==="object"&&!Array.isArray(p)?p:{};
-    for(const k of keys.length?keys:Object.keys(PREFS)) o[k]=PREFS[k]; return keep(K_PREFS,o); };
+  /* another tab writes the same preferences: a save writes only the keys it changed, over what the store holds now, and
+     the keys a refused save left unwritten (REFUSED, each with the stored value it was refused over): they stay this tab's
+     until a write of them succeeds, or another tab stores the key since (r7-report-1, r7-deals-7) */
+  const REFUSED=new Map();
+  const savePrefs=(...keys)=>{ const p=load(K_PREFS,null), o=p&&typeof p==="object"&&!Array.isArray(p)?{...p}:{}, ks=keys.length?keys:Object.keys(PREFS);
+    for(const k of new Set(ks.concat([...REFUSED.keys()]))) o[k]=PREFS[k];
+    const ok=keep(K_PREFS,o);
+    if(ok){ REFUSED.clear(); prefsKept(); } else for(const k of ks) if(!REFUSED.has(k)) REFUSED.set(k,JSON.stringify(p&&typeof p==="object"?p[k]:undefined));
+    return ok; };
   /* stored deals: a record this page cannot read is kept as it was and written back with the rest (KEPT), a stored list
      that is not JSON is copied aside once before a save can replace it, and a missing or repeated id is derived from the
      record (storeIds) */
@@ -8218,7 +8249,10 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
         if(b){ const cl=[]; x=mergeDeal3(b,m,d,cl); x.updated=stamp(Math.max(Date.parse(d.updated),Date.parse(m.updated)||0)); UNSTORED.set(d.id,d);
           if(cl.length) MCLASH.set(d.id,[...new Set((MCLASH.get(d.id)||[]).concat(cl))]); }
         DEALS[DEALS.indexOf(m)]=x; byId.set(d.id,x); changed=true; } });
-    const n=DEALS.length; DEALS=DEALS.filter(d=>!goneAfter(d));
+    /* a deal deleted elsewhere leaves with its refused change's base and its clash parts, so a copy restored later starts
+       from the restored copy; the deal in the console keeps its base for the re-attach (GONE_BASE, r7-deals-1) */
+    const n=DEALS.length; DEALS=DEALS.filter(d=>{ if(!goneAfter(d)) return true;
+      if(d.id===CUR) GONE_BASE=storedOf(d); UNSTORED.delete(d.id); MCLASH.delete(d.id); return false; });
     for(const [id,cl] of MCLASH) if(id!==CUR){ const x=dealById(id); MCLASH.delete(id);
       if(x) say("dl_msg",`Another tab saved changes to fields of “${x.name}” that this tab has also changed (its ${cl.join(" and ")}): this tab keeps its own, and its next save writes them over the other’s.`,0); }
     return changed||DEALS.length!==n;
@@ -8268,23 +8302,35 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const mi=merge3(S.inputs,I,d.inputs), mf=merge3(S.fin,FIN,d.fin), mw=merge3(wsFields(bW),wsFields(mine===undefined?bW:mine||WS,bW),wsFields(d.ws,bW));
     const nI=cleanInputs(mi.o)||I, nF=cleanFin(mf.o), nW=wsFromFields(mw.o);
     /* the worksheet comes into the dialog while it is this deal's own, or empty, or no deal's */
+    const fc=document.activeElement, w0=fc&&fc.matches&&fc.matches(".rc-in")?WS.years[+fc.dataset.y][fc.dataset.k]:undefined;
     const tI=!sameInputs(nI,I), tF=!sameFin(nF,FIN), tW=(mine!==undefined||!wsHas(WS)||free)&&JSON.stringify(nW)!==JSON.stringify(mine===undefined?(free?cleanWS(WS):null):mine);
     if(tF){ FIN=nF; PREFS.fin={...FIN}; finFill(true); }
-    if(tW){ WS=nW||emptyWS(); WS_OWNER=d.id; PREFS.ws=WS;
-      /* the cell being typed in keeps its text, caret and the value it held when focused (the rest of the table is redrawn),
-         and the rebuild does not commit its part-typed text (r6-worksheet-8, r6-deals-6) */
+    /* a merge that leaves no cell (the other tab pressed Clear) keeps the merged source, basis and growth box, which
+       neither tab reset (r7-worksheet-4) */
+    if(tW){ WS=nW||cleanWS({entity:mw.o.entity,weight:mw.o.weight,grw:mw.o.grw}); WS_OWNER=d.id; PREFS.ws=WS;
+      /* the cell being typed in keeps its text and caret (the rest of the table is redrawn), and the rebuild does not
+         commit its part-typed text (r6-worksheet-8, r6-deals-6); where the take-up changed that very cell, a refused entry
+         goes back to the amount the worksheet now holds, and an entry kept over it is a clash (__theirs). A focused cell
+         not typed in shows the merged amount (r7-worksheet-1) */
       if(OPEN&&OPEN.id==="recast"){ const a=document.activeElement, on=a&&a.matches&&a.matches(".rc-in"), y=on?a.dataset.y:undefined, k=on?a.dataset.k:undefined;
-        const keep=on?{v:a.value,s0:a.selectionStart,s1:a.selectionEnd,snap:a.__snap,bad:a.classList.contains("bad")}:null;
+        const keep=on&&a.__typed?{w0,v:a.value,s0:a.selectionStart,s1:a.selectionEnd,snap:a.__snap,bad:a.classList.contains("bad"),theirs:a.__theirs}:null;
         WS_SWAP=true; try{ wsBuild(); } finally { WS_SWAP=false; }
         const e=on?$("rc_tbl").querySelector(`.rc-in[data-y="${y}"][data-k="${k}"]`):null;
-        if(e){ e.focus({preventScroll:true}); e.value=keep.v; try{ e.setSelectionRange(keep.s0,keep.s1); }catch(x){} e.__snap=keep.snap; e.classList.toggle("bad",keep.bad); } } }
+        if(e){ e.focus({preventScroll:true});
+          if(keep){ const w1=WS.years[+y][k]; e.value=keep.v; try{ e.setSelectionRange(keep.s0,keep.s1); }catch(x){} e.__typed=true; e.classList.toggle("bad",keep.bad);
+            if(!sameV(w1,keep.w0)){ e.__snap=w1; e.__theirs=w1; } else { e.__snap=keep.snap; e.__theirs=keep.theirs; } } } } }
     /* the rail keeps its held-to-range marks but on the fields taken up; an SDE above 92% of this tab's revenue is held to
        it and marked, as a typed one is */
     const changed=Object.keys(nI).filter(k=>!sameV(nI[k],I[k])), held=tI&&typeof mi.o.ern==="number"&&nI.ern<mi.o.ern-.5?mi.o.ern:null;
     const marks={clear:changed,mark:held!==null?["ern"]:[]};
-    if(tI&&!hid) applyInputs(nI,marks); else { if(tI){ PENDING=nI; PENDING_MARKS=marks; } if(tF) renderFinance(); }
+    if(tI&&!hid) applyInputs(nI,marks);
+    else { if(tI){ const P=PENDING_MARKS; PENDING=nI;
+        PENDING_MARKS=P?{clear:[...new Set(P.clear.concat(changed))],mark:[...new Set(P.mark.filter(k=>!changed.includes(k)).concat(marks.mark))]}:marks; }
+      if(tF) renderFinance(); }
     out.took=[tI?"inputs":"",tF?"financing structure":"",tW?"worksheet":""].filter(Boolean);
-    out.held=held!==null?` The SDE, ${moneyIn(held)}, is above 92% of the revenue, ${moneyIn(nI.rev)}, so the console holds it to ${moneyIn(nI.ern)} and marks it.`:"";
+    if(held!==null) HOLD={id:d.id,ern:nI.ern,t:` The SDE, ${moneyIn(held)}, is above 92% of the revenue, ${moneyIn(nI.rev)}, so the console holds it to ${moneyIn(nI.ern)} and marks it.`};
+    else if(HOLD&&(HOLD.id!==d.id||!sameV(nI.ern,HOLD.ern))) HOLD=null;
+    out.held=HOLD?HOLD.t:"";
     out.clash=[mi.clash.length?"inputs":"",mf.clash.length?"financing structure":"",mw.clash.length&&mine!==undefined?"worksheet":""].filter(Boolean);
     return out;
   }
@@ -8293,13 +8339,19 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      unsaved, and the next save keeps its name, business, recipient and worksheet as a new deal, however the deletion was
      found: the storage event, any read of the store, or the save itself (r4-deals-7, r5-deals-3, r5-worksheet-2). HELD is
      the deal in the console as last seen */
-  let LOST=null, HELD=null;
+  let LOST=null, HELD=null, LOST_BASE=null, GONE_BASE=null;
   function lose(held,say_){ CUR=null; CUR_SNAP=null; CLASH.clear(); if(!held) return;
+    /* the copy as stored when it was lost: the base of a change the store refused, which stays this tab's (r7-deals-1) */
+    LOST_BASE=GONE_BASE&&GONE_BASE.id===held.id?GONE_BASE:held; GONE_BASE=null;
     LOST=held; DRAFT={business:held.business,preparedFor:held.preparedFor}; if(WS_OWNER===held.id) WS_OWNER="draft";
     if(say_) say("tl_msg",`“${held.name}” was deleted in another tab. The console keeps its valuation, unsaved: saving it makes a new deal under its name.`,0); }
   const who=src=>src==="import"?"The import":"Another tab";
-  /* the toolbar's message, and the open dialog's status line, which covers the toolbar */
-  const tell=(msg,ms)=>{ say("tl_msg",msg,ms); if(OPEN&&OPEN.id==="report") say("rp_msg",msg,ms); else if(OPEN&&OPEN.id==="recast") say("rc_msg",msg,ms); };
+  /* the toolbar's message, and the open dialog's status line, which covers the toolbar. While the console is hidden (the
+     Deals tab shows) the message waits in the toolbar, its time starting when the console shows (TELL_HELD); a dialog
+     opening after a read of the store shows the message that read gave (TELLS, LAST_TELL; r7-deals-4) */
+  let TELL_HELD=null, TELLS=0, LAST_TELL=null;
+  const tell=(msg,ms)=>{ TELLS++; LAST_TELL={msg,ms}; const hid=$("view-console").hidden; TELL_HELD=hid?{msg,ms}:null; say("tl_msg",msg,hid?0:ms);
+    if(OPEN&&OPEN.id==="report") say("rp_msg",msg,ms); else if(OPEN&&OPEN.id==="recast") say("rc_msg",msg,ms); };
   /* after a read of the store: the deal in the console is brought up to it. Its fields saved elsewhere that are unchanged
      here are taken up (an open report is rebuilt on them, and the toolbar's message says so), a field both changed keeps
      this tab's value, and a deal deleted elsewhere is LOST. src names who changed it ("tab", "import"); a save says it in
@@ -8308,10 +8360,23 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const out={took:[],clash:[],lost:null,held:""};
     /* a deal deleted elsewhere and restored (an import of a backup) is the console's again: the fields the restore changed
        from the copy last seen, and this tab has not changed, come in, and saving updates it, not a second deal (r6-deals-9) */
-    if(!CUR&&LOST&&dealById(LOST.id)){ const L=LOST, c=dealById(L.id); LOST=null; CUR=c.id; snapDeal(L); if(WS_OWNER==="draft") WS_OWNER=c.id;
-      const r=takeUp(c,CUR_SNAP); r.clash.forEach(p=>CLASH.add(p)); snapDeal(storedOf(c)); out.took=r.took; out.clash=r.clash; out.back=c.name;
+    /* Its base is the copy as stored when it was lost (LOST_BASE): a change the store refused stays this tab's, in the
+       console and in the deal's details, as over another tab's save (r7-deals-1), and so do the business and recipient
+       typed in the report while it was lost (DRAFT, which started from the copy last seen; r7-deals-2): they are written
+       now, as the report writes them. A hold or a clash is named, and lasts (r7-worksheet-6) */
+    if(!CUR&&LOST&&dealById(LOST.id)){ const L=LOST, B=LOST_BASE&&LOST_BASE.id===L.id?LOST_BASE:L, c=dealById(L.id); LOST=null; LOST_BASE=null; CUR=c.id;
+      const typed=DRAFT.business!==L.business||DRAFT.preparedFor!==L.preparedFor, mine={...L,business:DRAFT.business,preparedFor:DRAFT.preparedFor}, cl=[];
+      DRAFT={business:"",preparedFor:""};
+      let x=c; if(B!==L||typed){ x=mergeDeal3(B,mine,c,cl); x.updated=stamp(Math.max(Date.parse(c.updated),Date.parse(L.updated)||0)); DEALS[DEALS.indexOf(c)]=x; UNSTORED.set(c.id,c); STATS=null; }
+      if(WS_OWNER==="draft") WS_OWNER=c.id;
+      snapDeal(B); const r=takeUp(x,CUR_SNAP); snapDeal(c);
+      if(typed&&saveDeals()) snapDeal(x);
+      const clash=[...new Set(r.clash.concat(cl))]; clash.forEach(p=>CLASH.add(p)); out.took=r.took; out.clash=clash; out.held=r.held; out.back=x.name;
       if(OPEN&&OPEN.id==="report"&&STATE.s) REPORT=reportData(STATE.s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()});
-      tell(`“${c.name}”, deleted in another tab, is back: the console holds it again${r.took.length?`, with the ${andList(r.took)} as restored where this tab had not changed them`:""}, and saving updates it.`,12000);
+      const only=UNSTORED.has(c.id);
+      tell(`“${x.name}”, deleted in another tab, is back: the console holds it again${r.took.length?`, with the ${andList(r.took)} as restored where this tab had not changed them`:""}, and saving updates it.${r.held}`
+        +(x!==c?` This tab’s changes to it stand over the restored copy${only?", kept in this tab only until a save succeeds":""}.`:"")
+        +(clash.length?` The restore also changed fields of its ${andList(clash)} that this tab has changed: this tab keeps its own, and saving here writes them over the restored ones.`:""),clash.length||r.held||only?0:12000);
       return out; }
     if(!CUR) return out;
     const c=dealById(CUR);
@@ -8356,18 +8421,22 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
         business:base?base.business:DRAFT.business,preparedFor:base?base.preparedFor:DRAFT.preparedFor});
       DEALS.unshift(d); CUR=d.id; made=true; if(!base) DRAFT={business:"",preparedFor:""}; if(lost) LOST=null; }
     const ok=saveDeals();
-    /* a write the store refuses keeps the change in this tab (UNSTORED), and the snapshot stays the copy as stored */
-    if(!ok&&prev&&!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev);
+    /* a write the store refuses keeps the change in this tab (UNSTORED), and the snapshot stays the copy as stored; a new
+       deal refused is marked as held in this tab only too, with no stored copy (r7-deals-8) */
+    if(!ok&&!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev);
     /* the dialog is the saved deal's own when it holds the deal's worksheet as saved, or nothing: what is typed in it next
        is marked and saved with the deal (r4-worksheet-1); a worksheet left from elsewhere stays no deal's */
     if(!wsHas(WS)||JSON.stringify(cleanWS(WS))===JSON.stringify(d.ws)) WS_OWNER=d.id;
     snapDeal(storedOf(d)); toolbar();
-    const cl=ok&&!made?[...CLASH]:[]; if(ok) CLASH.clear();
+    /* a save settles a clash and a hold: the held SDE is now the deal's own */
+    const cl=ok&&!made?[...CLASH]:[]; if(ok){ CLASH.clear(); HOLD=null; say("rc_msg",""); }
+    /* a copy made after a take-up says what the console took up, as an update does (r7-worksheet-8) */
+    const tk=made&&base&&m.took.length?` Another tab had saved changes to “${base.name}”’s ${andList(m.took)}, which the console and the copy now show.${m.held||""}`:"";
     say("tl_msg",ok?(lost?`“${lost.name}” was deleted in another tab, so this valuation is saved as a new deal, “${d.name}”.`
-        :made?`Saved as “${d.name}”. Rename it and record its outcome in the Deals tab.`
+        :made?`Saved as “${d.name}”. Rename it and record its outcome in the Deals tab.`+tk
         :"Deal updated."+(m.took.length?` Another tab had saved changes to its ${andList(m.took)}, which the console now shows.${m.held||""}`:"")
           +(cl.length?` Where both tabs changed its ${andList(cl)}, this tab’s values replaced the other’s.`:""))
-      :(made?`“${d.name}” is in this tab only. `:"Updated in this tab only. ")+storeMsg(),ok?(lost||m.took.length||cl.length?12000:7000):0);
+      :(made?`“${d.name}” is in this tab only. `:"Updated in this tab only. ")+storeMsg(),ok?(m.held&&m.took.length?0:lost||m.took.length||cl.length?12000:7000):0);
     return d;
   }
 
@@ -8395,7 +8464,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   }
   function finFill(keep){ $("f_type").value=FIN.type; $("f_type_h").textContent=DSC_HINT[FIN.type]; $("f_standby").checked=FIN.standby;
     for(const k in FF){ const e=$(FF[k]); if(keep&&e===document.activeElement) continue; e.value=FFMT[k](FIN[k]); e.classList.remove("bad"); } }
-  function finChanged(){ PREFS.fin={...FIN}; say("fin_msg",savePrefs("fin")?"":prefMsg("the financing structure in use is","; a deal saved with it keeps it"),0); renderFinance(); toolbar(); }
+  function finChanged(){ PREFS.fin={...FIN}; say("fin_msg",savePrefs("fin")?"":prefMsg("the financing structure in use is","; a deal saved with it keeps it once its save succeeds"),0); renderFinance(); toolbar(); }
   function renderFinance(){
     const s=STATE.s, r=STATE.r; if(!s||!r) return;
     const V=r.V, cols=[];
@@ -8468,7 +8537,10 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     notes.push(fc.price<=SBA_COO.ownValuationMax?(FIN.type==="buyout"?`At ${money(fc.price)} the lender may value the business itself only if buyer and seller are not closely related; between existing owners it orders an independent valuation.`
         :`At ${money(fc.price)} the lender may value the business itself, unless buyer and seller are closely related (existing owners or family).`)
       :`Above ${money(SBA_COO.ownValuationMax)} the lender orders an independent business valuation, and the debt may not exceed it.`);
-    notes.push(`Lenders test coverage on the last fiscal year or the average of the last two, from tax returns checked against IRS transcripts; the console uses the SDE entered.`);
+    /* SBA's basis (SOP 50 10 8.1, Appendix 15): the highest level of financial reporting the business has, tax returns
+       last, and a Quality of Earnings report's earnings where one is required; transcripts verify, they are not the
+       source (r7-financing-5) */
+    notes.push(`Lenders test coverage on the last fiscal year or the average of the last two, on the business’s best statements (audited, then reviewed, then CPA-compiled, then tax returns, verified against IRS transcripts), or on a Quality of Earnings report’s earnings where one is needed; the console uses the SDE entered.`);
     $("fin_note").innerHTML=notes.map(n=>`<li>${n}</li>`).join("");
     eq("eq_f",fc.loan>0?String.raw`\text{DSC}=\frac{\text{SDE}-W-K}{D_{\text{SBA}}+D_{\text{note}}}\;\ge\;${fc.min.toFixed(2)}`
       :String.raw`\text{DSC}=\frac{\text{SDE}-W-K}{D_{\text{SBA}}+D_{\text{note}}}\quad\text{(no SBA loan at your ask, so no SBA minimum)}`);
@@ -8519,7 +8591,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   }
   /* every edit in the dialog comes here: the worksheet edited is the one of the deal in the console, or of the unsaved
      valuation, whichever deal it came from (r4-worksheet-1) */
-  function wsSave(){ WS_OWNER=CUR||"draft"; PREFS.ws=WS; if(!savePrefs("ws")) say("rc_msg",prefMsg("the worksheet in use is","; a deal saved with it keeps it")); toolbar(); }
+  function wsSave(){ WS_OWNER=CUR||"draft"; PREFS.ws=WS; if(!savePrefs("ws")) say("rc_msg",WS_REF=prefMsg("the worksheet in use is","; a deal saved with it keeps it once its save succeeds")); toolbar(); }
+  /* a preference write that succeeds stores every key refused before it: the lines that said one was not remembered go
+     (r7-financing-3, r7-deals-6, r7-core-4) */
+  let WS_REF="";
+  function prefsKept(){ say("fin_msg",""); if(WS_REF&&$("rc_msg").textContent===WS_REF) say("rc_msg",""); WS_REF=""; rpCheck(); }
   function wsUse(){
     const R=recastSDE(WS); if(!wsReady(R)) return;
     /* the message goes beside the control the dialog was opened from */
@@ -8582,8 +8658,12 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      field has the focus as the report opens, so the focus alone cannot say what is being typed) */
   const RP_TYPED=new Set();
   /* the broker, the firm and the opt-in record as stored (another tab may have changed them) */
+  /* a key the store refused keeps this tab's value until a write of it succeeds, unless another tab has stored it since,
+     the later act (r7-deals-7) */
   const readNames=()=>{ const p=load(K_PREFS,null); if(p&&typeof p==="object"){
-    if(typeof p.broker==="string") PREFS.broker=p.broker.slice(0,120); if(typeof p.firm==="string") PREFS.firm=p.firm.slice(0,120); PREFS.calib=p.calib===true; } };
+    const mine=k=>{ if(!REFUSED.has(k)) return false; if(JSON.stringify(p[k])===REFUSED.get(k)) return true; REFUSED.delete(k); return false; };
+    if(!mine("broker")&&typeof p.broker==="string") PREFS.broker=p.broker.slice(0,120); if(!mine("firm")&&typeof p.firm==="string") PREFS.firm=p.firm.slice(0,120);
+    if(!mine("calib")) PREFS.calib=p.calib===true; rpCheck(); } };
   const longDate=()=>new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
   const reportMeta=()=>({business:$("rp_biz").value.trim(),preparedFor:$("rp_for").value.trim(),broker:$("rp_broker").value.trim(),firm:$("rp_firm").value.trim()});
   function reportOpen(opener){
@@ -8591,14 +8671,14 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
        draw it first, so the report reads the console as it now stands */
     if(_rq){ cancelAnimationFrame(_rq); _rq=0; render(); }
     /* the store and the preferences first: a tab that missed another's save opens with the names stored (r5-deals-6) */
-    mergeCur("tab"); readNames(); say("rp_msg",""); RP_REFUSED="";
+    const n0=TELLS; mergeCur("tab"); readNames(); say("rp_msg",""); RP_REFUSED=null;
     const s=STATE.s; if(!s) return;
     const d=CUR&&dealById(CUR);
     $("rp_broker").value=PREFS.broker; $("rp_firm").value=PREFS.firm;
     $("rp_biz").value=d?d.business:DRAFT.business; $("rp_for").value=d?d.preparedFor:DRAFT.preparedFor; RP_TYPED.clear();
     REPORT=reportData(s,{fin:FIN,recast:wsInUse(),date:longDate(),calib:calibNow()});
     $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta());
-    openDlg("report",opener);
+    openDlg("report",opener); if(TELLS!==n0&&LAST_TELL) say("rp_msg",LAST_TELL.msg,LAST_TELL.ms);
   }
   /* a change writes the field that changed, and only it: the broker and firm to the preferences, the business and the
      recipient to the deal in the console (or the unsaved valuation's), so another tab's save of the others stands */
@@ -8607,23 +8687,26 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      paper is drawn again on REPORT, which a take-up rebuilds (the storage event and a report field's save alike) */
   function reportRefresh(){ if(!(OPEN&&OPEN.id==="report")) return; const c=CUR&&dealById(CUR);
     if(c) for(const [id,v] of [["rp_biz",c.business],["rp_for",c.preparedFor]]) if(!RP_TYPED.has(id)&&$(id).value.trim()!==v) $(id).value=v;
-    if(REPORT) $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta()); }
-  /* a refusal the report's status line shows, taken back by the next write that succeeds (only while it still shows) */
-  let RP_REFUSED="";
-  const rpRefuse=t=>{ RP_REFUSED=t; say("rp_msg",t,0); };
-  const rpStore=ok=>{ if(ok&&RP_REFUSED){ if($("rp_msg").textContent===RP_REFUSED) say("rp_msg",""); RP_REFUSED=""; } };
+    /* the price record follows the deals and the opt-in as stored, as the toolbar's does (r7-report-5) */
+    if(REPORT){ REPORT.calib=calibNow(); $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta()); } }
+  /* a refusal the report's status line shows, taken back once what it refused is stored: a preference by a write that
+     includes it (savePrefs writes the refused keys), the deal by a write of the deals (r7-report-1) */
+  let RP_REFUSED=null;
+  const rpRefuse=(t,pref,deal)=>{ const R=RP_REFUSED||{prefs:new Set(),deals:new Set()}; if(pref) R.prefs.add(pref); if(deal) R.deals.add(deal); R.t=t; RP_REFUSED=R; say("rp_msg",t,0); };
+  function rpCheck(){ const R=RP_REFUSED; if(!R||[...R.prefs].some(k=>REFUSED.has(k))||[...R.deals].some(id=>UNSTORED.has(id))) return;
+    if($("rp_msg").textContent===R.t) say("rp_msg",""); RP_REFUSED=null; }
   function reportMetaChanged(e){
     if(!REPORT) return;
     $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta());
     if(e.type==="input") RP_TYPED.add(e.target.id);
     if(e.type!=="change"||!ownKey(RP_FIELD,e.target.id)) return;
     const k=RP_FIELD[e.target.id], v=e.target.value.trim().slice(0,120); RP_TYPED.delete(e.target.id);
-    if(k==="broker"||k==="firm"){ PREFS[k]=v; const ok=savePrefs(k); rpStore(ok); if(!ok) rpRefuse(prefMsg(k==="broker"?"the broker’s name is":"the firm’s name is")); return; }
+    if(k==="broker"||k==="firm"){ PREFS[k]=v; if(!savePrefs(k)) rpRefuse(prefMsg(k==="broker"?"the broker’s name is":"the firm’s name is"),k); return; }
     mergeCur("tab"); const d=CUR&&dealById(CUR);
     /* a change to the deal moves its updated time, so an export carries it to another browser; a write the store refuses
        keeps it in this tab and says so (r5-report-4) */
-    if(d){ if(d[k]!==v){ const prev=cloneDeal(d); d[k]=v; d.updated=stamp(d.updated); const ok=saveDeals(); rpStore(ok);
-        if(!ok){ if(!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev); rpRefuse(storeMsg()); } toolbar(); } }
+    if(d){ if(d[k]!==v){ const prev=cloneDeal(d); d[k]=v; d.updated=stamp(d.updated); const ok=saveDeals();
+        if(!ok){ if(!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev); rpRefuse(storeMsg(),null,d.id); } else rpCheck(); toolbar(); } }
     else DRAFT={...DRAFT,[k]:v};
     reportRefresh();
   }
@@ -8653,7 +8736,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     /* td cells with data-th: on a phone the page's table.cards rules set each deal as a card with its labels */
     const H=["Deal","Status","Model value today","Listed at","Sold for","Sold ÷ the model’s expected price","Days to close"];
     $("dl_tbl").innerHTML=`<thead><tr>${H.map((h,i)=>`<th${i>1?' class="n"':""} scope="col">${h}</th>`).join("")}<th scope="col"><span class="vh">Actions</span></th></tr></thead><tbody>
-      ${DEALS.map(d=>{ const p=S.pred.get(d), sold=d.status==="closed"&&d.salePrice>0, t=d.status==="closed"?daysBetween(d.listDate,d.closeDate):null;
+      ${DEALS.map(d=>{ const p=S.pred.get(d), sold=d.status==="closed"&&d.salePrice>0, t=d.status==="closed"&&!(d.closeDate>today())?daysBetween(d.listDate,d.closeDate):null;
         const cell=(i,v)=>`<td class="n" data-th="${H[i]}">${v}</td>`;
         return `<tr data-id="${d.id}"${d.id===CUR?' class="cur"':""}><td class="dl-deal"><button class="linkish dl-name" type="button" data-act="edit">${hEsc(d.name)}</button>
           <span class="dl-sub">${hEsc(indName(d.inputs.ind))} · SDE ${moneyIn(d.inputs.ern)}</span></td>
@@ -8715,8 +8798,10 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   function dealsStore(S){
     let kb=0; try{ kb=(localStorage.getItem(K_DEALS)||"").length/1024; }catch(e){}
     const odd=KEPT.length+(S&&S.unread||0);
-    if(NOCOPY!==null){ $("dl_store").innerHTML=`${nocopyStored()?`<b>The deals stored here could not be read</b>, and this browser has no room to copy them aside`
-        :`<b>When this tab opened, the deals stored here could not be read</b>, and another tab has since saved over them; this tab still holds them`}, so this page saves nothing over them${DEALS.length?`: the ${DEALS.length} deal${DEALS.length===1?"":"s"} here ${DEALS.length===1?"is":"are"} in this tab only`:""}.
+    /* the deals here the store does not hold: another tab that saved over the unreadable ones stored its own (r7-deals-3) */
+    if(NOCOPY!==null){ const only=(()=>{ try{ const raw=JSON.parse(localStorage.getItem(K_DEALS)), ids=new Set(Array.isArray(raw)?storeIds(raw):[]); return DEALS.filter(d=>!ids.has(d.id)).length; }catch(e){ return DEALS.length; } })();
+      $("dl_store").innerHTML=`${nocopyStored()?`<b>The deals stored here could not be read</b>, and this browser has no room to copy them aside`
+        :`<b>When this tab opened, the deals stored here could not be read</b>, and another tab has since saved over them; this tab still holds them`}, so this page saves nothing over them${only?`: ${only<DEALS.length?`${only} of the ${DEALS.length} deals here`:`the ${only} deal${only===1?"":"s"} here`} ${only===1?"is":"are"} in this tab only`:""}.
       <button class="btn tool" id="dl_unread" type="button">Download them</button> to keep them as a file${NOCOPY_DL?`, then <button class="btn tool" id="dl_unread_ok" type="button">I have the file</button> and saving goes on.`:"; saving goes on once you have it."}`; return; }
     $("dl_store").innerHTML=(STORE_OK
       ?`${DEALS.length} deal${DEALS.length===1?"":"s"} kept in this browser (${kb<1?"under 1":Math.round(kb)} KB). They do not follow you to another browser or device, and clearing this site&rsquo;s data deletes them: export a copy now and then.`
@@ -8736,7 +8821,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     EDIT=id; FORM_ID=id; FORM_DIRTY=false; $("dl_edit_sec").hidden=false; $("dl_edit_t").textContent=d.name;
     let p=stats().pred.get(d); if(!p) try{ p=dealPredict(d); }catch(e){ p=null; }
     const at=d.listPrice>0?"its listing price":"the ask saved with it";
-    const sold=d.status==="closed"&&d.salePrice>0, t=d.status==="closed"?daysBetween(d.listDate,d.closeDate):null;
+    const sold=d.status==="closed"&&d.salePrice>0, t=d.status==="closed"&&!(d.closeDate>today())?daysBetween(d.listDate,d.closeDate):null;
     $("dl_edit").innerHTML=`<form class="dl-form" id="dl_form" novalidate>
       ${field(LAB.name,txt("name",d.name,' maxlength="120"'),true)}
       ${field("Status",`<select name="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${k===d.status?" selected":""}>${v}</option>`).join("")}</select>`)}
@@ -8792,6 +8877,14 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     if(span>3*365.25) tips.push("The listing and closing dates are more than three years apart: check them.");
     { const ref=d.listPrice>0?d.listPrice:d.inputs.ask, x=d.salePrice>0&&ref>0?d.salePrice/ref:null;
       if(x!==null&&(x>1.5||x<.3)) tips.push(`The sale price is ${x.toFixed(2)}× ${d.listPrice>0?"the listing price":"the ask saved with it"}: check it, since one mistyped sale moves your price record.`); }
+    /* the same typo in the listing and the sale passes the ratio between them: each is checked against the model too
+       (r7-deals-5) */
+    { let p=null; try{ p=dealPredict(d); }catch(e){}
+      const lv=p&&d.listPrice>0?d.listPrice/p.V:null, sx=p&&d.status==="closed"&&d.salePrice>0&&p.pExp>0?d.salePrice/p.pExp:null;
+      if(lv!==null&&(lv>2.5||lv<.4)) tips.push(`The listing price is ${lv.toFixed(2)}× the model value of ${money(p.V)}: check it, since one mistyped listing moves your records.`);
+      else if(sx!==null&&(sx>3||sx<.3)) tips.push(`The sale price is ${sx.toFixed(2)}× the model’s expected price at that listing, ${money(p.pExp)}: check it, since one mistyped sale moves your price record.`); }
+    /* a deal cannot have closed after today: its time to close is left out until the date is corrected (r7-deals-10) */
+    if(d.status==="closed"&&d.closeDate&&d.closeDate>today()) tips.push("The closing date is after today, so the deal cannot have closed yet: check it. Its time to close is left out until then.");
     if(d.status==="closed"&&!d.salePrice) tips.push("Add the sale price to count this deal in your price record.");
     if(d.status==="closed"&&!(d.listDate&&d.closeDate)) tips.push("Add both dates to count its time to close.");
     const ok=saveDeals(); if(!ok&&!UNSTORED.has(d.id)) UNSTORED.set(d.id,prev); FORM_DIRTY=false; renderDeals(); toolbar();
@@ -8812,7 +8905,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       /* a copy is a new valuation of the same business: its listing and outcome start empty, so no outcome is counted twice */
       const c=cleanDeal({...d,id:newId(),name:d.autoName?nameFor(d.inputs)+" (copy)":d.name+" (copy)",autoName:d.autoName,copy:d.autoName,status:"valuing",created:now,updated:now,
         listPrice:null,listDate:null,salePrice:null,closeDate:null,cashAtClose:null,buyers:null,offers:null});
-      DEALS.unshift(c); const ok=saveDeals(); EDIT=c.id; renderDeals(); say("dl_msg",`Duplicated as “${c.name}”, a new valuation: its listing and outcome start empty.`+(ok?"":" "+storeMsg())); return; }
+      DEALS.unshift(c); const ok=saveDeals(); if(!ok) UNSTORED.set(c.id,null); EDIT=c.id; renderDeals(); say("dl_msg",`Duplicated as “${c.name}”, a new valuation: its listing and outcome start empty.`+(ok?"":" "+storeMsg())); return; }
     if(act==="del"){
       /* the press arms the button for four seconds; only that arming's own timer disarms it */
       if(delArm!==id){ const n=++delN; delArm=id; btn.textContent="Press again to delete";
@@ -8826,15 +8919,17 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
          reload and every other tab keep the deal (r4-deals-5) */
       if(!ok&&storeHas(id)){ if(pg) GONE[id]=pg; else delete GONE[id]; if(!dealById(id)) DEALS.splice(at<0?0:Math.min(at,DEALS.length),0,cur); STATS=null;
         renderDeals(); toolbar(); say("dl_msg",`“${d.name}” is not deleted. `+storeMsg(),0); return; }
-      if(CUR===id) CUR=null; EDIT=null;
+      /* the deletion stands (the store never held the deal, or the shorter list is stored): its refused change goes with it,
+         and the store's refusal is said only while other changes here remain unstored (r7-deals-8) */
+      if(CUR===id) CUR=null; EDIT=null; UNSTORED.delete(id); MCLASH.delete(id);
       const okG=writeGone(); renderDeals(); toolbar();
-      say("dl_msg",`Deleted “${d.name}”.`+(!ok?" "+storeMsg():okG?"":" This browser’s storage is too full to record the deletion, so another open tab may bring the deal back: export your deals, then delete some or shorten long notes."));
+      say("dl_msg",`Deleted “${d.name}”.`+(!ok?(UNSTORED.size?" "+storeMsg():""):okG?"":" This browser’s storage is too full to record the deletion, so another open tab may bring the deal back: export your deals, then delete some or shorten long notes."));
     }
   }
   function openDeal(id){
     const d=dealById(id); if(!d) return;
     CUR=id; FIN=cleanFin(d.fin); finFill(); PREFS.fin={...FIN}; DRAFT={business:"",preparedFor:""};
-    say("tl_msg","");
+    say("tl_msg",""); say("rc_msg",""); TELL_HELD=null; HOLD=null; PENDING_MARKS=null;
     WS=d.ws?cleanWS(d.ws):emptyWS(); WS_OWNER=d.id; PREFS.ws=WS; if(!savePrefs("fin","ws")) say("tl_msg",prefMsg("the structure and worksheet in use are","; the deal keeps its own")); snapDeal(storedOf(d)); LOST=null; CLASH.clear();
     const t=document.querySelector('.nav .tab[data-v="console"]');
     /* a dispatched click, not t.click(): with reduced motion the nav's warp re-clicks the tab at once, and a browser
@@ -8907,7 +9002,10 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     el.addEventListener("blur",()=>{ const t=FFMT[k](FIN[k]); if(el.value!==t){ el.value=t; el.classList.remove("bad"); } }); }
   $("f_type").addEventListener("change",()=>{ FIN.type=ownKey(DSC_TYPES,$("f_type").value)?$("f_type").value:"initial"; $("f_type_h").textContent=DSC_HINT[FIN.type]; finChanged(); });
   $("f_standby").addEventListener("change",()=>{ FIN.standby=$("f_standby").checked; finChanged(); });
-  const wsOpen=opener=>{ wsBuild(); openDlg("recast",opener); };
+  /* the store first, as the report does: a tab that missed another's save shows the worksheet as saved, and a leftover
+     gives way to the deal's own before it can be edited (r7-worksheet-7); the line shows what that read took up, not an
+     earlier deal's message (r7-worksheet-2) */
+  const wsOpen=opener=>{ const n0=TELLS; mergeCur("tab"); say("rc_msg",""); wsBuild(); openDlg("recast",opener); if(TELLS!==n0&&LAST_TELL) say("rc_msg",LAST_TELL.msg,LAST_TELL.ms); };
   $("tl_recast").addEventListener("click",e=>wsOpen(e.currentTarget));
   $("r_recast").addEventListener("click",e=>wsOpen(e.currentTarget));
   $("tl_fin").addEventListener("click",()=>{ $("sec_fin").scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"}); });
@@ -8918,9 +9016,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
      of a later "Save changes", and the report's business and recipient start empty */
   /* a lasting message about the deal that was in the console (deleted elsewhere, or a clash) goes with it, and a deal
      deleted in another tab is not called unchanged: the deletions are read first (r6-worksheet-3, r6-deals-13) */
+  /* the deal is called deleted only when the merged store lacks it: one deleted and restored since is listed (r7-deals-9) */
   $("reset").addEventListener("click",()=>{ DRAFT={business:"",preparedFor:""}; WS_OWNER=null; const lost=LOST; LOST=null; CLASH.clear(); const d=CUR&&dealById(CUR);
+    say("rc_msg",""); HOLD=null; TELL_HELD=null;
     if(!d){ if(lost) say("tl_msg","Back at the framework example."); return; }
-    CUR=null; CUR_SNAP=null; mergeGone(); const del=goneAfter(d); if(del){ mergeStore(); STATS=null; } toolbar();
+    CUR=null; CUR_SNAP=null; mergeStore(); STATS=null; const del=!dealById(d.id); toolbar();
     say("tl_msg",del?`Back at the framework example; “${d.name}” was deleted in another tab.`:`Back at the framework example; “${d.name}” is unchanged in the Deals tab.`); });
   $("rc_close").addEventListener("click",closeDlg);
   $("rc_ent").addEventListener("change",()=>{ WS.entity=ownKey(RECAST_ENTITY,$("rc_ent").value)?$("rc_ent").value:"scorp"; wsSave(); wsBuild(); });
@@ -8929,8 +9029,8 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   $("rc_clear").addEventListener("click",()=>{ const e=WS.entity, w=WS.weight, g=WS.grw; WS=emptyWS(); WS.entity=e; WS.weight=w; WS.grw=g; wsSave(); wsBuild(); });
   $("rc_use").addEventListener("click",wsUse);
   /* a cell remembers what it held when focused: a rejected entry goes back to that, not to an earlier keystroke's prefix */
-  $("rc_tbl").addEventListener("focusin",e=>{ const el=e.target; if(el.matches(".rc-in")) el.__snap=WS.years[+el.dataset.y][el.dataset.k]; });
-  $("rc_tbl").addEventListener("input",e=>{ const el=e.target; if(!el.matches(".rc-in")) return;
+  $("rc_tbl").addEventListener("focusin",e=>{ const el=e.target; if(el.matches(".rc-in")){ el.__snap=WS.years[+el.dataset.y][el.dataset.k]; el.__typed=false; el.__theirs=undefined; } });
+  $("rc_tbl").addEventListener("input",e=>{ const el=e.target; if(!el.matches(".rc-in")) return; el.__typed=true;
     const v=wsParse(el.value), y=WS.years[+el.dataset.y];
     if(v===undefined){ delete y[el.dataset.k]; el.classList.remove("bad"); }
     else if(isFinite(v)&&!(el.dataset.k==="rev"&&v<0)){ y[el.dataset.k]=v; el.classList.remove("bad"); }
@@ -8939,7 +9039,11 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   $("rc_tbl").addEventListener("change",e=>{ const el=e.target; if(WS_SWAP||!el.matches(".rc-in")) return;
     const v=wsParse(el.value), y=WS.years[+el.dataset.y], k=el.dataset.k;
     if(v!==undefined&&(!isFinite(v)||(k==="rev"&&v<0))){ el.classList.add("bad"); if(el.__snap===undefined) delete y[k]; else y[k]=el.__snap; el.value=wsFmt(el.__snap); wsSave(); wsSum(); }
-    else { el.value=wsFmt(v); el.__snap=v; } });
+    else { el.value=wsFmt(v); el.__snap=v;
+      /* an entry kept over the amount another tab saved to this cell while it was typed in is a clash, said now and at the save */
+      if("__theirs" in el&&el.__theirs!==undefined&&!sameV(v,el.__theirs)){ CLASH.add("worksheet");
+        tell("Another tab saved a different amount to this cell of the worksheet while it was typed in: this tab keeps its own, and saving here writes it over the other’s.",0); } }
+    el.__typed=false; el.__theirs=undefined; });
   $("rc_tbl").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.matches(".rc-in")){ e.preventDefault();
     const all=[...$("rc_tbl").querySelectorAll(".rc-in")], i=all.indexOf(e.target), nx=all[i+3]||all[(i%3+1)%3]; if(nx) nx.focus(); } });
   ["rp_biz","rp_for","rp_broker","rp_firm"].forEach(id=>{ $(id).addEventListener("input",reportMetaChanged); $(id).addEventListener("change",reportMetaChanged); });
@@ -8950,8 +9054,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     download(`valuation-${slug(m.business||REPORT.ind)||"report"}-${today()}.html`,"text/html",reportFile()); });
   /* the store first, as the toolbar's save reads it: a deal deleted elsewhere keeps its name, business and worksheet in the
      new one (r6-worksheet-7) */
-  $("dl_new").addEventListener("click",()=>{ mergeCur(); const prev=CUR; CUR=null; const d=saveCurrent(true,prev); if(!d) return; EDIT=d.id; renderDeals();
-    say("dl_msg",STORE_OK?`Saved the console’s valuation as “${d.name}”: name it and record its listing below.`:`“${d.name}” is in this tab only. `+storeMsg(),STORE_OK?7000:0); });
+  $("dl_new").addEventListener("click",()=>{ const m=mergeCur(), from=CUR&&dealById(CUR), prev=CUR; CUR=null; const d=saveCurrent(true,prev); if(!d) return; EDIT=d.id; renderDeals();
+    const tk=from&&m.took.length?` Another tab had saved changes to “${from.name}”’s ${andList(m.took)}, which the console and the copy now show.${m.held||""}`:"";
+    say("dl_msg",STORE_OK?`Saved the console’s valuation as “${d.name}”: name it and record its listing below.`+tk:`“${d.name}” is in this tab only. `+storeMsg(),STORE_OK?(tk?(m.held?0:12000):7000):0); });
   $("dl_json").addEventListener("click",exportJSON);
   $("dl_csv").addEventListener("click",exportCSV);
   $("dl_imp").addEventListener("click",()=>$("dl_file").click());
@@ -8965,7 +9070,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   window.addEventListener("storage",e=>{
     if(e.key===K_PREFS){ const p=load(K_PREFS,null); if(p&&typeof p==="object"){ readNames();
         if(OPEN&&OPEN.id==="report"){ for(const [id,v] of [["rp_broker",PREFS.broker],["rp_firm",PREFS.firm]]) if(!RP_TYPED.has(id)) $(id).value=v;
-          if(REPORT) $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta()); }
+          if(REPORT){ REPORT.calib=calibNow(); $("rp_paper").innerHTML=reportHTML(REPORT,reportMeta()); } }
         const cb=$("dl_calib"); if(cb) cb.checked=PREFS.calib; toolbar(); } return; }
     if(e.key!==null&&e.key!==K_DEALS&&e.key!==K_GONE) return;
     const was=EDIT&&dealById(EDIT), v=was?was.updated:null;
@@ -9010,7 +9115,9 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   window.OMNI_BROKER={
     /* the tab handler calls this once a view is showing: a deal opened from the Deals tab lands in the console only now,
        so the console renders while it is visible */
-    tab(v){ if(v==="deals"){ mergeCur("tab"); renderDeals(); } else if(v==="console"&&PENDING){ const p=PENDING, mk=PENDING_MARKS; PENDING=null; PENDING_MARKS=null; applyInputs(p,mk||undefined); } },
+    tab(v){ if(v==="deals"){ mergeCur("tab"); renderDeals(); }
+      else if(v==="console"){ if(PENDING){ const p=PENDING, mk=PENDING_MARKS; PENDING=null; PENDING_MARKS=null; applyInputs(p,mk||undefined); }
+        if(TELL_HELD){ const t=TELL_HELD; TELL_HELD=null; if($("tl_msg").textContent===t.msg) say("tl_msg",t.msg,t.ms); } } },
     /* for the browser tests */
     state:()=>({deals:DEALS,kept:KEPT,cur:CUR,fin:{...FIN},ws:WS,prefs:{...PREFS},draft:{...DRAFT},store:STORE_OK}),
     applyInputs,snap,openDeal,saveCurrent,reportFile

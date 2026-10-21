@@ -659,7 +659,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,theta:.75,lamT:900}, V=A.model({...ex,ask:1}).V;
     ex.rhoSell=A.bestRatio(ex,0,0); ex.optRho=A.bestRatio(ex,.75,900);
     const n=A.optNote(ex,V,A.model({...ex,ask:V*ex.rhoSell}),A.model({...ex,ask:V*ex.optRho}));
-    ok(n.kind==="higher"&&!!n.alt&&/as a range, 1\.20–1\.50× value/.test(n.text)&&/1\.50× \(the cap the console puts on the ask\) within 0\.38%/.test(n.text),
+    ok(n.kind==="higher"&&!!n.alt&&/as a range, 1\.20–1\.50× value/.test(n.text)&&/1\.50× value \(the cap the console puts on the ask\) within 0\.38%/.test(n.text),
        `framework example: patient-seller range shown, from the 1.20x peak to the cap (${n.text})`);
     checkNote(ex,n,"(framework example)"); }
   /* a walk-away ask at the cap with an objective that climbs all the way there: no range (there is no second peak, and
@@ -1749,7 +1749,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     /* round 3: with working capital and a standby note an initial acquisition's equity passes only from some price up */
     const fE={cash:.06,note:.1,standby:true,extra:4e5}, mE=A.maxFinanced(s0,fE,V);
     ok(mE.price>0&&mE.equityFrom>0&&mE.equityFrom<mE.price&&!A.debtCheck(s0,mE.equityFrom*.99,fE,V).equityOK&&A.debtCheck(s0,mE.equityFrom*1.0001,fE,V).equityOK&&!mE.equityShort
-       &&/Below about \$[\d.]+[kM] the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum, which cannot be waived for an initial acquisition, so the structure works only from that price up/.test(A.reportHTML(A.reportData(s0,{fin:fE}),{})),
+       &&/Below about \$[\d.]+[kM] <span class="rp-b rp-a">published data<\/span> the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum, which cannot be waived for an initial acquisition, so the structure works only from that price up/.test(A.reportHTML(A.reportData(s0,{fin:fE}),{})),
        `43: an initial acquisition whose standby credit grows with the price works only from $${(mE.equityFrom/1e6).toFixed(2)}M up, and the report says so`);
     const fB={type:"buyout",cash:.07,note:0,extra:8e5}, mB=A.maxFinanced(s0,fB,V);
     ok(mB.equityTo>0&&mB.equityTo<mB.price&&A.debtCheck(s0,mB.equityTo*.99,fB,V).equityOK&&!A.debtCheck(s0,mB.equityTo*1.01,fB,V).equityOK,
@@ -1938,7 +1938,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const sB={...s0,ern:5e6,rev:2e7,ask:2e7}, DB=A.reportData(sB,{fin:{cash:.05,note:0}}), hB=A.reportHTML(DB,{});
     const mB=DB.maxFin, eqAt=p=>A.debtCheck(sB,p,{cash:.05,note:0},DB.V).equityOK;
     ok(mB.capped&&mB.equityShort&&DB.cur.fin.equityOK&&DB.cur.fin.over>0&&mB.equityAbove>mB.capAt*1.01&&!eqAt(mB.equityAbove*.999)&&eqAt(mB.equityAbove*1.001)&&!eqAt((mB.capAt+mB.equityAbove)/2)
-       &&hB.includes(`at every price below about ${A.moneyUp(mB.equityAbove)}: past ${A.moneyDown(mB.capAt)} the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash`)&&!/no price meets/.test(hB),
+       &&hB.includes(`at every price below about ${A.moneyUp(mB.equityAbove)} <span class="rp-b rp-a">published data</span>: past ${A.moneyDown(mB.capAt)} <span class="rp-b rp-a">published data</span> the SBA loan stays at the 7(a) maximum and the rest of the price is buyer cash`)&&!/no price meets/.test(hB),
        `43: past the 7(a) maximum the report does not say no price meets the equity minimum, and bounds the shortfall where buyer cash reaches 10% (${A.money(mB.equityAbove||0)}), not at the cap (${A.money(mB.capAt||0)})`);
     /* a lever is quoted at the model's own forward step, one peer sd toward its best (the unit the console's sensitivity ranks
        every lever in, selects included: r3-report-6, refuted), at its best when that is nearer, or at its best when one step
@@ -2025,21 +2025,21 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const fA={cash:.06,note:.045,standby:true,extra:150300}, mA=A.maxFinanced(s0,fA,V), hA=A.reportHTML(A.reportData({...s0,ask:1.2e6},{fin:fA}),{});
     const fB={type:"buyout",cash:.08,note:0,extra:299900}, mB=A.maxFinanced(s0,fB,V), hB=A.reportHTML(A.reportData({...s0,ask:1.2e6},{fin:fB}),{});
     ok(mA.equityFrom>0&&!A.debtCheck(s0,amt(A.money(mA.equityFrom)),fA,V).equityOK&&A.debtCheck(s0,amt(A.moneyUp(mA.equityFrom)),fA,V).equityOK
-       &&hA.includes("Below about "+A.moneyUp(mA.equityFrom)+" the buyer&rsquo;s equity")
+       &&hA.includes("Below about "+A.moneyUp(mA.equityFrom)+' <span class="rp-b rp-a">published data</span> the buyer&rsquo;s equity')
        &&mB.equityTo>0&&!A.debtCheck(s0,amt(A.money(mB.equityTo)),fB,V).equityOK&&A.debtCheck(s0,amt(A.moneyDown(mB.equityTo)),fB,V).equityOK
-       &&hB.includes(`about ${A.moneyDown(mB.equityTo)}${mB.equityAbove?" and "+A.moneyUp(mB.equityAbove):""} the buyer&rsquo;s equity is under`),
+       &&hB.includes(`about ${A.moneyDown(mB.equityTo)} <span class="rp-b rp-a">published data</span>${mB.equityAbove?" and "+A.moneyUp(mB.equityAbove)+' <span class="rp-b rp-a">published data</span>':""} the buyer&rsquo;s equity is under`),
        `43: the price where the equity starts passing prints rounded up (${A.moneyUp(mA.equityFrom)}, not ${A.money(mA.equityFrom)}) and where it stops rounded down (${A.moneyDown(mB.equityTo)}), so each passes as printed (r4-financing-1)`);
     /* r4-financing-2: past the 7(a) maximum an owner buyout's short equity comes back where buyer cash reaches 10% */
     const sC={...s0,ern:2e6,rev:8e6,ask:4.5e6}, VC=A.model(sC).V, fC={type:"buyout",cash:.08,note:0,extra:1e6}, mC=A.maxFinanced(sC,fC,VC), hC=A.reportHTML(A.reportData(sC,{fin:fC}),{});
     let fails=true; for(let i=1;i<40;i++){ const p=mC.equityTo*Math.pow(mC.equityAbove/mC.equityTo,i/40); if(A.debtCheck(sC,p,fC,VC).equityOK) fails=false; }
     ok(mC.capped&&mC.equityTo>0&&mC.equityAbove>mC.capAt&&fails&&[1.001,1.5,5].every(x=>A.debtCheck(sC,mC.equityAbove*x,fC,VC).equityOK)
-       &&hC.includes(`Between about ${A.moneyDown(mC.equityTo)} and ${A.moneyUp(mC.equityAbove)} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price`)
-       &&hC.includes(`which brings it back to 10% from ${A.moneyUp(mC.equityAbove)}`)&&!/Above about/.test(hC)&&["4.5e6","6.48e6"].every(p=>A.debtCheck(sC,+p,fC,VC).equityOK),
+       &&hC.includes(`Between about ${A.moneyDown(mC.equityTo)} <span class="rp-b rp-a">published data</span> and ${A.moneyUp(mC.equityAbove)} <span class="rp-b rp-a">published data</span> the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price`)
+       &&hC.includes(`which brings it back to 10% from ${A.moneyUp(mC.equityAbove)} <span class="rp-b rp-a">published data</span>`)&&!/Above about/.test(hC)&&["4.5e6","6.48e6"].every(p=>A.debtCheck(sC,+p,fC,VC).equityOK),
        `43: an owner buyout's equity, short from ${A.moneyDown(mC.equityTo)}, is bounded where buyer cash past the 7(a) maximum brings it back to 10% (${A.moneyUp(mC.equityAbove)}), as the asks show (r4-financing-2)`);
     /* r4-report-2: with a 90% paid note buyer cash past the cap never reaches 10%: no bound is named */
     const sD={...s0,ern:2e7,rev:8e7,ask:5.5e7}, VD=A.model(sD).V, fD={cash:0,note:.9}, mD=A.maxFinanced(sD,fD,VD), hD=A.reportHTML(A.reportData(sD,{fin:fD}),{});
     ok(mD.capped&&mD.equityShort&&mD.equityAbove===null&&[5.5e7,1e9,1e11].every(p=>!A.debtCheck(sD,p,fD,VD).equityOK)
-       &&/at every price: past \$50\.00M the SBA loan stays at the 7\(a\) maximum and the rest of the price is buyer cash, but with this seller note that never reaches 10%\./.test(hD)&&!/at every price below/.test(hD),
+       &&/at every price: past \$50\.00M <span class="rp-b rp-a">published data<\/span> the SBA loan stays at the 7\(a\) maximum and the rest of the price is buyer cash, but with this seller note that never reaches 10%\./.test(hD)&&!/at every price below/.test(hD),
        "43: with a 90% paid note buyer cash past the 7(a) maximum never reaches 10%, so the report says the equity is short at every price (r4-report-2)");
     /* r4-financing-5, r4-core-5: the optimizer's two asks are one row when they print as one price */
     let rowsOK=0, rowsN=0; { const rn=mul(404), inds=Object.keys(A.IND);
@@ -2121,7 +2121,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     /* r5-report-2: the patient-seller ask carries the console's qualifiers */
     const hC=txt(A.reportHTML(A.reportData({...EX,theta:.95,lamT:0},{}),{})), h0=txt(A.reportHTML(A.reportData(EX,{}),{}));
     ok(/If you can walk away \$[\d.]+M 1\.50× value.*1\.50× value is the console’s cap on the ask \(a judgment\), not an optimum: asks from 1\.\d\d× up come within 1% of value of it\./.test(hC)
-       &&/If you can walk away .*Close to a tie with other asks: read it as 1\.20–1\.50× value\./.test(h0),
+       &&/If you can walk away .*Close to a tie with other asks: read it as 1\.20–1\.50× value; 1\.50× is the console’s cap on the ask \(a judgment\)\./.test(h0),
        "43: the patient-seller ask carries the console's qualifiers: at the 1.5x cap a judgment, not an optimum, with the asks within 1% of value of it; a range where another ask is close to a tie (r5-report-2)");
     /* r5-report-3: the improvements are measured, and say they are, with the ask reset to the recommended ratio of the value after them */
     const D3=A.reportData(EX,{}), h3=txt(A.reportHTML(D3,{})), rs=A.bestRatio(EX,0,0), t3=A.interventionTable({...EX,rhoSell:rs},A.model(EX)).filter(t=>t.k!=="reprice"&&t.net>0).slice(0,3);
@@ -2164,7 +2164,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const FW={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75,rate:10.5};
     /* r6-core-1: the report's range is the console note's, over every near-tie peak: at the framework example it runs to the cap */
     { const D=A.reportData(FW,{}), h=txt(A.reportHTML(D,{}));
-      ok(D.walkQ.range&&D.walkQ.range[0].toFixed(2)==="1.20"&&D.walkQ.range[1].toFixed(2)==="1.50"&&D.walkQ.others===2&&/Close to a tie with other asks: read it as 1\.20–1\.50× value\./.test(h),
+      ok(D.walkQ.range&&D.walkQ.range[0].toFixed(2)==="1.20"&&D.walkQ.range[1].toFixed(2)==="1.50"&&D.walkQ.others===2&&/Close to a tie with other asks: read it as 1\.20–1\.50× value; 1\.50× is the console’s cap on the ask \(a judgment\)\./.test(h),
          `43: the framework example's report reads the patient-seller ask as 1.20-1.50x, the 1.20x peak to the cap, as the console note does (r6-core-1)`); }
     /* r6-report-1: a factor at its z limit whose step lifts its z most of a step is held by the composite, not "too far below" */
     { const sW={ind:"wash",st:"KY",franchise:true,rev:11273538.33,ern:9552731.864,grw:-.25,gm:.44,rec:.24,cc:.42,ret:.18,plt:.34,own:.72,mgt:.36,fin:.45,yrs:9,buyers:180,budget:629278.78,lamT:1350,theta:.71,ask:7862633.36};
@@ -2178,7 +2178,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
         if(m.price>0&&isFinite(m.price)&&m.equityFrom&&Math.ceil(m.equityFrom-1e-9)>Math.floor(m.price+1e-9)) hit={s,V,m}; }
       const E=hit?A.finEdges(hit.m):{}, mi=hit?A.maxFinanced(hit.s,{...f,type:"initial"},hit.V):{}, Ei=hit?A.finEdges(mi):{}, h=hit?txt(A.reportHTML(A.reportData(hit.s,{fin:f}),{})):"";
       const top=A.moneyVal(E.top||"0"), dTop=hit?A.debtCheck(hit.s,top,f,hit.V):{};
-      ok(!!hit&&!E.none&&E.top==="$266,666"&&dTop.ok&&!dTop.debtOverValue&&!dTop.equityOK&&/is about \$266,666/.test(h)&&/Below about \$266,667 the buyer’s equity, with the standby note’s credit, is under SBA’s 10% minimum: the lender may reduce or eliminate it only when/.test(h)
+      ok(!!hit&&!E.none&&E.top==="$266,666"&&dTop.ok&&!dTop.debtOverValue&&!dTop.equityOK&&/is about \$266,666/.test(h)&&/Below about \$266,667 published data the buyer’s equity, with the standby note’s credit, is under SBA’s 10% minimum: the lender may reduce or eliminate it only when/.test(h)
          &&!/No whole-dollar price passes/.test(h)&&Ei.none,
          `43: where the equity floor and the highest price share one whole dollar, an expansion's top passes all but a waivable equity, so it is given with the waiver; an initial acquisition's reads none (r6-financing-3)`); }
     /* r6-financing-2: with the note on full standby at the starting share, the debt above value carries x judgment, in the
@@ -2212,6 +2212,47 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(a[0]===""&&b[0]==="rp-pl"&&c[0]==="rp-pl"&&c[1]===" rp-pl"&&len.length>120&&d[1]===" rp-pl"&&cls({business:"Acme",preparedFor:W(30)})[1]===""
          &&A.RP_CSS.includes(".rp h1.rp-long,.rp h1.rp-pl{font-size:14px}")&&A.RP_CSS.includes(".rp-prep.rp-pl{font-size:8.5px}"),
          "43: in print a business over 28 characters, or a prepared-for block over 120, takes the smaller size, so a shorter name never prints taller than the clamped longest (r6-report-2)"); }
+  }
+  /* ---- round 7 ---- */
+  { const txt=h=>h.replace(/<[^>]+>/g," ").replace(/&rsquo;/g,"’").replace(/\s+/g," ");
+    const FW={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75,rate:10.5};
+    const peer=(ern,rev)=>{ const s={...FW,...A.peerMedians("medical",ern,rev),ern,rev}; return {...s,ask:A.model(s).V}; };
+    /* r7-financing-1: past the 7(a) maximum the loan stays at the maximum, so a paid note's starting share moves the debt
+       above value (x judgment, and the footer names it) and a standby note's moves neither the debt nor coverage */
+    { const s=peer(2e6,8e6), V=s.ask, a={...s,ask:1.45*V}, tA=txt(A.reportHTML(A.reportData(a,{fin:{}}),{}));
+      const dA=[.04,.05,.06].map(note=>A.debtCheck(a,a.ask,{note},V).debt);
+      const b0=peer(1.75e6,7e6), Vb=b0.ask, b={...b0,ask:1.45*Vb}, fS={standby:true,draw:2e5}, DB=A.reportData(b,{fin:fS}), tB=txt(A.reportHTML(DB,{}));
+      const cB=[.04,.05,.06].map(note=>A.debtCheck(b,b.ask,{...fS,note},Vb));
+      ok(A.debtCheck(a,a.ask,{},V).over>0&&dA[0]<dA[1]-1e3&&dA[1]<dA[2]-1e3&&/is \$[\d.]+[kM] fitted × judgment above the model value/.test(tA)
+         &&/Lender: debt \$[\d.]+[kM] fitted × judgment over value \| Your ask|Your ask .*Lender: debt \$[\d.]+[kM] fitted × judgment over value/.test(tA)&&tA.includes("the seller-note convention (the debt above value)")
+         &&DB.cur.fin.over>0&&cB.every(c=>Math.abs(c.debt-cB[1].debt)<1&&Math.abs(c.dscr-cB[1].dscr)<1e-9)&&!DB.cur.fin.noteConv
+         &&/is \$[\d.]+[kM] fitted above the model value/.test(tB)&&/\d\.\d\d× coverage fitted , meeting/.test(tB),
+         "43: past the 7(a) maximum a paid starting note's share moves the debt above value, which carries x judgment and the footer names; a standby note's moves neither the debt nor coverage, which print plain fitted (r7-financing-1)"); }
+    /* r7-financing-2, r7-report-2: the prices the report derives from the 7(a) maximum and SBA's 10% rule carry that badge,
+       with x judgment where the note's starting share sets them, and the footer names them */
+    { const s=peer(3e6,12e6), y=peer(1.2e6,5e6), fB={type:"buyout",cash:.08,note:.05,extra:1e6}, fF={type:"initial",cash:.07,note:.05,standby:true,extra:5e5};
+      const tB=txt(A.reportHTML(A.reportData(s,{fin:fB}),{})), tF=txt(A.reportHTML(A.reportData(y,{fin:fF}),{})), t6=txt(A.reportHTML(A.reportData(s,{fin:{type:"initial",cash:0,note:.06}}),{}));
+      const ab=[.04,.05,.06].map(note=>A.maxFinanced(s,{...fB,note},s.ask).equityAbove), fl=[.04,.05,.06].map(note=>A.maxFinanced(y,{...fF,note},y.ask).equityFrom);
+      ok(ab[0]<ab[1]&&ab[1]<ab[2]&&fl[0]>fl[1]&&fl[1]>fl[2]
+         &&/Between about \$[\d.]+M published data and \$[\d.]+M published data × judgment the buyer’s equity is under/.test(tB)&&/brings it back to 10% from \$[\d.]+M published data × judgment ?\./.test(tB)
+         &&tB.includes("the seller-note convention (the highest financed price, the prices past the 7(a) maximum)")
+         &&/Below about \$750k published data × judgment the buyer’s equity, with the standby note’s credit/.test(tF)&&tF.includes("the equity’s 10% edge")
+         &&/at every price below about \$[\d.]+M published data : past \$[\d.]+M published data the SBA loan stays/.test(t6),
+         "43: an owner buyout's price where buyer cash past the 7(a) maximum brings the equity back to 10%, and the floor a standby note at the starting share sets, carry published data x judgment and the footer names them; with a typed share the prices past the maximum carry published data (r7-financing-2, r7-report-2)"); }
+    /* r7-report-4, r7-core-1: a range whose top is the ask cap says so on the paper; a peak just under the cap is where the
+       cap binds, and only 1.50x is called the cap */
+    { const s={...FW,lamT:4000}, D=A.reportData(s,{}), t=txt(A.reportHTML(D,{}));
+      let named=0, wrong=0;
+      for(let th=.74;th<=.801;th+=.01) for(let lam=2000;lam<=4000;lam+=250){ const x={...FW,theta:th,lamT:lam}, V=A.model(x).V, rs=A.bestRatio(x,0,0), rw=A.bestRatio(x,th,lam);
+        const n=A.optNote({...x,rhoSell:rs,optRho:rw},V,A.model({...x,ask:V*rs}),A.model({...x,ask:V*rw})).text;
+        if(/cap on the ask binds/.test(n)) named++; if(/1\.4\d× (value )?\(the cap the console puts on the ask\)/.test(n)) wrong++; }
+      ok(/read it as 1\.19–1\.48× value; 1\.48× is where the console’s 1\.50× cap on the ask binds \(a judgment\)\./.test(t)&&named>=5&&wrong===0,
+         `43: the report says a range's top is where the ask cap binds, and the console's note calls only 1.50x the cap (${named} framework states name a peak just under it as where the cap binds, ${wrong} call it the cap; r7-report-4, r7-core-1)`); }
+    /* r7-deals-10: a closing date after today is no time to close yet */
+    { const d=(n,list,close)=>({inputs:{...FW},status:"closed",listPrice:3e6,salePrice:3e6,listDate:list,closeDate:close});
+      const yr=new Date().getFullYear(), past=[d(1,"2025-01-06","2025-09-01"),d(2,"2025-02-03","2025-10-01"),d(3,"2025-03-03","2025-11-03")];
+      const S0=A.dealsStats(past), S1=A.dealsStats(past.concat([d(4,"2026-03-02",(yr+1)+"-11-30")]));
+      ok(S0.time.n===3&&S1.time.n===3&&S1.price.n===4,"43: a closed deal whose closing date is after today is left out of the time record until the date is corrected (r7-deals-10)"); }
   }
   /* the page wiring */
   ok(HTML.includes('<button class="tab" data-v="deals">Deals</button>')&&HTML.includes('<section class="sec" id="sec_fin" data-norender>')

@@ -1311,7 +1311,207 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     await P.click("#rp_close"); await settle(P);
     ok(out.every(r=>r.pa===1&&r.fa===1&&r.fc===1),`round 5's tallest report with names just under the old size thresholds (56 and 50 W's) and the new ones (28, and 120 characters of the block) prints on one page from the page and the file (${JSON.stringify(out)}; r6-report-2)`);
     ok(o30.errs.length===0,"no page errors in round 6's print check: "+o30.errs.slice(0,3).join(" | "));
-    await c30.close(); }
+    await c30.close();
+    /* ---- round 7 ---- */
+    const backup=async(q,f)=>{ const [dj]=await Promise.all([q.waitForEvent("download"),(async()=>{ await toDeals(q); await q.click("#dl_json"); })()]); const jp=path.join(tmp,f); await dj.saveAs(jp); return jp; };
+    const restore=async(q,jp)=>{ await toDeals(q); await q.setInputFiles("#dl_file",jp); await q.waitForTimeout(900); };
+    /* a deal restored from a backup is re-attached over this tab's refused change, which stays this tab's, and another tab's
+       later change is taken up without a clash (r7-deals-1); a business typed while it was lost stays (r7-deals-2,
+       r7-worksheet-5); a hold the restore's take-up makes is named and lasts (r7-worksheet-6) */
+    const c31=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:true}); await c31.addInitScript(fullInit);
+    const o31a=await open(c31), A6=o31a.p, o31b=await open(c31), B6=o31b.p;
+    x=await pair(A6,B6); const jp1=await backup(B6,"r7a.json"); await toConsole(B6);
+    await slider(B6,"i_gm",50); await B6.click("#tl_save"); await settle(B6); await has(A6,x,"Math.abs(d.inputs.gm-.5)<1e-9"); await hear(A6);
+    await A6.evaluate(()=>{ window.__full=true; }); await ern(A6,9.1e5); await A6.click("#tl_save"); await settle(A6); st={refused:await msg(A6,"tl_msg")};
+    await toDeals(B6); await del2(B6,x); await gone(A6,x); await hear(A6); await A6.evaluate(()=>{ window.__full=false; });
+    await restore(B6,jp1); await has(A6,x,"true"); await hear(A6);
+    st.back=await A6.evaluate(()=>({ern:STATE.s.ern,gm:STATE.s.gm,bar:document.getElementById("tl_deal").textContent,msg:document.getElementById("tl_msg").textContent}));
+    await openIn(B6,x); await slider(B6,"i_gm",70); await B6.click("#tl_save"); await settle(B6); await has(A6,x,"Math.abs(d.inputs.gm-.7)<1e-9"); await hear(A6);
+    st.heard=await A6.evaluate(()=>({gm:STATE.s.gm,ern:STATE.s.ern,msg:document.getElementById("tl_msg").textContent}));
+    await A6.click("#tl_save"); await settle(A6); st.s=(await stored(A6,x)).inputs;
+    ok(/in this tab only/.test(st.refused)&&st.back.ern===9.1e5&&Math.abs(st.back.gm-.64)<1e-9&&/is back/.test(st.back.msg)&&/unsaved changes|kept in this tab only/.test(st.back.bar)
+       &&Math.abs(st.heard.gm-.7)<1e-9&&st.heard.ern===9.1e5&&!/also changed/.test(st.heard.msg)&&st.s.ern===9.1e5&&Math.abs(st.s.gm-.7)<1e-9,
+       `a deal restored from a backup keeps this tab's refused change over it, takes up another tab's later change without a clash, and the save keeps both (${JSON.stringify({back:{ern:st.back.ern,gm:st.back.gm},heard:{gm:st.heard.gm,msg:st.heard.msg.slice(0,50)},s:{ern:st.s.ern,gm:st.s.gm}})}; r7-deals-1)`);
+    await toConsole(B6); x=await pair(A6,B6); await A6.click("#tl_report"); await settle(A6); await A6.fill("#rp_biz","Old Biz"); await A6.press("#rp_biz","Tab"); await settle(A6); await A6.click("#rp_close"); await settle(A6);
+    await has(B6,x,"d.business==='Old Biz'"); const jp2=await backup(B6,"r7b.json"); await del2(B6,x); await gone(A6,x); await hear(A6);
+    await A6.click("#tl_report"); await settle(A6); await A6.fill("#rp_biz","New Biz LLC"); await A6.press("#rp_biz","Tab"); await settle(A6);
+    await restore(B6,jp2); await has(A6,x,"true"); await hear(A6);
+    st={field:await A6.evaluate(()=>document.getElementById("rp_biz").value),paper:await A6.evaluate(()=>/New Biz LLC/.test(document.getElementById("rp_paper").textContent))};
+    await A6.click("#rp_close"); await settle(A6); await A6.click("#tl_save"); await settle(A6); st.s=(await stored(A6,x)).business;
+    ok(st.field==="New Biz LLC"&&st.paper&&st.s==="New Biz LLC",`a business typed in the report while the deal was deleted elsewhere stays when it is restored from a backup (${JSON.stringify(st)}; r7-deals-2, r7-worksheet-5)`);
+    await toConsole(B6); x=await pair(A6,B6); const jp3=await backup(B6,"r7c.json"); await ern(A6,1e6); await A6.click("#tl_save"); await settle(A6); await has(B6,x,"d.inputs.ern===1000000");
+    await del2(B6,x); await gone(A6,x); await hear(A6); await box(A6,"#v_rev","1,500,000");
+    await restore(B6,jp3); await has(A6,x,"true"); await hear(A6);
+    st=await A6.evaluate(()=>({ern:STATE.s.ern,bad:document.getElementById("v_ern").classList.contains("bad"),msg:document.getElementById("tl_msg").textContent}));
+    await A6.waitForTimeout(12500); st.later=await msg(A6,"tl_msg");
+    ok(st.ern===1.38e6&&st.bad&&/so the console holds it to \$1\.38M and marks it/.test(st.msg)&&st.later===st.msg,
+       `a restore whose take-up holds the SDE to 92% of this tab's revenue names the hold, and the message lasts (${JSON.stringify({ern:st.ern,bad:st.bad,msg:st.msg.slice(0,60),later:st.later.slice(0,30)})}; r7-worksheet-6)`);
+    ok(o31a.errs.length===0&&o31b.errs.length===0,"no page errors in round 7's restore checks: "+o31a.errs.concat(o31b.errs).slice(0,3).join(" | "));
+    await c31.close();
+
+    /* take-ups in two hearing tabs: a focused cell not typed in (r7-worksheet-1), the dialog's lasting message (r7-worksheet-2),
+       another tab's Clear (r7-worksheet-4), marks from take-ups heard on the Deals tab (r7-worksheet-3, r7-deals-11,
+       r7-core-5) and their message (r7-deals-4) */
+    const c32=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const o32a=await open(c32), A7=o32a.p, o32b=await open(c32), B7=o32b.p;
+    x=await pair(A7,B7);
+    await A7.click("#tl_recast"); await settle(A7); for(const [k,v] of [["rev","6,000,000"],["ni","900,000"],["owner","300,000"],["dep","40,000"]]) await cell(A7,k,0,v);
+    await settle(A7); await A7.click("#rc_close"); await settle(A7); await A7.click("#tl_save"); await settle(A7); await has(B7,x,"d.ws&&d.ws.years[0].dep===40000"); await hear(B7);
+    await A7.click("#tl_recast"); await settle(A7); await A7.click('.rc-in[data-k="dep"][data-y="0"]'); await settle(A7);
+    await B7.click("#tl_recast"); await settle(B7); await cell(B7,"dep",0,"55,000"); await settle(B7); await B7.click("#rc_close"); await settle(B7); await B7.click("#tl_save"); await settle(B7);
+    await has(A7,x,"d.ws&&d.ws.years[0].dep===55000"); await A7.bringToFront(); await A7.waitForTimeout(400);
+    st={cell:await A7.evaluate(()=>({v:document.activeElement.value,k:document.activeElement.dataset.k,ws:OMNI_BROKER.state().ws.years[0].dep}))};
+    await A7.keyboard.press("Control+A"); await A7.keyboard.type("4o,000",{delay:5}); await A7.keyboard.press("Tab"); await settle(A7);
+    st.after=await A7.evaluate(()=>({ws:OMNI_BROKER.state().ws.years[0].dep,v:document.querySelector('.rc-in[data-k="dep"][data-y="0"]').value}));
+    ok(st.cell.k==="dep"&&st.cell.v==="$55,000"&&st.cell.ws===55000&&st.after.ws===55000&&st.after.v==="$55,000",
+       `a focused worksheet cell not typed in shows the amount another tab saved, and a refused entry there goes back to it (${JSON.stringify(st)}; r7-worksheet-1)`);
+    await cell(A7,"int",1,"41,000"); await settle(A7);
+    await B7.click("#tl_recast"); await settle(B7); await cell(B7,"int",1,"42,000"); await settle(B7); await B7.click("#rc_close"); await settle(B7); await B7.click("#tl_save"); await settle(B7);
+    await has(A7,x,"d.ws&&d.ws.years[1].int===42000"); await hear(A7);
+    st={rc:await msg(A7,"rc_msg")}; await A7.click("#rc_close"); await settle(A7); await A7.click("#tl_save"); await settle(A7); await A7.click("#tl_recast"); await settle(A7);
+    st.reopen=await msg(A7,"rc_msg"); await A7.click("#rc_close"); await settle(A7);
+    ok(/that this tab has also changed/.test(st.rc)&&st.reopen==="",`the worksheet dialog's lasting clash message goes once the deal is saved, and the dialog opens without it (${JSON.stringify(st)}; r7-worksheet-2)`);
+    x=await pair(A7,B7); await A7.click("#tl_recast"); await settle(A7); await A7.selectOption("#rc_ent","ccorp"); await settle(A7); await A7.selectOption("#rc_wt","avg"); await settle(A7);
+    for(const [k,y,v] of [["rev",0,"5,800,000"],["ni",0,"800,000"],["rev",1,"5,500,000"],["ni",1,"750,000"]]) await cell(A7,k,y,v);
+    await settle(A7); await A7.click("#rc_use"); await settle(A7); await A7.click("#tl_save"); await settle(A7); await has(B7,x,"d.ws&&d.ws.entity==='ccorp'"); await hear(B7);
+    st={b0:await B7.evaluate(()=>{ const w=OMNI_BROKER.state().ws; return w.entity+"/"+w.weight; })};
+    await A7.click("#tl_recast"); await settle(A7); await A7.click("#rc_clear"); await settle(A7); await A7.click("#rc_close"); await settle(A7); await A7.click("#tl_save"); await settle(A7);
+    await has(B7,x,"!d.ws"); await hear(B7); st.b1=await B7.evaluate(()=>{ const w=OMNI_BROKER.state().ws; return w.entity+"/"+w.weight; });
+    ok(st.b0==="ccorp/avg"&&st.b1==="ccorp/avg",`another tab's Clear leaves this tab's worksheet source and basis as they were (${JSON.stringify(st)}; r7-worksheet-4)`);
+    x=await pair(A7,B7); await A7.click("#tl_saveas"); await settle(A7); const y7=await cur(A7); await openIn(A7,x);
+    await box(A7,"#v_rev","2,000,000"); await toDeals(A7); await box(B7,"#v_ern","1,900,000"); await B7.click("#tl_save"); await settle(B7); await has(A7,x,"d.inputs.ern===1900000"); await hear(A7);
+    await A7.click(`#dl_tbl tr[data-id="${y7}"] button[data-act="open"]`); await A7.waitForTimeout(1800);
+    st={open:await A7.evaluate(()=>({cur:OMNI_BROKER.state().cur,marked:[...document.querySelectorAll("input.v.bad")].map(e=>e.id)}))};
+    x=await pair(A7,B7); await box(A7,"#v_grw","200"); await A7.click("#tl_save"); await settle(A7); st.g0=await A7.evaluate(()=>document.getElementById("v_grw").classList.contains("bad"));
+    await toDeals(A7); await has(B7,x,"d.inputs.grw>.69"); await hear(B7);
+    await box(B7,"#v_grw","30"); await B7.click("#tl_save"); await settle(B7); await has(A7,x,"Math.abs(d.inputs.grw-.3)<1e-9"); await hear(A7);
+    await box(B7,"#v_buy","100"); await B7.click("#tl_save"); await settle(B7); await has(A7,x,"d.inputs.buyers===100"); await hear(A7);
+    await toConsole(A7); st.g1=await A7.evaluate(()=>({bad:document.getElementById("v_grw").classList.contains("bad"),grw:STATE.s.grw}));
+    x=await pair(A7,B7); await box(A7,"#v_rev","2,000,000"); await toDeals(A7);
+    await box(B7,"#v_ern","1,900,000"); await B7.click("#tl_save"); await settle(B7); await has(A7,x,"d.inputs.ern===1900000"); await hear(A7);
+    await box(B7,"#v_buy","100"); await B7.click("#tl_save"); await settle(B7); await has(A7,x,"d.inputs.buyers===100"); await hear(A7);
+    await toConsole(A7); st.h=await A7.evaluate(()=>({ern:STATE.s.ern,bad:document.getElementById("v_ern").classList.contains("bad"),msg:document.getElementById("tl_msg").textContent}));
+    ok(st.open.cur===y7&&st.open.marked.length===0&&st.g0&&!st.g1.bad&&Math.abs(st.g1.grw-.3)<1e-9&&st.h.ern===1.84e6&&st.h.bad&&/holds it to \$1\.84M and marks it/.test(st.h.msg),
+       `marks from take-ups heard on the Deals tab add up, a deal opened there clears them, and a held SDE stays marked and named (${JSON.stringify({open:st.open.marked,g0:st.g0,g1:st.g1,h:{ern:st.h.ern,bad:st.h.bad,msg:st.h.msg.slice(0,40)}})}; r7-worksheet-3, r7-deals-11, r7-core-5)`);
+    x=await pair(A7,B7); await toDeals(A7); await ern(B7,2.2e6); await B7.click("#tl_save"); await settle(B7); await has(A7,x,"d.inputs.ern===2200000"); await hear(A7);
+    await A7.waitForTimeout(12500); await toConsole(A7); st={m:await msg(A7,"tl_msg"),ern:await A7.evaluate(()=>STATE.s.ern)};
+    ok(st.ern===2.2e6&&/Another tab saved changes to this deal’s inputs/.test(st.m),`a take-up heard while the Deals tab shows waits in the toolbar until the console shows (${JSON.stringify(st)}; r7-deals-4)`);
+    ok(o32a.errs.length===0&&o32b.errs.length===0,"no page errors in round 7's take-up checks: "+o32a.errs.concat(o32b.errs).slice(0,3).join(" | "));
+    await c32.close();
+
+    /* a tab that missed another tab's saves: the worksheet dialog reads the store first (r7-worksheet-7), a copy says what
+       it took up (r7-worksheet-8), the report says it in its own line (r7-deals-4), and Reset after a deletion and a restore
+       does not call the deal deleted (r7-worksheet-10, r7-deals-9) */
+    const c33=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:true}); await c33.addInitScript(deafInit);
+    const o33a=await open(c33,"?deaf"), A8=o33a.p, o33b=await open(c33), B8=o33b.p;
+    x=await pair(A8,B8); await A8.click("#tl_recast"); await settle(A8); for(const [k,v] of [["rev","6,000,000"],["ni","900,000"],["owner","300,000"]]) await cell(A8,k,0,v);
+    await settle(A8); await A8.click("#rc_use"); await settle(A8); await A8.click("#tl_save"); await settle(A8); await has(B8,x,"d.ws&&d.ws.years[0].ni===900000"); await hear(B8);
+    await B8.click("#tl_recast"); await settle(B8); await cell(B8,"dep",0,"80,000"); await settle(B8); await B8.click("#rc_use"); await settle(B8); await B8.click("#tl_save"); await settle(B8);
+    await has(A8,x,"d.ws&&d.ws.years[0].dep===80000");
+    await A8.click("#tl_recast"); await settle(A8); st={dep:await A8.evaluate(()=>document.querySelector('.rc-in[data-k="dep"][data-y="0"]').value),rc:await msg(A8,"rc_msg")}; await A8.click("#rc_close"); await settle(A8);
+    ok(st.dep==="$80,000"&&/Another tab saved changes/.test(st.rc),`the worksheet dialog in a tab that missed another tab's save opens on the worksheet as saved and says so (${JSON.stringify(st)}; r7-worksheet-7, r7-worksheet-2)`);
+    await slider(B8,"i_gm",55); await B8.click("#tl_save"); await settle(B8); await has(A8,x,"Math.abs(d.inputs.gm-.55)<1e-9");
+    await A8.click("#tl_saveas"); await settle(A8); st={m:await msg(A8,"tl_msg"),gm:await A8.evaluate(()=>STATE.s.gm)};
+    await openIn(A8,x); await toDeals(A8); await slider(B8,"i_gm",45); await B8.click("#tl_save"); await settle(B8); await has(A8,x,"Math.abs(d.inputs.gm-.45)<1e-9");
+    await A8.click("#dl_new"); await settle(A8); st.dl=await msg(A8,"dl_msg"); st.gm2=await A8.evaluate(()=>OMNI_BROKER.snap().gm);
+    ok(Math.abs(st.gm-.55)<1e-9&&/Another tab had saved changes to .*inputs, which the console and the copy now show/.test(st.m)&&Math.abs(st.gm2-.45)<1e-9&&/Another tab had saved changes to .*which the console and the copy now show/.test(st.dl),
+       `'Save as new' and the Deals tab's new deal, in a tab that missed another tab's save, say what the console took up (${JSON.stringify({gm:st.gm,gm2:st.gm2,m:st.m.slice(60,200),dl:st.dl.slice(60,200)})}; r7-worksheet-8)`);
+    await toConsole(A8); x=await pair(A8,B8); await ern(B8,2.2e6); await B8.click("#tl_save"); await settle(B8); await has(A8,x,"d.inputs.ern===2200000");
+    await A8.click("#tl_report"); await settle(A8); st={rp:await msg(A8,"rp_msg"),paper:await A8.evaluate(()=>/SDE \$2\.20M/.test(document.querySelector("#rp_paper .rp-meta").textContent))};
+    await A8.click("#rp_close"); await settle(A8);
+    ok(st.paper&&/Another tab saved changes to this deal’s inputs/.test(st.rp),`opening the report in a tab that missed another tab's save says in the report what it took up (${JSON.stringify(st)}; r7-deals-4)`);
+    x=await pair(A8,B8); await name(A8,x,"Ash Dental"); await toConsole(A8); await has(B8,x,"d.name==='Ash Dental'"); await hear(B8);
+    const jp4=await backup(B8,"r7d.json"); await del2(B8,x); await restore(B8,jp4); await has(A8,x,"true");
+    await A8.click("#reset"); await settle(A8); st={m:await msg(A8,"tl_msg")};
+    ok(/“Ash Dental” is unchanged in the Deals tab/.test(st.m),`Reset in a tab that missed the deletion and the restore of the deal in its console does not call it deleted (${st.m.slice(0,90)}; r7-worksheet-10, r7-deals-9)`);
+    ok(o33a.errs.length===0&&o33b.errs.length===0,"no page errors in round 7's checks in a tab that missed saves: "+o33a.errs.concat(o33b.errs).slice(0,3).join(" | "));
+    await c33.close();
+
+    /* refused preferences: the financing line goes once the structure is stored (r7-financing-3, r7-deals-6, r7-core-4); a
+       refused broker stays flagged until a write stores it (r7-report-1) and stays in this tab (r7-deals-7) */
+    const c34=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); await c34.addInitScript(fullInit);
+    /* and a store full for the preferences alone (__prefsFull), where a deal's write still fits */
+    await c34.addInitScript(()=>{ const set=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(window.__prefsFull&&k==="omni.prefs.v1") throw new DOMException("The quota has been exceeded.","QuotaExceededError"); return set.call(this,k,v); }; });
+    const o34=await open(c34), F=o34.p;
+    await F.click("#tl_save"); await settle(F); const id34=await cur(F);
+    await F.evaluate(()=>{ window.__full=true; window.__fullPrefs=true; }); await box(F,"#f_cash","20"); st={fin0:await msg(F,"fin_msg")};
+    await F.evaluate(()=>{ window.__full=false; window.__fullPrefs=false; }); await openIn(F,id34); st.fin1=await msg(F,"fin_msg"); st.pref=await F.evaluate(()=>JSON.parse(localStorage.getItem("omni.prefs.v1")).fin.cash);
+    ok(/financing structure in use is not remembered/.test(st.fin0)&&st.fin1===""&&st.pref===.1,`the financing check's line goes once opening a deal stores the structure in use (${JSON.stringify({fin1:st.fin1,pref:st.pref})}; r7-financing-3, r7-deals-6, r7-core-4)`);
+    await F.click("#tl_report"); await settle(F); await F.fill("#rp_broker","Pat Lee"); await F.press("#rp_broker","Tab"); await F.fill("#rp_firm","Main Street Business Advisors"); await F.press("#rp_firm","Tab"); await settle(F);
+    await F.evaluate(()=>{ window.__prefsFull=true; }); await F.fill("#rp_broker","Patricia Lee-Hernandez"); await F.press("#rp_broker","Tab"); await settle(F); st={r0:await msg(F,"rp_msg")};
+    await F.fill("#rp_biz","Lakeside"); await F.press("#rp_biz","Tab"); await settle(F); st.r1=await msg(F,"rp_msg");
+    await F.evaluate(()=>{ window.__prefsFull=false; }); await F.fill("#rp_firm","MSBA"); await F.press("#rp_firm","Tab"); await settle(F);
+    st.r2=await msg(F,"rp_msg"); st.p=await F.evaluate(()=>{ const p=JSON.parse(localStorage.getItem("omni.prefs.v1")); return p.broker+" / "+p.firm; });
+    ok(/broker’s name is not remembered/.test(st.r0)&&st.r1===st.r0&&st.r2===""&&st.p==="Patricia Lee-Hernandez / MSBA",
+       `a refused broker's name stays flagged through a write of the deal, and the next preference write stores it (${JSON.stringify({r1:st.r1.slice(0,30),r2:st.r2,p:st.p})}; r7-report-1)`);
+    await F.evaluate(()=>{ window.__prefsFull=true; }); await F.fill("#rp_broker","Jane Roe"); await F.press("#rp_broker","Tab"); await settle(F); await F.click("#rp_close"); await settle(F);
+    await F.click("#tl_report"); await settle(F); st={b:await F.evaluate(()=>document.getElementById("rp_broker").value),paper:await F.evaluate(()=>/Jane Roe/.test(document.getElementById("rp_paper").textContent))};
+    await F.click("#rp_close"); await settle(F); await F.evaluate(()=>{ window.__prefsFull=false; });
+    ok(st.b==="Jane Roe"&&st.paper,`a broker's name the store refused stays in this tab when the report opens again (${JSON.stringify(st)}; r7-deals-7)`);
+    ok(o34.errs.length===0,"no page errors in round 7's refused-preference checks: "+o34.errs.slice(0,3).join(" | "));
+    await c34.close();
+
+    /* storage blocked: the financing line promises nothing a deal cannot keep (r7-financing-4, r7-core-4); the coverage
+       basis as SBA states it (r7-financing-5) */
+    const c35=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); await c35.addInitScript(()=>{ Storage.prototype.setItem=function(){ throw new DOMException("blocked","SecurityError"); }; });
+    const o35=await open(c35), G=o35.p; await box(G,"#f_cash","20"); st={fin:await msg(G,"fin_msg"),note:(await msg(G,"fin_note")).replace(/\s+/g," ")};
+    ok(/This browser is not keeping data/.test(st.fin)&&!/a deal saved with it keeps it/.test(st.fin),`with storage blocked the financing check's line does not say a saved deal keeps the structure (${st.fin.slice(0,120)}; r7-financing-4, r7-core-4)`);
+    ok(/on the business’s best statements \(audited, then reviewed, then CPA-compiled, then tax returns, verified against IRS transcripts\), or on a Quality of Earnings report’s earnings where one is needed/.test(st.note)&&!/from tax returns checked/.test(st.note),
+       `the coverage-basis note gives SBA's order of statements, tax returns last, and the QoE's earnings (r7-financing-5)`);
+    ok(o35.errs.length===0,"no page errors with storage blocked (round 7): "+o35.errs.slice(0,3).join(" | "));
+    await c35.close();
+
+    /* the report's count of sales in a German browser (r7-report-6) */
+    const c36=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",locale:"de-DE"}); const o36=await open(c36), L=o36.p;
+    await L.click("#tl_report"); await settle(L);
+    st=await L.evaluate(()=>{ const t=document.getElementById("rp_paper").textContent, f=OMNI_BROKER.reportFile(), re=/a regression on ([\d.,\s  ]+) closed sales/; return {p:(t.match(re)||[])[1],f:(f.match(re)||[])[1],de:(1234).toLocaleString()}; });
+    ok(st.de==="1.234"&&st.p===st.f&&/^\d{1,3}(,\d{3})+$/.test(st.p||""),`the report's count of closed sales prints as its other figures do in a German browser (${JSON.stringify(st)}; r7-report-6)`);
+    ok(o36.errs.length===0,"no page errors in a German browser: "+o36.errs.slice(0,3).join(" | "));
+    await c36.close();
+
+    /* the Deals tab's form: a listing far from value (r7-deals-5) and a close after today (r7-deals-10) are flagged; a new
+       deal the full store refused is marked, and deleting it is done (r7-deals-8) */
+    const c37=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); await c37.addInitScript(fullInit); const o37=await open(c37), D7=o37.p;
+    await D7.click("#tl_save"); await settle(D7); const id37=await cur(D7); await toDeals(D7); await D7.click(`#dl_tbl tr[data-id="${id37}"] .dl-name`); await settle(D7);
+    const form=async kv=>{ for(const [k,v] of kv){ if(k==="status") await D7.selectOption('#dl_form select[name="status"]',v); else await D7.fill(`#dl_form input[name="${k}"]`,v); } await D7.click('#dl_form button[type="submit"]'); await settle(D7); return msg(D7,"dl_form_msg"); };
+    st={m5:await form([["status","closed"],["listPrice","32,400,000"],["salePrice","30,780,000"],["listDate","2025-02-03"],["closeDate","2025-09-01"]])};
+    st.m10=await form([["listPrice","3,240,000"],["salePrice","3,100,000"],["listDate","2026-03-02"],["closeDate",(new Date().getFullYear()+1)+"-11-30"]]);
+    st.days=await D7.evaluate(id=>{ const c=document.querySelector(`#dl_tbl tr[data-id="${id}"] td[data-th="Days to close"]`); return c?c.textContent:null; },id37);
+    ok(/listing price is [\d.]+× the model value/.test(st.m5)&&/closing date is after today/.test(st.m10)&&st.days==="—",
+       `a listing typed ten times too high and a closing date after today are flagged, and the future close counts no days (${JSON.stringify({m5:st.m5.slice(0,60),m10:st.m10.slice(0,60),days:st.days})}; r7-deals-5, r7-deals-10)`);
+    await toConsole(D7); await D7.click("#reset"); await settle(D7); await ern(D7,7e5); await D7.evaluate(()=>{ window.__full=true; }); await D7.click("#tl_save"); await settle(D7);
+    st={bar:await msg(D7,"tl_deal")}; const id38=await cur(D7); await toDeals(D7); await del2(D7,id38); st.del=await msg(D7,"dl_msg"); await D7.evaluate(()=>{ window.__full=false; });
+    ok(/kept in this tab only/.test(st.bar)&&/^Deleted “[^”]+”\.$/.test(st.del),`a new deal the full store refused is marked as kept in this tab only, and deleting it says only that it is deleted (${JSON.stringify(st)}; r7-deals-8)`);
+    ok(o37.errs.length===0,"no page errors in round 7's Deals tab checks: "+o37.errs.slice(0,3).join(" | "));
+    await c37.close();
+
+    /* unreadable deals: a second tab counts only its own as in this tab only once another has stored its own (r7-deals-3) */
+    const c38=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:false});
+    await c38.addInitScript(()=>{ if(!localStorage.getItem("seed7")){ localStorage.setItem("seed7","1"); localStorage.setItem("omni.deals.v1","{not json"); }
+      const set=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==="omni.deals.v1.unreadable") throw new DOMException("The quota has been exceeded.","QuotaExceededError"); return set.call(this,k,v); }; });
+    const o38a=await open(c38), U2=o38a.p, o38b=await open(c38), V3=o38b.p;
+    await U2.click("#tl_save"); await settle(U2); await ern(U2,1.2e6); await U2.click("#tl_saveas"); await settle(U2); await ern(V3,7e5); await V3.click("#tl_save"); await settle(V3);
+    await toDeals(U2); await U2.click("#dl_unread"); await settle(U2); await U2.waitForSelector("#dl_unread_ok"); await U2.click("#dl_unread_ok"); await settle(U2);
+    await sees(U2,()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } });
+    await sees(V3,()=>OMNI_BROKER.state().deals.length===3); await toDeals(V3); st={line:(await msg(V3,"dl_store")).replace(/\s+/g," "),n:await V3.evaluate(()=>OMNI_BROKER.state().deals.length)};
+    ok(st.n===3&&/1 of the 3 deals here is in this tab only/.test(st.line),`a second tab on an unreadable store counts only its own deals as in this tab only once another has stored its own (${JSON.stringify(st)}; r7-deals-3)`);
+    ok(o38a.errs.length===0&&o38b.errs.length===0,"no page errors in round 7's unreadable-store check: "+o38a.errs.concat(o38b.errs).slice(0,3).join(" | "));
+    await c38.close();
+
+    /* an open report's price record follows another tab's closed deal and opt-out (r7-report-5) */
+    const c39=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const o39a=await open(c39), A9=o39a.p;
+    await A9.evaluate(()=>{ const I=OMNI_BROKER.snap(), D=[]; for(let i=0;i<6;i++){ const P=dealPredict({inputs:I,listPrice:I.ask}); D.push({id:"c"+i,name:"Closed "+i,status:"closed",inputs:I,listPrice:I.ask,salePrice:Math.round(P.pExp*(.9+.04*i)),updated:"2026-01-01T00:00:00.000Z"}); }
+      localStorage.setItem("omni.deals.v1",JSON.stringify(D)); localStorage.setItem("omni.prefs.v1",JSON.stringify({calib:true})); });
+    await reload(A9); const o39b=await open(c39), B9=o39b.p;
+    await A9.click("#tl_report"); await settle(A9); st={r0:await A9.evaluate(()=>(document.getElementById("rp_paper").textContent.match(/(\d+) closed deals? sold/)||[])[1])};
+    await B9.evaluate(()=>{ const D=JSON.parse(localStorage.getItem("omni.deals.v1")), I=D[0].inputs, P=dealPredict({inputs:I,listPrice:I.ask});
+      D.push({id:"c6",name:"Closed 6",status:"closed",inputs:I,listPrice:I.ask,salePrice:Math.round(P.pExp*1.3),updated:new Date().toISOString()}); localStorage.setItem("omni.deals.v1",JSON.stringify(D)); });
+    await sees(A9,()=>/7 closed deals/.test(document.getElementById("rp_paper").textContent)); st.r1=await A9.evaluate(()=>(document.getElementById("rp_paper").textContent.match(/(\d+) closed deals? sold/)||[])[1]);
+    await toDeals(B9); await B9.click("#dl_calib"); await settle(B9); await sees(A9,()=>!/Track record/.test(document.getElementById("rp_paper").textContent));
+    st.r2=await A9.evaluate(()=>({paper:/Track record/.test(document.getElementById("rp_paper").textContent),file:/Track record/.test(OMNI_BROKER.reportFile())}));
+    await A9.click("#rp_close"); await settle(A9);
+    ok(st.r0==="6"&&st.r1==="7"&&!st.r2.paper&&!st.r2.file,`an open report's price record follows another tab's closed deal and opt-out, as the toolbar does (${JSON.stringify(st)}; r7-report-5)`);
+    ok(o39a.errs.length===0&&o39b.errs.length===0,"no page errors in round 7's price-record check: "+o39a.errs.concat(o39b.errs).slice(0,3).join(" | "));
+    await c39.close(); }
 
   /* a phone with the quality fit showing: the fits panel stays inside its box, its table scrolls */
   const c7=await b3.newContext({viewport:{width:390,height:844},reducedMotion:"reduce"});

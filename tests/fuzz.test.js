@@ -307,6 +307,13 @@ for(let i=0;i<N;i++){
     ok(!(c.loan===0&&c.note>0)||(!c.standby&&Math.abs(c.notePay-A.annualPayment(c.note,f.noteRate,f.noteYears))<1e-6),"broker: with no SBA loan a note is paid on its own terms, standby or not",ctx(s,f));
     ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?p:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(p<=S.ownValuationMax),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
     ok(c.debtOverValue===(c.loan>0&&c.debt>V*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
+    /* the seller-note convention's badge goes where the note's share moves the figure (r7-financing-1): at the starting
+       share coverage (noteConv) and the debt above value carry it exactly where a hair's change of the share moves them;
+       past the 7(a) maximum a standby note moves neither, a paid one the debt */
+    { const sh=x=>A.debtCheck(s,p,{...f,note:x},V), c5=sh(.05), mv=k=>[.0499,.0501].some(x=>Math.abs(sh(x)[k]-c5[k])>1e-7*Math.max(1,Math.abs(c5[k])));
+      const dvj=c5.debtOverValue&&c5.note>0&&(c5.over>0?!c5.standby:c5.standby);
+      ok(c5.noteCut||((!c5.noteConv||c5.notePay>0&&(f.noteRate===A.FIN_DEFAULTS.noteRate||f.noteYears===A.FIN_DEFAULTS.noteYears)||mv("dscr"))&&(!c5.debtOverValue||dvj===mv("debt"))),
+         "broker: at the starting share the note's convention badges coverage and the debt above value only where the share moves them (r7-financing-1)",ctx(s,f,{over:c5.over,sb:c5.standby})); }
     /* coverage as printed: rounded down, never the minimum it fails */
     { const t=A.covFmt(c), x=parseFloat(t);
       ok(!(c.ds>0)?/^no (payments|debt)$/.test(t):!(c.cf>0)?t==="none":(/^\d+\.\d\d×$/.test(t)&&x<=c.dscr+1e-9&&(c.ok?x>=c.min-1e-9:x<c.min-1e-9)),"broker: coverage prints rounded down, below the minimum when it fails",ctx(s,f,{t})); }
