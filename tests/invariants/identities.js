@@ -454,7 +454,8 @@ async function browser(){
         [T("o_mult").startsWith(xx(r.M)),"o_mult",T("o_mult"),xx(r.M)],[T("o_t").startsWith(String(Math.round(r.tMed))),"o_t",T("o_t"),Math.round(r.tMed)],
         [+T("o_score")===omniScore(r),"o_score",T("o_score"),omniScore(r)],[+T("o_score_biz")===r.scoreQ,"o_score_biz",T("o_score_biz"),r.scoreQ]];
       if(r.cashShare<1) hero.push([ev.includes(money(r.EVcash)+" cash at close"),"o_ev cash",ev,money(r.EVcash)]);
-      if(r.fv.wedge) hero.push([T("o_mult").includes(xx(r.M*r.fv.wedge)+" EBITDA"),"o_mult ebitda",T("o_mult"),xx(r.M*r.fv.wedge)]);
+      /* the EBITDA multiple takes a manager's market pay off SDE since round 9 (r9-console-5) */
+      { const eb=s.ern-marketPay(s), w=eb>0?xx(r.V/eb)+" EBITDA after a manager’s pay":"no EBITDA after a manager’s pay"; hero.push([T("o_mult").includes(w),"o_mult ebitda",T("o_mult"),w]); }
       out.hero=hero.filter(h=>!h[0]).map(h=>h.slice(1));
       /* intervention table */
       const cellTxt=td=>{ const c=td.cloneNode(true); c.querySelectorAll(".cl,.tags").forEach(x=>x.remove()); return c.textContent.replace(/\s+/g," ").trim(); };

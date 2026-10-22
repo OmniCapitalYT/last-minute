@@ -408,7 +408,8 @@ function checkState(name,st,askTyped,S,E){
   /* ---- hero */
   { const bb=r.best.n.replace("Private equity","PE").replace("Individual owner-operator","Owner-operator").replace(" / ","\u00a0/ ");
     const evOk=S.kfig.o_ev[0]===money(r.EVp)&&(r.cashShare<1?S.kfig.o_ev[1]===money(r.EVcash)+" cash at close":S.kfig.o_ev[1]===null);
-    const mult=xx(r.M)+" SDE"+(r.fv.wedge?xx(r.M*r.fv.wedge)+" EBITDA":"");
+    /* the EBITDA multiple takes a manager's market pay off SDE since round 9 (r9-console-5) */
+    const eb=s.ern-A.marketPay(s), mult=xx(r.M)+" SDE"+(eb>0?xx(r.V/eb)+" EBITDA after a manager’s pay":"no EBITDA after a manager’s pay");
     const bad=[]; if(tx.o_msv!==money(r.V)) bad.push("o_msv "+tx.o_msv); if(tx.o_pc!==pc(r.PC)) bad.push("o_pc "+tx.o_pc); if(!evOk) bad.push("o_ev "+tx.o_ev);
     if(S.kfig.o_val[0]!==money(r.Vmean)) bad.push("o_val "+S.kfig.o_val[0]); if(tx.o_mult!==mult) bad.push("o_mult "+tx.o_mult+" want "+mult);
     if(tx.o_t!==Math.round(r.tMed)+" days") bad.push("o_t "+tx.o_t); if(tx.o_bb!==bb) bad.push("o_bb "+tx.o_bb);
@@ -517,7 +518,8 @@ function checkState(name,st,askTyped,S,E){
       &&tx.o_gapu.startsWith("from "+tx.o_msv),ctx({eq:e,o_gap:tx.o_gap,o_gapu:tx.o_gapu,gap:g})); }
   { const bi=E.it.find(o=>o.c>0), e=eq.eq_rs||"", row=S.intbl.find(x=>x[0]===bi.n)||[];
     const want=(bi.roi<0?"-":"")+Math.abs(bi.roi*100).toFixed(0)+"%";
-    const sq=seqIn(e,[bi.n,dm(money(bi.dE,2)),dm(A.moneyIn(bi.c)),dm(A.moneyIn(bi.c)),"="+want]);
+    /* the gain at the boxes' precision since round 9 (r9-console-2) */
+    const sq=seqIn(e,[bi.n,dm(A.moneyIn(bi.dE)),dm(A.moneyIn(bi.c)),dm(A.moneyIn(bi.c)),"="+want]);
     ok("eq-roi-substitution",sq.ok&&dm(row[6]||"")===want&&E.it.filter(o=>o.c>0)[0]===bi,ctx({missing:sq.missing,eq:e,row})); }
   { const eo=eq.eq_os||"", eu=eq.eq_us||"", bV=E.best.V, bU=E.best.U, c1=S.cards[0], c2=S.cards[1];
     const sqo=seqIn(eo,["B="+dm(A.moneyIn(s.budget)),"2^{11}=2,048","commits "+dm(A.moneyIn(bV.c)),"proceeds "+dm(money(bV.proceeds))]);
@@ -598,7 +600,10 @@ function checkState(name,st,askTyped,S,E){
   /* ---- optimiser */
   { const w1=E.rhoSell.toFixed(2)+"× value · "+pc(E.rSell.PC)+" to close · "+money(E.rSell.EVp)+" expected proceeds", w2=E.optRho.toFixed(2)+"× value · "+pc(E.rKeep.PC)+" to close · "+money(E.rKeep.EVp)+" expected proceeds";
     ok("decision-tiles-equal-model",tx.o_list===money(r.V*E.rhoSell)&&tx.o_list2===money(r.V*E.optRho)&&tx.o_listp===w1&&tx.o_listp2===w2,ctx({got:[tx.o_list,tx.o_listp,tx.o_list2,tx.o_listp2],want:[money(r.V*E.rhoSell),w1,money(r.V*E.optRho),w2]})); }
-  const cardWant=(sel,rho)=>{ const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:A.INTERV.find(i=>i.k===k).n):[sel.blocked?`Do nothing — nothing within the budget clears its cost; ${A.INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${A.moneyIn(sel.blocked.c)}`
+  /* a programme the relisting's delay, not the budget, keeps empty names it (r9-console-1) */
+  const cardWant=(sel,rho)=>{ const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:A.INTERV.find(i=>i.k===k).n)
+      :sel.relist?[`Do nothing — relisting at the walk-away ask, ${money(sel.relist.ask)}, adds ${money(sel.relist.gain)} but its ${sel.relist.days} days cost ${money(sel.relist.delay)} at $${Math.round(s.lamT).toLocaleString("en-US")} a day; before listing, list at the walk-away ask`]
+        .concat(sel.blocked?[`${A.INTERV.find(i=>i.k===sel.blocked.k).n} would clear its cost, for ${A.moneyIn(sel.blocked.c)}, over the budget`]:[]):[sel.blocked?`Do nothing — nothing within the budget clears its cost; ${A.INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${A.moneyIn(sel.blocked.c)}`
       :E.best.allIn?"Do nothing — no combination clears its cost":"Do nothing — nothing within the budget clears its cost"];
     return {rows:names.map((n,i)=>[n,sel.keys[i]?A.moneyIn(A.INTERV.find(x=>x.k===sel.keys[i]).cost(E.t)):"—"]),total:A.moneyIn(sel.c)+" of "+A.moneyIn(s.budget),
       bigs:[["Expected proceeds",money(sel.proceeds)],["Median price if it closes",money(sel.V)],["Closes",pc(sel.PC)],["Expected days",String(Math.round(sel.t+sel.days))]]}; };
@@ -642,20 +647,22 @@ function checkState(name,st,askTyped,S,E){
     if(/^With \d+% of value retained if the sale fails.*both objectives agree on the same price/.test(n)){ if(tx.o_list!==tx.o_list2) bad.push("same but tiles differ"); }
     else if(/^The cost of delay pulls the second figure below/.test(n)){
       if(!(L2<L1)) bad.push("lower but tiles "+L1+"/"+L2);
-      const m=/Listing at (\$[\d.]+[kMB]?) gives up (\$[\d.]+[kMB]?) of expected proceeds, but it is ([\d.]+) pts more likely to close and closes (?:about (a day|\d+ days)|slightly) sooner on average, worth (\$[\d.]+[kMB]?) at \$([\d,]+) a day\./.exec(n);
+      const m=/Listing at (\$[\d.]+[kMB]?) gives up (\$[\d.]+[kMB]?) of expected proceeds, but it is ([\d.]+) pts more likely to close and closes (?:about (\d+\.\d days|\d+ days)|slightly) sooner on average, worth (\$[\d.]+[kMB]?) at \$([\d,]+) a day\./.exec(n);
       if(!m) bad.push("lower format"); else { if(m[1]!==tx.o_list2) bad.push("listing price");
         if(Math.abs(pm(m[2])-(ev1-ev2))>mtol(pm(m[2]))+mtol(ev1)+mtol(ev2)+1) bad.push("gives up "+m[2]+" tiles "+ev1+"/"+ev2);
         if(Math.abs(+m[3]/100-(pc2-pc1))>.01+.0005) bad.push("pts "+m[3]+" tiles "+pc1+"/"+pc2);
         const dt=E.rSell.tMean-E.rKeep.tMean; if(!(dt>0)) bad.push("says sooner but dt="+dt);
-        if(m[4]===undefined&&Math.round(dt)>=1) bad.push("slightly vs "+dt); } }
+        if(m[4]===undefined&&dt>=.05) bad.push("slightly vs "+dt);
+        /* under two days the difference is given to a tenth (r9-sale-4) */
+        if(m[4]!==undefined&&(dt<1.95?m[4]!==dt.toFixed(1)+" days":m[4]!==Math.round(dt)+" days")) bad.push("days "+m[4]+" vs "+dt); } }
     else if(/^The gap between these is the real decision\. The higher price gives up/.test(n)){
       if(!(L2>L1)) bad.push("higher but tiles "+L1+"/"+L2);
-      const m=/The higher price gives up ([\d.]+) pts of closing probability and (\$[\d.]+[kMB]?) of expected proceeds for a bigger cheque if it does close(?:, takes about (a day|\d+ days) longer to close on average,)?/.exec(n);
+      const m=/The higher price gives up ([\d.]+) pts of closing probability and (\$[\d.]+[kMB]?) of expected proceeds for a bigger cheque if it does close(?:, takes about (\d+\.\d days|\d+ days) longer to close on average,)?/.exec(n);
       if(!m) bad.push("higher format"); else {
         if(Math.abs(+m[1]/100-(pc1-pc2))>.01+.0005) bad.push("pts "+m[1]+" tiles "+pc1+"/"+pc2);
         if(Math.abs(pm(m[2])-(ev1-ev2))>mtol(pm(m[2]))+mtol(ev1)+mtol(ev2)+1) bad.push("gives up "+m[2]+" tiles "+ev1+"/"+ev2);
         if(!(E.rKeep.Vmean>E.rSell.Vmean)) bad.push("bigger cheque false "+E.rSell.Vmean+"/"+E.rKeep.Vmean);
-        const dt=E.rKeep.tMean-E.rSell.tMean; if(m[3]!==undefined&&!(dt>0)) bad.push("longer but dt="+dt); if(m[3]===undefined&&Math.round(Math.abs(dt))>=1) bad.push("time clause missing"); } }
+        const dt=E.rKeep.tMean-E.rSell.tMean; if(m[3]!==undefined&&!(dt>0)) bad.push("longer but dt="+dt); if(m[3]===undefined&&Math.abs(dt)>=.05) bad.push("time clause missing"); } }
     else bad.push("unknown branch");
     const coin=/close to a coin toss/.test(n); if(coin!==!!E.note.coin||(E.note.coin!==(E.note.kind!=="same"&&E.note.gain<.01*r.V))) bad.push("coin");
     /* the range spans every near-tie peak with the walk-away ask (sixth skeptic round of the broker tools, r6-core-1): its
@@ -826,8 +833,9 @@ async function partB(){
   await settle(p,true);
   const snap=async()=>p.evaluate(pageSnap);
   const S0=await snap();                                    /* the page as loaded */
-  /* $4.05M since the third round's peer medians and spreads (the largest customer's median .14, its spread .18): $4.09M before */
-  ok("reset-restores-defaults",Object.keys(DEF_UI).every(k=>S0.s[k]===DEF_UI[k])&&money(S0.r.V)==="$4.05M",()=>J({s:S0.s,V:S0.r.V}));
+  /* $4.31M since round 9 pooled the medical industry's physicians' and dentists' cells; $4.05M since the third round's peer
+     medians and spreads (the largest customer's median .14, its spread .18): $4.09M before */
+  ok("reset-restores-defaults",Object.keys(DEF_UI).every(k=>S0.s[k]===DEF_UI[k])&&money(S0.r.V)==="$4.31M",()=>J({s:S0.s,V:S0.r.V}));
   /* the Data tab's live figures, once */
   { const d=await p.evaluate(()=>({text:document.getElementById("view-data").textContent,attrs:[...document.querySelectorAll("#view-data [title],#view-data [aria-label]")].map(e=>(e.getAttribute("title")||"")+(e.getAttribute("aria-label")||"")).join(" | "),
       calib:[...document.querySelectorAll("#calib .chk")].map(r=>{ const v=r.querySelector(":scope>span.n:not(.muted)"); return v?v.textContent.trim():null; })}));

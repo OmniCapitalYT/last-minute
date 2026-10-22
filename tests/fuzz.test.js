@@ -297,21 +297,31 @@ for(let i=0;i<N;i++){
      the report's figures */
   { const V=r.V, f={type:pick(["initial","expansion","buyout"]),cash:pick([0,.05,.0995,.1,.2,.5,.9]),note:pick([0,.05,.1,.3,.9]),noteRate:pick([0,4,6,9]),
       noteYears:pick([1,5,10,25]),standby:rnd()<.3,extra:rnd()<.5?0:V*.2*rnd(),capex:rnd()<.5?0:s.ern*.3*rnd(),draw:rnd()<.5?null:s.ern*rnd()};
-    const p=s.ask, c=A.debtCheck(s,p,f,V), S=A.SBA_COO, share=1-f.cash-f.note;
+    /* round 9: SBA's guaranty fee financed, paid in cash or waived, and an owner buyout of part of the business */
+    f.fee=pick(["financed","financed","cash","waived"]); if(f.type==="buyout"&&rnd()<.3) f.stake=pick([.25,.4,.6]);
+    const p=s.ask, c=A.debtCheck(s,p,f,V), S=A.SBA_COO, share=1-f.cash-f.note, pb=c.bought;
     ok([c.loan,c.cash,c.note,c.ds,c.cf,c.rate,c.draw,c.equityNeed,c.equityIn,c.debt].every(fin)&&(fin(c.dscr)||c.dscr===Infinity),"broker: debt check finite",ctx(s,f));
-    ok(Math.abs(c.loan+c.cash+c.note-c.project)<=1e-6*c.project+1e-6&&c.loan<=S.maxLoan&&c.loan>=0&&c.over>=0&&c.note<=f.note*p+1e-6
-       &&c.cash>=Math.max(0,f.cash)*c.project*(1-1e-9)&&c.noteCut===(c.note<f.note*p-1e-6),"broker: the loan, cash and note make up the project, the loan within the 7(a) cap, the note cut only to fit",ctx(s,f));
+    ok(Math.abs(c.loan+c.cash+c.note-c.project)<=1e-6*c.project+1e-6&&c.loan<=S.maxLoan&&c.loan>=0&&c.over>=0&&c.note<=f.note*pb+1e-6
+       &&c.cash>=Math.max(0,f.cash)*c.project*(1-1e-9)-1e-6&&c.noteCut===(c.note<f.note*pb-1e-6),"broker: the loan, cash and note make up the project, the loan within the 7(a) cap, the note cut only to fit",ctx(s,f));
     ok(Math.abs(c.ds-c.sbaPay-c.notePay)<1e-6&&(c.ds>0?Math.abs(c.dscr-c.cf/c.ds)<1e-9*Math.max(1,Math.abs(c.dscr)):c.dscr===Infinity)
        &&Math.abs(c.cf-(s.ern-c.draw-c.capex))<1e-6&&(f.draw!==null||Math.abs(c.draw-A.gmSalary(s)*A.IVC.gm.loading)<1e-6),"broker: coverage is cash available, after the loaded market pay, over the payments",ctx(s,f));
     ok(!f.standby||c.loan===0||(c.notePay===0&&c.debt===c.loan&&c.equityIn<=c.cash+S.standbyShare*c.equityNeed+1e-6),"broker: a standby note is no payment, no debt, at most half the equity",ctx(s,f));
     ok(!(c.loan===0&&c.note>0)||(!c.standby&&Math.abs(c.notePay-A.annualPayment(c.note,f.noteRate,f.noteYears))<1e-6),"broker: with no SBA loan a note is paid on its own terms, standby or not",ctx(s,f));
-    ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?p:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(p<=S.ownValuationMax),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
-    ok(c.debtOverValue===(c.loan>0&&c.debt>V*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
+    ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?pb:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(pb<=S.ownValuationMax),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
+    ok(c.debtOverValue===(c.loan>0&&c.debt>c.value*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
+    /* round 9: the stake prices the purchase and the valuation pro rata; the fee is SBA's on the loan, in the project, in
+       the loan's shares when financed, in the buyer's cash when paid at closing, and none where waived */
+    { const st=f.type==="buyout"&&f.stake?f.stake:1, cs=Math.min(1,Math.max(0,f.cash)), base=(pb+(f.extra||0))*(1-cs)-c.note;
+      const want=f.fee==="waived"||(s.ind==="mfg"&&c.loan<=7e5)?0:typeof A.guarantyFee==="function"?A.guarantyFee(c.loan):NaN;
+      ok(Math.abs(pb-p*st)<1e-6&&Math.abs(c.value-V*st)<1e-6*V&&Math.abs(c.fee-want)<1e-6&&Math.abs(c.project-(pb+(f.extra||0)+c.fee))<1e-6*c.project+1e-6
+         &&c.feeIn===(f.fee==="financed"?c.fee:0)&&(c.loan===0||c.over>0||Math.abs(c.loan-(base+(f.fee==="financed"?(1-cs)*c.fee:0)))<1e-4*Math.max(1,c.loan))
+         &&(f.fee!=="cash"||c.loan===0||c.over>0||Math.abs(c.cash-(cs*(pb+(f.extra||0))+c.fee))<1e-4*Math.max(1,c.cash)),
+         "broker: the stake and the SBA fee: purchase and valuation pro rata, the fee on the loan, financed in its shares or paid in cash",ctx(s,f,{fee:c.fee,loan:c.loan})); }
     /* the seller-note convention's badge goes where the note's share moves the figure (r7-financing-1): at the starting
        share coverage (noteConv) and the debt above value carry it exactly where a hair's change of the share moves them;
        past the 7(a) maximum a standby note moves neither, a paid one the debt */
     { const sh=x=>A.debtCheck(s,p,{...f,note:x},V), c5=sh(.05), mv=k=>[.0499,.0501].some(x=>Math.abs(sh(x)[k]-c5[k])>1e-7*Math.max(1,Math.abs(c5[k])));
-      const dvj=c5.debtOverValue&&c5.note>0&&(c5.over>0?!c5.standby:c5.standby);
+      const dvj=c5.debtOverValue&&c5.note>0&&(c5.over>0?!c5.standby:c5.standby||c5.feeIn>0);
       ok(c5.noteCut||((!c5.noteConv||c5.notePay>0&&(f.noteRate===A.FIN_DEFAULTS.noteRate||f.noteYears===A.FIN_DEFAULTS.noteYears)||mv("dscr"))&&(!c5.debtOverValue||dvj===mv("debt"))),
          "broker: at the starting share the note's convention badges coverage and the debt above value only where the share moves them (r7-financing-1)",ctx(s,f,{over:c5.over,sb:c5.standby})); }
     /* coverage as printed: rounded down, never the minimum it fails */

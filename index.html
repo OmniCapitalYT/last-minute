@@ -1635,17 +1635,17 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
 
     <div class="grp">
       <p class="grp-title">Revenue quality</p>
-      <div class="f"><div class="lab"><label for="i_grw">Revenue growth, YoY</label><input class="v" id="v_grw" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Revenue growth, YoY, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_grw">Revenue growth, YoY</label><input class="v" id="v_grw" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." autocomplete="off" spellcheck="false" aria-label="Revenue growth, YoY, exact value"></div>
         <input type="range" id="i_grw" min="-25" max="70" step="1" value="14"></div>
-      <div class="f"><div class="lab"><label for="i_gm">Gross margin</label><input class="v" id="v_gm" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Gross margin, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_gm">Gross margin</label><input class="v" id="v_gm" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Gross margin, exact value"></div>
         <input type="range" id="i_gm" min="12" max="97" step="1" value="64"></div>
-      <div class="f"><div class="lab"><label for="i_rec">Recurring or contracted revenue</label><input class="v" id="v_rec" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Recurring or contracted revenue, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_rec">Recurring or contracted revenue</label><input class="v" id="v_rec" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Recurring or contracted revenue, exact value"></div>
         <input type="range" id="i_rec" min="0" max="100" step="1" value="72"></div>
-      <div class="f"><div class="lab"><label for="i_cc">Largest customer, share of revenue</label><input class="v" id="v_cc" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Largest customer, share of revenue, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_cc">Largest customer, share of revenue</label><input class="v" id="v_cc" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Largest customer, share of revenue, exact value"></div>
         <input type="range" id="i_cc" min="1" max="70" step="1" value="18"></div>
-      <div class="f"><div class="lab"><label for="i_ret">Customer retention</label><input class="v" id="v_ret" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Customer retention, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_ret">Customer retention</label><input class="v" id="v_ret" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Customer retention, exact value"></div>
         <input type="range" id="i_ret" min="5" max="99" step="1" value="91"></div>
-      <div class="f"><div class="lab"><label for="i_plt">Largest acquisition channel, share of new revenue</label><input class="v" id="v_plt" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Largest acquisition channel, share of new revenue, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_plt">Largest acquisition channel, share of new revenue</label><input class="v" id="v_plt" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Largest acquisition channel, share of new revenue, exact value"></div>
         <input type="range" id="i_plt" min="5" max="95" step="1" value="38"></div>
     </div>
 
@@ -1684,7 +1684,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
         <input type="range" id="i_bud" min="0" max="1000" step="1" value="500"></div>
       <div class="f"><div class="lab"><label for="i_lam">Cost of delay, per day</label><input class="v" id="v_lam" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Cost of delay, per day, exact value"></div>
         <input type="range" id="i_lam" min="0" max="4000" step="50" value="900"></div>
-      <div class="f"><div class="lab"><label for="i_th">Worth of keeping the business if it doesn't sell</label><input class="v" id="v_th" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Worth of keeping the business if it doesn't sell, exact value"></div>
+      <div class="f"><div class="lab"><label for="i_th">Worth of keeping the business if it doesn't sell</label><input class="v" id="v_th" type="text" title="A percent: 72 or 72%. A plain number under 1 is read as a share, so 0.72 is 72%; type 0.5% for half a percent." inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="Worth of keeping the business if it doesn't sell, exact value"></div>
         <input type="range" id="i_th" min="0" max="100" step="1" value="75"></div>
     </div>
     <button class="btn" id="reset">Reset to the framework example</button>
@@ -1748,7 +1748,8 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <h2>Peer normalization</h2><span class="ref">framework §4</span></div>
       <div class="panel">
         <p class="lede">Each raw metric is scored against the peer group for this industry and size band,
-          so the model reads position relative to comparable businesses rather than the raw figure.</p>
+          so the model reads position relative to comparable businesses rather than the raw figure.
+          Blue bars are better than peers and rose bars worse: more concentration or owner dependence than peers scores above zero and is worse.</p>
         <div id="zbars"></div>
         <div class="eq"><div class="lbl">Standardization applied to every continuous input</div>
           <div id="eq_z"></div><div class="sub" id="eq_zs"></div></div>
@@ -1902,7 +1903,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
       <h2>Budget optimizer</h2><span class="ref">framework §18–19</span></div>
       <div class="panel">
         <p class="lede">Exhaustive search over every combination of interventions that fits the budget.
-          The two objectives can disagree — maximizing price is not always the same as maximizing the seller's overall outcome.</p>
+          The two objectives can disagree — maximizing expected proceeds is not always the same as maximizing the seller's overall outcome.</p>
         <div class="decide" id="decide">
           <svg class="decide-arc" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 40C16 4 84 4 100 40"/></svg>
           <div class="big-row">
@@ -1943,6 +1944,8 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
           <label class="fin-f">Working capital and closing costs<input type="text" class="fin-v" id="f_extra" inputmode="decimal" autocomplete="off" spellcheck="false" value="none"></label>
           <label class="fin-f">Capital spending a year<input type="text" class="fin-v" id="f_capex" inputmode="decimal" autocomplete="off" spellcheck="false" value="none"></label>
           <label class="fin-f wide">New owner&rsquo;s pay a year, with payroll taxes and benefits<input type="text" class="fin-v" id="f_draw" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="a general manager&rsquo;s market pay"></label>
+          <div class="fin-f wide"><label for="f_fee">SBA guaranty fee</label><select id="f_fee" aria-describedby="f_fee_h"></select><span class="fin-h" id="f_fee_h">2% to 3.75% of the loan&rsquo;s guaranteed share; FY2027 waives it on loans of $700k or less to manufacturers, listed food-supply businesses and rural businesses</span></div>
+          <div class="fin-f" id="f_stake_f" hidden><label for="f_stake">Share of the business bought</label><input type="text" class="fin-v" id="f_stake" inputmode="decimal" autocomplete="off" spellcheck="false" value="100%" aria-describedby="f_stake_h"><span class="fin-h" id="f_stake_h">priced pro rata to the whole business</span></div>
           <label class="fin-chk"><input type="checkbox" id="f_standby"> Seller note on full standby: no payments while the SBA loan is outstanding, and it counts toward the buyer&rsquo;s equity</label>
         </div>
         <p class="tools-msg" id="fin_msg" role="status" aria-live="polite"></p>
@@ -2273,6 +2276,33 @@ const IND2NAICS={home:"23",medical:"62",vet:"54",msp:"54",saas:"51",prof:"54",
 const IND2NAICS6={"home": "238220", "medical": "621111", "vet": "541940", "msp": "541511", "prof": "541211", "mfg": "339950", "dist": "423310", "staff": "561320", "land": "561730", "wash": "811192", "auto": "811111", "constr": "238990", "fit": "713940", "rest": "722511", "ecom": "541512"};
 const naicsFor=k=>IND2NAICS[k]||"81";
 const naics6For=k=>IND2NAICS6[k]||null;
+/* The cells each industry is VALUED on: every BIZCOMPS 6-digit cell its label names, pooled as one cell (r9-valuation-1).
+   IND2NAICS6 above keeps one representative code per industry (the risk model and the comps note read it), but a label
+   such as "Medical or dental practice" covers dentists (621210) as well as physicians (621111), and "Manufacturing" every
+   manufacturing cell, not sign makers alone. The pools follow the labels and the repo's own peer fits (medical and
+   professional services are the blends fit/peer_gross_margin.py uses); home services leaves construction to its own
+   industry, and restaurants leave bars (722410) out of food service. */
+const IND_CELLS=(function(){ const cs=Object.keys(MODELS.value.industry_effects_naics6), pick=re=>cs.filter(c=>re.test(c));
+  return {home:["238220","238210"], medical:["621111","621210"], vet:["541940"], msp:["541511"],
+    prof:["541211","541213","541219","541110"], mfg:pick(/^3[123]/), dist:pick(/^42/), staff:["561320","561311"],
+    land:["561730"], wash:["811192"], auto:["811111","811112","811113","811118","811121","811122"],
+    constr:pick(/^23[678]/).filter(c=>c!=="238210"&&c!=="238220"), fit:["713940"], rest:["722511","722513","722515","722320"],
+    ecom:["541512"]}; })();
+/* a pool is one cell: each cell's shrunk effect is taken back to its own mean (effect = parent + (mean - parent) n/(n+k)),
+   the means and parents are pooled by count, and the pool is shrunk again with the same k. A one-cell industry keeps its
+   cell's effect exactly. */
+const CELL_POOL={};
+function cellOf(k){
+  if(k in CELL_POOL) return CELL_POOL[k];
+  const cs=IND_CELLS[k], V=MODELS.value, E=V.industry_effects_naics6, N=V.industry_n6, P=V.industry_effects, K=V.industry_shrinkage.k_naics6;
+  let n=0, r=0, q=0, used=[];
+  for(const c of (cs||[])){ const m=N[c]||0, p=P[c.slice(0,2)]||0; if(!(m>0)||E[c]===undefined) continue;
+    n+=m; r+=m*(p+(E[c]-p)*(m+K)/m); q+=m*p; used.push(c); }
+  if(!n) return CELL_POOL[k]=null;
+  const pr=r/n, pq=q/n, two=[...new Set(used.map(c=>c.slice(0,2)))];
+  const src=used.length===1?"naics "+used[0]:used.length<=4?"naics "+used.join(" + ")+", pooled":"naics "+two.join("/")+", "+used.length+" cells pooled";
+  return CELL_POOL[k]={e:used.length===1?E[used[0]]:pq+(pr-pq)*n/(n+K), n, cells:used, src};
+}
 
 /* Depth of comparable sales: the weight the value model's empirical-Bayes shrinkage puts on this industry's own
    BIZCOMPS cell, n/(n+k), with the model's own k (fit/industry_tailwind_and_comps.py checks it against the cells:
@@ -2281,7 +2311,7 @@ const naics6For=k=>IND2NAICS6[k]||null;
    is 0 there (confidenceOf). */
 function compsFor(k){
   const C=MODELS.fitted.comps, V=MODELS.value;
-  const n=(C.n_override&&C.n_override[k]!==undefined)?C.n_override[k]:(V.industry_n6[IND2NAICS6[k]]||0);
+  const n=(C.n_override&&C.n_override[k]!==undefined)?C.n_override[k]:((cellOf(k)||{n:0}).n);
   return n/(n+V.industry_shrinkage.k_naics6);
 }
 /* The fitted peer cells, written into IND once at load (October 2026): peer median growth, the industry tailwind
@@ -2338,12 +2368,12 @@ function sdeEbitdaWedge(naics2,rev){
 
 /* ---- Model II: expected transaction value (FITTED, BIZCOMPS) ---- */
 function fitValue(sde,rev,naicsKey,year){
-  const V=MODELS.value,co=V.coefficients,n2=naicsFor(naicsKey),n6=naics6For(naicsKey);
-  /* 6-digit first. Effects were shrunk toward the 2-digit parent, so a thin cell already
-     sits close to its sector and the fallback chain is continuous, not a cliff. */
-  const e6=n6?V.industry_effects_naics6[n6]:undefined;
+  const V=MODELS.value,co=V.coefficients,n2=naicsFor(naicsKey),cp=cellOf(naicsKey),n6=cp?cp.cells.join("+"):null;
+  /* 6-digit first: the industry's pooled cells (cellOf). Effects were shrunk toward the 2-digit parent, so a thin cell
+     already sits close to its sector and the fallback chain is continuous, not a cliff. */
+  const e6=cp?cp.e:undefined;
   const ie=(e6!==undefined)?e6:(V.industry_effects[n2]!==undefined?V.industry_effects[n2]:V.industry_global||0);
-  const ieSrc=(e6!==undefined)?("naics "+n6):("sector "+n2);
+  const ieSrc=(e6!==undefined)?cp.src:("sector "+n2);
   const sk=Math.max(sde,1e3)/1000, H=V.size_hinge;
   /* v1 had ln_sde + ln_gross = 1.005 - homogeneous of degree one in scale, which forces
      the SAME multiple at every size. The market runs 1.70x at the bottom band to 4.14x
@@ -2666,7 +2696,8 @@ function fitClose(ask,val,channel,size){
   if(ask>0&&val>0){
     gap=(ask-val)/val*100;
     pen=gapPenalty(gap);
-    const KZ=(C.kill_zone&&C.kill_zone.range_pct)||[11,30];
+    /* Pepperdine's band is a share of the ask; the gap here is over value (r9-datatab-1) */
+    const KZ=((C.kill_zone&&C.kill_zone.range_pct)||[11,30]).map(p=>100*p/(100-p));
     kill=gap>=KZ[0]&&gap<=KZ[1];
   }
   /* no floor: a 2% floor froze the probability, proceeds and score again from about 28x value, the flat
@@ -2784,7 +2815,7 @@ function confidenceOf(s,out){
     return ncdf(z); };
   const lx=Math.log(Math.min(Math.max(s.ern,E.p1),E.p99)/C.ref_sde);              /* size, held at the fitted support */
   const sh=C.K*Math.exp(C.b_size*lx+C.b_em*Math.min(Math.abs(out.z.em),3.2));
-  const c6=naics6For(s.ind), n6=(c6&&MV.industry_n6[c6])||0, comps=n6/(n6+MV.industry_shrinkage.k_naics6);
+  const c6=cellOf(s.ind), n6=c6?c6.n:0, comps=n6/(n6+MV.industry_shrinkage.k_naics6);
   const sigma=Math.sqrt(sh*sh+C.tau2*(1-comps)/(C.s_eq*C.s_eq));                    /* multiplier on the BIZCOMPS fan */
   const p=F(Math.log(1/.75)/sigma)-F(Math.log(.8)/sigma);
   const m=s.ern/Math.max(s.rev,1), outside=out.extrapMax>C.extrap_x||m<M.p1||m>M.p99;
@@ -3740,7 +3771,9 @@ function optNote(s,V,rSell,rKeep){
   const gain=Math.max(0,U(rKeep)-U(rSell)), coin=gain<.01*V;
   /* the per-day cost exactly as entered: money() rounds $1,450 to "$1k" (AUDIT_FINDINGS R1-23) */
   const lamTxt="$"+Math.round(s.lamT).toLocaleString("en-US");
-  const atEdge=capSet(s.optRho), days=Math.round(Math.abs(rSell.tMean-rKeep.tMean)), dd=days===1?"a day":`${days} days`;
+  /* under two days the difference is given to a tenth, so it reads against the delay cost it is priced at (r9-sale-4) */
+  const atEdge=capSet(s.optRho), dx=Math.abs(rSell.tMean-rKeep.tMean), days=dx>=.05?Math.max(1,Math.round(dx)):0,
+    dd=dx<1.95?`${dx.toFixed(1)} days`:`${Math.round(dx)} days`;
   const lam=s.lamT>0?` and a cost of delay of ${lamTxt} a day`:"";
   let alt=null, flat=null, peak=null, alts=[], span=null;
   if(s.theta>0){
@@ -3845,7 +3878,8 @@ function optCardNote(s,best,rhoSell,uRho){
   if(sameKeys&&(!rep||uRho.toFixed(2)===rhoSell.toFixed(2)))
     return {kind:"same",text:"Both objectives select the same programme at this budget, delay cost and retained value."};
   const dProc=bU.proceeds-bV.proceeds, dPC=bU.PC-bV.PC, dC=bU.c-bV.c, dT=(bU.t+bU.days)-(bV.t+bV.days);
-  const nd=Math.round(Math.abs(dT)), dd=nd===1?"a day":nd+" days";
+  /* the days said are the difference of the two 'Expected days' tiles as printed (r9-sale-4) */
+  const dTile=Math.round(bU.t+bU.days)-Math.round(bV.t+bV.days), nd=Math.abs(dTile), dd=nd===1?"a day":nd+" days";
   const proc=Math.abs(dProc)<1?"matches the expected proceeds":dProc<0?`gives up ${money(-dProc)} of expected proceeds`:`adds ${money(dProc)} of expected proceeds`;
   const why=[];   /* the terms in which the utility's programme gains: value kept on failure, and time */
   /* the two terms U adds to the proceeds objective, computed rather than read off the sign of dP_C: the retained value
@@ -3859,7 +3893,7 @@ function optCardNote(s,best,rhoSell,uRho){
   const tail=why.length?` It pays only through ${why.join(" and ")}`+(neg.length?`, while ${neg.map(x=>x.t).join(" and ")} works against it`:"")+`.`:"";
   const pcTxt=Math.abs(dPC)>=5e-4?`${pp(Math.abs(dPC)).replace("+","")} ${dPC<0?"less":"more"} likely to close`:"";
   /* elapsed time from start to close: execution days plus the mean time to close, the 'Expected days' tile */
-  const tTxt=nd>=1?`takes about ${dd} ${dT>0?"longer":"less"} from start to close`:"";
+  const tTxt=nd>=1?`takes ${dd} ${dTile>0?"longer":"less"} from start to close`:"";
   if(sameKeys){
     const hi=uRho>rhoSell;
     return {kind:"reprice",text:`The same changes, repriced to ${uRho.toFixed(2)}× instead of ${rhoSell.toFixed(2)}×: it ${proc}`
@@ -3983,6 +4017,15 @@ function optimize(s0,r0,budget,lamT,theta){
   if(best.U&&best.U===best.V) best.U={...best.V};
   if(best.V) best.V.blocked=blocked(best.V,"V");
   if(best.U) best.U.blocked=blocked(best.U,"U");
+  /* the walk-away card's ask is bestRatio's, which has no execution days (it is the ask to list at), while the reprice
+     here is a relisting and costs its days at the cost of delay. When the reprice alone beats doing nothing before its
+     days and not after, the delay, not the budget, keeps it out: the card says so, with the gain and the delay's cost,
+     instead of "nothing within the budget clears its cost" beside a walk-away card naming another ask (r9-console-1) */
+  if(best.U&&!best.U.keys.length&&lamT>0){
+    const it=INTERV.find(i=>i.k==="reprice"), ru=model(applyAll(s0,r0,["reprice"],s0.optRho)), days=daysOf(s0,["reprice"]);
+    const before=ru.EVp+(1-ru.PC)*theta*ru.V-lamT*ru.tMean-costOf(s0,["reprice"]);
+    if(before>best.U.U+1&&before-lamT*days<=best.U.U) best.U.relist={ask:ru.V*s0.optRho,gain:before-best.U.U,delay:lamT*days,days,n:it.n};
+  }
   best.allIn=costOf(s0,INTERV.map(i=>i.k))<=budget;
   return best;
 }
@@ -4413,7 +4456,23 @@ const DSC_NAMES={initial:"an initial acquisition",expansion:"a business expansio
    defaults to marketPay: a general manager's wage for this industry and size (BLS OEWS, aggregate, read at a rank by firm
    size that is judgment: gmSalary) with the employer's payroll taxes and benefits (BLS ECEC, the loading the console's
    GM hire uses), since SDE adds back the selling owner's pay with those same costs. */
-const FIN_DEFAULTS={type:"initial",cash:.10,note:.05,noteRate:6,noteYears:10,standby:false,extra:0,capex:0,draw:null};
+const FIN_DEFAULTS={type:"initial",cash:.10,note:.05,noteRate:6,noteYears:10,standby:false,extra:0,capex:0,draw:null,fee:"financed",stake:1};
+/* SBA's upfront guaranty fee on a 7(a) loan of more than 12 months (13 CFR 120.220; SOP 50 10 8.1, Section A, Ch. 4;
+   FY2027 rates, Information Notice 5000-881797, effective October 1, 2026): a share of the guaranteed portion, which is
+   85% of a loan of $150,000 or less and 75% above: 2% up to $150,000, 3% to $700,000, and above that 3.5% of the
+   guaranteed portion up to $1M plus 3.75% of the rest ($1,700 on a $100,000 loan, $138,125 on $5M, SBA's own examples).
+   FY2027 waives it on loans of $700,000 or less to manufacturers (NAICS 31-33), listed food-supply businesses and
+   businesses in rural areas. The borrower may pay it from the loan's proceeds, the usual case ("financed"): it is then a
+   project cost, financed in the structure's own shares, so the loan, its payments, the debt and the equity base all carry
+   it, and the $5M maximum includes it (r9-financing-1). Paid in cash at closing it adds to the buyer's cash and leaves
+   the loan alone. */
+const SBA_FEE={notice:"SBA Information Notice 5000-881797 (7(a) fees for FY2027), effective October 1, 2026",waiveMax:7e5,
+  modes:{financed:"Financed in the loan",cash:"Paid in cash at closing",waived:"Waived"}};
+function guarantyFee(loan){
+  if(!(loan>0)) return 0;
+  if(loan<=15e4) return .02*.85*loan;
+  const g=.75*loan; return loan<=7e5?.03*g:.035*Math.min(g,1e6)+.0375*Math.max(0,g-1e6);
+}
 const marketPay=s=>gmSalary(s)*IVC.gm.loading;
 /* annual debt service of a fully amortizing loan with monthly payments (rate in percent a year) */
 function annualPayment(P,rate,years){
@@ -4433,15 +4492,27 @@ function debtCheck(s,price,f,V){
   f={...FIN_DEFAULTS,...(f||{})};
   price=Math.max(price,0);
   const type=ownKey(SBA_COO.dsc,f.type)?f.type:"initial";
-  const cs=Math.min(1,Math.max(0,f.cash)), project=price+Math.max(0,f.extra||0), noteAsked=Math.max(0,f.note)*price;
-  let cash=cs*project;
+  /* an owner buyout may buy only part of the business: the price of the interest bought is the whole price times the
+     share, and so is the valuation the debt may not exceed (the model value has no minority discount, so a stake is
+     valued pro rata). Every other type buys the whole business (r9-financing-3) */
+  const stake=type==="buyout"?Math.min(1,Math.max(.01,+f.stake||1)):1, bought=price*stake, Vb=V>0?V*stake:V;
+  const feeMode=ownKey(SBA_FEE.modes,f.fee)?f.fee:"financed";
+  const feeOf=L=>feeMode==="waived"||(s&&s.ind==="mfg"&&L<=SBA_FEE.waiveMax)?0:guarantyFee(L);
+  const cs=Math.min(1,Math.max(0,f.cash)), extra=Math.max(0,f.extra||0), noteAsked=Math.max(0,f.note)*bought;
   /* cash and a note can be typed to more than 100%: the note is cut to the part of the price the cash leaves, so working
      capital and closing costs stay with the cash and the loan, and the loan never falls as the price rises. Shares that
      add up to the whole price leave no loan rather than a rounding error's worth */
-  const note=Math.min(noteAsked,(1-cs)*price);
-  let loan=project-cash-note, over=0;
-  if(loan<1){ cash+=Math.max(0,loan); loan=0; }
-  if(loan>SBA_COO.maxLoan){ over=loan-SBA_COO.maxLoan; loan=SBA_COO.maxLoan; cash+=over; if(over<1e-6) over=0; }
+  const note=Math.min(noteAsked,(1-cs)*bought), base=(bought+extra)*(1-cs)-note;
+  /* the fee financed is a project cost in the structure's shares: loan = base + (1 - cash) x fee(loan), solved from below
+     (the fee is about 2.6% of the loan, so a few steps settle it, and at a fee tier's edge the lower of two consistent
+     loans is taken) */
+  let loan=base, over=0, fee=0;
+  if(loan<1) loan=0;
+  else { if(feeMode==="financed") for(let i=0;i<30;i++){ const L=base+(1-cs)*feeOf(Math.min(loan,SBA_COO.maxLoan)); if(Math.abs(L-loan)<1e-7){ loan=L; break; } loan=L; }
+    if(loan>SBA_COO.maxLoan){ over=loan-SBA_COO.maxLoan; loan=SBA_COO.maxLoan; if(over<1e-6) over=0; }
+    fee=feeOf(loan); }
+  /* the fixed point leaves rounding dust in the cash when the structure has none: no cash is $0, not a billionth */
+  const project=bought+extra+fee, cash0=project-loan-note, cash=Math.abs(cash0)<1e-6?0:cash0;
   /* full standby means no payments while an SBA loan is outstanding: with no loan the note is paid on its own terms */
   const sb=!!f.standby&&loan>0;
   const rate=sbaRateLoan(loan), sbaPay=annualPayment(loan,rate,SBA_COO.amortYears);
@@ -4449,8 +4520,8 @@ function debtCheck(s,price,f,V){
   const market=f.draw===null||f.draw===undefined||!isFinite(f.draw), draw=market?marketPay(s):Math.max(0,f.draw);
   const capex=Math.max(0,f.capex||0), cf=s.ern-draw-capex, ds=sbaPay+notePay;
   const dscr=ds>0?cf/ds:Infinity, min=SBA_COO.dsc[type];
-  /* an owner buyout's equity is figured on the price, every other type's on the whole project */
-  const equityNeed=SBA_COO.equity*(type==="buyout"?price:project);
+  /* an owner buyout's equity is figured on the price of the interest bought, every other type's on the whole project */
+  const equityNeed=SBA_COO.equity*(type==="buyout"?bought:project);
   const standbyCredit=sb?Math.min(note,SBA_COO.standbyShare*equityNeed):0;
   const equityIn=cash+standbyCredit, debt=loan+(sb?0:note);
   /* a paid note on any of the starting structure's terms (its share, rate or term) rests on that convention (judgment), and
@@ -4458,10 +4529,11 @@ function debtCheck(s,price,f,V){
      below the 7(a) maximum: past it the loan stays at the maximum whatever the note (r7-financing-1) */
   const noteConv=notePay>0&&(f.note===FIN_DEFAULTS.note||f.noteRate===FIN_DEFAULTS.noteRate||f.noteYears===FIN_DEFAULTS.noteYears)
     ||sb&&note>0&&f.note===FIN_DEFAULTS.note&&over===0;
-  return {price,project,cash,note,noteCut:note<noteAsked-1e-6,loan,over,rate,sbaPay,notePay,noteConv,ds,draw,drawMarket:market,
+  return {price,bought,stake,extra,project,cash,note,noteCut:note<noteAsked-1e-6,loan,over,fee,feeMode,feeIn:feeMode==="financed"?fee:0,
+    rate,sbaPay,notePay,noteConv,ds,draw,drawMarket:market,
     capex,cf,dscr,min,ok:dscr>=min,equityNeed,equityIn,equityOK:equityIn>=equityNeed*(1-1e-9),equityShare:equityNeed>0?equityIn/(equityNeed/SBA_COO.equity):1,debt,
-    debtOverValue:loan>0&&V>0&&debt>V*(1+1e-9),qoe:price>=SBA_COO.qoeMin&&type!=="buyout",
-    ownValuation:price<=SBA_COO.ownValuationMax,monthly:ds/12,type,standby:sb};
+    debtOverValue:loan>0&&Vb>0&&debt>Vb*(1+1e-9),value:Vb,qoe:bought>=SBA_COO.qoeMin&&type!=="buyout",
+    ownValuation:bought<=SBA_COO.ownValuationMax,monthly:ds/12,type,standby:sb};
 }
 /* a price shown at money()'s precision, rounded down: the highest price that passes is never shown as one that fails */
 function moneyDown(v){
@@ -4529,12 +4601,15 @@ function noPriceWC(s,f,V){ const z=debtCheck(s,0,f,V); return z.cf>0&&z.loan>0&&
 function maxFinanced(s,f,V,target){
   f={...FIN_DEFAULTS,...(f||{})};
   const type=ownKey(SBA_COO.dsc,f.type)?f.type:"initial", t=target||SBA_COO.dsc[type];
-  const cash=Math.min(1,Math.max(0,f.cash)), extra=Math.max(0,f.extra||0), share=Math.max(0,1-cash-Math.max(0,f.note));
+  const cash=Math.min(1,Math.max(0,f.cash)), extra=Math.max(0,f.extra||0), stake=type==="buyout"?Math.min(1,Math.max(.01,+f.stake||1)):1;
+  const share=Math.max(0,1-cash-Math.max(0,f.note))*stake;
   const fx={...f,draw:f.draw===null||f.draw===undefined||!isFinite(f.draw)?marketPay(s):f.draw};
   const at=p=>debtCheck(s,p,fx,V), pass=c=>c.dscr>=t&&!c.debtOverValue;
-  /* where the loan, (p + extra)(1 - cash) - note p, reaches the maximum: a hair under it, so a rounding error at a price
-     in the billions never puts the loan past the maximum there */
-  const capAt=share>1e-9?Math.max(0,(SBA_COO.maxLoan-extra*(1-cash))/share)*(1-1e-12):null, noLoan=share<=1e-9&&extra*(1-cash)<1;
+  /* where the loan, (p x stake + extra)(1 - cash) - note p x stake, with the guaranty fee on a $5M loan when it is
+     financed (r9-financing-1), reaches the maximum: a hair under it, so a rounding error at a price in the billions never
+     puts the loan past the maximum there */
+  const fee5=f.fee==="cash"||f.fee==="waived"?0:guarantyFee(SBA_COO.maxLoan);
+  const capAt=share>1e-9?Math.max(0,(SBA_COO.maxLoan-(extra+fee5)*(1-cash))/share)*(1-1e-12):null, noLoan=share<=1e-9&&extra*(1-cash)<1;
   const res=(price,bind,c)=>{ let equityFrom=null, equityTo=null;
     if(c&&price>0){ const pe=isFinite(price)?price:c.price;
       if(PL<pe){ const ok0=at(PL).equityOK, okP=c.equityOK, edge=(a,b,okB)=>{
@@ -4558,7 +4633,7 @@ function maxFinanced(s,f,V,target){
   /* no SBA loan at any price: SBA's tests do not apply, and nothing limits the price */
   if(noLoan) return res(Infinity,null,null);
   /* the working capital and closing costs alone already take the whole 7(a) maximum */
-  if(top<P0||extra*(1-cash)>SBA_COO.maxLoan) return res(0,"cap",at(P0));
+  if(top<P0||at(P0).over>0) return res(0,"cap",at(P0));
   /* the scan starts where there is an SBA loan: below it SBA's tests do not apply, and a note on full standby is paid
      there as no SBA-financed price pays it, so a 90% standby note read "no price" where every financed price passed */
   const L0=Math.min(top,Math.max(P0,PL)), c0=at(L0);
@@ -4900,9 +4975,26 @@ function reportData(s,opt){
   const f0={...FIN_DEFAULTS,...(opt.fin||{})};
   const aboveMoves=mf.equityAbove!=null&&f0.note>0&&[f0.note-1e-4,f0.note+1e-4].some(n=>{ const x=maxFinanced(s,{...f0,note:n},V).equityAbove;
     return x==null||Math.abs(x-mf.equityAbove)>1e-6*mf.equityAbove; });
-  return {s,V,point:r.fv.point,qFactor:r.qFactor,qPct:r.qPct,qz:r.qz,conf:r.conf,confLabel:r.confLabel,confOutside:!!r.confOutside,extrap:r.extrap||[],mult:r.M,
+  return {s,V,point:r.fv.point,qFactor:r.qFactor,qPct:r.qPct,qz:r.qz,conf:r.conf,confLabel:r.confLabel,confNote:r.confNote,confOutside:!!r.confOutside,extrap:r.extrap||[],mult:r.M,
     sell,walk,cur,same:money(V*rhoSell)===money(V*rhoWalk),walkQ,rhoSell,sens:reportLevers(s,V),allBest:model({...s,...RAIL_BEST}).V-V,fixes:tab,maxFin:mf,mfAt,
     aboveMoves,recast:opt.recast||null,calib:opt.calib||null,sde:s.ern,rev:s.rev,ind:(ownKey(IND,s.ind)?IND[s.ind]:IND.prof).n,date:opt.date||null,fin:opt.fin||null};
+}
+/* the earnings basis's parts at the unit the SDE prints in (three figures in thousands, cents of a million above), the
+   largest of them taking the rounding, so income before taxes, the add-backs and the deductions add up to the SDE as
+   printed: moneyIn printed each to its own three figures, so $142k + $147k sat beside $288k (r9-worksheet-1) */
+function sdeParts(R){
+  const S=moneyVal(moneyIn(R.sde))*(R.sde<0?-1:1), a=Math.abs(S);
+  const unit=a>=999.5e6?1e7:a>=999.5e3?1e4:a>=999.5?Math.pow(10,Math.floor(Math.log10(a))-2):1;
+  const x={ni:R.ni,add:R.add,less:Math.min(0,R.less||0)}, p={};
+  for(const k in x) p[k]=Math.round(x[k]/unit)*unit;
+  const big=Object.keys(x).sort((u,v)=>Math.abs(x[v])-Math.abs(x[u]))[0]; p[big]+=S-p.ni-p.add-p.less;
+  const ni=p.ni, add=p.add, less=Math.min(0,p.less);
+  const f=v=>{ const x=Math.abs(v), sg=v<0?"−$":"$";
+    if(x>=999.5e6) return sg+(x/1e9).toFixed(2)+"B";
+    if(x>=999.5e3) return sg+(x/1e6).toFixed(Math.max(0,6-Math.round(Math.log10(unit))))+"M";
+    if(x>=999.5) return sg+Number((x/1e3).toFixed(Math.max(0,3-Math.round(Math.log10(unit)))))+"k";
+    return sg+Math.round(x); };
+  return {sde:moneyIn(R.sde),ni:f(ni),add:f(add),less:less<0?f(-less):null};
 }
 function hEsc(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 const toMonths=d=>(d/30.44).toFixed(1);
@@ -4923,10 +5015,10 @@ function reportHTML(D,meta){
   const covB=F=>{ const j=F.drawMarket||F.noteConv; return F.loan>0?(j?BX("f","fitted"):fit):F.drawMarket?BX("a","published data"):F.noteConv?jdg:""; }, sp=x=>x?" "+x:"";
   const warn=t=>`<span class="rp-warn">${t}</span>`;
   /* SBA's minimum grades coverage only where there is an SBA loan */
-  const askRow=(t,a,note)=>{ const F=a.fin, lw=[F.debtOverValue?`debt ${money(F.debt-D.V)} ${dvB(F)} over value`:"",F.loan>0&&!F.equityOK?"buyer equity under SBA&rsquo;s 10%":""].filter(Boolean);
+  const askRow=(t,a,note)=>{ const F=a.fin, lw=[F.debtOverValue?`debt ${money(F.debt-F.value)} ${dvB(F)} over value`:"",F.loan>0&&!F.equityOK?"buyer equity under SBA&rsquo;s 10%":""].filter(Boolean);
     const sub=[note,lw.length?`<span class="rp-warn">Lender: ${lw.join("; ")}.</span>`:""].filter(Boolean).join(" ");
     return `<tr><th scope="row">${t}</th><td class="n"><b>${money(a.ask)}</b><br><span>${a.ratio.toFixed(2)}× value</span></td>
-    <td class="n">${pc(a.pc)}</td><td class="n">${toMonths(a.tMed)} mo</td><td class="n">${money(a.price)}</td><td class="n">${money(a.ev)}</td>
+    <td class="n">${pc(a.pc)}</td><td class="n">${toMonths(a.tMed)} mo</td><td class="n">${money(a.price)}</td><td class="n">${money(a.ev)}${a.cash<1?`<br><span>${pc(a.cash)} at closing</span>`:""}</td>
     <td class="n">${covFmt(F)}${F.loan>0&&F.ds>0&&!F.ok?warn(`below ${F.min.toFixed(2)}×`):F.loan>0?"":`<br><span>no SBA loan</span>`}</td></tr>${sub?`<tr class="rp-sub"><td colspan="7">${sub}</td></tr>`:""}`; };
   const f=D.cur.fin, R=D.recast, mf=D.maxFin, C=D.calib, T=ownKey(DSC_NAMES,f.type)?DSC_NAMES[f.type]:DSC_NAMES.initial;
   /* the console's qualifiers beside the patient-seller ask (optNote): a coin toss, the ask cap (a judgment) with its flat
@@ -4961,7 +5053,9 @@ function reportHTML(D,meta){
   /* the debt above value moves with the note's share where the share sizes the debt: on full standby below the 7(a)
      maximum, where the debt is the loan (r6-financing-2), and a paid note past it, where the loan stays at the maximum
      and the debt is the maximum and the note (r7-financing-1) */
-  const dvJ=F=>F.debtOverValue&&F.note>0&&nConv&&(F.over>0?!F.standby:F.standby), dvB=F=>dvJ(F)?BX("f","fitted"):vB;
+  /* below the maximum a paid note's share moves the debt too once SBA's fee is financed: a larger note leaves a smaller
+     loan and a smaller fee in it (r9-financing-1) */
+  const dvJ=F=>F.debtOverValue&&F.note>0&&nConv&&(F.over>0?!F.standby:F.standby||F.feeIn>0), dvB=F=>dvJ(F)?BX("f","fitted"):vB;
   /* in print a business name over 28 characters, or a prepared-for block over 120 (the date and the words between
      included), takes the smaller size: 37 W's fill one line of the name at the larger size and two lines of the block
      hold 142 of the widest letters, so the larger size never wraps past what the smaller one clamps (r6-report-2) */
@@ -4976,18 +5070,23 @@ function reportHTML(D,meta){
     <div><div class="rp-k">If it sells at the recommended ask ${jdg}</div><div class="rp-mid">${money(D.sell.lo)} – ${money(D.sell.hi)}</div>
       <div class="rp-s">80% of outcomes; median ${money(D.sell.price)}</div></div>
     <div><div class="rp-k">Accuracy ${fit}</div><div class="rp-mid">${pc(D.conf)}</div>
-      <div class="rp-s">chance the price lands within 25% of the fitted value before the quality position, ${money(D.point)} (${hEsc(D.confLabel)}${D.confOutside?", outside the fitted data":""})</div></div></section>
+      <div class="rp-s">chance the price lands within 25% of the fitted value before the quality position, ${money(D.point)} (${hEsc(D.confLabel)}: ${hEsc(D.confOutside?"outside the fitted data":D.confNote)})</div></div></section>
     ${D.extrap&&D.extrap.length?`<p class="rp-ext"><b>Extrapolated, outside the fitted data:</b> ${D.extrap.map(w=>hEsc(w.txt)).join("; ")}. The value equation is read past where its sales go: probably about right, but less certain than it looks; say so when quoting it.</p>`:""}
-    ${C&&C.n?`<p class="rp-cal">Track record ${jdg}: this broker&rsquo;s ${C.n} closed deal${C.n>1?"s":""} sold at ${C.factor.toFixed(2)}× the model&rsquo;s expected price${C.lo!==null?` (90% interval ${C.lo.toFixed(2)}–${C.hi.toFixed(2)}×)`:""}. Read with the weight of ${CALIB_K} deals toward the model, that is ${C.shrunk.toFixed(2)}×: about ${money(D.sell.mean*C.shrunk)} if it sells at the recommended ask, against the model&rsquo;s expected ${money(D.sell.mean)}.</p>`:""}`;
+    ${C&&C.n?`<p class="rp-cal">Track record ${jdg}: this broker&rsquo;s ${C.n} closed deal${C.n>1?"s":""} sold at ${C.factor.toFixed(2)}× the model&rsquo;s expected price${C.lo!==null?` (90% interval ${C.lo.toFixed(2)}–${C.hi.toFixed(2)}×)`:""}. Read with the weight of ${CALIB_K} deals toward the model, that is ${C.shrunk.toFixed(2)}×: about ${D.sell.mean*C.shrunk>D.sell.ask?`${money(D.sell.ask)}, the ask itself (the record reads higher, ${money(D.sell.mean*C.shrunk)}, but a sale above the ask is not counted on),`:money(D.sell.mean*C.shrunk)} if it sells at the recommended ask, against the model&rsquo;s expected ${money(D.sell.mean)}.</p>`:""}`;
   const asks=`<section><h2>What to ask</h2><div class="rp-tw"><table class="rp-t"><thead><tr><th></th><th class="n">Ask</th><th class="n">Chance it sells<br>${pB}</th>
-      <th class="n">Median time to close<br>${tB}</th><th class="n">Median price if it sells<br>${jdg}</th><th class="n">Expected proceeds<br>${jdg}</th><th class="n">Lender coverage<br>${cB}</th></tr></thead><tbody>
-      ${askRow(D.same?"If you need to sell<br>or can walk away":"If you need to sell",D.sell,"Maximizes expected proceeds: the price times the chance of getting it."
+      <th class="n">Median time to close if it sells<br>${tB}</th><th class="n">Median price if it sells<br>${jdg}</th><th class="n">Expected proceeds<br>${jdg}</th><th class="n">Lender coverage<br>${cB}</th></tr></thead><tbody>
+      ${askRow(D.same?"If you need to sell<br>or can walk away":"If you need to sell",D.sell,`Maximizes expected proceeds: the chance it sells times its average price if it does, ${money(D.sell.mean)}.`
         +(D.same?` A seller who can walk away gets the same ask, counting the business, if it doesn't sell, as worth ${pc(D.s.theta)} of its value${D.s.lamT>0?` and charging $${Math.round(D.s.lamT).toLocaleString("en-US")} a day of delay`:""}.`:"")
         +(D.same&&walkQ(true)?" "+walkQ(true):""))}
       ${D.same?"":askRow("If you can walk away",D.walk,`Also counts keeping the business, if it doesn't sell, as worth ${pc(D.s.theta)} of its value, and charges $${Math.round(D.s.lamT).toLocaleString("en-US")} a day of delay.`+(walkQ(false)?" "+walkQ(false):""))}
       ${showCur?askRow("Your ask",D.cur,""):""}
     </tbody></table></div></section>`;
-  const costs=f.project>f.price?` plus ${moneyIn(f.project-f.price)} of working capital and closing costs (${money(f.project)} in all)`:"";
+  /* the stake an owner buyout buys, and what the project adds to the price: working capital and closing costs, and SBA's
+     upfront guaranty fee, financed or paid at closing (r9-financing-1, r9-financing-3) */
+  const stakeTxt=f.stake<1?` for a ${pct1(f.stake)} stake, ${money(f.bought)}`:"";
+  const cParts=[f.extra>0?`${moneyIn(f.extra)} of working capital and closing costs`:"",f.fee>0?`a ${money(f.fee)} SBA fee${f.feeMode==="financed"?" in the loan":" paid in cash"}`:""].filter(Boolean);
+  const costs=stakeTxt+(cParts.length?`${stakeTxt?",":""} plus ${cParts.join(" and ")} (${money(f.project)} in all)`:"")
+    +(f.loan>0&&f.fee===0?`; ${f.feeMode==="waived"?"the SBA guaranty fee set as waived":"no SBA guaranty fee on a manufacturer&rsquo;s loan of $700k or less"}`:"");
   const pay=`${moneyIn(f.draw)} for the new owner&rsquo;s pay${f.drawMarket?`, a general manager&rsquo;s market pay with payroll taxes and benefits ${BX("a","published data")}`:""}${f.capex>0?`, and ${moneyIn(f.capex)} of capital spending`:""}`;
   const noteTxt=f.note>0?` and a ${money(f.note)} seller note${f.standby?" on full standby":""}`:"";
   const lend=f.loan===0
@@ -5001,9 +5100,10 @@ function reportHTML(D,meta){
   const more=[];
   if(f.noteCut) more.push("Buyer cash and the seller note were set to more than the price, so the note is cut to the rest.");
   if(f.loan>0&&!f.equityOK) more.push(`<b>Equity:</b> the buyer brings ${moneyDown(f.equityIn)}${f.standby&&f.note>0?", counting the standby note,":""} against SBA&rsquo;s 10% minimum of ${moneyUp(f.equityNeed)}; ${f.type==="initial"
-    ?"for an initial acquisition it cannot be waived.":EQUITY_WAIVER+(f.project>f.price?(f.equityIn<=0?"; with none it must be eliminated, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business&rsquo;s own cash or a line of credit."
+    ?"for an initial acquisition it cannot be waived.":EQUITY_WAIVER+(f.extra>0?(f.equityIn<=0?"; with none it must be eliminated, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business&rsquo;s own cash or a line of credit."
       :"; if it is eliminated, the loan may not fund working capital."):".")}`);
-  if(f.debtOverValue) more.push(`<b>Debt above value:</b> the acquisition debt, ${money(f.debt)}, is ${money(f.debt-D.V)} ${dvB(f)} above the model value, here standing in for the lender&rsquo;s valuation; SBA caps the debt at the valuation, so the buyer would add that much as equity: cash, or a seller note on full standby.`);
+  /* everything financed in the loan counts against the valuation (r9-financing-2) */
+  if(f.debtOverValue) more.push(`<b>Debt above value:</b> the acquisition debt, ${money(f.debt)}${f.extra>0||f.feeIn>0?` with the ${[f.extra>0?"working capital":"",f.feeIn>0?"SBA fee":""].filter(Boolean).join(" and ")} in the loan`:""}, is ${money(f.debt-f.value)} ${dvB(f)} above the model value${f.stake<1?" of the stake":""}, here standing in for the lender&rsquo;s valuation; SBA caps the debt at the valuation, so the buyer would add that much as equity: cash, or a seller note on full standby${f.bought<=f.value*(1+1e-9)?`. The price is within it: financing less working capital in the loan (a line of credit sits outside it) does the same`:""}.`);
   if(!mf.noLoan){
     /* the highest price's badge follows what binds it: the value, coverage at that price, or SBA's 7(a) maximum, which the
        seller note's share also sets: at the starting structure's (judgment), the price carries that too */
@@ -5013,19 +5113,21 @@ function reportHTML(D,meta){
     /* with working capital the equity can pass or fail from some price on: name the edge below the highest price */
     const E=finEdges(mf);
     const eB=sp(rB(edgeJ)), aB=sp(rB(abvJ));
+    /* SBA's waiver conditions once on the paper: an edge after the ask's Equity sentence points back to them */
+    const wv=more.some(t=>t.includes(EQUITY_WAIVER))?": the lender may waive it on the conditions above.":`: ${EQUITY_WAIVER}.`;
     const eqEdge=mf.equityFrom?` Below about ${E.from}${eB} the buyer&rsquo;s equity, with the standby note&rsquo;s credit, is under SBA&rsquo;s 10% minimum${mf.equityWaivable
-        ?`: ${EQUITY_WAIVER}.`:", which cannot be waived for an initial acquisition, so the structure works only from that price up."}`
-      :mf.equityTo&&mf.type==="buyout"?` ${mf.equityAbove?`Between about ${moneyDown(mf.equityTo)}${eB} and ${moneyUp(mf.equityAbove)}${aB}`:`Above about ${moneyDown(mf.equityTo)}${eB}`} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price: ${EQUITY_WAIVER}.${mf.equityAbove
+        ?wv:", which cannot be waived for an initial acquisition, so the structure works only from that price up."}`
+      :mf.equityTo&&mf.type==="buyout"?` ${mf.equityAbove?`Between about ${moneyDown(mf.equityTo)}${eB} and ${moneyUp(mf.equityAbove)}${aB}`:`Above about ${moneyDown(mf.equityTo)}${eB}`} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price${wv}${mf.equityAbove
         ?` Past the 7(a) maximum the rest of the price is buyer cash, which brings it back to 10% from ${moneyUp(mf.equityAbove)}${aB}.`:""}`:"";
     /* no equity at all: the lender must eliminate the requirement, and SBA then bars working capital from the loan */
-    const said=f.loan>0&&!f.equityOK&&f.equityIn<=0&&f.project>f.price&&f.type!=="initial";
-    const wcBar=!said&&at0&&mf.equityShort&&mf.equityWaivable&&fA.project>fA.price?" With no equity the lender would have to eliminate it, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business&rsquo;s own cash or a line of credit.":"";
+    const said=f.loan>0&&!f.equityOK&&f.equityIn<=0&&f.extra>0&&f.type!=="initial";
+    const wcBar=!said&&at0&&mf.equityShort&&mf.equityWaivable&&fA.extra>0?" With no equity the lender would have to eliminate it, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business&rsquo;s own cash or a line of credit.":"";
     /* the highest price's waiver with SBA's conditions, when neither the ask's Equity sentence nor an edge states them
        (r6-financing-4) */
     const waive=eq&&!more.some(t=>t.includes(EQUITY_WAIVER))&&!eqEdge.includes(EQUITY_WAIVER)?` SBA lets the lender ${at0?"eliminate":"reduce"} the 10% equity ${WAIVE_IF}.`:"";
     more.push(mf.price===0?(mf.bind==="cap"?`The working capital and closing costs alone take the 7(a) maximum loan of ${money(SBA_COO.maxLoan)}.`
         :mf.bind==="value"?"Even at the smallest price the acquisition debt would be above the model value, so no SBA-financed price works at this structure."
-        :(z=>z?`The working capital and closing costs financed in the loan, ${money(z.loan)}, already take ${money(z.ds)} a year of payments before any price: the ${money(z.cf)} left after the new owner&rsquo;s pay${spend} covers them ${covFmt(z)}${sp(covB(z))}, under SBA&rsquo;s ${z.min.toFixed(2)}× minimum, so no SBA-financed price works until less of them is financed.`
+        :(z=>z?`The working capital and closing costs financed in the loan${z.feeIn>0?", with the SBA fee":""}, ${money(z.loan)}, already take ${money(z.ds)} a year of payments before any price: the ${money(z.cf)} left after the new owner&rsquo;s pay${spend} covers them ${covFmt(z)}${sp(covB(z))}, under SBA&rsquo;s ${z.min.toFixed(2)}× minimum, so no SBA-financed price works until less of them is financed.`
           :`After the new owner&rsquo;s pay${spend} the business does not cover any loan, so no SBA-financed price works at this structure.`)(noPriceWC(D.s,D.fin,D.V)))
       /* below the 7(a) maximum the equity is a fixed share of the price; above it the rest of the price is buyer cash */
       :mf.equityShort&&!mf.equityWaivable?`At ${pctDown(mf.cash)} buyer cash${mf.standby?" with the standby note":""} the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum, which cannot be waived for an initial acquisition, at every price${!mf.capped?" this structure finances."
@@ -5050,7 +5152,7 @@ function reportHTML(D,meta){
     <div><h2>Worth doing before listing ${jdg}</h2>${D.fixes.length?`<ul>${D.fixes.map(t=>`<li><b>${hEsc(t.n)}</b>: about ${money(t.c)} and ${t.days} days; adds ${money(t.dE)} of expected proceeds</li>`).join("")}</ul><p>Each gain assumes the ask reset to ${D.rhoSell.toFixed(2)}× the new value.</p>`:"<p>None of the modelled improvements pays for itself here.</p>"}</div></section>`;
   const basis={latest:"read on the most recent year",w321:recastWeighting(R||{}),avg:"averaged over the years"};
   const earn=R&&R.n?`<section><h2>Earnings basis</h2><p>SDE of ${moneyIn(R.sde)}, built by the broker from ${R.n} year${R.n>1?"s":""} of ${hEsc(ownKey(RECAST_ENTITY,R.entity)?RECAST_ENTITY[R.entity].src:"financial statements")}${R.n>1?` and ${ownKey(basis,R.weight)?basis[R.weight]:basis.latest}`:""}:
-    income before taxes ${moneyIn(R.ni)}, add-backs ${moneyIn(R.add)}${R.less<-.5?`, less ${moneyIn(-R.less)} of deductions`:""}${R.discShare>0&&!R.flags.includes("heavy_discretionary")?`; one-time and discretionary add-backs are ${pc(R.discShare,R.discShare<.1?1:0)} of SDE`:""}.
+    income before taxes ${sdeParts(R).ni}, add-backs ${sdeParts(R).add}${sdeParts(R).less?`, less ${sdeParts(R).less} of deductions`:""}${R.discShare>0&&!R.flags.includes("heavy_discretionary")?`; one-time and discretionary add-backs are ${pc(R.discShare,R.discShare<.1?1:0)} of SDE`:""}.
     ${recastNotes(R).filter(o=>RECAST_REPORT.includes(o.k)&&(R.sdeFlags||R.flags).includes(o.k)).map(o=>{ const t=RECAST_REPORT_T[o.k]; return hEsc(typeof t==="function"?t(R):t||o.t); }).join(" ")}</p></section>`:"";
   /* the judgment inputs coverage actually reads here: the note's convention and the market pay's rank; and the note's
      share where it sets the highest financed price at the 7(a) maximum */
@@ -5164,12 +5266,13 @@ function reportFileHTML(D,m){
 function divBars(el,rows,fmt,col){
   const mx=Math.max(...rows.map(r=>Math.abs(r.v)),1e-9);
   el.innerHTML=rows.map(r=>{
-    const w=Math.abs(r.v)/mx*50, pos=r.v>=0;
-    const c=col||(pos?"linear-gradient(90deg,rgba(156,202,255,.55),#9ccaff)":"linear-gradient(90deg,#ffb4ab,rgba(255,138,155,.55))");
+    /* a row's colour is whether it is better (good), when it says so, else its sign */
+    const w=Math.abs(r.v)/mx*50, pos=r.v>=0, g=r.good!==undefined?r.good:pos;
+    const c=col||(g?"linear-gradient(90deg,rgba(156,202,255,.55),#9ccaff)":"linear-gradient(90deg,#ffb4ab,rgba(255,138,155,.55))");
     return `<div class="bar-row"><div>${r.n}</div>
       <div class="bar-track"><div class="bar-mid"></div>
         <div class="bar-fill" style="${pos?`left:50%;width:${w}%`:`right:50%;width:${w}%`};background:${c}"></div></div>
-      <div class="bar-val ${pos?"pos":"neg"}">${fmt(r.v)}</div></div>`;
+      <div class="bar-val ${g?"pos":"neg"}">${fmt(r.v)}</div></div>`;
   }).join("");
 }
 
@@ -5251,9 +5354,9 @@ function parseAmount(t){
 }
 const BOX={
   rev:{kind:"money"}, ern:{kind:"money"}, ask:{kind:"money"}, bud:{kind:"money"},
-  grw:{slider:"i_grw"}, gm:{slider:"i_gm"}, rec:{slider:"i_rec"}, cc:{slider:"i_cc"},
-  ret:{slider:"i_ret"}, plt:{slider:"i_plt"}, yrs:{slider:"i_yrs"}, buy:{slider:"i_buy"},
-  lam:{slider:"i_lam"}, th:{slider:"i_th"}
+  grw:{slider:"i_grw",pct:1}, gm:{slider:"i_gm",pct:1}, rec:{slider:"i_rec",pct:1}, cc:{slider:"i_cc",pct:1},
+  ret:{slider:"i_ret",pct:1}, plt:{slider:"i_plt",pct:1}, yrs:{slider:"i_yrs"}, buy:{slider:"i_buy"},
+  lam:{slider:"i_lam"}, th:{slider:"i_th",pct:1}
 };
 function setBox(id,txt){ const e=$(id); if(e&&document.activeElement!==e) e.value=txt; }
 function labels(s){
@@ -5305,6 +5408,9 @@ function syncMoneySliders(s,V){
         if(k==="ern"&&IN.ern>IN.rev*.92) IN.ern=IN.rev*.92;
         if(final&&IN[k]!==v) box.classList.add("bad");
       } else {
+        /* a percent box reads a plain number under 1 as a share, as the financing and deals boxes do: 0.72 is 72%, not
+           0.72% (r9-inputs-2); a percent sign keeps it as typed */
+        if(BOX[k].pct&&!box.value.includes("%")&&v!==0&&Math.abs(v)<1) v=Math.round(v*1e6)/1e4;
         const sl=$(BOX[k].slider), x=clamp(v,+sl.min,+sl.max); sl.value=x; EXACT[sl.id]=x;
         if(final&&x!==v) box.classList.add("bad");   /* held to the slider's range: say so */
       }
@@ -5328,6 +5434,12 @@ function syncMoneySliders(s,V){
 
 function render(){
   const s=readState(); labels(s);
+  /* a revenue that holds the SDE to 92% of it, typed or dragged, changes the SDE box: the box is marked while the hold
+     lasts, as a held take-up or a clamped typed SDE is, and the mark goes with the hold unless something else set it
+     (r9-inputs-1) */
+  { const e=$("v_ern"), h=IN.ern>IN.rev*.92*(1+1e-12);
+    if(h){ if(!e.dataset.revHold) e.dataset.revHold=e.classList.contains("bad")?"was":"1"; e.classList.add("bad"); }
+    else if(!h&&e.dataset.revHold){ if(e.dataset.revHold==="1") e.classList.remove("bad"); delete e.dataset.revHold; } }
   let r=model(s);
   r.score=omniScore(r);
   s.optRho=bestRatio(s,s.theta,s.lamT);   // utility optimum: depends on theta
@@ -5450,10 +5562,15 @@ function render(){
       +'probably about right '+(far?'&mdash; though you are a long way out, so the margin is wider than usual '
       :'')+'&mdash; not as something to quote without saying where it came from.</p></div>';
   })();
-  /* the wedge was computed on every render and then discarded. An SDE multiple means
-     little to a PE or strategic buyer; the EBITDA multiple it implies is what they bid on. */
-  $("o_mult").innerHTML=xx(r.M)+' <span class="unit">SDE</span>'
-    +(r.fv.wedge?'<span class="sub2">'+xx(r.M*r.fv.wedge)+' EBITDA</span>':"");
+  /* An SDE multiple means little to a PE or strategic buyer; the EBITDA multiple is what they bid on. EBITDA here is
+     this business's SDE less the pay of a general manager to replace the owner, at market with payroll taxes and
+     benefits (marketPay, the new owner's pay the financing check uses), and the tile says so. The sector wedge it used
+     to apply is an average share of owner pay, so the owner pay it implied grew with SDE ($4.2M at $8M of SDE) and a
+     high-margin business read about twice the multiple a buyer would pay on (r9-console-5) */
+  { const pay=marketPay(s), eb=s.ern-pay;
+    $("o_mult").innerHTML=xx(r.M)+' <span class="unit">SDE</span>'
+      +`<span class="sub2" title="EBITDA as SDE, ${moneyIn(s.ern)}, less a general manager&rsquo;s market pay with payroll taxes and benefits, ${moneyIn(pay)}">`
+      +(eb>0?`${xx(r.V/eb)} EBITDA after a manager&rsquo;s pay`:"no EBITDA after a manager&rsquo;s pay")+'</span>'; }
   $("o_t").innerHTML=Math.round(r.tMed)+' <span class="unit">days</span>';
   { const pv=$("o_t_pv"), j=r.tMult>1.0005;   /* above value the median carries a judgment multiplier */
     /* the band median is fitted to IBBA's per-band histograms (MODELS.fitted.ttc_medians), no longer a published lookup */
@@ -5514,9 +5631,10 @@ function render(){
   const zn={size:"Earnings scale",rec:"Recurring revenue",cc:"Customer concentration",own:"Owner dependence",
     mgt:"Management depth",grw:"Revenue growth",gm:"Gross margin",ret:"Customer retention",
     fin:"Financial reporting",plt:"Channel concentration",buy:"Buyer pool depth"};
-  divBars($("zbars"),Object.keys(zn).map(k=>({n:zn[k],v:r.z[k]})),
-    v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2)+"σ",
-    "linear-gradient(90deg,rgba(77,163,255,.5),#9ecbff)");
+  /* coloured by whether the business is better than its peers there, not by the sign: more concentration or owner
+     dependence than peers is a positive z and a worse business (r9-console-4) */
+  divBars($("zbars"),Object.keys(zn).map(k=>({n:zn[k],v:r.z[k],good:["cc","own","plt"].includes(k)?r.z[k]<=0:r.z[k]>=0})),
+    v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2)+"σ");
   eq("eq_z",`z_i=\\frac{x_i-\\bar{x}_{\\text{peer}}}{\\sigma_{\\text{peer}}}
     \\qquad \\text{percentile}=\\Phi(z_i)`);
   const zRecRaw=(s.rec-r.ind.rec)/PEER_SD.rec;
@@ -5764,9 +5882,16 @@ function render(){
     +`${Math.round(daysOf(s,allKeys)/30)} months. Repriced to match, expected proceeds would move from `
     +`${money(r.EVp)} to ${money(rAll.EVp)} and the closing probability from ${pc(r.PC)} to ${pc(rAll.PC)}. `
     +`The optimizer below finds the subset worth doing.`
-    /* name what the bundle prunes: a GM hire adds value alone and none once the other changes are made (skeptic review, DISP-5) */
-    +(()=>{ const out=INTERV.filter(o=>o.k!=="reprice"&&!allKeys.includes(o.k)).map(o=>o.n);
-      return out.length?` Left out because ${out.length>1?"they add":"it adds"} no value once the other changes are made: ${out.join("; ")}.`:""; })();
+    /* name what the bundle prunes, each with its own reason (skeptic review, DISP-5): a change that never moves the value
+       (wider outreach moves the closing odds and proceeds), one that lowers it on its own (a GM's salary can outweigh the
+       transferability it buys), and one that adds value alone but none once the other changes are made (r9-valuation-3) */
+    +(()=>{ const out=INTERV.filter(o=>o.k!=="reprice"&&!allKeys.includes(o.k)).map(o=>({n:o.n,d:model(applyAll(s,r,[o.k])).V-r.V}));
+      if(!out.length) return "";
+      const g=[out.filter(o=>Math.abs(o.d)<r.V*1e-6),out.filter(o=>o.d<=-r.V*1e-6),out.filter(o=>o.d>=r.V*1e-6)], L=a=>a.map(o=>o.n).join("; ");
+      const t=[g[0].length?`${L(g[0])} ${g[0].length>1?"move":"moves"} the proceeds, not the value`:"",
+        g[1].length?`${g[1].map(o=>`${o.n} (${money(-o.d)} less on its own)`).join("; ")} ${g[1].length>1?"lower":"lowers"} the value`:"",
+        g[2].length?`${L(g[2])} ${g[2].length>1?"add":"adds"} no value once the other changes are made`:""].filter(Boolean);
+      return ` Left out: ${t.join("; ")}.`; })();
   eq("eq_g",`\\text{Value Gap}=E[V\\mid X_{\\text{potential}}]-E[V\\mid X_{\\text{current}}]`);
   eq("eq_gs",`=${tm(rAll.V)}-${tm(r.V)}=\\boxed{${tm(gap)}}`);
   $("intbl").innerHTML=
@@ -5785,7 +5910,7 @@ function render(){
   eq("eq_r",`MV_i=\\frac{\\partial V}{\\partial a_i},\\qquad
     ROI(a)=\\frac{E[\\text{proceeds}\\mid X+\\Delta X(a),\\text{repriced}]-E[\\text{proceeds}\\mid X,\\text{repriced}]-C(a)}{C(a)}`);
   const bi=it.find(o=>o.c>0);
-  eq("eq_rs",`\\text{${tt(bi.n)}}:\\;\\frac{${tm(bi.dE,2)}-${tmi(bi.c)}}{${tmi(bi.c)}}
+  eq("eq_rs",`\\text{${tt(bi.n)}}:\\;\\frac{${tmi(bi.dE)}-${tmi(bi.c)}}{${tmi(bi.c)}}
     =${bi.roi<0?"-":""}${Math.abs(bi.roi*100).toFixed(0)}\\%`);
 
   /* ---------- §18–19 optimizer ---------- */
@@ -5807,6 +5932,8 @@ function render(){
   const best=optimize(s,r,s.budget,s.lamT,s.theta);
   const card=(t,sel,sub,accent,rho)=>{
     const names=sel.keys.length?sel.keys.map(k=>k==="reprice"?`Reprice to ${rho.toFixed(2)}× the new model value`:INTERV.find(i=>i.k===k).n)
+      :sel.relist?[`Do nothing — relisting at the walk-away ask, ${money(sel.relist.ask)}, adds ${money(sel.relist.gain)} but its ${sel.relist.days} days cost ${money(sel.relist.delay)} at $${Math.round(s.lamT).toLocaleString("en-US")} a day; before listing, list at the walk-away ask`]
+        .concat(sel.blocked?[`${INTERV.find(i=>i.k===sel.blocked.k).n} would clear its cost, for ${moneyIn(sel.blocked.c)}, over the budget`]:[])
       :[sel.blocked?`Do nothing — nothing within the budget clears its cost; ${INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${moneyIn(sel.blocked.c)}`
         :best.allIn?"Do nothing — no combination clears its cost":"Do nothing — nothing within the budget clears its cost"];
     /* card titles share one style; the accent is carried by the orb of the matching decision above */
@@ -6358,9 +6485,9 @@ function renderData(){
     probability, the price, the expected proceeds, the proceeds-maximising ask and both scores do not read it. With
     75% of value kept and $900 a day of delay cost the walk-away ask is 1.17&times;, 1.19&times;, 1.26&times; and
     1.20&times; for earnings of $150k, $400k, $1.45M and $5M (1.26&ndash;1.27&times; at every size with b = 0), and
-    1.09&times;, 1.15&times;, 1.19&times; and 1.20&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
+    1.09&times;, 1.16&times;, 1.19&times; and 1.20&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
     near 1.26&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
-    cap wins from about 78% kept at $900 a day, 77% with no delay cost and 83% at $4,000), in the realised-price
+    cap wins from about 78% kept at $900 a day, 77% with no delay cost and 82% at $4,000), in the realised-price
     fan and in the judgment scale of the price-gap penalty (the cap wins if it is set below about 0.42), not a measurement of b; the console shows both ends as a range when they are within 1% of value.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     ${(()=>{ /* computed from the shipped sector effects and the eight DealStats sectors tabulated below, so it cannot go
@@ -6381,8 +6508,11 @@ function renderData(){
     <div class="tw"><table>
       <thead><tr><th>Sector</th><th class="n">DealStats price/SDE</th><th class="n">SDE&rarr;EBITDA wedge</th><th class="n">US firms &ge;$5M rev</th></tr></thead>
       <tbody><tr><td>Construction</td><td class="n">2.30x</td><td class="n">1.52x</td><td class="n">77,014</td></tr><tr><td>Wholesale trade</td><td class="n">3.00x</td><td class="n">1.50x</td><td class="n">82,248</td></tr><tr><td>Information</td><td class="n">2.70x</td><td class="n">2.63x</td><td class="n">10,674</td></tr><tr><td>Professional services</td><td class="n">2.30x</td><td class="n">1.70x</td><td class="n">51,566</td></tr><tr><td>Health care</td><td class="n">2.20x</td><td class="n">1.59x</td><td class="n">46,002</td></tr><tr><td>Arts &amp; recreation</td><td class="n">2.00x</td><td class="n">1.45x</td><td class="n">7,973</td></tr><tr><td>Accommodation &amp; food</td><td class="n">1.80x</td><td class="n">1.39x</td><td class="n">23,557</td></tr><tr><td>Other services</td><td class="n">2.10x</td><td class="n">1.52x</td><td class="n">22,012</td></tr></tbody></table></div>
-    <p class="note"><b>The wedge is now wired into the headline multiple</b>, scaled by size from IRS
-    SOI Table 3.1 so that every sector has one rather than only the eleven DealStats publishes.
+    <p class="note"><b>The console uses the wedge to read benchmarks quoted in EBITDA as SDE</b>, scaled by size from IRS
+    SOI Table 3.1 so that every sector has one rather than only the eleven DealStats publishes. The headline&rsquo;s EBITDA
+    multiple does not use it: it takes a general manager&rsquo;s market pay, with payroll taxes and benefits, off this business&rsquo;s
+    own SDE, because an average share of owner pay implies a pay that grows with SDE (${moneyIn(8e6*(1-1/sdeEbitdaWedge(naicsFor("saas"),25e6)))}
+    in a software business with $8M of SDE on $25M of revenue), so a high-margin business read about twice the multiple a buyer would pay.
     It is the ratio of
     price/EBITDA to price/SDE &mdash; how much of a seller&rsquo;s discretionary earnings is owner
     compensation rather than operating profit. It runs 1.39&times; in restaurants to 2.63&times; in
@@ -6503,7 +6633,10 @@ function renderData(){
     BIZCOMPS' own business descriptions rather than trusting NAICS semantics: 541512 is
     &ldquo;Internet-Retail Store&rdquo; in this data, so it carries e-commerce, while managed services
     belongs to 541511. SaaS has no usable cell &mdash; 511210 holds seven rows &mdash; so it falls back
-    to its sector, which is what the fallback chain is for.</p>
+    to its sector, which is what the fallback chain is for. Where an industry's name covers more than one cell, it is
+    valued on all of them, pooled as one cell (each cell's mean and count, shrunk again with the same k):
+    ${Object.keys(IND).filter(k=>cellOf(k)&&cellOf(k).cells.length>1).map(k=>`${hEsc(IND[k].n)} (${cellOf(k).src}, ${cellOf(k).n.toLocaleString("en-US")} sales)`).join("; ")}.
+    The risk model keeps one representative code per industry.</p>
     <p class="note"><b>When these loans fail, they fail hard.</b> A charged-off acquisition loan loses on average
     ${(R.lgd.mean*100).toFixed(1)}% of the original advance (median ${(R.lgd.median*100).toFixed(1)}%, ${R.lgd.n} loans). The later it fails, the
     less is left to lose: ${(R.lgd.display.sev_at_24m*100).toFixed(0)}% for a $650K note charged off at two years, ${(R.lgd.display.sev_at_84m*100).toFixed(0)}% at seven.
@@ -6516,8 +6649,8 @@ function renderData(){
     <div class="tw"><table>
       <thead><tr><th>Available</th><th>Why it is not wired in</th></tr></thead><tbody>
       <tr><td>BizBuySell, 64 geographic markets</td><td>Asking prices on live listings, not closed
-        sales. Feeding a listing-price signal into a sale-price model would bias it. Held as reference
-        below; the valuation never reads it.</td></tr>
+        sales. Feeding a listing-price signal into a sale-price model would bias it, so the console
+        neither reads nor shows it.</td></tr>
       <tr><td>Pepperdine cost of capital</td><td>Required returns by capital type &mdash; bank, mezzanine,
         PE, venture, angel. Real data, but this console has no DCF to put a discount rate into, and
         adding one driven by a survey rate would be worse than having none.</td></tr>
@@ -6527,7 +6660,7 @@ function renderData(){
       <tr><td>Census County Business Patterns</td><td>Establishments by 6-digit NAICS down to county.
         Needs a geography input the console does not have.</td></tr>
       <tr><td>Search fund studies</td><td>Stanford and IESE measure buyers searching, not businesses
-        listed. Different population; kept as the deal-break evidence above, not as parameters.</td></tr>
+        listed. Different population; kept as a check on the buyer mix below (the search-fund window), not as parameters.</td></tr>
       <tr><td>SBA business age</td><td>Constant within the fitted population &mdash; it is the field that
         <i>selects</i> the acquisition subset, so it carries no variation to fit on.</td></tr>
       <tr><td>Collateral indicator</td><td>Tested in the earlier resolved-loan logistic (13,613 loans) and dropped: AUC went
@@ -6652,6 +6785,9 @@ function renderData(){
 
   /* ── fitted from public data (v4) ─────────────────────────────── */
   { const Fv=MODELS.fitted, Fc=MODELS.fitted.competition, r0=STATE.r||null;
+    /* a log-point coefficient of the listing hedonic as the percentage it is, e^b - 1, with its standard error by the delta
+       method: -0.206 is -19%, not -21% (r9-datatab-3) */
+    const HP=(c,bare)=>{ const p=(Math.exp(c[0])-1)*100, t=(p>=0?"+":"\u2212")+Math.abs(p).toFixed(0)+"%"; return bare?t:t+" (se "+(Math.exp(c[0])*c[1]*100).toFixed(0)+")"; };
   h+=`<section class="sec"><div class="sec-head"><h2>Fitted from public data, October 2026</h2>
     <span class="ref">replacements for hand-set numbers</span></div>
     <div class="panel"><p class="lede" style="margin-bottom:14px">Each row below used to be a number someone typed in.
@@ -6700,10 +6836,10 @@ function renderData(){
       <tr><td>Weight of owner dependence and management depth in the quality position</td><td>equal (1.00, 1.00)</td>
         <td>${Fv.quality_weights.own.toFixed(2)} and ${Fv.quality_weights.mgt.toFixed(2)} of an equal share</td>
         <td>${Fv.quality_weights.hedonic.n.toLocaleString("en-US")} listings with descriptions: owner-operated asks
-        ${(Fv.quality_weights.hedonic.owner_operated[0]*100).toFixed(0)}% (se ${(Fv.quality_weights.hedonic.owner_operated[1]*100).toFixed(0)}), staff in place
-        +${(Fv.quality_weights.hedonic.staff_in_place[0]*100).toFixed(0)}% (se ${(Fv.quality_weights.hedonic.staff_in_place[1]*100).toFixed(0)}).
+        ${HP(Fv.quality_weights.hedonic.owner_operated)}, staff in place
+        ${HP(Fv.quality_weights.hedonic.staff_in_place)}.
         Unshrunk: ${Fv.quality_weights.raw.own[0].toFixed(2)} and ${Fv.quality_weights.raw.mgt[0].toFixed(2)}. Owner dependence uses the
-        owner-operated phrase only: &ldquo;absentee / manager-run&rdquo; (${(Fv.quality_weights.hedonic.absentee_or_manager_run[0]*100>=0?"+":"")}${(Fv.quality_weights.hedonic.absentee_or_manager_run[0]*100).toFixed(0)}%)
+        owner-operated phrase only: &ldquo;absentee / manager-run&rdquo; (${HP(Fv.quality_weights.hedonic.absentee_or_manager_run,true)})
         disagrees with it, as listing copy uses it loosely. Phrase flags are noisy, so both effects are understated.
         <b>Management depth is weakly supported</b>: it adds nothing out of sample in broker listings${QWC&&QWC.mgt?`, and against the
         other measured dimensions it sits at ${QWC.mgt.ratio[0].toFixed(2)} of an equal share (95% interval
@@ -7155,7 +7291,14 @@ function renderData(){
         whose equity is eliminated may not fund working capital; for an initial acquisition it cannot be reduced</td><td><b>aggregate</b>: Appendix 15, Equity Requirements</td></tr>
       <tr><td>Loan size and term</td><td>at most ${money(S.maxLoan)}, amortized over at most ${S.amortYears} years without real estate; all acquisition debt,
         with a seller note not on full standby, at most the business valuation, any price above it paid in equity (cash, or a note on full standby).
-        The console uses the model value for the valuation; its highest financed price keeps the debt within it and the loan within the maximum</td><td><b>aggregate</b>: Loan Terms and Conditions; Change of Ownership Requirements</td></tr>
+        The console uses the model value for the valuation (for an owner buyout of part of the business, pro rata to the share bought: the model
+        value has no minority discount) and counts the working capital, closing costs and guaranty fee financed in the loan as acquisition debt, as
+        Appendix 15 caps the total; its highest financed price keeps the debt within it and the loan within the maximum</td><td><b>aggregate</b>: Loan Terms and Conditions; Change of Ownership Requirements</td></tr>
+      <tr><td>SBA guaranty fee</td><td>upfront, a share of the loan&rsquo;s guaranteed part (85% of a loan of $150,000 or less, 75% above): 2% to $150,000,
+        3% to $700,000, then 3.5% of the guaranteed part up to $1M and 3.75% of the rest ($${Math.round(guarantyFee(1e5)).toLocaleString("en-US")} on a $100,000 loan, $${Math.round(guarantyFee(5e6)).toLocaleString("en-US")}
+        on $5M, SBA&rsquo;s own examples). Waived on loans of $700,000 or less to manufacturers, listed food-supply businesses and rural businesses: the console waives it for
+        its manufacturing industry, and it can be set as waived for the others. Financed in the loan unless set otherwise, the usual case, so the loan,
+        its payments, the debt and the 7(a) maximum carry it; paid in cash at closing it adds to the buyer cash</td><td><b>aggregate</b>: ${SBA_FEE.notice}; 13 CFR 120.220</td></tr>
       <tr><td>Due diligence</td><td>the lender may value a business priced at ${money(S.ownValuationMax)} or less itself, unless buyer and seller are closely
         related (existing owners or family: an owner buyout between existing owners is one); from ${money(S.qoeMin)} it also needs a Quality of Earnings
         report, except for an owner buyout (as SBA defines it, a minority sale to anyone else included) or an ESOP or cooperative purchase</td><td><b>aggregate</b>: Para. C.1.a; Quality of Earnings</td></tr>
@@ -7208,8 +7351,9 @@ function renderCalib(){
   /* the centring row needs a business AT its peer medians, margin included: the BizBuySell median revenue puts
      this SDE 0.23 sd below the fitted margin norm, so that profile read 'off' for a reason unrelated to the label */
   const mMed=at("prof",158950);
-  /* benchmarks quoted in EBITDA are converted to SDE, the input the value equation is fitted on, with the same
-     SDE-to-EBITDA wedge the hero uses (solved jointly with the revenue it depends on) (AUDIT_FINDINGS R1-15) */
+  /* benchmarks quoted in EBITDA are converted to SDE, the input the value equation is fitted on, with the
+     SDE-to-EBITDA wedge (solved jointly with the revenue it depends on) (AUDIT_FINDINGS R1-15); the hero's EBITDA
+     multiple takes a manager's market pay off the business's own SDE instead (r9-console-5) */
   const e2s=(k,e)=>{ let x=e; for(let i=0;i<20;i++){ const w=sdeEbitdaWedge(naicsFor(k),x/typMargin(k,x)); x=e*(w||1); } return x; };
   const lmmS=e2s("mfg",1.5e6), ulmmS=e2s("mfg",3.5e6);
   const ms=at("prof",158950,703000), lmm=model({...prof("mfg",lmmS),chan:"intermediary",ask:model({...prof("mfg",lmmS),ask:1}).V}), ulmm=at("mfg",ulmmS);
@@ -7290,7 +7434,7 @@ smaller price gap and so closes more often.</li>
 
 <li><span class="pv a"><i></i>aggregate</span> <b>Valuation gap</b> &mdash;
 <b>${(MODELS.close_and_timing.close_probability.kill_zone.share_of_price_failures*100).toFixed(0)}%</b>
-of price-killed deals die on a gap of only <b>11&ndash;30%</b>, stable across every year measured.
+of price-killed deals die on a gap of only <b>11&ndash;30% of the asking price</b>, ${(()=>{ const ov=p=>(100*p/(100-p)).toFixed(0); return ov(11)+"&ndash;"+ov(30); })()}% over model value, the axis the console states gaps on everywhere else; stable across every year measured.
 Valuation gap is the leading failure reason in all of them (${(MODELS.close_and_timing.close_probability.failure_reasons.valuation_gap*100).toFixed(0)}% of failures).
 ${(()=>{ const TS=MODELS.close_and_timing.close_probability.ib_termination_series||{}, ys=Object.keys(TS).sort(), last=ys[ys.length-1];
   const dips=ys.filter((y,i)=>i>0&&+y>2021&&TS[y]<TS[ys[i-1]]);
@@ -8125,6 +8269,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const n=(k,lo,hi,r)=>{ let x=num(k); if(!isFinite(x)) return; if(r) x=Math.round(x*r)/r; if(x>=lo&&x<=hi) o[k]=x; };
     const m=k=>{ const x=num(k); if(isFinite(x)&&(x===0||x>=1)&&x<1e10) o[k]=x; };
     n("cash",0,1,1e4); n("note",0,.9,1e4); n("noteRate",0,30,100); n("noteYears",1,30); m("extra"); m("capex"); m("draw");
+    n("stake",.01,1,1e4); if(ownKey(SBA_FEE.modes,f.fee)) o.fee=f.fee;
     o.standby=f.standby===true; return o;
   }
   const emptyWS=()=>({entity:"scorp",weight:"latest",grw:true,years:[{},{},{}]});
@@ -8452,7 +8597,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     $("tl_saveas").hidden=!d;
     const C=calibNow(), r=STATE.r, el=$("tl_cal");
     if(C&&r){ el.hidden=false; el.innerHTML=`<b>Your record:</b> ${C.n} closed deals sold at ${C.factor.toFixed(2)}× the model&rsquo;s expected price.
-      Read with the weight of ${CALIB_K} deals toward the model, ${C.shrunk.toFixed(2)}×: about <b>${money(r.Vmean*C.shrunk)}</b> if it sells at your ask, against the model&rsquo;s ${money(r.Vmean)}. Display only.`; }
+      Read with the weight of ${CALIB_K} deals toward the model, ${C.shrunk.toFixed(2)}×: about <b>${money(Math.min(r.Vmean*C.shrunk,STATE.s.ask))}</b>${r.Vmean*C.shrunk>STATE.s.ask?`, your ask itself (the record reads ${money(r.Vmean*C.shrunk)}, but a sale above the ask is not counted on),`:""} if it sells at your ask, against the model&rsquo;s ${money(r.Vmean)}. Display only.`; }
     else { el.hidden=true; el.textContent=""; }
   }
   function saveCurrent(asNew,from){
@@ -8496,28 +8641,31 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   }
 
   /* ---- the financing check ---- */
-  const FF={cash:"f_cash",note:"f_note",noteRate:"f_nrate",noteYears:"f_nyrs",extra:"f_extra",capex:"f_capex",draw:"f_draw"};
+  const FF={cash:"f_cash",note:"f_note",noteRate:"f_nrate",noteYears:"f_nyrs",extra:"f_extra",capex:"f_capex",draw:"f_draw",stake:"f_stake"};
   /* a share box echoes the share the check reads, to 0.01% (9.96% is not "10%") */
   const p2=v=>{ const x=Math.round(v*1e4)/100; return (Number.isInteger(x)?x.toFixed(0):String(x))+"%"; };
   const FFMT={cash:p2,note:p2,noteRate:v=>(Math.round(v*100)/100)+"%",noteYears:v=>v+(v===1?" year":" years"),
-    extra:v=>v?moneyIn(v):"none",capex:v=>v?moneyIn(v):"none",draw:v=>v===null?"":moneyIn(v)};
+    extra:v=>v?moneyIn(v):"none",capex:v=>v?moneyIn(v):"none",draw:v=>v===null?"":moneyIn(v),stake:p2};
   /* shares as "10%" or "10" (a whole number of 1 or more is a percent) or ".1"; the note's rate as "6%", "6" or ".06";
      money as the rail reads it; a blank pay field is the market pay. The rail's unit words and a dollar sign mean nothing
      here: "$5" is not a share, "10 years" not a rate, and "6 years" not an amount */
   function parseFin(k,t){
     t=String(t).trim(); if(k==="draw"&&t==="") return null;
-    const c=t.toLowerCase().replace(/\s/g,""), share=k==="cash"||k==="note"||k==="noteRate";
+    const c=t.toLowerCase().replace(/\s/g,""), share=k==="cash"||k==="note"||k==="noteRate"||k==="stake";
     if(/\/day|ofvalue/.test(c)||(share&&/\$|[kmb]%?$|years?$/.test(c))||(k==="noteYears"&&/\$|[kmb]$/.test(c))||(!share&&k!=="noteYears"&&/years?$/.test(c))) return NaN;
     const v=parseAmount(t); if(!isFinite(v)) return NaN;
     const pct=t.includes("%");
     /* a share is kept to 0.01% and the note's rate to 0.01 points, what the boxes echo: 9.996% is 10%, as shown */
     if(k==="cash"||k==="note"){ const x=Math.round((pct||v>=1?v/100:v)*1e4)/1e4; return x>=0&&x<=(k==="cash"?1:.9)?x:NaN; }
+    /* the share of the business an owner buyout buys, from 1% to all of it */
+    if(k==="stake"){ const x=Math.round((pct||v>=1?v/100:v)*1e4)/1e4; return x>=.01&&x<=1?x:NaN; }
     if(k==="noteRate"){ const x=Math.round((!pct&&v>0&&v<1?v*100:v)*100)/100; return x>=0&&x<=30?x:NaN; }
     if(k==="noteYears") return !pct&&v>=1&&v<=30?v:NaN;
     /* an amount of money is none, or at least a dollar: "$0.40" would echo as "$0" while the check used it */
     return !pct&&(v===0||v>=1)&&v<1e10?v:NaN;
   }
   function finFill(keep){ $("f_type").value=FIN.type; $("f_type_h").textContent=DSC_HINT[FIN.type]; $("f_standby").checked=FIN.standby;
+    $("f_fee").value=FIN.fee; $("f_stake_f").hidden=FIN.type!=="buyout";
     /* a focused box typed in keeps its text; one not typed in shows the structure, its whole text selected again if it was */
     for(const k in FF){ const e=$(FF[k]), on=e===document.activeElement; if(keep&&on&&e.__typed) continue;
       const all=on&&e.value.length>0&&e.selectionStart===0&&e.selectionEnd===e.value.length; e.value=FFMT[k](FIN[k]); e.classList.remove("bad"); if(all) e.select(); } }
@@ -8535,13 +8683,16 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const sub=t=>`<span class="fin-s">${t}</span>`, flag=t=>`<span class="fin-s fin-flag">${t}</span>`;
     const row=(h,cell)=>`<tr><th scope="row">${h}</th>${cols.map(c=>`<td class="n">${cell(c.f)}</td>`).join("")}</tr>`;
     $("fintbl").innerHTML=`<thead><tr><th><span class="vh">Ask</span></th>${cols.map(c=>`<th class="n" scope="col">${c.t.join(" · ")}</th>`).join("")}</tr></thead><tbody>
-      ${row("Price",f=>`<b>${money(f.price)}</b>${sub((f.price/V).toFixed(2)+"× model value"+(f.project>f.price?"; "+money(f.project)+" with working capital and costs":""))}`)}
+      ${row("Price",f=>`<b>${money(f.price)}</b>${sub((f.price/V).toFixed(2)+"× model value"+(f.stake<1?"; "+pct1(f.stake)+" of it bought, "+money(f.bought):"")
+        +(f.extra>0||f.fee>0?"; "+money(f.project)+" with "+andList([f.extra>0?"working capital and costs":"",f.fee>0?"the SBA fee":""].filter(Boolean)):""))}`)}
       ${row("SBA 7(a) loan",f=>money(f.loan)+sub(f.loan>0?f.rate.toFixed(2)+"%, "+SBA_COO.amortYears+" years"+(f.over>0?"; at the 7(a) maximum":""):"none"))}
+      ${row("SBA guaranty fee",f=>f.loan>0?(f.fee>0?money(f.fee)+sub(f.feeMode==="financed"?"in the loan":"paid in cash at closing")
+        :"none"+sub(f.feeMode==="waived"?"waived":"waived: a manufacturer’s loan of $700k or less")):"none"+sub("no SBA loan"))}
       ${row("Seller note",f=>money(f.note)+sub(f.note>0?(f.standby?"full standby":FFMT.noteRate(FIN.noteRate)+", "+FFMT.noteYears(FIN.noteYears)):"none"))}
       ${row("Buyer cash",f=>(f.loan>0&&!f.equityOK?moneyDown(f.cash):money(f.cash))+(f.loan>0&&!f.equityOK?flag((f.standby&&f.note>0?"equity "+pctDown(f.equityShare)+(f.type==="buyout"?" of the price":"")+" with the standby note"
           :pctDown(f.equityShare)+(f.type==="buyout"?" of the price":""))+": under SBA’s 10%")
         :sub(p1(f.cash/Math.max(f.project,1))+" of the project")))}
-      ${row("Acquisition debt",f=>money(f.debt)+(f.debtOverValue?flag(money(f.debt-V)+" over value"):sub(f.loan>0?(f.debt/V).toFixed(2)+"× model value":"no SBA loan")))}
+      ${row("Acquisition debt",f=>money(f.debt)+(f.debtOverValue?flag(money(f.debt-f.value)+" over "+(f.stake<1?"the share’s value":"value")):sub(f.loan>0?(f.debt/f.value).toFixed(2)+"× "+(f.stake<1?"the share’s model value":"model value"):"no SBA loan")))}
       ${row("Payments a year",f=>money(f.ds)+sub(money(f.monthly)+" a month"))}
       ${row("Cash for debt service",f=>money(f.cf)+sub("after "+moneyIn(f.draw)+" of pay"+(f.capex?" and "+moneyIn(f.capex)+" of capital spending":"")))}
       ${row("Coverage",f=>!(f.ds>0)?`<b class="fin-cov ok">${covFmt(f)}</b>${sub("nothing to cover")}`
@@ -8554,7 +8705,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     if(mf.noLoan){ big="no loan"; txt="Buyer cash and the seller note pay the whole price, whatever it is: SBA’s tests do not apply."; }
     else if(mf.price===0){ big="none"; txt=mf.bind==="cap"?`The working capital and closing costs alone take the 7(a) maximum loan of ${money(SBA_COO.maxLoan)}.`
       :mf.bind==="value"?"Even at the smallest price the acquisition debt is above the model value."
-      :(z=>z?`The working capital and closing costs financed in the loan, ${money(z.loan)}, already take ${money(z.ds)} a year of payments before any price: the ${money(z.cf)} left after the new owner’s pay${FIN.capex?" and capital spending":""} covers them ${covFmt(z)}, under SBA’s ${z.min.toFixed(2)}× minimum. Finance less of them: from the business’s own cash, a line of credit or more buyer cash.`
+      :(z=>z?`The working capital and closing costs financed in the loan${z.feeIn>0?", with the SBA fee":""}, ${money(z.loan)}, already take ${money(z.ds)} a year of payments before any price: the ${money(z.cf)} left after the new owner’s pay${FIN.capex?" and capital spending":""} covers them ${covFmt(z)}, under SBA’s ${z.min.toFixed(2)}× minimum. Finance less of them: from the business’s own cash, a line of credit or more buyer cash.`
         :`After the new owner’s pay${FIN.capex?" and capital spending":""} the business does not cover a loan at this structure.`)(noPriceWC(s,FIN,V)); }
     /* below the 7(a) maximum the equity is a fixed share of the price; above it the rest of the price is buyer cash */
     else if(mf.equityShort&&!mf.equityWaivable){ big="none"; txt=`At ${pctDown(FIN.cash)} buyer cash${mf.standby?" with the standby note":""} the buyer’s equity is under SBA’s 10% minimum, which for an initial acquisition cannot be waived, at every price${!mf.capped?" this structure finances."
@@ -8565,7 +8716,8 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
         +(mf.equityShort&&!mf.equityTo?` The buyer’s equity is under SBA’s 10% minimum: for ${nm} ${EQUITY_WAIVER}.`:""); }
     else if(E.none){ big="none"; txt=`No whole-dollar price passes every test at this structure: the buyer’s equity, with the standby note’s credit, reaches SBA’s 10% minimum only from ${E.from}, and the structure stops working above ${E.top}.`; }
     else { big=E.top;
-      txt=(mf.bind==="value"?`Here the acquisition debt reaches the model value of ${money(V)}, which stands in for the lender’s business valuation: SBA caps the debt at it, so above this price the buyer puts in the difference as equity, cash or a seller note on full standby${mf.covPrice>mf.price*1.005?"; coverage alone would allow more":""}.`
+      txt=(mf.bind==="value"?(fv=>`Here the acquisition debt${fv.parts.length?`, with ${andList(fv.parts)} financed in the loan,`:""} reaches the model value${fv.f.stake<1?` of the ${pct1(fv.f.stake)} bought, ${money(fv.f.value)}`:` of ${money(V)}`}, which stands in for the lender’s business valuation: SBA caps the debt at it, so above this price the buyer puts in the difference as equity, cash or a seller note on full standby${fv.parts.length?", or "+[fv.f.feeIn>0?"pays the SBA fee in cash at closing":"",fv.f.extra>0?"finances less of the working capital and costs in the loan":""].filter(Boolean).join(" or "):""}${mf.covPrice>mf.price*1.005?"; coverage alone would allow more":""}.`)(
+          (f=>({f,parts:[f.extra>0?"the working capital and closing costs":"",f.feeIn>0?"the SBA fee":""].filter(Boolean)}))(debtCheck(s,mf.price,FIN,V)))
         :mf.bind==="cap"?`Here the SBA loan reaches the 7(a) maximum of ${money(SBA_COO.maxLoan)}, with coverage and the debt still within SBA’s limits; a higher price takes more buyer cash, or a larger seller note, than this structure sets.`
         :`Here coverage falls to ${mf.target.toFixed(2)}×; above it the buyer needs more cash, a larger note on full standby or a lower price.`)
         +` ${(mf.price/V).toFixed(2)}× model value, ${(mf.price/s.ern).toFixed(2)}× SDE.`+(mf.equityShort&&!mf.equityTo?` The buyer’s equity is under SBA’s 10% minimum: for ${nm} ${EQUITY_WAIVER}.`:""); }
@@ -8577,19 +8729,28 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
       else if(mf.equityTo&&mf.type==="buyout") txt+=` ${mf.equityAbove?`Between ${moneyDown(mf.equityTo)} and ${moneyUp(mf.equityAbove)}`:`Above ${moneyDown(mf.equityTo)}`} the buyer’s equity is under SBA’s 10% minimum of the price: for ${nm} ${EQUITY_WAIVER}.${mf.equityAbove
         ?` Past the 7(a) maximum the rest of the price is buyer cash, which brings it back to 10% from ${moneyUp(mf.equityAbove)}.`:""}`;
       const fA=isFinite(mf.price)?debtCheck(s,mf.price,FIN,V):debtCheck(s,s.ask,FIN,V);
-      if(mf.equityShort&&mf.equityWaivable&&fA.loan>0&&fA.equityIn<=0&&fA.project>fA.price) txt+=` With no equity the lender would have to eliminate it, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business’s own cash or a line of credit.`; }
+      if(mf.equityShort&&mf.equityWaivable&&fA.loan>0&&fA.equityIn<=0&&fA.extra>0) txt+=` With no equity the lender would have to eliminate it, and SBA then bars working capital from the loan: keep some equity, or fund the working capital from the business’s own cash or a line of credit.`; }
     $("fin_max").innerHTML=`<div class="fin-k">Highest price this structure finances</div><div class="fin-big">${big}</div><p>${txt}</p>`;
     const fc=cols.find(c=>c.t.includes("Your ask")).f, notes=[];
     notes.push(fc.drawMarket?`The new owner’s pay is a general manager’s market pay for this industry and size with the employer’s payroll taxes and benefits, ${moneyIn(fc.draw)}: ${moneyIn(gmSalary(s))} in wages (BLS, aggregate; its rank by firm size is judgment) × ${IVC.gm.loading.toFixed(2)} (BLS ECEC), since SDE adds back the seller’s. Enter a figure to replace it.`
       :`The new owner’s pay is the ${moneyIn(fc.draw)} entered; it should include payroll taxes and benefits, as SDE adds back the seller’s.`);
     if(cols.some(c=>c.f.noteCut)) notes.push(`Buyer cash and the seller note are set to more than the price, so the note is cut to what the cash leaves.`);
     notes.push(`The SBA rate is today’s prime, ${MODELS.fitted.sba_rate.prime.toFixed(2)}%, plus the spread lenders charge on a loan this size (fitted).`);
+    /* the upfront guaranty fee (r9-financing-1) */
+    if(fc.loan>0) notes.push(fc.fee>0?`SBA’s upfront guaranty fee at your ask is ${money(fc.fee)}, ${p1(fc.fee/fc.loan)} of the loan (FY2027: 2% to 3.75% of its guaranteed share). ${fc.feeMode==="financed"
+        ?"It is financed in the loan, the usual case, so the loan, its payments, the debt and the 7(a) maximum all carry it."
+        :"It is paid in cash at closing, on top of the buyer cash’s share, so the loan and coverage leave it out."}`
+      :`SBA’s upfront guaranty fee is ${fc.feeMode==="waived"?"set as waived":"waived: FY2027 charges none on a manufacturer’s loan of $700k or less"}.`);
     if(fc.loan>0&&!fc.equityOK) notes.push(`<b>Equity:</b> at your ask the buyer brings ${moneyDown(fc.equityIn)}${fc.standby&&fc.note>0?" counting the standby note":""}, under SBA’s 10% minimum of ${moneyUp(fc.equityNeed)}${FIN.type==="initial"
       ?"; for an initial acquisition it cannot be waived.":`; ${EQUITY_WAIVER}${FIN.extra>0?". If the lender eliminates it, the loan may not fund working capital, which then comes from the business’s own cash or a line of credit; closing costs may stay in the loan":""}.`}`);
     else if(FIN.standby&&fc.note>0&&fc.loan>0) notes.push(`A seller note on full standby counts toward the buyer’s 10% equity, for at most half of it.`);
     else if(FIN.standby&&fc.note>0) notes.push(`With no SBA loan the note has no loan to stand behind, so it is paid on its own terms.`);
     { const hi=cols.filter(c=>c.f.debtOverValue);
-      if(hi.length) notes.push(`<b>Debt above value:</b> SBA caps all acquisition debt, with a seller note not on full standby, at the business valuation, and the buyer puts in any price above it as equity: cash, or a seller note on full standby. The console uses the model value for the valuation; at ${hi.map(c=>"“"+c.t.join(" · ")+"”").join(" and ")} the debt is above it by ${hi.map(c=>money(c.f.debt-V)).join(" and ")}.`); }
+      /* the console counts everything financed in the loan against the valuation, as Appendix 15 A.1 caps the total debt;
+         a price within the value flagged only by that is said so, with the remedy that fits it (r9-financing-2) */
+      if(hi.length){ const wc=hi.filter(c=>c.f.bought<=c.f.value*(1+1e-9));
+        notes.push(`<b>Debt above value:</b> SBA caps all acquisition debt, with a seller note not on full standby, at the business valuation, and the buyer puts in any price above it as equity: cash, or a seller note on full standby. The console uses the model value for the valuation${FIN.type==="buyout"&&FIN.stake<1?", pro rata to the share bought,":""} and counts the working capital, closing costs and SBA fee financed in the loan as acquisition debt, as Appendix 15 caps the total; at ${hi.map(c=>"“"+c.t.join(" · ")+"”").join(" and ")} the debt is above it by ${hi.map(c=>money(c.f.debt-c.f.value)).join(" and ")}.`
+          +(wc.length?` At ${wc.map(c=>"“"+c.t.join(" · ")+"”").join(" and ")} the price itself is within the value: the working capital and costs financed in the loan carry the debt past it, so finance less of them in the loan (a working-capital line of credit sits outside it) or add equity.`:"")); } }
     if(cols.some(c=>c.f.qoe)) notes.push(`From a ${money(SBA_COO.qoeMin)} price the lender also needs a Quality of Earnings report and tests coverage on its earnings (not for an owner buyout, or an ESOP or cooperative purchase).`);
     notes.push(fc.price<=SBA_COO.ownValuationMax?(FIN.type==="buyout"?`At ${money(fc.price)} the lender may value the business itself only if buyer and seller are not closely related; between existing owners it orders an independent valuation.`
         :`At ${money(fc.price)} the lender may value the business itself, unless buyer and seller are closely related (existing owners or family).`)
@@ -8602,7 +8763,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     eq("eq_f",fc.loan>0?String.raw`\text{DSC}=\frac{\text{SDE}-W-K}{D_{\text{SBA}}+D_{\text{note}}}\;\ge\;${fc.min.toFixed(2)}`
       :String.raw`\text{DSC}=\frac{\text{SDE}-W-K}{D_{\text{SBA}}+D_{\text{note}}}\quad\text{(no SBA loan at your ask, so no SBA minimum)}`);
     /* nothing left after the pay: the ratio is at most zero (\le in place of the =) */
-    eq("eq_fs",String.raw`\text{at your ask: }\frac{${tmi(s.ern)}-${tmi(fc.draw)}-${tmi(fc.capex)}}{${tm(fc.sbaPay)}+${tm(fc.notePay)}}${!(fc.ds>0)?String.raw`=\text{${covFmt(fc)}}`:fc.cf<=0?String.raw`\le 0`:"="+covFmt(fc).replace("×","")}`
+    eq("eq_fs",String.raw`\text{at your ask: }\frac{${tmi(s.ern)}-${tmi(fc.draw)}-${tmi(fc.capex)}}{${tmi(fc.sbaPay)}+${tmi(fc.notePay)}}${!(fc.ds>0)?String.raw`=\text{${covFmt(fc)}}`:fc.cf<=0?String.raw`\le 0`:"="+covFmt(fc).replace("×","")}`
       +String.raw`,\quad W\text{: the new owner's pay},\;K\text{: capital spending},\;D\text{: a year of payments}`);
   }
 
@@ -8641,7 +8802,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     /* the label names the year read, or the weights applied, when they are not the basis's own */
     const lab=R.n===1||R.weight==="latest"?RECAST_YEARS[R.basis[0]]:R.weight==="w321"?recastWeighting(R):RECAST_WEIGHTS[R.weight].toLowerCase();
     $("rc_sum").innerHTML=`<div class="rc-fig"><div class="rc-k">SDE, ${hEsc(lab)}</div><div class="rc-big">${moneyIn(R.sde)}</div>
-      <div class="rc-s">${R.margin!==null?pc(R.margin,1)+" of revenue of "+moneyIn(R.rev)+"; ":""}add-backs ${moneyIn(R.add)}${R.less<-.5?", less "+moneyIn(-R.less):""} on income before taxes of ${moneyIn(R.ni)}</div></div>
+      <div class="rc-s">${R.margin!==null?pc(R.margin,1)+" of revenue of "+moneyIn(R.rev)+"; ":""}add-backs ${sdeParts(R).add}${sdeParts(R).less?", less "+sdeParts(R).less:""} on income before taxes of ${sdeParts(R).ni}</div></div>
       ${R.grw!==null?`<p class="rc-g">Revenue ${R.grw>=0?"grew":"fell"} ${pc(Math.abs(R.grw),1)} from the year before to the most recent year.</p>`:""}
       ${flags.map(f=>`<p class="rc-flag">${f}</p>`).join("")}`;
     return R;
@@ -9058,6 +9219,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
 
   /* ---- wiring ---- */
   $("f_type").innerHTML=Object.entries(DSC_TYPES).map(([k,v])=>`<option value="${k}">${hEsc(v)}</option>`).join("");
+  $("f_fee").innerHTML=Object.entries(SBA_FEE.modes).map(([k,v])=>`<option value="${k}">${hEsc(v)}</option>`).join("");
   $("rc_ent").innerHTML=Object.entries(RECAST_ENTITY).map(([k,v])=>`<option value="${k}">${hEsc(v.n)}</option>`).join("");
   $("rc_wt").innerHTML=Object.entries(RECAST_WEIGHTS).map(([k,v])=>`<option value="${k}">${hEsc(v)}</option>`).join("");
   { const st=document.createElement("style"); st.id="rp-css"; st.textContent=rpScope(RP_CSS,"#rp_paper "); document.head.appendChild(st);
@@ -9066,17 +9228,21 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   for(const k in FF){ const el=$(FF[k]);
     el.addEventListener("focus",()=>{ el.__typed=false; el.__th=undefined; });
     el.addEventListener("input",()=>{ el.__typed=true; el.classList.remove("bad"); });
-    el.addEventListener("change",()=>{ const v=parseFin(k,el.value);
+    el.addEventListener("change",()=>{ if(el.__esc) return; const v=parseFin(k,el.value);
       if(v===null||isFinite(v)) FIN[k]=v; else el.classList.add("bad");
       el.value=FFMT[k](FIN[k]);
       /* a value kept over the one another tab saved to this box while it was typed in is a clash, said now and at the save */
       if(el.__th&&!sameV(FIN[k],el.__th.v)){ CLASH.add("financing structure");
         tell("Another tab saved a different value to this box of the financing structure while it was typed in: this tab keeps its own, and saving here writes it over the other’s.",0); }
       el.__typed=false; el.__th=undefined; finChanged(); });
-    el.addEventListener("keydown",e=>{ if(e.key==="Enter") el.blur(); });
+    /* Escape puts back the structure's value and leaves the box, as the rail's boxes do: what was typed is not applied
+       on leaving (r9-inputs-4) */
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter") el.blur();
+      else if(e.key==="Escape"){ el.__esc=true; el.value=FFMT[k](FIN[k]); el.classList.remove("bad"); el.__typed=false; el.__th=undefined; el.blur(); el.__esc=false; } });
     /* a box left unchanged shows the structure as it now stands (one taken up from another tab while it had the focus) */
     el.addEventListener("blur",()=>{ const t=FFMT[k](FIN[k]); if(el.value!==t){ el.value=t; el.classList.remove("bad"); } }); }
-  $("f_type").addEventListener("change",()=>{ FIN.type=ownKey(DSC_TYPES,$("f_type").value)?$("f_type").value:"initial"; $("f_type_h").textContent=DSC_HINT[FIN.type]; finChanged(); });
+  $("f_type").addEventListener("change",()=>{ FIN.type=ownKey(DSC_TYPES,$("f_type").value)?$("f_type").value:"initial"; $("f_type_h").textContent=DSC_HINT[FIN.type]; $("f_stake_f").hidden=FIN.type!=="buyout"; finChanged(); });
+  $("f_fee").addEventListener("change",()=>{ FIN.fee=ownKey(SBA_FEE.modes,$("f_fee").value)?$("f_fee").value:"financed"; finChanged(); });
   $("f_standby").addEventListener("change",()=>{ FIN.standby=$("f_standby").checked; finChanged(); });
   /* the store first, as the report does: a tab that missed another's save shows the worksheet as saved, and a leftover
      gives way to the deal's own before it can be edited (r7-worksheet-7); the line shows what that read took up, not an
@@ -13829,7 +13995,8 @@ function boxW(el,fb){ if(!el) return fb; if(el.__w) return el.__w;
    the centre and the widths divBars always set; a chart whose values are all on
    one side is anchored at that side instead, so it uses the whole track. Each
    chart gets a scale (faint gridlines and one tick row in its own unit), a zero
-   meridian, star caps on the bar tips and rose for every negative bar.
+   meridian, star caps on the bar tips and rose for every negative bar, or for every
+   worse one where the rows say which is better (the peer z-scores: r9-console-4).
    ========================================================================== */
 var origBars=Wn.divBars;
 function scaleLabel(id,mode,st){
@@ -13862,13 +14029,13 @@ function bars(el,rows,fmt){
     .map(function(t){ return '<i class="tk" style="left:'+at(t).toFixed(2)+'%"></i>'; }).join("");
   var h='<div class="bar-grid" aria-hidden="true">'+grid+'</div>';
   rows.forEach(function(r,i){
-    var v=+r.v||0, p=v>=0, w=Math.abs(v)/mx*(mode==="div"?50:100);
+    var v=+r.v||0, p=v>=0, g=r.good!==undefined?!!r.good:p, w=Math.abs(v)/mx*(mode==="div"?50:100);
     var geo=mode==="div"?(p?"left:50%;width:":"right:50%;width:")+w.toFixed(3)+"%"
       :mode==="pos"?"left:0;width:"+w.toFixed(3)+"%":"right:0;width:"+w.toFixed(3)+"%";
     h+='<div class="bar-row" style="--i:'+i+'"><div class="bar-n">'+r.n+'</div>'
       +'<div class="bar-track">'+rtk+(mode==="div"?'<div class="bar-mid"></div>':'')
-      +'<div class="bar-fill '+(p?"pos":"neg")+(v===0?" nil":"")+'" style="'+geo+'"></div></div>'
-      +'<div class="bar-val '+(p?"pos":"neg")+'">'+show(v)+'</div></div>';
+      +'<div class="bar-fill '+(g?"pos":"neg")+(v===0?" nil":"")+'" style="'+geo+'"></div></div>'
+      +'<div class="bar-val '+(g?"pos":"neg")+'">'+show(v)+'</div></div>';
   });
   h+='<div class="bar-scale" aria-hidden="true">'+tk.map(function(t){ var q=at(t);
     return '<span'+(q<.5?' class="l"':q>99.5?' class="r"':'')+' style="left:'+q.toFixed(2)+'%">'+tl(t)+'</span>'; }).join("")+'</div>';

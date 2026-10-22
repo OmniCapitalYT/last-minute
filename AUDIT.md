@@ -1417,7 +1417,8 @@ This section describes the tools as they now stand. "Skeptic review of the broke
   - **Coverage.** At least 1.25× debt service coverage for an initial acquisition or an owner buyout, and 1.15× for a business expansion. It is tested on the last fiscal year or the average of the last two, historical or adjusted (Para. C.2.b), on the highest level of financial reporting the business has, tax returns last, or on a Quality of Earnings report's earnings where one is required; IRS transcripts verify the figures.
   - **Equity.** At least 10% of the total project cost; for an owner buyout, 10% of the price. Seller debt on full standby for the life of the loan may supply at most half of it. For a business expansion or an owner buyout the lender may reduce or eliminate it when the business keeps the liquidity and working capital to run, with no negative net worth, and a loan whose equity is eliminated may not fund working capital; for an initial acquisition it cannot be reduced.
   - **Loan terms.** Amortization of at most 10 years without real estate. The maximum Standard 7(a) loan is $5,000,000.
-  - **The debt cap.** All acquisition debt, including a seller note not on full standby, is limited to the business valuation; any price above it is paid in equity: cash, or a seller note on full standby.
+  - **The debt cap.** All acquisition debt, including a seller note not on full standby, is limited to the business valuation; any price above it is paid in equity: cash, or a seller note on full standby. The check counts the working capital, closing costs and guaranty fee financed in the loan as acquisition debt, as the cap is on the total, and says so (round 9).
+  - **The guaranty fee** (13 CFR 120.220; FY2027 rates, Information Notice 5000-881797, round 9). A share of the loan's guaranteed part (85% of a loan of $150,000 or less, 75% above): 2% to $150,000, 3% to $700,000, then 3.5% of the guaranteed part to $1M and 3.75% above. Waived on loans of $700,000 or less to manufacturers, listed food-supply businesses and rural businesses. Financed in the loan unless set otherwise, so the loan, its payments, the debt, the equity base and the $5M maximum carry it; paid in cash at closing it adds to the buyer cash.
   - **Due diligence.** The lender may value a business priced at $350,000 or less itself, unless buyer and seller have a close relationship, such as existing owners or family (Para. C.1.a): an owner buyout between existing owners is one, and the check says so for an owner buyout at that price. From a $3M price it also needs a Quality of Earnings report, except for an owner buyout (SBA's, a minority sale to anyone else included) or an ESOP or cooperative purchase.
 
   Paragraph letters are cited only where SBA's own cross-references give them. The other rules are cited by section name.
@@ -1425,6 +1426,7 @@ This section describes the tools as they now stand. "Skeptic review of the broke
 - **Two of the console's tables are reused:**
   - **The rate** is today's prime plus the fitted SBA spread, read on the loan's own size. The prime moves no model figure; this is its one reader.
   - **The new owner's pay** defaults to a general manager's market pay for the industry and size (BLS OEWS, aggregate; reading it at the firm's size rank is judgment), with the employer's payroll taxes and benefits (×1.24, BLS ECEC, the loading the console's GM hire uses), because SDE adds the seller's back.
+- **An owner buyout of part of the business** (round 9) takes a share from 1% to all of it: the price of the interest bought, the valuation its debt may not exceed and its equity are the whole business's times the share (the model value has no minority discount). Every other type buys the whole business.
 - **The starting structure** is 10% buyer cash and a 5% seller note at 6% over 10 years. The cash is SBA's minimum; the note is a common structure (judgment). Every part is editable. Shares are kept to 0.01% and the note's rate to 0.01 points, the precision their boxes echo, whether typed or stored, and an amount is none or at least a dollar.
 - **The table** shows each ask (the two optimizer asks, one column when they print as one price, as on their card and in the report, and the broker's own, which shares a column only at the same price) as price, loan, note, cash, acquisition debt (flagged above the model value), payments, cash available and coverage. Coverage prints rounded down, so a ratio just under the minimum never reads as the minimum, and SBA's minimum grades it only where there is an SBA loan. With no loan a note on full standby has nothing to stand behind, so it is paid on its own terms.
 - **The highest price this structure finances** is the highest price at which coverage meets the minimum and the acquisition debt stays within the model value, which stands in for the lender's valuation, with the shares as typed. A scan in 5% steps from the first price that carries an SBA loan finds the first price that fails, and a bisection its edge. The search stops where the loan reaches the 7(a) maximum: past it the shares no longer hold, since the rest of the price would be buyer cash. It prints rounded down, so the price shown passes its own tests, and the box names what binds (coverage, the value or the cap). Working capital makes the equity share move with the price: with a standby note's credit, an initial acquisition or an expansion passes only from some price up; alone, an owner buyout passes only up to some price. The box names that price, the first passing price rounded up and the last rounded down, so each passes as printed. The edges are found only over prices that carry an SBA loan, and when the floor and the highest price, rounded, would cross, both print in whole dollars. Past the 7(a) maximum the rest of the price is buyer cash, so an equity short there comes back where buyer cash reaches 10%, which the box names for an initial acquisition and for an owner buyout whose equity stops passing below the cap; with a paid seller note of about 90% of the price it never does, and the box says the equity is short at every price. For an initial acquisition a structure short of 10% works at no price below that. With no equity at all the lender would have to eliminate the requirement, and SBA then bars working capital from the loan: the box says so. When the working capital and closing costs in the loan alone take more payments than coverage allows, the box says that, not that the business covers no loan.
@@ -1676,7 +1678,7 @@ Five were medium and 39 low. Seven were refuted, as harmless or by design, and f
   - **"Save as new" dropped the deal's own worksheet** (medium). The copy now takes the worksheet in the dialog, from the deal it was made from, as does the Deals tab's new deal.
   - **Smaller defects:**
     - on the default latest-year basis the report stated flags from years the SDE does not read;
-    - the report echoed SDE and its parts in whole thousands, so the parts stopped adding up;
+    - the report echoed SDE and its parts in whole thousands, so the parts stopped adding up (this held only outside $100k to $999k, where moneyIn is still whole thousands; round 9 prints the parts at the SDE's unit);
     - the officer-pay hint left out pay counted in cost of goods sold (Form 1125-E);
     - "512,000 470,000", or a pasted row of cells, became $512,000,470,000, in a cell or a rail box;
     - a negative revenue was averaged in;
@@ -1926,7 +1928,7 @@ One was medium and 32 low. Five were refuted, as harmless or by design, and seve
   - **The cap's label between "1.50×" and "value", and a range end the note does not name,** read unambiguously and come from the documented merge of candidates under two grid steps apart; the label now follows the unit anyway.
   - **A walk-away ask at 1.48× described as sitting at the 1.5× cap** is right: it is where the soft cap binds, not a measured optimum, and it moves with the cap.
 
-### Round 8 (the last): 25 of 30 findings confirmed
+### Round 8 (the last of the loop): 25 of 30 findings confirmed
 One was medium and 24 low. Five were refuted, as harmless, by design or reachable only under the test harness's focus emulation, and six repeat another area's finding. Every survivor was fixed in one commit. Each one has a test that fails on the code before it (5 of the model checks, 1 of the fuzz checks at 300 businesses, and 13 of the 267 browser checks).
 
 - **The rest of the app (3).**
@@ -1968,6 +1970,57 @@ One was medium and 24 low. Five were refuted, as harmless, by design or reachabl
   - **A hold one take-up names, named again after the revenue changed:** by design while the take-up stored the cap, since the SDE stayed held and marked, as a clamped typed SDE stays. Round 8's fix of the 92% take-up keeps the other tab's SDE as saved instead, so the hold now ends, sentence and mark, once the revenue leaves room for it, and is not named after that.
   - **The discretionary add-back warning at 15%:** the share is rounded correctly on both surfaces, and neither states the threshold or a verdict beside it.
 
+### Round 9, a final review pass: 24 of 34 findings confirmed
+After round 8 the owner asked for "one more comprehensive pass for any issues, particularly ones that will actually cause the outputted numbers to be wrong or mislead the user", to be listed first and not fixed, and then: "ok now fix all of them". Eight reviewers took one area each on 3c68fe2: the value model, the sale outcome and optimizer, the SBA financing check, the seller report, the worksheet and deal records, the console display, the Data tab and the inputs. A skeptic per area re-ran every finding with its own scripts and tried to refute it. Of 34 findings, 24 held (4 medium, 20 low) and 10 were refuted. Every survivor is fixed in one commit, each with a test that fails on the code before it (all 25 of the round's model checks, 4 of the fuzz checks at 300 businesses, and 11 of the 279 browser checks; the twelfth new browser check is that the page raises no errors).
+
+- **Medium (4).**
+  - **SBA's upfront guaranty fee was left out of the financing check.** The loan, its payments and coverage read about 2% to 2.8% optimistic, the highest financeable price 1.5% to 2.4% too high, and an ask within about 2.5% of the coverage edge read "meets 1.25×" though it fails once the fee is financed. The check now charges the FY2027 fee (SBA Information Notice 5000-881797, effective October 1, 2026): a share of the guaranteed part (85% of a loan of $150,000 or less, 75% above), 2% to $150,000, 3% to $700,000, then 3.5% of the guaranteed part to $1M and 3.75% above ($1,700 on $100,000, $138,125 on $5M). It is waived on loans of $700,000 or less to manufacturers (the console's manufacturing industry), listed food-supply businesses and rural businesses, which the new fee box can set. By default it is financed in the loan, the usual case: a project cost in the structure's own shares, so the loan, its payments, the debt, the equity base and the $5M maximum all carry it. Paid in cash at closing, it adds to the buyer cash and leaves the loan alone. The table has a fee row and a note, the report's lender paragraph names it, and the Data tab has its row. At $6M of revenue and $300k of SDE the highest financed price falls from $1.11M to $1.09M, and a $1.11M ask that met 1.25× reads 1.22×. With 10% cash and a 5% note, the price at the 7(a) maximum falls from $5.88M to $5.74M.
+  - **"Medical or dental practice" was valued on the physicians' cell alone.** A dental practice read about 16% below the model's own dentists' cell, "Manufacturing" read the sign makers' cell and "Distribution" the lumber wholesalers'. Each industry is now valued on every BIZCOMPS 6-digit cell its label names, pooled as one cell: each cell's shrunk effect is taken back to its mean, the means and parents are pooled by count, and the pool is shrunk again with the same k of 25. The pools are physicians and dentists, four accounting and legal cells, every manufacturing (31-33) and wholesale (42) cell, two cells each for home services and staffing, six for auto repair, four food-service cells for restaurants, and construction's cells less home services'. A one-cell industry keeps its effect exactly. The framework example's value moves from $4.05M to $4.31M (+6.3%); the other pooled industries move by ×0.955 (construction) to ×1.117 (manufacturing). The Data tab lists each pool with its sales count. The risk model keeps one representative code per industry, and the confidence figure's comparables weight reads the pooled count.
+  - **The two "overall outcome" cards disagreed.** The walk-away ask lists at once, while the optimizer's reprice is a relisting charged its 14 days at the cost of delay. So the optimizer card said "Do nothing — nothing within the budget clears its cost" beside a walk-away card naming another ask, though the reprice is free. When the reprice alone beats doing nothing before its days and not after, the card now says that: relisting at the walk-away ask, $X, adds $G but its 14 days cost $D at $L a day; before listing, list at the walk-away ask. It names an over-budget change only on a second line. In a 216-state grid, 137 of the 138 such disagreements are now explained; the one left is under a dollar of the objective apart.
+  - **The report's caption defined expected proceeds as "the price times the chance of getting it".** The figure is the chance times the mean price if it sells, which the report never showed, and the chance times the printed median is 7% to 9% higher. The caption now says "the chance it sells times its average price if it does" and gives that price.
+- **Low: numbers or claims a user could act on (15).**
+  - the report's time column is the median time to close *if it sells*;
+  - the report's expected proceeds are the whole consideration; each figure now says how much of it is paid at closing ("84% at closing"), as the console's hero does;
+  - the report's accuracy label prints its meaning ("High: more predictable than three quarters of listed businesses");
+  - the hero's EBITDA multiple read a sector wedge whose implied owner pay grew with SDE ($4.2M at one state), so a high-margin business showed about twice the multiple a buyer would pay. EBITDA is now SDE less a general manager's market pay with payroll taxes and benefits, the new owner's pay the financing check uses, and the tile says "EBITDA after a manager's pay" (none when that leaves nothing). The wedge now only converts EBITDA benchmarks to SDE, as the Data tab says;
+  - the working capital, closing costs and fee financed in the loan count against the business valuation, as Appendix 15 caps the total acquisition debt. That reading is kept, and now disclosed in the table's note, the highest price's box and the report. Where the price itself is within the value, they also give the remedy: finance less of them in the loan (a line of credit sits outside it), pay the fee in cash, or add equity;
+  - an owner buyout can buy part of the business: a share box (1% to 100%) prices the stake pro rata, caps its debt at the same share of the model value (which has no minority discount), and sets its equity at 10% of the stake's price. Every other type buys the whole business;
+  - the track record never quotes a price above the ask it names, on the report and the toolbar;
+  - the coverage and ROI equation panels plug in their figures at the input boxes' precision, so the fraction reproduces the printed result;
+  - the worksheet's earnings basis prints its parts at the SDE's own unit, the largest part taking the rounding, so they add up as printed: no mismatch in 178,000 random worksheets, where about 1 in 4 tax-return worksheets missed by one unit. Round 3's fix of this held only outside $100k to $999k;
+  - a typed revenue that holds the SDE to 92% of it marks the SDE box while the hold lasts, as every other hold path does;
+  - the rail's percent boxes read a plain number under 1 as a share (0.72 is 72%), as the financing and deals boxes do; a percent sign keeps it as typed (0.5% is half a percent), and the boxes' tooltip says so;
+  - the console's sources say the kill zone is 11-30% of the asking price, which is 12-43% over model value, the axis the console states gaps on everywhere else; the unused kill flag reads the band on that axis;
+  - the Data tab's listing hedonic prints e^b − 1 with its standard error by the delta method: owner-operated −19% (se 4), where −21% was the log points;
+  - the value gap's note gives each change it leaves out its own reason: outreach moves the proceeds, not the value; a change that lowers the value on its own says by how much; one that adds nothing once the other changes are made says that;
+  - the peer bars are coloured by better or worse than peers, not by sign: more owner dependence or concentration than peers is rose, and the lede says which colour is which.
+- **Low: wording and interaction (5).** The optimizer's lede names its first objective as expected proceeds, not price. The day counts the cards' note gives are the difference of the "Expected days" tiles as printed, and under two days the walk-away note gives tenths. The Data tab's Refused table no longer points to a table it does not show, or to evidence "above" that is below. Escape in a financing box puts its value back and applies nothing typed. The growth box asks for the keyboard with a minus sign.
+- **Found while fixing.**
+  - the fee's fixed point left a billionth of a dollar of buyer cash in structures with none, enough to call "no equity" some equity. It is cleared;
+  - once the fee is financed, a paid seller note's share moves the debt below the 7(a) maximum too: a larger note leaves a smaller loan and fee. So the report's debt above value carries × judgment there at the starting share, and the fuzz invariant says so;
+  - with this round's text the tallest report found reached 1,029 px, two pages. The caption and the lender lines are tighter, the cash at closing sits in the table cell, and SBA's waiver conditions print once: an equity edge after the Equity sentence points back to them. The tallest report found now measures 1,006 px and prints on one page.
+  - two of the browser suite's two-tab storage checks (r6-deals-11, r7-deals-3) failed in some runs on the code before this round as after it: Chromium in this harness sometimes never passes one page's write of the store to the other page of its context (the second keeps reading the unreadable text while the first reads the deals it saved). Run alone, the first failed 2 of 6 times on 3c68fe2. Such a run cannot test the second tab, so both checks now try their scenario again, up to six times, until the second page sees the write, and say how many tries it took.
+- **Tests re-derived.** Pooling moved figures the tests pinned, re-read from the live build:
+  - two walk-away asks the Data tab quotes (1.16× at $400k and $4,000 a day, and the cap's knife edge at 82% kept);
+  - the framework example's range (the cap within 0.37%);
+  - the thetas of two walk-away flips, and the delay costs of the soft-cap checks;
+  - the score pins;
+  - the one-dollar equity window, now at $262,953 of SDE;
+  - the staffing ratio's restaurant, now at $11M.
+
+  The fee changed the financing identities: the project is the price and the fee, and the debt is 90% of both. Scenario tests built before the fee waive it, so they keep testing the structure they were written for. The confidence fit's own vectors are checked on a build that reads the representative cell, and the live weight against the pool.
+- **Refuted (10).**
+  - the extrapolation's rounding at 3×, which is the fit's own definition;
+  - a future closing date in the price record and close rate, which is documented scope;
+  - the note that "sets the growth" (by design);
+  - the accuracy band's wording, a standard convention about 1 point off;
+  - interior asks of a patient seller's range, which promise nothing (at most 0.21% over);
+  - "the real decision" against a coin toss (documented, F-1);
+  - "$0 a day of delay", which is true;
+  - the anchoring formula's ρ̃, which reads correctly with ā;
+  - typed decimals echoed rounded in notes, since the rule covers the boxes, which show them;
+  - three console label slips, documented or harmless.
+
 ### Where it stands
 | Round | Findings | Confirmed (in part) | Refuted | Fixed in |
 |---|---|---|---|---|
@@ -1979,16 +2032,19 @@ One was medium and 24 low. Five were refuted, as harmless, by design or reachabl
 | 6 | 39 | 34 | 5 | 2f309d6 |
 | 7 | 38 | 33 | 5 | 2388c6c |
 | 8 | 30 | 25 | 5 | a631a70 |
+| 9 (final pass) | 34 | 24 | 10 | this round's commit |
 
-Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule; round 8's fixes have their tests but no ninth review.
+Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule. The owner then asked for one more pass, identify-only, aimed at figures that are wrong or mislead. It ran as round 9 on 3c68fe2, with eight areas instead of five, and its 24 confirmed findings (4 medium) are fixed. They have their tests, but no tenth review.
 
-Suites on the round-8 build:
+Suites on the round-9 build:
 
 | Suite | Result |
 |---|---|
-| `node tests/model.test.js` | 7,790 pass |
-| `node tests/fuzz.test.js 1500` | 213,052 checks pass |
+| `node tests/model.test.js` | 7,816 pass |
+| `node tests/fuzz.test.js 1500` | 214,359 checks pass |
 | `node tests/browser.inputs.js` | pass |
-| `node tests/browser.broker.js` | 267 checks pass |
-| `node tests/browser.sweep.js` | 121 input states at each of 1440 and 390 px pass |
+| `node tests/browser.broker.js` | 279 checks pass |
+| `node tests/browser.sweep.js` | 124 input states at each of 1440 and 390 px pass |
 | `node tests/invariants.test.js --browser` | 253 invariants pass |
+
+The tallest seller report found by two hill climbs from round 8's tallest states, with the guaranty fee and the stake among the mutations, measures 1,006 px and prints on one Letter page, from the page and from the downloaded file.

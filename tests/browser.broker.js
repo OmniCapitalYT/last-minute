@@ -33,7 +33,7 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   let st=await p.evaluate(()=>{ const s=STATE.s, r=STATE.r, f=debtCheck(s,s.ask,OMNI_BROKER.state().fin,r.V), mf=maxFinanced(s,OMNI_BROKER.state().fin,r.V);
     const rows=[...document.querySelectorAll("#fintbl tbody tr")], cov=rows[rows.length-1], debt=rows.find(tr=>/Acquisition debt/.test(tr.textContent));
     return {want:covFmt(f),cells:[...cov.querySelectorAll("td b")].map(b=>b.textContent),cols:document.querySelectorAll("#fintbl thead th").length-1,head:document.querySelector("#fintbl thead").textContent,
-      debt:debt?debt.textContent:"",max:document.getElementById("fin_max").textContent,price:money(mf.price),bind:mf.bind,who:document.getElementById("fin_who").textContent,
+      debt:debt?debt.textContent:"",max:document.getElementById("fin_max").textContent,price:moneyDown(mf.price),bind:mf.bind,who:document.getElementById("fin_who").textContent,
       pay:document.getElementById("fin_note").textContent}; });
   ok(st.cells.includes(st.want)&&st.cols>=1&&st.cols<=3&&/Your ask/.test(st.head),`the coverage row reads the model's coverage at your ask (${st.want}; ${st.cols} asks)`);
   ok(st.bind==="value"&&st.max.includes(st.price)&&/reaches the model value/.test(st.max)&&/over value/.test(st.debt),
@@ -81,14 +81,15 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   { const keepIN=await p.evaluate(()=>({...IN}));
     await p.evaluate(()=>{ IN.ern=5e6; IN.rev=2e7; IN.ask=2e7; render(); }); await typeIn("#f_cash","5%"); await typeIn("#f_note","0");
     st=await p.evaluate(()=>({max:document.getElementById("fin_max").textContent,cash:[...document.querySelectorAll("#fintbl tbody tr")].find(tr=>/Buyer cash/.test(tr.textContent)).textContent}));
-    ok(/none/.test(st.max)&&/at every price below \$5\.56M\. Past \$5\.26M the SBA loan stays at the 7\(a\) maximum/.test(st.max)&&/rest of the price is buyer cash/.test(st.max)&&/which reaches 10% there/.test(st.max)&&!/under SBA/.test(st.cash),
+    /* $5.42M and $5.12M since round 9 financed SBA's guaranty fee in the loan ($5.56M and $5.26M without it) */
+    ok(/none/.test(st.max)&&/at every price below \$5\.42M\. Past \$5\.12M the SBA loan stays at the 7\(a\) maximum/.test(st.max)&&/rest of the price is buyer cash/.test(st.max)&&/which reaches 10% there/.test(st.max)&&!/under SBA/.test(st.cash),
        `past the 7(a) maximum the asks meet the equity minimum with buyer cash, and the box bounds the 5% structure's shortfall where buyer cash reaches 10% (${st.max.slice(36,160)})`);
     await p.evaluate(k=>{ Object.assign(IN,k); render(); },keepIN); await typeIn("#f_cash","10%"); await typeIn("#f_note","5%"); }
   /* r3-core-4: working capital financed in the loan whose payments alone break coverage is named, not the new owner's pay */
   { const keepIN=await p.evaluate(()=>({...IN}));
     await p.evaluate(()=>{ IN.ern=3e5; IN.rev=1.2e6; IN.ask=9e5; render(); }); await typeIn("#f_extra","1.5m");
     st=await p.evaluate(()=>({max:document.getElementById("fin_max").textContent,mf:maxFinanced(STATE.s,OMNI_BROKER.state().fin,STATE.r.V)}));
-    ok(st.mf.price===0&&st.mf.bind==="coverage"&&/The working capital and closing costs financed in the loan, \$[\d.]+M, already take \$[\d.]+k a year of payments before any price/.test(st.max)
+    ok(st.mf.price===0&&st.mf.bind==="coverage"&&/The working capital and closing costs financed in the loan, with the SBA fee, \$[\d.]+M, already take \$[\d.]+k a year of payments before any price/.test(st.max)
        &&/under SBA’s 1\.25× minimum/.test(st.max)&&!/does not cover a loan/.test(st.max),`working capital whose payments alone break coverage is named as what leaves no price (${st.max.slice(36,150)})`);
     await typeIn("#f_extra","none"); await p.evaluate(k=>{ Object.assign(IN,k); render(); },keepIN); }
   /* round 3: the share box echoes what the check reads; a sub-dollar amount is refused; the type's conditions under it;
@@ -938,7 +939,8 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     await q.selectOption("#f_type","buyout"); await settle(q); await box(q,"#f_cash","8"); await box(q,"#f_extra","300000");
     st=await q.evaluate(()=>{ const tr=[...document.querySelectorAll("#fintbl tr")].find(r=>r.querySelector("th")&&r.querySelector("th").textContent.trim()==="Buyer cash");
       return tr?[...tr.querySelectorAll("td")].map(td=>td.textContent.replace(/\s+/g," ").trim()):[]; });
-    ok(st.some(t=>/9\.5% of the price: under SBA’s 10%/.test(t))&&!st.some(t=>/\d%: under SBA/.test(t)),`an owner buyout's failing buyer cash names its basis, the price, beside cells that give the project's (${st.join(" | ")}; r5-financing-3)`);
+    /* 9.7% since round 9 financed SBA's guaranty fee in the structure's shares, 8% of it in the buyer's cash (9.5% before) */
+    ok(st.some(t=>/9\.7% of the price: under SBA’s 10%/.test(t))&&!st.some(t=>/\d%: under SBA/.test(t)),`an owner buyout's failing buyer cash names its basis, the price, beside cells that give the project's (${st.join(" | ")}; r5-financing-3)`);
     await q.selectOption("#f_type","initial"); await settle(q); await box(q,"#f_cash","9.95"); await box(q,"#f_note","90"); await box(q,"#f_extra","none");
     st={i:(await msg(q,"fin_max")).replace(/\s+/g," ")}; await q.selectOption("#f_type","expansion"); await settle(q); st.e=(await msg(q,"fin_max")).replace(/\s+/g," ");
     ok(/at every price this structure finances\./.test(st.i)&&!/Above \$|reduce or eliminate/.test(st.i)&&!/Above \$/.test(st.e),
@@ -1279,16 +1281,23 @@ const URL="file://"+path.join(__dirname,"..","index.html");
 
     /* unreadable deals with no room for a copy: nothing is saved over them until the broker says the file is kept
        (r6-deals-10); a second tab says what changed once another saved over them (r6-deals-11) */
-    const c29=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:false});
-    await c29.addInitScript(()=>{ if(!localStorage.getItem("seed6")){ localStorage.setItem("seed6","1"); localStorage.setItem("omni.deals.v1","{not json"); }
+    /* Chromium in this harness sometimes never passes one page's write of the store to the other page of the context (the
+       second keeps reading "{not json" while the first reads the deals it saved, on the code before round 9 as after it):
+       such a run cannot test the second tab, so the scenario is tried again, up to six times, until the second page sees
+       the write (round 9) */
+    let o29a, o29b, U, V2, c29, tries=0, seen=false;
+    for(;tries<6&&!seen;tries++){ if(c29) await c29.close();
+      c29=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:false});
+      await c29.addInitScript(()=>{ if(!localStorage.getItem("seed6")){ localStorage.setItem("seed6","1"); localStorage.setItem("omni.deals.v1","{not json"); }
       const set=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==="omni.deals.v1.unreadable") throw new DOMException("The quota has been exceeded.","QuotaExceededError"); return set.call(this,k,v); }; });
-    const o29a=await open(c29), U=o29a.p, o29b=await open(c29), V2=o29b.p; await toDeals(U); await toDeals(V2);
-    await U.click("#dl_unread"); await settle(U); st={kept:await U.evaluate(()=>localStorage.getItem("omni.deals.v1")),msg:await msg(U,"dl_msg"),ok:await U.evaluate(()=>!!document.getElementById("dl_unread_ok"))};
-    if(st.ok){ await U.click("#dl_unread_ok"); await settle(U); }
-    st.after=await U.evaluate(()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } });
+      o29a=await open(c29); U=o29a.p; o29b=await open(c29); V2=o29b.p; await toDeals(U); await toDeals(V2);
+      await U.click("#dl_unread"); await settle(U); st={kept:await U.evaluate(()=>localStorage.getItem("omni.deals.v1")),msg:await msg(U,"dl_msg"),ok:await U.evaluate(()=>!!document.getElementById("dl_unread_ok"))};
+      if(st.ok){ await U.click("#dl_unread_ok"); await settle(U); }
+      st.after=await U.evaluate(()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } });
+      seen=await V2.waitForFunction(()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } },null,{timeout:15000}).then(()=>true,()=>false); }
     await toConsole(V2); await toDeals(V2); st.b=(await msg(V2,"dl_store")).replace(/\s+/g," ");
     ok(st.kept==="{not json"&&!/^Downloaded/.test(st.msg)&&st.ok&&st.after&&/When this tab opened, the deals stored here could not be read, and another tab has since saved over them/.test(st.b),
-       `unreadable deals are not saved over until the broker says the file is kept, and a second tab says another has saved over them (${JSON.stringify({kept:st.kept,msg:st.msg.slice(0,40),b:st.b.slice(0,90)})}; r6-deals-10, r6-deals-11)`);
+       `unreadable deals are not saved over until the broker says the file is kept, and a second tab says another has saved over them (${JSON.stringify({kept:st.kept,msg:st.msg.slice(0,40),b:st.b.slice(0,90)})}; r6-deals-10, r6-deals-11; ${tries} ${tries===1?"try":"tries"})`);
     ok(o29a.errs.length===0&&o29b.errs.length===0,"no page errors in round 6's unreadable-store checks: "+o29a.errs.concat(o29b.errs).slice(0,3).join(" | "));
     await c29.close();
 
@@ -1485,15 +1494,20 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     await c37.close();
 
     /* unreadable deals: a second tab counts only its own as in this tab only once another has stored its own (r7-deals-3) */
-    const c38=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:false});
-    await c38.addInitScript(()=>{ if(!localStorage.getItem("seed7")){ localStorage.setItem("seed7","1"); localStorage.setItem("omni.deals.v1","{not json"); }
-      const set=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==="omni.deals.v1.unreadable") throw new DOMException("The quota has been exceeded.","QuotaExceededError"); return set.call(this,k,v); }; });
-    const o38a=await open(c38), U2=o38a.p, o38b=await open(c38), V3=o38b.p;
-    await U2.click("#tl_save"); await settle(U2); await ern(U2,1.2e6); await U2.click("#tl_saveas"); await settle(U2); await ern(V3,7e5); await V3.click("#tl_save"); await settle(V3);
-    await toDeals(U2); await U2.click("#dl_unread"); await settle(U2); await U2.waitForSelector("#dl_unread_ok"); await U2.click("#dl_unread_ok"); await settle(U2);
-    await sees(U2,()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } });
+    /* tried again, up to six times, until the second page sees the first page's write of the store, which Chromium in this
+       harness sometimes never passes on (see r6-deals-11 above; round 9) */
+    let c38, o38a, o38b, U2, V3, tries38=0, seen38=false;
+    for(;tries38<6&&!seen38;tries38++){ if(c38) await c38.close();
+      c38=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce",acceptDownloads:false});
+      await c38.addInitScript(()=>{ if(!localStorage.getItem("seed7")){ localStorage.setItem("seed7","1"); localStorage.setItem("omni.deals.v1","{not json"); }
+        const set=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==="omni.deals.v1.unreadable") throw new DOMException("The quota has been exceeded.","QuotaExceededError"); return set.call(this,k,v); }; });
+      o38a=await open(c38); U2=o38a.p; o38b=await open(c38); V3=o38b.p;
+      await U2.click("#tl_save"); await settle(U2); await ern(U2,1.2e6); await U2.click("#tl_saveas"); await settle(U2); await ern(V3,7e5); await V3.click("#tl_save"); await settle(V3);
+      await toDeals(U2); await U2.click("#dl_unread"); await settle(U2); await U2.waitForSelector("#dl_unread_ok"); await U2.click("#dl_unread_ok"); await settle(U2);
+      await sees(U2,()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } });
+      seen38=await V3.waitForFunction(()=>{ try{ return Array.isArray(JSON.parse(localStorage.getItem("omni.deals.v1"))); }catch(e){ return false; } },null,{timeout:15000}).then(()=>true,()=>false); }
     await sees(V3,()=>OMNI_BROKER.state().deals.length===3); await toDeals(V3); st={line:(await msg(V3,"dl_store")).replace(/\s+/g," "),n:await V3.evaluate(()=>OMNI_BROKER.state().deals.length)};
-    ok(st.n===3&&/1 of the 3 deals here is in this tab only/.test(st.line),`a second tab on an unreadable store counts only its own deals as in this tab only once another has stored its own (${JSON.stringify(st)}; r7-deals-3)`);
+    ok(st.n===3&&/1 of the 3 deals here is in this tab only/.test(st.line),`a second tab on an unreadable store counts only its own deals as in this tab only once another has stored its own (${JSON.stringify(st)}; r7-deals-3; ${tries38} ${tries38===1?"try":"tries"})`);
     ok(o38a.errs.length===0&&o38b.errs.length===0,"no page errors in round 7's unreadable-store check: "+o38a.errs.concat(o38b.errs).slice(0,3).join(" | "));
     await c38.close();
 
@@ -1649,7 +1663,60 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     ok(st.de==="1.234"&&/18,941 closed sales/.test(st.conf)&&!st.dollar.length&&!st.count.length&&/\$16,400/.test(dt8),
        `the console and the Data tab print counts and amounts in en-US in a German browser (${JSON.stringify({conf:st.conf.slice(0,60),dollar:st.dollar,count:st.count})}; r8-core-2)`);
     ok(o46.errs.length===0,"no page errors in a German browser (round 8): "+o46.errs.slice(0,3).join(" | "));
-    await c46.close(); }
+    await c46.close();
+    /* ---- round 9 ---- */
+    const c47=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const o47=await open(c47), Q9=o47.p;
+    const row9=name=>Q9.evaluate(n=>{ const r=[...document.querySelectorAll("#fintbl tr")].find(t=>t.firstElementChild&&t.firstElementChild.textContent.trim()===n); return r?r.innerText.replace(/\s+/g," "):""; },name);
+    /* the SBA guaranty fee has its row, its note and its box; paid in cash it says so (r9-financing-1) */
+    st={fee:await row9("SBA guaranty fee"),notes:await msg(Q9,"fin_note"),fx:await Q9.evaluate(()=>{ const s=STATE.s, f=debtCheck(s,s.ask,OMNI_BROKER.state().fin,STATE.r.V); return {fee:f.fee,m:money(f.fee)}; })};
+    await Q9.selectOption("#f_fee","cash"); await settle(Q9); st.cash=await row9("SBA guaranty fee"); await Q9.selectOption("#f_fee","financed"); await settle(Q9);
+    ok(st.fx.fee>0&&st.fee.includes(st.fx.m)&&/in the loan/.test(st.fee)&&/upfront guaranty fee at your ask is/.test(st.notes)&&/paid in cash at closing/.test(st.cash),
+       `the financing table shows SBA's guaranty fee, financed or paid in cash, and its note says what it is (${JSON.stringify({fee:st.fee.slice(0,80),cash:st.cash.slice(0,80)})}; r9-financing-1)`);
+    /* an owner buyout of part of the business: the share box shows for a buyout only, and the price says what is bought (r9-financing-3) */
+    st.h0=await Q9.evaluate(()=>(document.getElementById("f_stake_f")||{}).hidden); await Q9.selectOption("#f_type","buyout"); await settle(Q9);
+    st.h1=await Q9.evaluate(()=>(document.getElementById("f_stake_f")||{}).hidden); await box(Q9,"#f_stake","40");
+    st.price=await row9("Price"); st.stake=await Q9.evaluate(()=>OMNI_BROKER.state().fin.stake); await Q9.selectOption("#f_type","initial"); await settle(Q9);
+    ok(st.h0===true&&st.h1===false&&st.stake===.4&&/40% of it bought/.test(st.price),`an owner buyout of 40% prices the stake bought (${st.price.slice(0,90)}; r9-financing-3)`);
+    /* Escape in a financing box puts its value back, and nothing typed there is applied on leaving (r9-inputs-4) */
+    await Q9.click("#f_cash"); await Q9.keyboard.press("Control+A"); await Q9.keyboard.type("50",{delay:5}); await Q9.keyboard.press("Escape"); await settle(Q9);
+    await Q9.evaluate(()=>document.activeElement&&document.activeElement.blur&&document.activeElement.blur()); await settle(Q9);
+    st.esc=await Q9.evaluate(()=>({v:document.getElementById("f_cash").value,c:OMNI_BROKER.state().fin.cash}));
+    ok(st.esc.v==="10%"&&st.esc.c===.1,`Escape in a financing box restores it, as the rail's boxes do (${JSON.stringify(st.esc)}; r9-inputs-4)`);
+    /* a revenue that holds the SDE to 92% of it marks the SDE box while the hold lasts (r9-inputs-1) */
+    await box(Q9,"#v_rev","1M"); st.held=await Q9.evaluate(()=>({bad:document.getElementById("v_ern").classList.contains("bad"),v:document.getElementById("v_ern").value}));
+    await box(Q9,"#v_rev","6M"); st.free=await Q9.evaluate(()=>({bad:document.getElementById("v_ern").classList.contains("bad"),v:document.getElementById("v_ern").value}));
+    ok(st.held.bad&&st.held.v==="$920k"&&!st.free.bad&&st.free.v==="$1.45M",`a typed revenue that holds the SDE marks the SDE box until it lets go (${JSON.stringify(st)}; r9-inputs-1)`);
+    /* a rail percent box reads a plain number under 1 as a share, as the financing and deals boxes do; a % keeps it as typed (r9-inputs-2) */
+    await box(Q9,"#v_rec","0.5"); st.r1=await Q9.evaluate(()=>({s:STATE.s.rec,v:document.getElementById("v_rec").value}));
+    await box(Q9,"#v_rec","0.5%"); st.r2=await Q9.evaluate(()=>({s:STATE.s.rec,v:document.getElementById("v_rec").value})); await box(Q9,"#v_rec","72");
+    ok(Math.abs(st.r1.s-.5)<1e-9&&st.r1.v==="50%"&&Math.abs(st.r2.s-.005)<1e-9&&st.r2.v==="0.5%"&&/0\.72 is 72%/.test(await Q9.getAttribute("#v_rec","title")),
+       `a rail percent box reads 0.5 as 50% and 0.5% as itself, and says so (${JSON.stringify([st.r1,st.r2])}; r9-inputs-2)`);
+    ok(await Q9.getAttribute("#v_grw","inputmode")===null,"the growth box asks for the keyboard with a minus sign (r9-inputs-5)");
+    /* the peer bars: more owner dependence than peers is rose, less is blue (r9-console-4) */
+    const zc=()=>Q9.evaluate(()=>{ const r=[...document.querySelectorAll("#zbars .bar-row")].find(x=>/Owner dependence/.test(x.textContent)); return r?r.querySelector(".bar-fill").classList.contains("neg"):null; });
+    await Q9.selectOption("#i_own","0.95"); await settle(Q9); st.z95=await zc(); await Q9.selectOption("#i_own","0.14"); await settle(Q9); st.z14=await zc(); await Q9.selectOption("#i_own","0.72"); await settle(Q9);
+    ok(st.z95===true&&st.z14===false,`an owner-dependent business's bar is rose, an owner-independent one's blue (${st.z95}, ${st.z14}; r9-console-4)`);
+    /* the hero's EBITDA multiple takes a manager's market pay off SDE (r9-console-5) */
+    st.mult=await Q9.evaluate(()=>({t:document.getElementById("o_mult").innerText,x:(STATE.r.V/(STATE.s.ern-marketPay(STATE.s))).toFixed(2)}));
+    ok(st.mult.t.includes(st.mult.x+"× EBITDA after a manager’s pay"),`the hero's EBITDA multiple is value over SDE less a manager's pay, and says so (${st.mult.t.replace(/\s+/g," ")}; r9-console-5)`);
+    /* the value gap names outreach as moving proceeds, not value (r9-valuation-3) */
+    st.gap=await msg(Q9,"o_gapnote");
+    ok(/Widen the qualified buyer outreach moves the proceeds, not the value/.test(st.gap)&&!/Left out because/.test(st.gap),`the value-gap note gives outreach its own reason (${st.gap.slice(-160)}; r9-valuation-3)`);
+    /* the overall-outcome card names the relisting delay when it, not the budget, keeps the free reprice out (r9-console-1) */
+    await box(Q9,"#v_lam","4000"); { const V9=await Q9.evaluate(()=>STATE.r.V); await box(Q9,"#v_ask",String(Math.round(1.4*V9))); }
+    st.opt=await Q9.evaluate(()=>document.getElementById("optout").innerText.replace(/\s+/g," "));
+    ok(/relisting at the walk-away ask, \$[\d.]+M, adds \$[\d.]+k but its 14 days cost \$56k at \$4,000 a day; before listing, list at the walk-away ask/.test(st.opt)&&!/nothing within the budget clears its cost/.test(st.opt),
+       `the card says the relisting's 14 days, not the budget, keep the walk-away ask out (${st.opt.slice(0,220)}; r9-console-1)`);
+    await box(Q9,"#v_lam","900"); await box(Q9,"#v_ask","3.24M");
+    /* the Data tab: the fee's row, the hedonic effects as percentages, the Refused table, the kill zone's axis (r9-financing-1, r9-datatab-1..3) */
+    st.con=await Q9.evaluate(()=>document.body.innerText.replace(/\s+/g," "));
+    await Q9.click('.tab[data-v="data"]'); await Q9.waitForTimeout(1500); st.dt=await Q9.evaluate(()=>document.body.innerText.replace(/\s+/g," "));
+    ok(/SBA guaranty fee upfront, a share of the loan’s guaranteed part/.test(st.dt)&&/\$1,700 on a \$100,000 loan, \$138,125 on \$5M/.test(st.dt)&&/owner-operated asks −19% \(se 4\), staff in place \+8% \(se 5\)/.test(st.dt)
+       &&!/Held as reference/.test(st.dt)&&/a check on the buyer mix below/.test(st.dt)&&/11–30% of the asking price, 12–43% over model value/.test(st.con),
+       "the Data tab states the fee, the listing hedonic as percentages and the Refused table's pointers; the console's sources the kill zone's axis (r9-financing-1, r9-datatab-1..3)");
+    ok(o47.errs.length===0,"no page errors in round 9's checks: "+o47.errs.slice(0,3).join(" | "));
+    await c47.close();
+  }
 
   /* a phone with the quality fit showing: the fits panel stays inside its box, its table scrolls */
   const c7=await b3.newContext({viewport:{width:390,height:844},reducedMotion:"reduce"});

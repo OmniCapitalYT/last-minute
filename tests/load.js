@@ -17,7 +17,7 @@ function load(overrides){
   RHO_MAX,AMAX,fanRatio,fanNodes,softMin,gapPenalty,sizeRefs,sbaRate,jobsFor,typMargin,QW,buyerMix,INTERV,costOf,daysOf,IND2NAICS,gmSalary,
   timeMult,T_ELAST,T_SMOOTH,optNote,optCardNote,businessScore,sdeEbitdaWedge,naicsFor,PEN_MAX,GAP_TAIL_K,GAP_CDF,money,ENG_SHARE,COMP_K,COMP_H,THIN_W,capOne,BUYERS,PHI,FAN_S,qualityZ,jobsKnots,moneyIn,refDistAt,nqnt,
   peerMedians,peerGm,gmDefinition,PEER_SD,SIZE_SD,compsFor,FITTED_CELLS,COMPS_MEAN,confidenceOf,tailAt,growthFloor,IVC,FAN,
-  SBA_COO,DSC_TYPES,DSC_HINT,DSC_NAMES,FIN_DEFAULTS,marketPay,annualPayment,sbaRateLoan,debtCheck,pctDown,moneyDown,moneyUp,moneyVal,finEdges,pct1,EQUITY_WAIVER,covFmt,maxFinanced,noPriceWC,RECAST_ROWS,RECAST_ENTITY,RECAST_WEIGHTS,recastSDE,RECAST_REPORT,recastNotes,DEAL_DONE,dealPredict,daysBetween,T95,t95,sampleSummary,CALIB_K,fitPenaltyScale,olsFit,DEAL_MIN,dealsStats,RHO_BIND,capSet,RAIL_BEST,reportLevers,reportData,reportHTML,hEsc,RP_PAGE,RP_CSS,rpScope,reportFileHTML,pc,ordn,ownKey,RECAST_YEARS,recastWeighting,RECAST_REPORT_T};`,ctx);
+  SBA_COO,SBA_FEE,guarantyFee,IND_CELLS,cellOf,sdeParts,DSC_TYPES,DSC_HINT,DSC_NAMES,FIN_DEFAULTS,marketPay,annualPayment,sbaRateLoan,debtCheck,pctDown,moneyDown,moneyUp,moneyVal,finEdges,pct1,EQUITY_WAIVER,covFmt,maxFinanced,noPriceWC,RECAST_ROWS,RECAST_ENTITY,RECAST_WEIGHTS,recastSDE,RECAST_REPORT,recastNotes,DEAL_DONE,dealPredict,daysBetween,T95,t95,sampleSummary,CALIB_K,fitPenaltyScale,olsFit,DEAL_MIN,dealsStats,RHO_BIND,capSet,RAIL_BEST,reportLevers,reportData,reportHTML,hEsc,RP_PAGE,RP_CSS,rpScope,reportFileHTML,pc,ordn,ownKey,RECAST_YEARS,recastWeighting,RECAST_REPORT_T};`,ctx);
   return ctx.API;
 }
 module.exports=load();
