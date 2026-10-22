@@ -2087,3 +2087,69 @@ Suites on the round-10 build:
 | `node tests/invariants.test.js --browser` | 253 invariants pass |
 
 The tallest seller report found by hill climbs (eight in all, the last two under the final print rules) from round 9's tallest states and the round-10 reviewer's, with the guaranty fee, its waiver and the stake among the mutations, measures 986 px and prints on one Letter page, from the page and from the downloaded file.
+
+## The opening film, lag, and a version for use, October 2026
+
+The owner: "remove the first light step from the intro sequence", "make the wormhole look far cooler and less cartoony
+during the new frontier of brokerage portion", "try any software optimizations to reduce lag in general", and a second
+version, named foruse, "that does NOT have any equation documentation or fitted/aggregate/judgement labels, nor the
+entire data+parameters tab", with index.html otherwise unchanged.
+
+**First light.** The plasma layers and the microwave-background speckle are gone, with their caption ("380,000 years ·
+first light") and phase. The film clock now rushes 1.7 film seconds ahead over 0.75 of its own as the bang's fireball
+fades (`SKIP`, a quintic ease, at most 5.25× film speed, so it rises and settles without a jolt); the fireball fades on
+the unwarped clock, so it crossfades onto the cosmic web the rush brings in. The reveal lands at 15.1 s instead of
+16.7 s.
+
+**The wormhole.** The pastel log-spiral vortex, its crawling lightning arcs and the violet halo are replaced by a lensed
+gate drawn the way light behaves round a black hole: a thin photon ring on the shadow's edge; a throat showing another
+sky, crowding toward its rim as through a glass sphere; and an accretion disk seen from just above its plane, its near
+half crossing in front of the shadow and its far half lifted over the top and folded under the bottom by the lens (a ray
+passing at r is bent by A/r, so each pixel solves for the disk point it sees in closed form). Doppler beaming lights the
+approaching side brighter and bluer and the receding side dimmer and rosier; the disk forms from its inner edge outward
+as the gate opens and spins up as it swallows the headline. The background stars are lensed into arcs at an Einstein
+ring and doubled inside it. The gate's box is now wide (2.35 gate radii) and short (1.75), with the lens fading out on
+a circle inside it so no edge shows under the collapse's glow.
+
+**Lag.** Measured in headless Chromium (CPU-side; the GPU is software here, so frame rates are not representative):
+
+| | Before | After |
+|---|---|---|
+| Style recalculation per render | ~80 ms, ~11,000 elements | ~15 ms, ~840 elements |
+| A slider input, median (input plus render) | 188 ms | 116 ms |
+| Main-thread work per input (Performance metrics) | 340 ms | 270 ms |
+| Switching back to the Console | a 393 ms long task | no long task |
+| Idle at the top of the Console | 118 ms/s | 86 ms/s |
+
+- The one large cause: the report's `.rp-t tr:has(+ tr.rp-sub)>*` rule. A sibling `:has()` makes Chrome re-check
+  whole subtrees on any DOM change, so every render restyled about 11,000 elements; bisecting the page's sixteen
+  `:has()` patterns found it alone. The row before a note now carries a class (`rp-hs`) instead; the report renders
+  the same.
+- The buyer star map keeps its drawing when nothing it draws has changed (a key over the buyers' values, the plot
+  width and the fonts), skipping its label placement, a render's costliest single step (~20 ms).
+- The ink bars in tables were repainted on every table on the page (the Data tab's included) after any change
+  anywhere; only the tables a render touched are repainted now.
+
+**foruse.html.** Built from index.html by `tools/build_foruse.js` (index.html is the source; `--check` fails when
+foruse.html is stale, and both the model tests and `tests/browser.foruse.js` run it). It removes the Data &
+parameters tab (an inert stub keeps the tab code's lookups valid, so the tab is never built), every equation card,
+the Method and provenance section, the Deals tab's "Toward fitting the judgment numbers" section, the provenance
+badges and the badge key, the tier chips in the multiple build (whose rows are renamed Market multiple and
+Factor-stack multiple), the framework section references, the report's tier badges, and the sentences that pointed at
+the Data tab or the badges or tagged a figure "(fitted)", "(a judgment)" and the like; the footer states the sources
+without the tiers. Every edit names text that must occur exactly once (or a minimum count), so a change to index.html
+that moves one stops the build rather than shipping a half-stripped page. The model is untouched: through 70 input
+states the two versions show the same figures. Section introductions still describe the method in prose, and the
+report keeps its sources line (without the badge legend).
+
+Suites on this build:
+
+| Suite | Result |
+|---|---|
+| `node tests/model.test.js` | 7,845 pass |
+| `node tests/fuzz.test.js` | 1,500 businesses, 215,263 checks pass |
+| `node tests/browser.inputs.js` | pass |
+| `node tests/browser.broker.js` | all pass |
+| `node tests/browser.sweep.js` | 124 input states at each of 1440 and 390 px pass |
+| `node tests/invariants.test.js --browser` | 253 invariants pass |
+| `node tests/browser.foruse.js` (new) | 14 checks pass; 70 of 70 input states match index.html |

@@ -2553,5 +2553,36 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        "43: the Data tab's broker section comes last, after the self-audit, with its own id, index star, emblem and hue (the seven before it keep theirs)"); }
 }
 
+/* ---- 44. October 2026, the owner: "remove the first light step", "make the wormhole far cooler", "reduce lag", and a
+   second version without the equation documentation, the provenance labels or the Data tab ---- */
+{
+  const HTML=require("fs").readFileSync(require("path").join(__dirname,"..","index.html"),"utf8"), L=HTML.split("\n");
+  /* the film's clock rushes over the span first light filled: continuous, rising, and undone exactly by unwarp */
+  const pick=re=>L.find(l=>re.test(l))||"";
+  const src=[pick(/^var SKIP=\{/),pick(/^function warp\(x\)/),pick(/^function unwarp\(c\)/),L[L.findIndex(l=>/^function unwarp\(c\)/.test(l))+1]||""].join("\n");
+  let W=null; try{ W=new Function(src+"\nreturn {SKIP:SKIP,warp:warp,unwarp:unwarp};")(); }catch(e){ W=null; }
+  ok(!!W,"44: the film's clock (SKIP, warp, unwarp) evaluates outside the browser");
+  if(W){ const K=W.SKIP; let jump=0, down=0, inv=0, prev=W.warp(-1);
+    for(let x=-1;x<=14;x+=.001){ const y=W.warp(x); jump=Math.max(jump,Math.abs(y-prev)); if(y<prev-1e-12) down++; prev=y;
+      inv=Math.max(inv,Math.abs(W.unwarp(y)-x)); }
+    ok(down===0&&jump<.006&&inv<1e-6&&Math.abs(W.warp(K.A)-K.A)<1e-12&&Math.abs(W.warp(K.A+K.W)-(K.A+K.W+K.S))<1e-12,
+       `44: the clock skips ${K.S} film seconds over ${K.W} of its own, rising and continuous (at most ${(jump*1000).toFixed(2)}x film speed), and unwarp undoes it (${inv.toExponential(1)})`); }
+  ok(!/first light/.test(pick(/^var CAPS=/))&&!/"first light"/.test(pick(/^function phaseOf/))&&!HTML.includes("u_cmb")&&!/LIGHT:/.test(pick(/^var TL=\{P0:/))
+     &&HTML.includes("var fire=.9*sm(.06,.3,c)*(1-sm(1,1.55,unwarp(c)))")&&HTML.includes("T:TL.P0+(TL.JUMP-SKIP.S)/SPEED+TL.REVEAL"),
+     "44: no first-light caption, phase, plasma or microwave background; the fireball fades on the clock's own time; the reveal time counts the skip");
+  ok(HTML.includes("vec3 disk(float q,float ph)")&&HTML.includes("float al=A/re, ey=e.y/re, Z=e.y/(SN+al*ey);")&&!/arcs crawling on its rim/.test(HTML)
+     &&HTML.includes("gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGB,x0,y0,w,h,0);"),"44: the gate is a lensed accretion disk round a photon ring, in a box wide enough for it");
+  /* lag: no sibling :has() (it made every render restyle ~11,000 elements), the star map keeps an unchanged drawing,
+     the ink bars repaint only the tables a render touched */
+  ok(!/:has\(\s*\+/.test(HTML)&&HTML.includes(".rp-t tr.rp-hs>*{border-bottom:0;padding-bottom:2px}")&&HTML.includes("<tr${sub?' class=\"rp-hs\"':\"\"}><th scope=\"row\">"),
+     "44: the report's note rows are marked by a class, not tr:has(+ tr.rp-sub)");
+  ok(HTML.includes("if(key!==null&&svg.__key===key&&svg.__mark&&svg.__mark===svg.lastChild) return true;")&&HTML.includes("deb = setTimeout(run, 90);")
+     &&!HTML.includes("document.querySelectorAll('table').forEach(function(t){ t.removeAttribute('data-inked'); });"),
+     "44: the star map skips an unchanged redraw; the ink bars repaint only touched tables");
+  /* the second version is what the build makes of this page */
+  const r=require("child_process").spawnSync(process.execPath,[require("path").join(__dirname,"..","tools","build_foruse.js"),"--check"],{encoding:"utf8"});
+  ok(r.status===0,"44: foruse.html is what tools/build_foruse.js builds from index.html ("+((r.stdout||r.stderr||"").trim())+")");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

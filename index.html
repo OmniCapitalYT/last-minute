@@ -5082,7 +5082,7 @@ function reportHTML(D,meta){
   /* SBA's minimum grades coverage only where there is an SBA loan */
   const askRow=(t,a,note)=>{ const F=a.fin, lw=[F.debtOverValue?`debt ${money(F.debt-F.value)} ${dvB(F)} over value`:"",F.loan>0&&!F.equityOK?"buyer equity under SBA&rsquo;s 10%":""].filter(Boolean);
     const sub=[note,lw.length?`<span class="rp-warn">Lender: ${lw.join("; ")}.</span>`:""].filter(Boolean).join(" ");
-    return `<tr><th scope="row">${t}</th><td class="n"><b>${money(a.ask)}</b><br><span>${a.ratio.toFixed(2)}× value</span></td>
+    return `<tr${sub?' class="rp-hs"':""}><th scope="row">${t}</th><td class="n"><b>${money(a.ask)}</b><br><span>${a.ratio.toFixed(2)}× value</span></td>
     <td class="n">${pc(a.pc)}</td><td class="n">${toMonths(a.tMed)} mo</td><td class="n">${money(a.price)}</td><td class="n">${money(a.ev)}${a.cash<1?`<br><span>${pc(a.cash)} at closing</span>`:""}</td>
     <td class="n">${covFmt(F)}${F.loan>0&&F.ds>0&&!F.ok?warn(`below ${F.min.toFixed(2)}×`):F.loan>0?"":`<br><span>no SBA loan</span>`}</td></tr>${sub?`<tr class="rp-sub"><td colspan="7">${sub}</td></tr>`:""}`; };
   const f=D.cur.fin, R=D.recast, mf=D.maxFin, C=D.calib, T=ownKey(DSC_NAMES,f.type)?DSC_NAMES[f.type]:DSC_NAMES.initial;
@@ -5297,7 +5297,9 @@ const RP_CSS=`.rp,.rp *,.rp *::before,.rp *::after{all:revert;box-sizing:border-
 .rp-t thead th.n{white-space:normal}
 .rp-t td span{font-size:10px;color:var(--rp-ink2)}
 .rp-t td span.rp-warn{display:block;color:#b03a26;font-weight:600}
-.rp-t tr:has(+ tr.rp-sub)>*{border-bottom:0;padding-bottom:2px}
+/* a row with a note under it (a class, not a :has() on the next sibling, which makes every render on the page restyle
+   ~11,000 elements instead of ~850) */
+.rp-t tr.rp-hs>*{border-bottom:0;padding-bottom:2px}
 .rp-t tr.rp-sub td{font-size:10.5px;color:var(--rp-ink2);padding-top:0}
 .rp-t tr.rp-sub span.rp-warn{display:inline}
 .rp section.rp-two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -8104,14 +8106,13 @@ document.querySelectorAll("input,select").forEach(el=>{
   else run();
   [180, 700, 1600].forEach(function(d){ setTimeout(run, d); });
 
-  /* repaint whenever the console re-renders or a tab flips */
+  /* repaint the tables a re-render touched: a new table carries no flag, and one whose rows or cells changed loses it
+     here (every table on the page, the Data tab's included, used to be repainted after any change anywhere) */
   var deb;
-  new MutationObserver(function(){
+  new MutationObserver(function(recs){
+    for(var i=0;i<recs.length;i++){ var tg=recs[i].target, tb=tg&&tg.closest?tg.closest('table'):null; if(tb) tb.removeAttribute('data-inked'); }
     clearTimeout(deb);
-    deb = setTimeout(function(){
-      document.querySelectorAll('table').forEach(function(t){ t.removeAttribute('data-inked'); });
-      run();
-    }, 90);
+    deb = setTimeout(run, 90);
   }).observe(document.body, {childList:true, subtree:true});
 })();
 
@@ -10388,7 +10389,7 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
 </script>
 <script id="v9-intro-js">
 /* ═════════════════════════════════════════════════════════════════════════
-   v9: the opening. The whole universe in about twelve seconds, drawn in WebGL
+   v9: the opening. The whole universe in about ten seconds, drawn in WebGL
    over the loading screen, then the new frontier of brokerage; then the v5 jump
    to light speed (OMNI_WARP) carries the viewer into the console, and reveal and
    arrive run at its drop-out.
@@ -10398,13 +10399,12 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
    singularity has been on screen for 1.3 s.
      before time   phase 0      a breathing singularity with a faint gravitational
                                 shimmer; it gathers light with the loading bar
-     big bang      c 0 - 1.15   a point of extreme light whose bloom swells and fades,
+     big bang      c 0 - 2.85   a point of extreme light whose bloom swells and fades,
                                 a turbulent incandescent shell sweeping past the frame,
                                 hot debris streaking out in perspective past the lens,
-                                cooling from blue-white through gold and orange to red
-     first light   1.15 - 2.85  layers of plasma swelling outward as space expands round
-                                the camera; they resolve into a fine microwave-background
-                                speckle, which turns transparent onto the first faint web
+                                cooling from blue-white through gold and orange to red;
+                                as its fireball fades the film rushes on (SKIP), so the
+                                hot matter sweeps straight onto the first faint web
      cosmic web    2.85 - 4.8   matter slides onto filaments and nodes (a slowly
                                 turning web); the first stars ignite with glints
      galaxies      4.8 - 6.6    the nodes fall into turning spirals and
@@ -10413,25 +10413,28 @@ if(document.readyState==="loading") document.addEventListener("DOMContentLoaded"
                                 Sun and its planets (an echo of the masthead orrery)
      title         8.3 - 9.45   "The Omni Method" resolves under the Sun
      frontier      9.45 - 13.7  the camera pulls away, speed lines run in and a shockwave
-                                rings out; a gate ignites where the Sun was (a razor-thin
-                                ring round a plasma vortex, arcs crawling on its rim, the
-                                stars lensed round it); the title lifts into an eyebrow;
-                                thousands of particles stream out of the vortex onto the
+                                rings out; a wormhole opens where the Sun was (a photon
+                                ring round a throat onto another sky, an accretion disk
+                                whose far half its lens lifts over the top, the side
+                                coming toward us brighter and bluer, the stars lensed
+                                round it); the title lifts into an eyebrow;
+                                thousands of particles stream out of the throat onto the
                                 letterforms of "The new frontier of brokerage" and the
                                 crisp headline takes their place; a light sweep, a flare
                                 and sparks ignite it; the gate swallows the words
      jump          13.7 -       the v5 jump, on its own clock; reveal + arrive 1.85 s in
-   (c is film time: it runs 6% faster than the wall clock.) With a fast boot the
-   reveal lands at t = 16.7 s.
+   (c is film time: it runs 6% faster than the wall clock, and skips the 1.7 film seconds the plasma of first
+   light used to fill, a smooth rush over 0.75 s of the clock as the fireball fades.) With a fast boot the reveal
+   lands at t = 15.1 s.
 
    Every frame is a pure function of the clock and seeded data, so a dropped
    frame skips ahead instead of slowing the film down. The particles carry seeds,
    a place on the cosmic web and a place in their galaxy; the vertex shader moves
    them between those with the time uniform, so nothing is done per particle on
-   the CPU after the world is built. The bang, the plasma, nebulae, the home
+   the CPU after the world is built. The bang and its fireball, nebulae, the home
    galaxy's disc, the Milky Way band and the Sun's glow are one noise pass into a
-   half-resolution buffer, compiled as two programs (the bang and first light;
-   the galaxies and home) so that neither pays for the other's noise on a
+   half-resolution buffer, compiled as two programs (the bang; the galaxies and
+   home) so that neither pays for the other's noise on a
    renderer that runs every branch; between them the buffer is only cleared.
    The frontier has programs of its own (its field, the gate, the particle
    headline), drawn only while it runs. While the boot runs (phase 0) only one
@@ -10472,13 +10475,21 @@ function still(){
 var qs=location.search||"", qAt=/[?&]introAt=([0-9.]+)/.exec(qs), FULL=!!qAt||/[?&]introQ=1/.test(qs);
 
 /* ---- timeline (seconds; P0 and PRE in t, the rest in c) ------------------- */
-var TL={P0:1.9,SEEN:1.3,PRE:.32,LIGHT:1.15,WEB:2.85,GAL:4.8,HOME:6.6,TITLE:8.3,FRONT:9.45,JUMP:13.7,FADE:.85,REVEAL:1.85};
+var TL={P0:1.9,SEEN:1.3,PRE:.32,WEB:2.85,GAL:4.8,HOME:6.6,TITLE:8.3,FRONT:9.45,JUMP:13.7,FADE:.85,REVEAL:1.85};
 /* the frontier, in film seconds from TL.FRONT: the pull-away and the gate's ignition, the title becoming an
    eyebrow, the particles' launches and flights, the headline locking in, its ignition sweep, the collapse */
 var FX={PULL:.8,GATE:.5,EYE0:.5,EYE1:1.1,LAUNCH:.9,SPREAD:.5,FLY:.7,FLYV:.25,LOCK:2.2,OUT:2.65,IGN:2.5,SWEEP:.72,COLL:3.7,END:4.25};
-/* the film runs a touch fast: c = (t - bang) * SPEED; the v5 jump keeps its own real-time clock */
+/* the film runs a touch fast: c = warp((t - bang) * SPEED); the v5 jump keeps its own real-time clock */
 var SPEED=1.06;
-var CAPS=[["13.8 billion years ago",.1,1.05],["380,000 years · first light",1.3,2.75],
+/* no first light: as the bang's fireball fades the film clock rushes S film seconds ahead over W of its own,
+   from A on (a quintic ease, so the speed rises and settles without a jolt): the hot matter sweeps out and
+   straight onto the web, which the plasma once hid */
+var SKIP={A:.75,W:.75,S:1.7};
+function warp(x){ if(x<=SKIP.A) return x; var u=(x-SKIP.A)/SKIP.W; return x+SKIP.S*(u>=1?1:u*u*u*(u*(u*6-15)+10)); }
+/* and back (warp rises monotonically), so the fireball can fade on the clock's own time while the film rushes */
+function unwarp(c){ if(c<=SKIP.A) return c; if(c>=SKIP.A+SKIP.W+SKIP.S) return c-SKIP.S;
+  var lo=SKIP.A, hi=SKIP.A+SKIP.W; for(var i=0;i<22;i++){ var m=(lo+hi)/2; if(warp(m)<c) lo=m; else hi=m; } return (lo+hi)/2; }
+var CAPS=[["13.8 billion years ago",.1,1.05],
   ["200 million years · the first stars",3.0,4.62],["1 billion years · galaxies",4.85,6.45],
   ["9.2 billion years · the Sun",6.75,8.3],["13.8 billion years · today",8.55,9.75]];
 function sm(a,b,x){ x=(x-a)/(b-a); x=x<0?0:x>1?1:x; return x*x*(3-2*x); }
@@ -10670,8 +10681,8 @@ void main(){ vec2 p=gl_PointCoord*2.-1.; float r2=dot(p,p); if(r2>1.) discard;
 var SV=`precision highp float;
 attribute vec2 a_q; varying vec2 v_uv;
 void main(){ v_uv=a_q*.5+.5; gl_Position=vec4(a_q,0.,1.); }`;
-/* the field: the bang's bloom and shell, plasma and its last light (V9_EARLY); nebulae, the home galaxy's
-   disc, the Milky Way band and the Sun's glow (V9_LATE) */
+/* the field: the bang's bloom, shell and fireball (V9_EARLY); nebulae, the home galaxy's disc, the Milky Way
+   band and the Sun's glow (V9_LATE) */
 var FF=FH+`uniform vec2 u_res; uniform float u_asp;
 uniform vec3 u_R; uniform vec3 u_U; uniform vec3 u_F; uniform vec2 u_tan;
 uniform vec4 u_tm;   /* c, clock, -, - */
@@ -10679,8 +10690,7 @@ uniform vec2 u_ctr;
 uniform vec4 u_bang; /* bloom energy, shell radius, shell light, fireball light */
 uniform vec4 u_bl;   /* bloom radii (middle, wide), colour split, refraction */
 uniform float u_strk;
-uniform vec4 u_pl;   /* plasma light, cooling, -, - */
-uniform vec4 u_cmb;  /* microwave-background light, -, -, - */
+uniform vec4 u_pl;   /* -, the fireball's cooling, -, - */
 uniform vec4 u_neb;
 uniform vec4 u_hd;   /* home disc light, its turn (spin), -, - */
 uniform vec3 u_hp; uniform vec3 u_h1; uniform vec3 u_h2;
@@ -10692,7 +10702,7 @@ float fbm(vec3 p){ float s=.5*vn(p); p=p*2.03+vec3(1.7,9.2,3.1); s+=.25*vn(p); p
   s+=.125*vn(p); p=p*2.02+vec3(2.9,4.4,.6); return s+.0625*vn(p); }
 float fb3(vec3 p){ float s=.5*vn(p); p=p*2.03+vec3(1.7,9.2,3.1); s+=.25*vn(p); p=p*2.01+vec3(5.3,1.1,7.7);
   return (s+.125*vn(p))*1.0667; }
-/* the bang and first light use gradient noise with a quintic fade, octaves turned against each other:
+/* the bang uses gradient noise with a quintic fade, octaves turned against each other:
    smooth, with no lattice showing */
 vec3 hg(vec3 p){ p=fract(p*vec3(.1031,.1030,.0973)); p+=dot(p,p.yxz+33.33); return fract((p.xxy+p.yxx)*p.zyx)*2.-1.; }
 float gn(vec3 p){ vec3 i=floor(p), f=fract(p), u=f*f*f*(f*(f*6.-15.)+10.);
@@ -10718,7 +10728,7 @@ void main(){
   vec3 col=vec3(0.);
 #ifdef V9_EARLY
   vec2 d=sp-u_ctr; float r=length(d), c=u_tm.x;
-  /* the bang and first light gather in hot and are tone-mapped together, so nothing clips to an edge */
+  /* the bang's lights gather in hot and are tone-mapped together, so nothing clips to an edge */
   vec3 hot=vec3(0.);
   /* the core: a point of extreme light whose bloom swells (three falloffs at very different radii) */
   if(u_bang.x>.001) hot+=(vec3(.92,.95,1.)*2.4*exp(-r/.011)+vec3(1.,.95,.86)*.95*exp(-r/u_bl.x)
@@ -10744,10 +10754,10 @@ void main(){
     inside=smoothstep(R1*1.1,R1*.4,r);
     rs=sp-ad*.03*u_bang.y*exp(-pow((r-R1)/(.05*u_bang.y+.012),2.))*u_bl.w;
   }
-  float pl=max(inside*u_bang.w,u_pl.x);
+  float pl=inside*u_bang.w;
   if(pl>.001){
-    /* first light: three layers of plasma, each swelling outward at its own rate as space expands
-       round the camera - a warped glowing body, its filaments, and finer filaments */
+    /* the fireball inside the shell: three layers of plasma, each swelling outward at its own rate as
+       space expands round the camera - a warped glowing body, its filaments, and finer filaments */
     vec2 q0=rs-u_ctr;
     vec3 p1=vec3(q0*1.3*exp(-.25*c),1.7+.07*c), p2=vec3(q0*2.8*exp(-.45*c),4.3+.1*c), p3=vec3(q0*6.*exp(-.7*c),9.1+.13*c);
     vec2 w=vec2(gn(p1+vec3(0.,0.,5.)),gn(p1*1.3+vec3(5.2,1.3,2.8)));
@@ -10757,12 +10767,6 @@ void main(){
     float e=body*(.5+.5*smoothstep(-.25,.3,g2))+body*(.55*fil+.25*wisp);
     float T=clamp(e*(1.-.5*u_pl.y),0.,1.25);
     hot+=plc(T)*(.12+1.3*T*T)*pl;                         /* brightness climbs with temperature */
-  }
-  if(u_cmb.x>.001){
-    /* then the plasma turns transparent: its last light as a fine, faintly uneven speckle, then darkness */
-    vec2 q0=sp-u_ctr; float zc=exp(-.2*c);
-    float v=clamp(.5+.8*gn(vec3(q0*24.*zc,7.7))+.42*gn(vec3(q0*47.*zc,2.9))+.3*gn(vec3(q0*1.3,3.3)),0.,1.);
-    hot+=mix(vec3(.5,.07,.03),vec3(1.,.52,.17),v)*(.5+.5*v)*u_cmb.x;
   }
   float hm=max(max(hot.r,hot.g),hot.b);
   col+=mix(hot*(1.-exp(-hm))/max(hm,1e-4),1.-exp(-hot),smoothstep(1.,3.2,hm));   /* keeps the colour; only the hottest light whitens */
@@ -10933,67 +10937,95 @@ void main(){
 #endif
   gl_FragColor=vec4(1.-exp(-col*1.05),1.);
 }`;
-/* the gate, at full resolution over a box round it: the frame behind it (copied) bent by a point lens,
-   the vortex, the razor-thin ring, the arcs on its rim, and the flare as it swallows the words */
+/* the gate, at full resolution over a box round it: a wormhole. The frame behind it (copied) bent by its lens; a
+   view of another sky in its throat; the photon ring on the throat's edge; and an accretion disk seen from just
+   above its plane, whose far half the lens lifts over the top and folds under the bottom, as light from behind a
+   black hole does. Lengths are in shadow radii. The disk's lens: a ray passing at r is bent by A/r, which moves the
+   image of a point Z behind the hole by A*Z/r, so a pixel solves for the disk point it sees in closed form */
 var XPF=FH+`varying vec2 v_p;
 uniform sampler2D u_bt;
-uniform vec4 u_pt;   /* ring radius, half box (device px), lens strength, device px per css px */
-uniform vec4 u_pl;   /* ring, vortex, arcs, core flare */
-uniform vec4 u_pm;   /* film seconds, spin, halo, - */
+uniform vec4 u_pt;   /* shadow radius (device px), -, lens strength, device px per css px */
+uniform vec4 u_bx;   /* the box: centre (device px), half width, half height */
+uniform vec4 u_pl;   /* photon ring, throat, disk, core flare */
+uniform vec4 u_pm;   /* film seconds, disk turn, glow, disk formed */
 `+NOISE+`
 float fb(vec3 p){ return .55*vn(p)+.3*vn(p*2.03+vec3(1.7,9.2,3.1))+.15*vn(p*4.07+vec3(5.3,1.1,7.7)); }
+const float DIN=1.155, DOUT=2.05, SN=.15, A=.77;   /* the innermost stable orbit (6M, the shadow 5.2M), the rim, the view's tilt */
+/* the disk at radius q and azimuth ph (0 to the right, pi/2 straight away from the camera): gas drawn into streaks
+   along its orbits and sheared as it turns (inner orbits faster); hottest inside; Doppler beaming lights the side
+   coming toward the camera (the left) brighter and bluer, the receding side dimmer and rosier */
+vec3 disk(float q,float ph){
+  float rv=DIN+(DOUT-DIN+.4)*u_pm.w;
+  if(q<DIN*.96||q>min(DOUT,rv)) return vec3(0.);
+  float a=ph-u_pm.y*pow(q/DIN,-1.5);
+  float n=fb(vec3(cos(a)*2.3,sin(a)*2.3,q*6.5)), m=vn(vec3(cos(a)*7.,sin(a)*7.,q*21.+3.1));
+  float v=.36*sqrt(DIN/q), D=sqrt(1.-v*v)/(1.+cos(ph)*v), T=pow(DIN/q,.9)*D;
+  vec3 c=mix(vec3(.33,.25,.78),vec3(.58,.67,1.),smoothstep(.3,.75,T));
+  c=mix(c,vec3(1.,.97,.95),smoothstep(.78,1.3,T));
+  c=mix(c,vec3(.93,.47,.66),smoothstep(.92,.62,D)*.5);
+  float prof=smoothstep(DIN*.96,DIN*1.05,q)*smoothstep(DOUT,DIN+.25,q)*smoothstep(rv,rv-.4,q);
+  return c*prof*(.22+2.*n*n*(.55+.9*m)+.7*exp(-(q-DIN)/.05))*D*D;   /* and a white-hot inner edge */
+}
 void main(){
-  vec2 d=v_p; float r=length(d), Rp=max(u_pt.x,.5), B=u_pt.y, px=u_pt.w, rr=r/Rp;
-  float k=u_pt.z*Rp*Rp*1.2/max(r*r,1.)*smoothstep(B,B*.6,r)*smoothstep(Rp*.82,Rp*1.01,r);   /* outside the ring only */
-  vec3 bg=texture2D(u_bt,clamp(d*(1.-k)/(2.*B)+.5,0.,1.)).rgb;
-  bg*=1.-.88*smoothstep(1.03,.88,rr)*min(1.,u_pl.y*1.3);
+  vec2 d=gl_FragCoord.xy-u_bx.xy, B=u_bx.zw;
+  float Rs=max(u_pt.x,.5), px=u_pt.w, r=length(d), rr=r/Rs, eg=length(d/B), bm0=min(B.x,B.y);
+  /* the far sky through a point lens (its Einstein ring outside the shadow), the lens fading out on a circle inside
+     the box, so the copy meets the frame with no edge even under the collapse's glow */
+  float tE=1.32*Rs, kb=u_pt.z*tE*tE/max(r*r,1.)*smoothstep(bm0,bm0*.55,r);
+  vec2 bs=d*(1.-kb);
+  vec3 bg=texture2D(u_bt,clamp(bs/(2.*B)+.5,0.,1.)).rgb;
+  bg*=1.-smoothstep(1.02,.985,rr)*min(1.,u_pl.y*1.4);
   vec3 col=vec3(0.);
-  float an=atan(d.y,d.x);
   if(u_pt.z>.001){
-    /* faint stars behind the gate, drifting slowly round it, bent into arcs near the ring; they thin out
-       well inside the box */
-    vec2 sv=d*(1.-k); float cr=cos(u_pm.x*.12), sr=sin(u_pm.x*.12);
-    sv=vec2(cr*sv.x-sr*sv.y,sr*sv.x+cr*sv.y)/(9.*px);
-    vec2 gi=floor(sv), gf=fract(sv);
+    /* faint stars behind it, drifting slowly round, drawn into arcs at the Einstein ring and doubled inside it */
+    float cr=cos(u_pm.x*.12), sr=sin(u_pm.x*.12);
+    vec2 sv=vec2(cr*bs.x-sr*bs.y,sr*bs.x+cr*bs.y)/(9.*px), gi=floor(sv), gf=fract(sv);
     float h=fract(sin(dot(gi,vec2(127.1,311.7)))*43758.5453);
     vec2 so=vec2(fract(h*13.7),fract(h*71.3))*.6+.2;
     float sd=length(gf-so)*9.;
-    float win=smoothstep(B*.86,B*.42,r)*smoothstep(Rp*.98,Rp*1.08,r);
-    col+=mix(vec3(.75,.8,1.),vec3(1.),fract(h*7.3))*step(.8,h)*exp(-sd*sd/.8)*(.45+1.*fract(h*3.1))*win*u_pt.z;
+    col+=mix(vec3(.75,.8,1.),vec3(1.),fract(h*7.3))*step(.8,h)*exp(-sd*sd/.8)*(.45+fract(h*3.1))*smoothstep(bm0*.95,bm0*.45,r)*smoothstep(.98,1.06,rr)*u_pt.z;
   }
-  if(u_pl.y>.001&&rr<1.12){
-    /* log-spiral arms of polar noise, turning and falling inward, white-hot at the core */
-    float lr=log(max(rr,.012)), a=an+u_pm.y-2.4*lr;
-    vec3 q=vec3(cos(a)*1.9,sin(a)*1.9,lr*1.4-u_pm.x*1.7);
-    float n1=fb(q), n2=vn(q*2.6+vec3(4.1,1.7,u_pm.x*.8)), arms=.5+.5*sin(a*3.+n1*5.);
-    vec3 pal=mix(vec3(.722,.643,1.),vec3(.302,.639,1.),smoothstep(.36,.64,n1));
-    pal=mix(pal,vec3(1.,.478,.784),smoothstep(.58,.82,n2)*.75);
-    float body=(.25+1.5*n1*n1*(.4+.6*arms)+.3*n2)*smoothstep(1.04,.6,rr);
-    col+=(pal*body+vec3(1.,.97,1.)*(exp(-rr*rr/.018)*1.9+exp(-rr*rr/.1)*.45))*u_pl.y;
+  /* the disk's frame: rolled a little, in shadow radii */
+  vec2 e=vec2(.995*d.x-.1*d.y,.1*d.x+.995*d.y)/Rs;
+  float re=length(e), ae=atan(e.y,e.x);
+  if(u_pl.y>.001&&rr<1.02){
+    /* the throat: another sky, the whole of it crowding toward the rim as through a glass sphere; a far galaxy */
+    float s=min(rr,.985), g=s/sqrt(1.-s*s), ct=cos(u_pm.x*.05), st=sin(u_pm.x*.05);
+    vec2 o=vec2(ct*e.x-st*e.y,st*e.x+ct*e.y)/max(re,1e-3)*g;
+    float n=fb(vec3(o*1.1,1.3)), w=fb(vec3(o*2.6+n,4.7));
+    vec2 og=o-vec2(.42,.16); float gd=dot(og,og);
+    vec3 sky=vec3(.035,.05,.13)*(.5+n)+vec3(.42,.3,.9)*smoothstep(.5,.82,n)*w*.55+vec3(.25,.55,.95)*smoothstep(.6,.9,w)*.18
+            +vec3(1.,.8,.6)*(exp(-gd*60.)*.7+exp(-gd*9.)*.08);
+    vec2 sg=o*15., si=floor(sg); float hh=fract(sin(dot(si,vec2(41.3,289.1)))*13758.37);
+    vec2 sf=fract(sg)-.5-(vec2(fract(hh*31.7),fract(hh*17.3))-.5)*.6;
+    sky+=vec3(.9,.92,1.)*step(.86,hh)*exp(-dot(sf,sf)*90.)*.9;
+    col+=sky*smoothstep(1.,.92,rr)*(.25+.3*smoothstep(.3,.95,rr))*u_pl.y;   /* dim: a hole first, a window second */
   }
-  float dr=r-Rp, w0=.65*px, w1=3.6*px;
-  float ring=exp(-dr*dr/(w0*w0))*2.1+exp(-dr*dr/(w1*w1))*.5+exp(-abs(dr)/(24.*px))*.13;
-  col+=mix(vec3(.8,.76,1.),vec3(1.),exp(-dr*dr/(w0*w0*2.)))*ring*u_pl.x;
+  /* the photon ring: a hair of light on the shadow's edge, brighter on the approaching side */
+  float dr=r-Rs, w0=.55*px, w1=3.*px, bm=1.-.5*cos(ae);
+  col+=vec3(.86,.9,1.)*(exp(-dr*dr/(w0*w0))*1.25+exp(-dr*dr/(w1*w1))*.3+exp(-max(dr,0.)/(16.*px))*.1*step(0.,dr))*bm*u_pl.x;
   if(u_pl.z>.001){
-    /* each arc crawls along the rim and re-forms many times a second */
-    for(int i=0;i<3;i++){
-      float fi=float(i), sg=i==1?-1.:1.;
-      float ca=fi*2.094+sg*u_pm.x*(.9+.35*fi), da=atan(sin(an-ca),cos(an-ca));
-      float hl=.36+.2*sin(u_pm.x*1.9+fi*2.3), win=smoothstep(hl,hl*.4,abs(da));
-      float tq=floor(u_pm.x*24.+fi*7.);
-      float j1=vn(vec3(cos(an)*7.,sin(an)*7.,tq*1.37+fi*9.))-.5, j2=vn(vec3(cos(an)*24.,sin(an)*24.,tq*.71+fi*5.))-.5;
-      float ra=Rp*(1.+.12*j1+.05*j2+.03*sin(da*6.+fi));
-      float dd=r-ra, fl=smoothstep(.28,.42,vn(vec3(u_pm.x*15.+fi*7.,fi*3.1,.5)));
-      col+=(vec3(.86,.88,1.)*exp(-dd*dd/(.55*px*px))*1.5+vec3(.55,.45,1.)*exp(-dd*dd/(22.*px*px))*.38)*win*fl*u_pl.z;
+    /* the far half through the lens: above the plane it is lifted over the top, below it (where the bend beats
+       the tilt) it is folded under the bottom as a thin arc; beside the hole it is the plain far half */
+    if(re>1.){
+      float al=A/re, ey=e.y/re, Z=e.y/(SN+al*ey);
+      if(Z>0.){ float X=e.x-al*Z*e.x/re; col+=disk(length(vec2(X,Z)),atan(Z,X))*u_pl.z; }
+    }
+    /* the near half, straight: in front of the shadow and of everything behind it */
+    if(e.y<0.){
+      float Z=e.y/SN, q=length(vec2(e.x,Z));
+      vec3 dn=disk(q,atan(Z,e.x))*u_pl.z*1.25;
+      float hm=max(dn.r,max(dn.g,dn.b));
+      col=col*(1.-min(.92,hm*1.6))+dn; bg*=1.-min(.92,hm*1.6);
     }
   }
-  col+=vec3(1.,.95,1.)*u_pl.w*(exp(-rr*rr/.07)*1.8+exp(-rr/.7)*.45);
-  col+=vec3(.5,.42,1.)*u_pm.z*exp(-max(r-Rp,0.)/(Rp*.5))*smoothstep(Rp*.6,Rp*1.04,r)*.34;   /* a violet halo */
-  col*=smoothstep(B,B*.72,r);
+  col+=vec3(.55,.6,1.)*u_pm.z*exp(-max(rr-1.,0.)/.45)*smoothstep(.9,1.02,rr)*.16*bm;   /* the inner disk's bloom */
+  col+=vec3(.95,.96,1.)*u_pl.w*(exp(-rr*rr/.07)*1.8+exp(-rr/.7)*.45);                   /* the collapse */
+  col*=smoothstep(1.,.82,eg);
   gl_FragColor=vec4(bg+(1.-bg)*(1.-exp(-col)),1.);
 }`;
 /* the particle headline: each particle a velocity-stretched streak (as the bang's debris) that leaves the
-   vortex on a swirling path and settles onto a point of the headline's letterforms; mode 1 is the sparks
+   throat on a swirling path and settles onto a point of the headline's letterforms; mode 1 is the sparks
    that burst from the letters' edges as the light sweep passes */
 var TV=`precision highp float;
 attribute vec4 a_s; attribute vec4 a_g; attribute vec2 a_k;
@@ -11449,13 +11481,13 @@ function render(t,c,prog){
   /* --- scene values (pure functions of t and c) --- */
   var expand=c<=0?0:(1-Math.exp(-c*2.4))*(1+.03*c);
   /* the bang: a bloom that swells as it fades (the white-out lasts under 150 ms), then a shell that
-     sweeps past the frame edges in about half a second, with the plasma blooming inside it */
+     sweeps past the frame edges in about half a second, with the fireball blooming inside it */
   var bloom=6*sm(-.03,.025,c)*Math.exp(-Math.max(c-.025,0)*20)+.25*sm(-.02,.05,c)*Math.exp(-Math.max(c,0)*4);
   var bR2=.05+.15*sm(0,.15,c), bR3=.35+.5*sm(0,.12,c);
   var shellR=c<=0?0:3*(1-Math.exp(-c*2)), shellI=1.7*sm(.08,.17,c)*Math.exp(-Math.max(c-.17,0)*1.3)*(1-sm(2.4,2.9,c));
   var refr=sm(.03,.1,c)*(1-sm(.35,.7,c)), streak=.6*Math.exp(-Math.pow((c-.02)/.06,2))*sm(-.1,-.03,c);
-  var fire=.9*sm(.06,.3,c)*(1-sm(.9,1.4,c)), plasma=.85*sm(.5,1.2,c)*(1-sm(1.9,2.5,c)), cool=sm(.3,2.6,c);
-  var cmb=.75*sm(1.85,2.35,c)*(1-sm(2.45,2.88,c));
+  /* the fireball fades on the unwarped clock, so it crossfades onto the web the rush brings in; it cools on film time */
+  var fire=.9*sm(.06,.3,c)*(1-sm(1,1.55,unwarp(c))), cool=sm(.3,2.6,c);
   var hgt=Math.abs(dot([cam.pos[0]-HOME[0],cam.pos[1]-HOME[1],cam.pos[2]-HOME[2]],cross(HE1,HE2)));
   var fq=c-TL.FRONT;   /* the frontier's seconds: the band and the Sun go as the camera pulls away */
   var neb=.65*sm(5,6.2,c)*(1-sm(7,7.9,c)), band=.9*sm(7.4,8.5,c)*(1-sm(.1,.6,fq)), hd=.9*sm(5.0,6.2,c)*sm(.015,.12,hgt);
@@ -11464,7 +11496,7 @@ function render(t,c,prog){
   var jumpFade=1-sm(TL.JUMP+.12,TL.JUMP+TL.FADE,c);
   /* --- field pass, half resolution: the early program, the late one, or (between them) a clear --- */
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbo); gl.viewport(0,0,FBW,FBH); gl.disable(gl.BLEND);
-  var early=bloom>1e-4||streak>1e-4||shellI>1e-4||fire>1e-4||plasma>1e-4||cmb>1e-4,
+  var early=bloom>1e-4||streak>1e-4||shellI>1e-4||fire>1e-4,
       late=neb>1e-4||hd>1e-4||band>1e-4||(ps.z>0&&sunI>1e-4);
   var front=c>=TL.FRONT?frontNeeds(c):0;
   gl.bindBuffer(gl.ARRAY_BUFFER,bufT); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);   /* the composite draws it too */
@@ -11478,7 +11510,7 @@ function render(t,c,prog){
     var ss=1/Math.min(asp,1);
     gl.uniform2f(u.u_ctr,o.z>0?o.x*asp*ss:0,o.z>0?o.y*ss:0);
     gl.uniform4f(u.u_bang,bloom,shellR,shellI,fire); gl.uniform4f(u.u_bl,bR2,bR3,3/M,refr); gl.uniform1f(u.u_strk,streak);
-    gl.uniform4f(u.u_pl,plasma,cool,0,0); gl.uniform4f(u.u_cmb,cmb,0,0,0); gl.uniform4f(u.u_neb,neb,0,0,0);
+    gl.uniform4f(u.u_pl,0,cool,0,0); gl.uniform4f(u.u_neb,neb,0,0,0);
     gl.uniform4f(u.u_hd,hd,SPIN_HOME*spinAt(c),0,0);
     gl.uniform3f(u.u_hp,cam.pos[0]-HOME[0],cam.pos[1]-HOME[1],cam.pos[2]-HOME[2]); gl.uniform3fv(u.u_h1,HE1); gl.uniform3fv(u.u_h2,HE2);
     gl.uniform4f(u.u_hk,HB,Math.log(.07),IT,RH);
@@ -11593,19 +11625,24 @@ function frontier(c,jf){
   var f=c-TL.FRONT, px=DPR, cw=cv.width, ch=cv.height, kc=sm(FX.COLL,FX.END,f), u;
   /* the gate: a box round it, snapped to device pixels, holding a copy of the frame behind it */
   if(f>FX.GATE-.02&&jf>.001){
-    var Rg=gateR(f), B=Math.min(FR.R*1.9,FR.cx-2,FR.cy-2,VW-FR.cx-2,VH-FR.cy-2), w=Math.max(2,Math.round(2*B*px));
-    var x0=cl(Math.round(FR.cx*px-w/2),0,cw-w), y0=cl(Math.round((VH-FR.cy)*px-w/2),0,ch-w);
+    /* wide enough for the disk, tall enough for its lifted far half */
+    var Rg=gateR(f), Bx=Math.min(FR.R*2.35,FR.cx-2,VW-FR.cx-2), By=Math.min(FR.R*1.75,FR.cy-2,VH-FR.cy-2);
+    var w=Math.max(2,Math.round(2*Bx*px)), h=Math.max(2,Math.round(2*By*px));
+    var x0=cl(Math.round(FR.cx*px-w/2),0,cw-w), y0=cl(Math.round((VH-FR.cy)*px-h/2),0,ch-h);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,ltex);
-    gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGB,x0,y0,w,w,0);
+    gl.copyTexImage2D(gl.TEXTURE_2D,0,gl.RGB,x0,y0,w,h,0);
     gl.disable(gl.BLEND);
     gl.useProgram(XPP.p); u=XPP.u; gl.bindBuffer(gl.ARRAY_BUFFER,bufQ); only(1); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
     gl.uniform1i(u.u_bt,0);
-    gl.uniform4f(u.u_box,(x0+w/2)/cw*2-1,(y0+w/2)/ch*2-1,w/cw,w/ch); gl.uniform1f(u.u_span,w/2);
-    gl.uniform4f(u.u_pt,Rg*px,w/2,.85*sm(FX.GATE,FX.GATE+.6,f),px);
+    gl.uniform4f(u.u_box,(x0+w/2)/cw*2-1,(y0+h/2)/ch*2-1,w/cw,h/ch); gl.uniform1f(u.u_span,w/2);
+    gl.uniform4f(u.u_bx,x0+w/2,y0+h/2,w/2,h/2);
+    gl.uniform4f(u.u_pt,Rg*px,0,.85*sm(FX.GATE,FX.GATE+.6,f),px);
+    /* the ring flashes as it opens, the throat clears, the disk forms from its inner edge outward and dims a little
+       while the headline locks; all of it flares as the hole swallows the words */
     gl.uniform4f(u.u_pl,sm(FX.GATE-.02,FX.GATE+.06,f)*(1+1.8*Math.exp(-Math.pow((f-FX.GATE-.07)/.07,2)))*(1+1.1*kc)*jf,
-      sm(FX.GATE+.1,FX.GATE+.65,f)*(.9+.7*kc)*jf,1.7*sm(FX.GATE+.3,FX.GATE+.6,f)*(1-.4*sm(FX.LOCK-.1,FX.LOCK+.2,f))*(1+1.2*kc)*jf,
+      sm(FX.GATE+.1,FX.GATE+.65,f)*(.9+.7*kc)*jf,1.25*sm(FX.GATE+.12,FX.GATE+.5,f)*(1-.25*sm(FX.LOCK-.1,FX.LOCK+.2,f))*(1+1.2*kc)*jf,
       1.4*kc*kc*(1-.7*sm(FX.END-.1,FX.END+.35,f))*jf);
-    gl.uniform4f(u.u_pm,f,f*1.3+2.5*kc*kc,sm(FX.GATE+.05,FX.GATE+.7,f)*(1+1.3*kc)*jf,0);
+    gl.uniform4f(u.u_pm,f,.9*f+3*kc*kc,sm(FX.GATE+.05,FX.GATE+.7,f)*(1+1.3*kc)*jf,sm(FX.GATE+.1,FX.GATE+1.,f));
     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   }
   /* the particle headline, then the sparks of its ignition */
@@ -11637,7 +11674,7 @@ function loop(now){
   var t=clock(now), dt=st.lastNow?Math.min(.1,(now-st.lastNow)/1000):0; st.lastNow=now; st.frames++;
   st.prog+=(barProg()-st.prog)*Math.min(1,dt*5);
   if(st.tBang===null&&st.bootDone&&BUILT&&!st.skipReq) st.tBang=Math.max(t+TL.PRE/SPEED,TL.P0,TINIT+TL.SEEN);
-  var c=st.tBang===null?-9:(t-st.tBang)*SPEED;
+  var c=st.tBang===null?-9:warp((t-st.tBang)*SPEED);
   if(c>=TL.JUMP&&!st.jumped) jump();
   if(c>=TL.JUMP+TL.FADE){ finish(); return; }
   adapt(dt,c);
@@ -11708,7 +11745,7 @@ function onKey(e){ var k=e.key;
 function onDown(e){ if(e.target!==btn) skip(); }
 function onVis(){ var n=performance.now();
   if(document.hidden){ if(!hidAt) hidAt=n; } else if(hidAt){ hiddenMs+=n-hidAt; hidAt=0; st.lastNow=0; go(); } }
-function cAt(t){ return (t-TL.P0)*SPEED; }
+function cAt(t){ return warp((t-TL.P0)*SPEED); }
 function onResize(){ if(st.frozen) render(st.frozenAt,cAt(st.frozenAt),Math.min(1,st.frozenAt/1.6)); }
 cv.addEventListener("webglcontextlost",onLost,false);
 
@@ -11734,9 +11771,9 @@ window.OMNI_WARP=function(boxEl,done){
 /* the first frames are the void; the world is built in the next task, while the boot runs */
 setTimeout(function(){ if(!dead&&!st.ended){ upload(); st.builtAt=+clock(performance.now()).toFixed(3); go(); } },0);
 
-function phaseOf(t){ var c=cAt(t); return c<-TL.PRE?"before time":c<TL.LIGHT?"big bang":c<TL.WEB?"first light":c<TL.GAL?"cosmic web":
+function phaseOf(t){ var c=cAt(t); return c<-TL.PRE?"before time":c<TL.WEB?"big bang":c<TL.GAL?"cosmic web":
   c<TL.HOME?"galaxies":c<TL.TITLE?"home":c<TL.FRONT?"title":c<TL.JUMP?"frontier":"jump"; }
-window.OMNI_INTRO={active:true,T:TL.P0+TL.JUMP/SPEED+TL.REVEAL,TL:TL,FX:FX,SPEED:SPEED,phase:phaseOf,
+window.OMNI_INTRO={active:true,T:TL.P0+(TL.JUMP-SKIP.S)/SPEED+TL.REVEAL,TL:TL,FX:FX,SPEED:SPEED,SKIP:SKIP,phase:phaseOf,
   at:function(t){ if(dead||st.ended) return "ended"; st.frozen=true; st.frozenAt=+t||0; if(raf){ cancelAnimationFrame(raf); raf=0; }
     upload(); render(st.frozenAt,cAt(st.frozenAt),Math.min(1,st.frozenAt/1.6)); return phaseOf(st.frozenAt); },
   play:function(){ if(!st.frozen) return; st.frozen=false; T0=performance.now()-st.frozenAt*1000; hiddenMs=0; st.lastNow=0;
@@ -14296,9 +14333,15 @@ if(typeof origCurve==="function") Wn.drawCurve=function(r){
    caption under the chart.
    ========================================================================== */
 var origStars=Wn.drawStars;
+/* everything the map draws from: a render that leaves it unchanged (a financing input, a typed value re-entered) keeps
+   the drawing and skips the label placement, a render's costliest single step */
+function starKey(r,Wd){ return [Wd,r.V,money(r.V),r.buyers.indexOf(r.best),document.fonts?document.fonts.status:""].concat(r.buyers.map(function(b){
+  return [b.n,b.fit,b.Vj,b.Pj,b.PE,b.PCj,b.EV,money(b.Vj),money(b.Pj),money(b.EV),pc(b.PE),pc(b.PCj)].join("\u0001"); })).join("\u0002"); }
 function starSVG(r,grow){
   var svg=D.getElementById("starmap"); if(!svg||!r||!r.buyers||!r.buyers.length) return false;
-  var Wd=boxW(svg,980), nar=Wd<NARROW;
+  var Wd=boxW(svg,980), nar=Wd<NARROW, key=grow?null:starKey(r,Wd);
+  if(key!==null&&svg.__key===key&&svg.__mark&&svg.__mark===svg.lastChild) return true;
+  var kept=function(){ if(key!==null){ svg.__key=key; svg.__mark=svg.lastChild; } return true; };
   var FN=nar?11.5:12.5, FS=11;
   var L=nar?40:80, R=nar?6:16, T=nar?30:34;
   /* a crowded sky that leaves no clear place for every label gets a taller plot (twice at most; four times on a phone,
@@ -14450,7 +14493,7 @@ function starSVG(r,grow){
   var sd=11, rnd=function(){ sd=(sd*16807)%2147483647; return (sd-1)/2147483646; };
   for(var q2=0;q2<18;q2++){ var o2=idx.slice(); for(var i2=o2.length-1;i2>0;i2--){ var j2=Math.floor(rnd()*(i2+1)), t2=o2[i2]; o2[i2]=o2[j2]; o2[j2]=t2; } orders.push(o2); }
   var bestRun=null; orders.forEach(function(od){ var res=run(od); if(!bestRun||res[1]<bestRun[1]) bestRun=res; });
-  if(bestRun[1]>=1e5&&(grow||0)<(nar?4:2)) return starSVG(r,(grow||0)+1);
+  if(bestRun[1]>=1e5&&(grow||0)<(nar?4:2)) return starSVG(r,(grow||0)+1)&&kept();
   items.forEach(function(it,ix){
     var c=bestRun[0][ix]||it.C[0]; if(!c) return;
     if(it.mv){ lab+='<text class="sm-mv" x="'+f1(c.x+1)+'" y="'+f1(c.y+11)+'" font-size="11"><tspan font-size="11" font-weight="500">model value </tspan>'
@@ -14473,7 +14516,7 @@ function starSVG(r,grow){
     +tx(L-9,refY+12.5,money(r.V),{a:"end",s:12,w:600,f:"#d8ecff",c:"sm-mv"});
   svg.innerHTML='<defs>'+defs+'</defs>'+g+sg+lab;
   starCaption(svg,nar);
-  return true;
+  return kept();
 }
 /* the size key and the explanation of the model-value line, under the chart (HTML, so it wraps) */
 function starCaption(svg,nar){
