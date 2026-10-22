@@ -2032,7 +2032,7 @@ After round 8 the owner asked for "one more comprehensive pass for any issues, p
 | 6 | 39 | 34 | 5 | 2f309d6 |
 | 7 | 38 | 33 | 5 | 2388c6c |
 | 8 | 30 | 25 | 5 | a631a70 |
-| 9 (final pass) | 34 | 24 | 10 | this round's commit |
+| 9 (final pass) | 34 | 24 | 10 | 64699db |
 
 Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule. The owner then asked for one more pass, identify-only, aimed at figures that are wrong or mislead. It ran as round 9 on 3c68fe2, with eight areas instead of five, and its 24 confirmed findings (4 medium) are fixed. They have their tests, but no tenth review.
 
