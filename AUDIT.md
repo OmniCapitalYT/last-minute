@@ -2021,6 +2021,44 @@ After round 8 the owner asked for "one more comprehensive pass for any issues, p
   - typed decimals echoed rounded in notes, since the rule covers the boxes, which show them;
   - three console label slips, documented or harmless.
 
+### Round 10, the last review: 30 of 34 findings confirmed
+After round 9 the owner asked for "the one ultimate final round 10", hoping no error that leads to a wrong output was left. Eight reviewers took one area each on 1fcb3da, as in round 9, with every earlier finding as known; a skeptic checked each finding against the code. 30 of 34 were confirmed, in whole or in part, as 22 distinct defects: one medium and 21 low. Each fix has a test that fails on 1fcb3da.
+
+- **Medium (1).**
+  - **"Waived" removed SBA's guaranty fee at any loan size.** FY2027 waives it only on a loan of $700,000 or less to a manufacturer, a listed food-supply business or a rural business; a larger loan to any of them pays the whole fee. Set as waived, a $1.04M loan showed no fee, and coverage, the debt and the highest financeable price read as if there were none. The setting is now the waiver itself ("Waived to a $700k loan (food-supply or rural), financed above"): to $700k there is no fee, above it the fee is financed in the loan as usual, and the 7(a) maximum carries it. The table's fee row, its note, the report and the box's hint say where the waiver ends.
+- **Low: numbers or claims a user could act on (16).**
+  - the fee's tier steps, and the end of the manufacturer's waiver at a $700k loan, can make SBA's equity test pass, fail and pass again as the price rises. The equity edges were searched as one transition, so a manufacturer's initial acquisition was told it "works only from $595k up" while its own $700k ask failed the unwaivable 10%, and an owner buyout's three failing ranges went unnamed. maxFinanced now splits the prices at the loans where the fee steps, scans each piece and bisects every change; the box and the report name each failing range between the edges ("also under SBA's 10% minimum between about $678k and $712k"), and an initial acquisition whose equity fails from some price up, as the fee takes a larger share of a larger loan, prints that price as the highest it finances. Each printed bound is a price that passes: at a loan of exactly $700k the waiver still holds, so an edge there printed a price that failed;
+  - the risk tile read one representative 6-digit cell while the value pooled the label's cells: a medical practice was risked as physicians (log RR +0.12) though about three quarters of the label’s SBA loans are dentists (the pool reads −0.11), professional services 1.12× too high, staffing 0.85× too low. The risk model now reads the same cells, pooled by the fit's own rule, (a + ΣO)/(a + ΣE) with its gamma shape (MODELS.risk.naics6_pools, from fit/sba_risk_refresh.py's cell table, which now writes them);
+  - a pooled industry's accuracy counted the pool's sales as one deep cell, leaving out each business's own cell's distance from the pool: manufacturing read about 5 points high (0.551 against 0.501). The industry term is now Σ w_c[(ind_eff (e_c − e_pool))² + τ² k/(n_c + k)], the same as before for a one-cell industry, and the equation panel prints it;
+  - the pools left out cells their labels name: physicians who are mental health specialists (621112) from medical, electronic shopping (454111) from e-commerce and all other automotive repair (811198) from auto repair. They are in; oil change shops (811191), bars and car washes stay out, and the Data tab says which edges were judged. The framework example's value moves from $4.31M to $4.28M;
+  - outside the fitted data the report's accuracy printed the in-support chance (up to 56%, above a "High" business's), where the fit measured 11% to 16% for listings with the margin past support and nothing past 3× size. The report now prints "about 11–16%" for a margin past support and "not measured" past the size, and the equation panel says the in-support figure does not apply;
+  - with SBA's fee financed, a paid note's starting share moves the value-bound highest price and an owner buyout's equity edge, through the fee. Both now carry × judgment where a hair's change of the share moves them, measured as the price past the 7(a) maximum already was;
+  - debt above value caused by the financed fee alone was told to finance less working capital; the table's note and the report now name what is financed on top of the price and its remedy: pay the fee in cash at closing;
+  - SBA's $350k valuation test read the whole business's price for an owner buyout of a stake; it now reads the stake's, the Business Purchase Price;
+  - for a stake, the report's value-bound highest price says the debt reaches the model value of the stake, and gives it;
+  - the no-limit and 7(a)-maximum sentences said the loan was working capital and closing costs alone; they name the fee financed in it;
+  - the value gap's note told a change that moves nothing (a quality of earnings where reporting is already reviewed with one, retention at its cap, outreach at 600 buyers) that it "moves the proceeds"; it now says such a change has no effect at these inputs, by the intervention table's own proceeds;
+  - with every paid change over the budget, the relist card named one that would clear its cost though it clears it only together with the relisting; the card now says so;
+  - the console's "Median time to close" tile and key figure say "if it sells", as the report does;
+  - the coverage equation printed its operands at three figures, which in about one state in 2,000 evaluated to the other side of 1.25× from the verdict beside it; they print to the dollar;
+  - the hero's EBITDA multiple rests on a general manager's market pay, BLS wages at a judgment rank by firm size; its badge carries × judgment whenever that figure shows;
+  - the Deals tab printed the quality fit's log points as percentages (+30.0% where one step is worth +35.0%); it prints e^b − 1 with SE e^b·se.
+- **Low: display and interaction (5).**
+  - a reachable report, an owner buyout of a 30–40% stake with every optional line and 120-character names, printed its sources and disclaimer alone on a second page (1,027 px). A lender paragraph over 1,000 characters, or an earnings basis over 700, takes a smaller print size, as long names do; that report measures 982 px and prints on one page;
+  - the Data tab's formatter turned SBA's notice number into "5000–881797"; it keeps the hyphen, and the fee's examples cite SOP 50 10 8.1;
+  - round 9's release of the revenue hold's mark removed any mark on the SDE box, so a typed SDE held to 92% during the hold, or a worksheet "Use" whose SDE was held, lost its mark; a mark set by anything but the hold now outlasts it;
+  - after another tab's change was taken up, a focused rail box that had not been typed in kept the old figure, and Escape restored it; such a box now shows the figure the console uses, selected, and Escape keeps it;
+  - Escape in a rail box restored the value but not its held-to-range mark; it restores both.
+- **Found while fixing.**
+  - the new fuzz invariant on the equity ranges found that at a fee tier's edge the loan's fixed point could land a rounding hair past $150k (or $700k) while carrying the lower tier's fee, so the cash, and a 9.95% equity share, read as 10% for a billionth of the price. A loan solved with the lower fee within a millionth of the edge is the edge itself;
+  - with the waiver ending at $700k, the fee starting past it can set an equity floor where there is no seller note, and the floor's sentence named "the standby note's credit" regardless; it names the credit only where there is one.
+- **Tests re-derived.** Scenario tests built before the fee that waived it now use a build without the fee, since "waived" no longer removes it above $700k. The Python mirror's risk pins are checked at the representative codes with the pools set aside. The framework example's value, the score pins, the patient-seller knife edge (83% kept at $4,000 a day) and the one-dollar equity window ($264,577 of SDE) were re-read from the live build.
+- **Refuted (4).**
+  - manufacturing's pool includes retail bakeries (311811), which are manufacturers under NAICS and SBA's fee notice, and dropping them alone would be arbitrary;
+  - the hero's EBITDA multiple is large when SDE barely exceeds a manager's pay, which is true and labelled;
+  - at a manufacturer's $700k waiver edge the highest financed price is right, and its remedy holds;
+  - the growth box reads 0.5 as 50% by design, as its title says.
+
 ### Where it stands
 | Round | Findings | Confirmed (in part) | Refuted | Fixed in |
 |---|---|---|---|---|
@@ -2033,18 +2071,19 @@ After round 8 the owner asked for "one more comprehensive pass for any issues, p
 | 7 | 38 | 33 | 5 | 2388c6c |
 | 8 | 30 | 25 | 5 | a631a70 |
 | 9 (final pass) | 34 | 24 | 10 | 64699db |
+| 10 (the last) | 34 | 30 | 4 | this commit |
 
-Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule. The owner then asked for one more pass, identify-only, aimed at figures that are wrong or mislead. It ran as round 9 on 3c68fe2, with eight areas instead of five, and its 24 confirmed findings (4 medium) are fixed. They have their tests, but no tenth review.
+Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule. The owner then asked for one more pass, identify-only, aimed at figures that are wrong or mislead. It ran as round 9 on 3c68fe2, with eight areas instead of five, and its 24 confirmed findings (4 medium) are fixed. The owner then asked for "the one ultimate final round 10". It ran on 1fcb3da with the same eight areas and found one medium defect (the fee's waiver applied to a loan of any size) and 21 low ones, all fixed with their tests in the commit that adds this record. It is the last review; its fixes have their tests, but no eleventh review.
 
-Suites on the round-9 build:
+Suites on the round-10 build:
 
 | Suite | Result |
 |---|---|
-| `node tests/model.test.js` | 7,816 pass |
-| `node tests/fuzz.test.js 1500` | 214,359 checks pass |
+| `node tests/model.test.js` | 7,838 pass |
+| `node tests/fuzz.test.js 1500` | 215,263 checks pass |
 | `node tests/browser.inputs.js` | pass |
-| `node tests/browser.broker.js` | 279 checks pass |
+| `node tests/browser.broker.js` | 294 checks pass |
 | `node tests/browser.sweep.js` | 124 input states at each of 1440 and 390 px pass |
 | `node tests/invariants.test.js --browser` | 253 invariants pass |
 
-The tallest seller report found by two hill climbs from round 8's tallest states, with the guaranty fee and the stake among the mutations, measures 1,006 px and prints on one Letter page, from the page and from the downloaded file.
+The tallest seller report found by hill climbs (eight in all, the last two under the final print rules) from round 9's tallest states and the round-10 reviewer's, with the guaranty fee, its waiver and the stake among the mutations, measures 986 px and prints on one Letter page, from the page and from the downloaded file.

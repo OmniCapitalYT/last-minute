@@ -310,11 +310,12 @@ for(let i=0;i<N;i++){
     ok(Math.abs(c.equityNeed-.1*(f.type==="buyout"?pb:c.project))<1e-6&&c.min===S.dsc[f.type]&&c.ownValuation===(pb<=S.ownValuationMax),"broker: equity, coverage floor and valuation rule by transaction type",ctx(s,f));
     ok(c.debtOverValue===(c.loan>0&&c.debt>c.value*(1+1e-9)),"broker: debt above value is flagged exactly when an SBA-financed structure's debt exceeds it",ctx(s,f));
     /* round 9: the stake prices the purchase and the valuation pro rata; the fee is SBA's on the loan, in the project, in
-       the loan's shares when financed, in the buyer's cash when paid at closing, and none where waived */
+       the loan's shares when financed, in the buyer's cash when paid at closing; FY2027's waiver, set or a manufacturer's,
+       covers a loan of $700k or less only, and set as waived a larger loan's fee is financed (r10-financing-2) */
     { const st=f.type==="buyout"&&f.stake?f.stake:1, cs=Math.min(1,Math.max(0,f.cash)), base=(pb+(f.extra||0))*(1-cs)-c.note;
-      const want=f.fee==="waived"||(s.ind==="mfg"&&c.loan<=7e5)?0:typeof A.guarantyFee==="function"?A.guarantyFee(c.loan):NaN;
+      const want=(f.fee==="waived"||s.ind==="mfg")&&c.loan<=7e5?0:typeof A.guarantyFee==="function"?A.guarantyFee(c.loan):NaN;
       ok(Math.abs(pb-p*st)<1e-6&&Math.abs(c.value-V*st)<1e-6*V&&Math.abs(c.fee-want)<1e-6&&Math.abs(c.project-(pb+(f.extra||0)+c.fee))<1e-6*c.project+1e-6
-         &&c.feeIn===(f.fee==="financed"?c.fee:0)&&(c.loan===0||c.over>0||Math.abs(c.loan-(base+(f.fee==="financed"?(1-cs)*c.fee:0)))<1e-4*Math.max(1,c.loan))
+         &&c.feeIn===(f.fee!=="cash"?c.fee:0)&&(c.loan===0||c.over>0||Math.abs(c.loan-(base+(f.fee!=="cash"?(1-cs)*c.fee:0)))<1e-4*Math.max(1,c.loan))
          &&(f.fee!=="cash"||c.loan===0||c.over>0||Math.abs(c.cash-(cs*(pb+(f.extra||0))+c.fee))<1e-4*Math.max(1,c.cash)),
          "broker: the stake and the SBA fee: purchase and valuation pro rata, the fee on the loan, financed in its shares or paid in cash",ctx(s,f,{fee:c.fee,loan:c.loan})); }
     /* the seller-note convention's badge goes where the note's share moves the figure (r7-financing-1): at the starting
@@ -356,9 +357,18 @@ for(let i=0;i<N;i++){
       if(m.capped&&m.equityShort&&!m.equityAbove) ok(!A.debtCheck(s,1e11,f,V).equityOK,"broker: an equity short past the cap with no price named stays short at every price",ctx(s,f)); }
     if(f.type==="initial"&&m.price>0&&!m.equityShort&&!m.noLoan) ok(A.debtCheck(s,1e3,f,V).equityOK||m.equityFrom>0,"broker: an initial acquisition's price stands only with its equity floor named",ctx(s,f));
     /* an equity edge lies where there is an SBA loan on both sides, and only an owner buyout's equity stops passing as the
-       price rises (r5-financing-1) */
-    ok((!m.equityTo||f.type==="buyout")&&[m.equityTo,m.equityFrom].every(e=>!e||A.debtCheck(s,e*.999,f,V).loan>=1),
-       "broker: an equity edge has an SBA loan on both sides, and a ceiling is an owner buyout's alone (r5-financing-1)",ctx(s,f,{et:m.equityTo,ef:m.equityFrom}));
+       price rises (r5-financing-1), or another's where SBA's fee financed in the loan takes a larger share of a larger
+       loan (r10-financing-3) */
+    ok((!m.equityTo||f.type==="buyout"||f.fee!=="cash")&&[m.equityTo,m.equityFrom].every(e=>!e||A.debtCheck(s,e*.999,f,V).loan>=1),
+       "broker: an equity edge has an SBA loan on both sides, and a ceiling is an owner buyout's, or comes with the fee in the loan (r5-financing-1)",ctx(s,f,{et:m.equityTo,ef:m.equityFrom}));
+    /* every price below the one found where the equity fails lies in a range the page names: below the floor, above the
+       ceiling, in a range between where SBA's fee steps with the loan, or everywhere when no edge is named; each range's
+       printed bounds pass (r10-financing-3) */
+    if(m.price>0&&!m.noLoan){ const top=isFinite(m.price)?m.price:1e11, G=m.equityGaps||[], all=m.equityShort&&!m.equityFrom&&!m.equityTo&&!G.length; let miss=null;
+      for(let k=0;k<=120&&!miss;k++){ const q=1e3*Math.pow(top/1e3,k/120)*(k===120?1-1e-9:1), d=A.debtCheck(s,q,f,V); if(d.loan<1||d.over>0||d.equityOK) continue;
+        if(!(all||m.equityFrom&&q<m.equityFrom||m.equityTo&&q>m.equityTo||G.some(g=>q>g.last&&q<g.pass))) miss=q; }
+      const pb=G.every(g=>A.debtCheck(s,A.moneyVal(A.moneyDown(g.last)),f,V).equityOK&&A.debtCheck(s,A.moneyVal(A.moneyUp(g.pass)),f,V).equityOK&&g.last<g.pass);
+      ok(miss===null&&pb,"broker: every failing equity price is in a range the page names, and each range's printed bounds pass (r10-financing-3)",ctx(s,f,{miss,G:JSON.stringify(G),ef:m.equityFrom,et:m.equityTo})); }
     /* the highest price and the equity floor as printed never cross, and each passes every test as printed (r5-financing-2) */
     { const E=A.finEdges(m);
       if(E.top&&E.from&&!E.none) ok(A.moneyVal(E.from)<=A.moneyVal(E.top)&&A.debtCheck(s,A.moneyVal(E.top),f,V).equityOK&&pass(A.debtCheck(s,A.moneyVal(E.from),f,V)),

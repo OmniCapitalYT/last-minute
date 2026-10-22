@@ -765,6 +765,30 @@ APP_N6 = {"home": "238220", "medical": "621111", "vet": "541940", "msp": "541511
           "dist": "423310", "staff": "561320", "land": "561730", "wash": "811192", "auto": "811111", "constr": "238990",
           "fit": "713940", "rest": "722511"}
 say(n6_tab[n6_tab.k.isin(APP_N6.values())].round(4).to_string())
+# every cell each console industry is VALUED on (index.html IND_CELLS, BIZCOMPS 6-digit codes; manufacturing,
+# distribution and construction take every BIZCOMPS cell in their sectors). The console reads the same cells for risk,
+# pooled the way eb_table shrinks one cell: (a + sum O) / (a + sum E) with the fitted gamma shape (r10-valuation-1).
+LABEL_N6 = {
+    'home': ["238220", "238210"],
+    'medical': ["621111", "621112", "621210"],
+    'vet': ["541940"],
+    'msp': ["541511"],
+    'prof': ["541211", "541213", "541219", "541110"],
+    'mfg': ["311411", "311611", "311811", "311812", "311999", "314910", "315190", "315210", "321919", "321999", "322312", "323111", "323113", "325411", "325412", "326199", "327991", "331311", "331315", "332312", "332322", "332710", "332721", "332812", "332999", "333999", "334412", "335314", "336412", "336413", "336612", "337110", "337122", "337125", "337920", "339112", "339116", "339920", "339950"],
+    'dist': ["423110", "423120", "423310", "423390", "423420", "423440", "423450", "423510", "423610", "423690", "423710", "423720", "423830", "423840", "423850", "423860", "423910", "423930", "423940", "423990", "424130", "424330", "424410", "424419", "424470", "424490", "424690", "424910", "424930", "424940", "424990"],
+    'staff': ["561320", "561311"],
+    'land': ["561730"],
+    'wash': ["811192"],
+    'auto': ["811111", "811112", "811113", "811118", "811121", "811122", "811198"],
+    'constr': ["236115", "236118", "236220", "237120", "237990", "238110", "238140", "238150", "238160", "238170", "238190", "238310", "238320", "238330", "238350", "238390", "238910", "238990"],
+    'fit': ["713940"],
+    'rest': ["722511", "722513", "722515", "722320"],
+}
+_n6idx = n6_tab.set_index('k')
+def label_pool(cs):
+    u = [c for c in cs if c in _n6idx.index]; O = float(_n6idx.loc[u, 'O'].sum()); E = float(_n6idx.loc[u, 'E'].sum())
+    return {'cells': u, 'O': r4(O), 'E': r4(E), 'n': int(_n6idx.loc[u, 'n_loans'].sum()), 'log_rr': r4(math.log((A_N6 + O) / (A_N6 + E)))}
+N6_POOLS = {k: label_pool(v) for k, v in LABEL_N6.items()}
 
 # final CO extra log-RR per loan (NAICS-6 within sector + state)
 n6map = dict(zip(n6_tab.k, n6_tab.log_rr)); stmap = dict(zip(st_tab.k, st_tab.log_rr))
@@ -1621,7 +1645,7 @@ RISK = {
     "industry_effects": expand(co_sec), "sector_tau": R4(math.sqrt(TAU2_CO)),
     "naics6_effects": {k: R4(v) for k, v in n6_app.log_rr.items()},
     "naics6_n": {k: int(v) for k, v in n6_app.n_loans.items()},
-    "naics6_sd": R4(math.sqrt(special.polygamma(1, A_N6))), "naics6_gamma_shape": R4(A_N6),
+    "naics6_sd": R4(math.sqrt(special.polygamma(1, A_N6))), "naics6_gamma_shape": R4(A_N6), "naics6_pools": N6_POOLS,
     "state_effects": {k: R4(v) for k, v in st_keep.log_rr.items()},
     "state_n": {k: int(v) for k, v in st_keep.n_loans.items()},
     "state_sd": R4(math.sqrt(special.polygamma(1, A_ST))), "state_gamma_shape": R4(A_ST),

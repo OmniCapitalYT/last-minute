@@ -1,5 +1,8 @@
 /* Invariants of the Omni Method model. Run: node tests/model.test.js */
 const A=require("./load.js");
+/* the page without SBA's guaranty fee: tests built before round 9 added it keep the structures they test (round 10 made
+   "waived" the FY2027 waiver itself, a loan of $700k or less, so it no longer removes the fee from a larger loan) */
+const NF=A.loadWith([["  if(!(loan>0)) return 0;\n  if(loan<=15e4)","  return 0;\n  if(loan<=15e4)"]]);
 let pass=0,fail=0;
 const ok=(c,msg)=>{ if(c) pass++; else { fail++; console.log("FAIL:",msg); } };
 const near=(a,b,tol)=>Math.abs(a-b)<=tol;
@@ -311,8 +314,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   /* the average sector: fitRisk with every sector table emptied ("zzz" maps to 81, which then carries no effect) */
   const avgSector=fn=>{ const a=R.industry_effects,b=R.pif.sector; R.industry_effects={}; R.pif.sector={};
     try{ return fn(); } finally { R.industry_effects=a; R.pif.sector=b; } };
+  /* the representative cell alone: since round 10 the console reads each label's pooled cells (naics6_pools); the
+     Python mirror's pins are at the representative codes, so they are checked with the pools set aside */
+  const noPools=fn=>{ const p=R.naics6_pools; delete R.naics6_pools; try{ return fn(); } finally { R.naics6_pools=p; } };
   /* 1. the console reproduces the fitted model exactly (Python mirror on the shipped, rounded tables) */
-  for(const c of PINS){ const r=A.fitRisk(...c.args);
+  for(const c of PINS){ const r=noPools(()=>A.fitRisk(...c.args));
     for(const k of ["p5","p8","pTerm","lgd","expLoss","rel"]) ok(Math.abs(r[k]-c[k])<=1e-9*Math.max(1,Math.abs(c[k])),`pin ${JSON.stringify(c.args)} ${k}: ${r[k]} vs ${c[k]}`); }
   /* 2. horizons: 0 < p5 < p8 < pTerm < 1, headline is the term, and the term is p8 times the fitted tail at the note's size */
   const TB=R.tail.by_band, tailRef=loan=>{ const x=Math.log(Math.max(loan,1)), c=TB.centres.map(Math.log), n=c.length;
@@ -321,7 +327,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
   for(const k of Object.keys(A.IND)) for(const v of [2e5,1e6,4e6]){ const r=A.fitRisk(v,k,null,10,false,null);
     ok(r.p5>0&&r.p5<r.p8&&r.p8<r.pTerm&&r.pTerm<0.5,`${k} ${v}: horizons ordered ${r.p5} ${r.p8} ${r.pTerm}`);
     ok(r.p===r.pTerm&&Math.abs(r.pTerm-r.p8*r.tail)<1e-12&&Math.abs(r.tail-tailRef(r.loan))<1e-12,`${k}: headline is the term, p8 x the tail at the note's size`); }
-  for(const c of PINS){ const r=A.fitRisk(...c.args); ok(Math.abs(r.pTerm-c.p8*tailRef(r.loan))<1e-12,`pin ${JSON.stringify(c.args)}: pTerm = pinned p8 x the tail`); }
+  for(const c of PINS){ const r=noPools(()=>A.fitRisk(...c.args)); ok(Math.abs(r.pTerm-c.p8*tailRef(r.loan))<1e-12,`pin ${JSON.stringify(c.args)}: pTerm = pinned p8 x the tail`); }
   ok(R.horizon_months===60&&R.observed_months===96&&R.term_months===120,"horizons are 5 / 8 / 10 years");
   /* years 9-10 are FITTED (fit/sba_tail_factor.py): the pooled factor and its SE, the size table and its scale */
   { const T=R.tail, E=T.estimates, r=TB.ratio.map(v=>v*TB.scale);
@@ -554,10 +560,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       for(const lam of [900,4000]){ const b=A.bestRatio(s,.75,lam);
         ok(b.toFixed(2)===Q[lam][i],`Data tab: walk-away ask at $${ern} and $${lam}/day ${b.toFixed(3)} (text says ${Q[lam][i]})`); } }); }
   /* the knife edge the Data tab quotes for the framework example: the cap wins from about 77% kept with no delay cost,
-     78% at $900/day, 82% at $4,000/day (77.2 / 78.4 / 82.5 since round 9 pooled the medical cells; 77.2 / 78.5 / 82.8
+     78% at $900/day, 83% at $4,000/day (77.2 / 78.4 / 82.53 since round 10 added 621112 to the medical pool; 77.2 / 78.4 / 82.5
+     since round 9 pooled the medical cells; 77.2 / 78.5 / 82.8
      since the gap axis was read as Pepperdine states it; 76.6 / 77.6 / 81.0 before) */
   { const ex={...EXO,ind:"medical",rev:6e6,ern:1.45e6};
-    for(const [lam,pct] of [[0,77],[900,78],[4000,82]]){ let lo=.70,hi=.88;
+    for(const [lam,pct] of [[0,77],[900,78],[4000,83]]){ let lo=.70,hi=.88;
       for(let k=0;k<12;k++){ const m=(lo+hi)/2; A.bestRatio(ex,m,lam)>1.45?hi=m:lo=m; }
       ok(Math.round(50*(lo+hi))===pct,`Data tab: patient-seller cap from ${(50*(lo+hi)).toFixed(1)}% kept at $${lam}/day (text says ${pct}%)`); } }
   /* small deals leave the cap at $900/day at theta .75 */
@@ -780,8 +787,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const at=(API,b)=>{ const s={...ex,buyers:b}, r=API.model(s); r.inputs=s; return {r,sc:API.omniScore(r)}; };
     const a25=at(A,25), a40=at(A,40), a65=at(A,65), a50=at(A,50);
     /* regenerated in round 9, when pooling the medical industry's physicians' and dentists' cells raised the example's
-       value to $4.31M and so put the $3.24M ask further below it (0.7695, 0.5209, 2; 31 and 41; 41/10 and 25/1 before) */
-    ok(near(a25.r.thinF,.7724,1e-4)&&near(a25.r.PC,.5255,1e-4)&&Math.abs(a25.sc-1)<=1,`example at 25 buyers: thinF ${a25.r.thinF.toFixed(4)}, PC ${a25.r.PC.toFixed(4)}, score ${a25.sc} (pinned 0.7724, 0.5255, 1)`);
+       value to $4.31M and so put the $3.24M ask further below it (0.7695, 0.5209, 2; 31 and 41; 41/10 and 25/1 before), and
+       in round 10, when the mental health specialists' cell (621112) joined the pool and the value became $4.28M
+       (0.7724, 0.5255 in round 9) */
+    ok(near(a25.r.thinF,.7721,1e-4)&&near(a25.r.PC,.5250,1e-4)&&Math.abs(a25.sc-1)<=1,`example at 25 buyers: thinF ${a25.r.thinF.toFixed(4)}, PC ${a25.r.PC.toFixed(4)}, score ${a25.sc} (pinned 0.7721, 0.5250, 1)`);
     ok(Math.abs(a40.sc-22)<=1&&Math.abs(a65.sc-32)<=1&&a65.r.thinF===1&&a50.r.thinF===1,`example at 40 and 65 buyers scores ${a40.sc} and ${a65.sc} (pinned 22, 32 against optimum-priced peers); thinF 1 from the typical 50 up`);
     /* IND.buyers sensitivity: the judgment typical pool the thin-pool factor is measured against */
     const sens=[40,60].map(tb=>{ const B=A.loadWith([["anchor:3.10, buyers:50,","anchor:3.10, buyers:"+tb+","]]); return [at(B,25).sc,at(B,40).sc]; });
@@ -1391,7 +1400,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const s2=prep({...FX,ask:5e6,budget:cq+600}), b2=A.optimize(s2,A.model(s2),s2.budget,s2.lamT,s2.theta);
     const bl=b.U.blocked, ru=bl&&A.model(A.applyAll(s,A.model(s),[bl.k],s.optRho)), uBl=bl&&ru.EVp+(1-ru.PC)*s.theta*ru.V-s.lamT*(ru.tMean+A.daysOf(s,[bl.k]))-bl.c;
     ok(!b.U.keys.length&&bl&&bl.k==="qoe"&&bl.c>s.budget&&uBl>b.U.U&&b2.U.keys.includes("qoe")&&!b.allIn
-       &&HTML.includes("Do nothing — nothing within the budget clears its cost; ${INTERV.find(i=>i.k===sel.blocked.k).n} would, for ${moneyIn(sel.blocked.c)}"),
+       &&HTML.includes("Do nothing — nothing within the budget clears its cost; ${INTERV.find(i=>i.k===sel.blocked.k).n} would${sel.blocked.withReprice?\", with a reprice to match\":\"\"}, for ${moneyIn(sel.blocked.c)}"),
        `S-5: the budget-bound programme names ${bl&&bl.k} at $${bl&&Math.round(bl.c)}`); }
 }
 
@@ -1496,7 +1505,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     { const E=A.MODELS.value.support.ern; let same=true;
       for(const [ind,ern,rev] of [["home",5e6,2e7],["auto",5e6,2e7],["prof",3e6,1e7],["home",8e3,4e4],["medical",1.45e6,6e6]]){
         const s={...median(ind,ern),rev,ask:1}, r=A.model(s), c=A.confidenceOf(s,r), lx=Math.log(Math.min(Math.max(ern,E.p1),E.p99)/700000);
-        const sh=C.K*Math.exp(C.b_size*lx+C.b_em*Math.abs(r.z.em)), sg=Math.sqrt(sh*sh+C.tau2*(1-c.comps)/(C.s_eq*C.s_eq));
+        /* a pooled label's industry term is each cell's distance from the pool and its own depth (r10-valuation-2) */
+        const P=A.cellOf(ind), MV=A.MODELS.value, K6=MV.industry_shrinkage.k_naics6, dv=P&&P.cells.length>1
+          ?P.cells.reduce((a,x)=>a+MV.industry_n6[x]/P.n*((MV.coefficients.ind_eff*(MV.industry_effects_naics6[x]-P.e))**2+C.tau2*K6/(MV.industry_n6[x]+K6)),0)
+          :C.tau2*(1-c.comps);
+        const sh=C.K*Math.exp(C.b_size*lx+C.b_em*Math.abs(r.z.em)), sg=Math.sqrt(sh*sh+dv/(C.s_eq*C.s_eq));
         if(Math.abs(sg-r.confSigma)>1e-12||Math.abs(r.V/r.qFactor-r.fv.point)>1e-6*r.V||Math.abs(r.z.em)>3.2) same=false; }
       ok(same,"38e: the printed sigma (SDE held at the support, z_em as displayed) is the one computed, and V/q is the fitted point"); } }
   /* 38f. the Data tab: a row for every second-round fit, and no stale wording */
@@ -2046,16 +2059,16 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        &&hB.includes(`about ${A.moneyDown(mB.equityTo)} <span class="rp-b rp-a">published data</span>${mB.equityAbove?" and "+A.moneyUp(mB.equityAbove)+' <span class="rp-b rp-a">published data</span>':""} the buyer&rsquo;s equity is under`),
        `43: the price where the equity starts passing prints rounded up (${A.moneyUp(mA.equityFrom)}, not ${A.money(mA.equityFrom)}) and where it stops rounded down (${A.moneyDown(mB.equityTo)}), so each passes as printed (r4-financing-1)`);
     /* r4-financing-2: past the 7(a) maximum an owner buyout's short equity comes back where buyer cash reaches 10% */
-    /* built before round 9 added SBA's guaranty fee, financed by default: waived, the scenario keeps the structure it tests */
-    const sC={...s0,ern:2e6,rev:8e6,ask:4.5e6}, VC=A.model(sC).V, fC={type:"buyout",cash:.08,note:0,extra:1e6,fee:"waived"}, mC=A.maxFinanced(sC,fC,VC), hC=A.reportHTML(A.reportData(sC,{fin:fC}),{});
-    let fails=true; for(let i=1;i<40;i++){ const p=mC.equityTo*Math.pow(mC.equityAbove/mC.equityTo,i/40); if(A.debtCheck(sC,p,fC,VC).equityOK) fails=false; }
-    ok(mC.capped&&mC.equityTo>0&&mC.equityAbove>mC.capAt&&fails&&[1.001,1.5,5].every(x=>A.debtCheck(sC,mC.equityAbove*x,fC,VC).equityOK)
+    /* built before round 9 added SBA's guaranty fee, financed by default: the no-fee build (NF) keeps the structure it tests */
+    const sC={...s0,ern:2e6,rev:8e6,ask:4.5e6}, VC=NF.model(sC).V, fC={type:"buyout",cash:.08,note:0,extra:1e6,fee:"waived"}, mC=NF.maxFinanced(sC,fC,VC), hC=NF.reportHTML(NF.reportData(sC,{fin:fC}),{});
+    let fails=true; for(let i=1;i<40;i++){ const p=mC.equityTo*Math.pow(mC.equityAbove/mC.equityTo,i/40); if(NF.debtCheck(sC,p,fC,VC).equityOK) fails=false; }
+    ok(mC.capped&&mC.equityTo>0&&mC.equityAbove>mC.capAt&&fails&&[1.001,1.5,5].every(x=>NF.debtCheck(sC,mC.equityAbove*x,fC,VC).equityOK)
        &&hC.includes(`Between about ${A.moneyDown(mC.equityTo)} <span class="rp-b rp-a">published data</span> and ${A.moneyUp(mC.equityAbove)} <span class="rp-b rp-a">published data</span> the buyer&rsquo;s equity is under SBA&rsquo;s 10% minimum of the price`)
-       &&hC.includes(`which brings it back to 10% from ${A.moneyUp(mC.equityAbove)} <span class="rp-b rp-a">published data</span>`)&&!/Above about/.test(hC)&&["4.5e6","6.48e6"].every(p=>A.debtCheck(sC,+p,fC,VC).equityOK),
+       &&hC.includes(`which brings it back to 10% from ${A.moneyUp(mC.equityAbove)} <span class="rp-b rp-a">published data</span>`)&&!/Above about/.test(hC)&&["4.5e6","6.48e6"].every(p=>NF.debtCheck(sC,+p,fC,VC).equityOK),
        `43: an owner buyout's equity, short from ${A.moneyDown(mC.equityTo)}, is bounded where buyer cash past the 7(a) maximum brings it back to 10% (${A.moneyUp(mC.equityAbove)}), as the asks show (r4-financing-2)`);
     /* r4-report-2: with a 90% paid note buyer cash past the cap never reaches 10%: no bound is named */
-    const sD={...s0,ern:2e7,rev:8e7,ask:5.5e7}, VD=A.model(sD).V, fD={cash:0,note:.9,fee:"waived"}, mD=A.maxFinanced(sD,fD,VD), hD=A.reportHTML(A.reportData(sD,{fin:fD}),{});
-    ok(mD.capped&&mD.equityShort&&mD.equityAbove===null&&[5.5e7,1e9,1e11].every(p=>!A.debtCheck(sD,p,fD,VD).equityOK)
+    const sD={...s0,ern:2e7,rev:8e7,ask:5.5e7}, VD=NF.model(sD).V, fD={cash:0,note:.9,fee:"waived"}, mD=NF.maxFinanced(sD,fD,VD), hD=NF.reportHTML(NF.reportData(sD,{fin:fD}),{});
+    ok(mD.capped&&mD.equityShort&&mD.equityAbove===null&&[5.5e7,1e9,1e11].every(p=>!NF.debtCheck(sD,p,fD,VD).equityOK)
        &&/at every price: past \$50\.00M <span class="rp-b rp-a">published data<\/span> the SBA loan stays at the 7\(a\) maximum and the rest of the price is buyer cash, but with this seller note that never reaches 10%\./.test(hD)&&!/at every price below/.test(hD),
        "43: with a 90% paid note buyer cash past the 7(a) maximum never reaches 10%, so the report says the equity is short at every price (r4-report-2)");
     /* r4-financing-5, r4-core-5: the optimizer's two asks are one row when they print as one price */
@@ -2122,7 +2135,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
         const r1=A.model(s); s.rhoSell=A.bestRatio(s,0,0); s.ask=r1.V*s.rhoSell; s.optRho=A.bestRatio(s,s.theta,s.lamT); s.rhoSell=A.bestRatio(s,0,0);
         const r=A.model(s), b=A.optimize(s,r,s.budget,s.lamT,s.theta); if(!b.V||b.V.keys.length||!b.U||b.U.keys.length) continue; seen++;
         let out=null; for(const it of A.INTERV){ if(it.k==="reprice") continue; const c=A.costOf(s,[it.k]); if(c<=s.budget||(out&&c>=out.c)) continue;
-          for(const keys of [[it.k],["reprice",it.k]]){ const x=A.model(A.applyAll(s,r,keys,s.rhoSell)); if(x.EVp-c>b.V.net){ out={k:it.k,c}; break; } } }
+          for(const keys of [[it.k],["reprice",it.k]]){ const x=A.model(A.applyAll(s,r,keys,s.rhoSell)); if(x.EVp-c>b.V.net){ out={k:it.k,c,withReprice:keys.length>1,days:Math.round(A.daysOf(s,[it.k]))}; break; } } }
         if(out) named++; if(b.U===b.V||JSON.stringify(out)!==JSON.stringify(b.V.blocked)) wrong++; } }
     ok(seen>=20&&named>=5&&wrong===0,`43: when both cards keep the empty programme, the proceeds card names the change its own search finds, not the utility card's (${seen} businesses, ${named} with a change, ${wrong} wrong; r4-core-1)`); }
   /* ---- round 5 ---- */
@@ -2191,11 +2204,12 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     /* r6-financing-3: where no whole dollar passes the equity, an expansion's whole-dollar top is short only of a 10% the
        lender may waive: the box and the report give it with the waiver; an initial acquisition's has none */
     { const f={type:"expansion",cash:.06,note:.1,standby:true,extra:4e5,draw:1e5,fee:"waived"}; let hit=null;
-      /* near $262,953 of SDE since round 9 pooled the medical cells ($277,183 before) */
-      for(let ern=262952;ern<262954&&!hit;ern+=.002){ const s={...FW,ern,rev:4*ern,ask:1e6}, V=A.model(s).V, m=A.maxFinanced(s,f,V);
+      /* near $264,577 of SDE since round 10 added the mental health specialists' cell to the medical pool ($262,953 after
+         round 9 pooled the medical cells, $277,183 before) */
+      for(let ern=264576;ern<264578&&!hit;ern+=.002){ const s={...FW,ern,rev:4*ern,ask:1e6}, V=NF.model(s).V, m=NF.maxFinanced(s,f,V);
         if(m.price>0&&isFinite(m.price)&&m.equityFrom&&Math.ceil(m.equityFrom-1e-9)>Math.floor(m.price+1e-9)) hit={s,V,m}; }
-      const E=hit?A.finEdges(hit.m):{}, mi=hit?A.maxFinanced(hit.s,{...f,type:"initial"},hit.V):{}, Ei=hit?A.finEdges(mi):{}, h=hit?txt(A.reportHTML(A.reportData(hit.s,{fin:f}),{})):"";
-      const top=A.moneyVal(E.top||"0"), dTop=hit?A.debtCheck(hit.s,top,f,hit.V):{};
+      const E=hit?A.finEdges(hit.m):{}, mi=hit?NF.maxFinanced(hit.s,{...f,type:"initial"},hit.V):{}, Ei=hit?A.finEdges(mi):{}, h=hit?txt(NF.reportHTML(NF.reportData(hit.s,{fin:f}),{})):"";
+      const top=A.moneyVal(E.top||"0"), dTop=hit?NF.debtCheck(hit.s,top,f,hit.V):{};
       ok(!!hit&&!E.none&&E.top==="$266,666"&&dTop.ok&&!dTop.debtOverValue&&!dTop.equityOK&&/is about \$266,666/.test(h)&&/Below about \$266,667 published data the buyer’s equity, with the standby note’s credit, is under SBA’s 10% minimum: the lender may reduce or eliminate it only when/.test(h)
          &&!/No whole-dollar price passes/.test(h)&&Ei.none,
          `43: where the equity floor and the highest price share one whole dollar, an expansion's top passes all but a waivable equity, so it is given with the waiver; an initial acquisition's reads none (r6-financing-3)`); }
@@ -2237,7 +2251,7 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     const peer=(ern,rev)=>{ const s={...FW,...A.peerMedians("medical",ern,rev),ern,rev}; return {...s,ask:A.model(s).V}; };
     /* r7-financing-1: past the 7(a) maximum the loan stays at the maximum, so a paid note's starting share moves the debt
        above value (x judgment, and the footer names it) and a standby note's moves neither the debt nor coverage */
-    /* built before round 9 added SBA's guaranty fee, financed by default: waived, the scenario keeps the structure it tests */
+    /* built before round 9 added SBA's guaranty fee, financed by default: the no-fee build (NF) keeps the structure it tests */
     { const s=peer(2e6,8e6), V=s.ask, a={...s,ask:1.45*V}, tA=txt(A.reportHTML(A.reportData(a,{fin:{fee:"waived"}}),{}));
       const dA=[.04,.05,.06].map(note=>A.debtCheck(a,a.ask,{note,fee:"waived"},V).debt);
       const b0=peer(1.75e6,7e6), Vb=b0.ask, b={...b0,ask:1.45*Vb}, fS={standby:true,draw:2e5,fee:"waived"}, DB=A.reportData(b,{fin:fS}), tB=txt(A.reportHTML(DB,{}));
@@ -2249,10 +2263,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
          "43: past the 7(a) maximum a paid starting note's share moves the debt above value, which carries x judgment and the footer names; a standby note's moves neither the debt nor coverage, which print plain fitted (r7-financing-1)"); }
     /* r7-financing-2, r7-report-2: the prices the report derives from the 7(a) maximum and SBA's 10% rule carry that badge,
        with x judgment where the note's starting share sets them, and the footer names them */
-    /* built before round 9 added SBA's guaranty fee, financed by default: waived, the scenario keeps the structure it tests */
+    /* built before round 9 added SBA's guaranty fee, financed by default: the no-fee build (NF) keeps the structure it tests */
     { const s=peer(3e6,12e6), y=peer(1.2e6,5e6), fB={type:"buyout",cash:.08,note:.05,extra:1e6,fee:"waived"}, fF={type:"initial",cash:.07,note:.05,standby:true,extra:5e5,fee:"waived"};
-      const tB=txt(A.reportHTML(A.reportData(s,{fin:fB}),{})), tF=txt(A.reportHTML(A.reportData(y,{fin:fF}),{})), t6=txt(A.reportHTML(A.reportData(s,{fin:{type:"initial",cash:0,note:.06,fee:"waived"}}),{}));
-      const ab=[.04,.05,.06].map(note=>A.maxFinanced(s,{...fB,note},s.ask).equityAbove), fl=[.04,.05,.06].map(note=>A.maxFinanced(y,{...fF,note},y.ask).equityFrom);
+      const tB=txt(NF.reportHTML(NF.reportData(s,{fin:fB}),{})), tF=txt(NF.reportHTML(NF.reportData(y,{fin:fF}),{})), t6=txt(NF.reportHTML(NF.reportData(s,{fin:{type:"initial",cash:0,note:.06,fee:"waived"}}),{}));
+      const ab=[.04,.05,.06].map(note=>NF.maxFinanced(s,{...fB,note},s.ask).equityAbove), fl=[.04,.05,.06].map(note=>NF.maxFinanced(y,{...fF,note},y.ask).equityFrom);
       ok(ab[0]<ab[1]&&ab[1]<ab[2]&&fl[0]>fl[1]&&fl[1]>fl[2]
          &&/Between about \$[\d.]+M published data and \$[\d.]+M published data × judgment the buyer’s equity is under/.test(tB)&&/brings it back to 10% from \$[\d.]+M published data × judgment ?\./.test(tB)
          &&tB.includes("the seller-note convention (the highest financed price, the prices past the 7(a) maximum)")
@@ -2308,16 +2322,16 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
          "43: a coverage-bound highest price badged x judgment by a standby note's starting share has the convention named in the footer when every ask is past the 7(a) maximum (r8-financing-1, r8-report-2)"); }
     /* r8-financing-2, r8-report-1: past the 7(a) maximum a standby note's share does not move the price where buyer cash
        brings an initial acquisition's equity to 10%, which prints plain published data; a paid note's moves it */
-    /* built before round 9 added SBA's guaranty fee, financed by default: waived, the scenario keeps the structure it tests */
-    { const fS={type:"initial",cash:.03,note:.05,standby:true,extra:1e6,fee:"waived"}, DS=A.reportData(s,{fin:fS}), tS=txt(A.reportHTML(DS,{}));
-      const fP={...fS,standby:false}, DP=A.reportData(s,{fin:fP}), tP=txt(A.reportHTML(DP,{}));
-      const eS=[0,.04,.05,.06].map(note=>A.maxFinanced(s,{...fS,note},DS.V).equityAbove);
+    /* built before round 9 added SBA's guaranty fee, financed by default: the no-fee build (NF) keeps the structure it tests */
+    { const fS={type:"initial",cash:.03,note:.05,standby:true,extra:1e6,fee:"waived"}, DS=NF.reportData(s,{fin:fS}), tS=txt(NF.reportHTML(DS,{}));
+      const fP={...fS,standby:false}, DP=NF.reportData(s,{fin:fP}), tP=txt(NF.reportHTML(DP,{}));
+      const eS=[0,.04,.05,.06].map(note=>NF.maxFinanced(s,{...fS,note},DS.V).equityAbove);
       ok(eS.every(x=>Math.abs(x-eS[2])<1e-6)&&/at every price below about \$4\.56M published data : past \$[\d.]+M published data × judgment the SBA loan stays/.test(tS)
          &&tS.includes("the seller-note convention (the prices past the 7(a) maximum)")&&DS.aboveMoves===false&&DP.aboveMoves===true
          &&/at every price below about \$[\d.]+M published data × judgment : past \$[\d.]+M published data × judgment the SBA loan stays/.test(tP),
          "43: the price where buyer cash past the 7(a) maximum brings an initial acquisition's equity to 10% carries x judgment only where the note's starting share moves it (r8-financing-2, r8-report-1)"); }
     /* r8-financing-3: the working capital's own coverage, where no price works, carries its badge */
-    { const t=txt(A.reportHTML(A.reportData({...FW},{fin:{extra:2e6,draw:1.2e6,fee:"waived"}}),{}));
+    { const t=txt(NF.reportHTML(NF.reportData({...FW},{fin:{extra:2e6,draw:1.2e6,fee:"waived"}}),{}));
       ok(/the \$250k left after the new owner’s pay covers them 0\.91× fitted , under SBA’s 1\.25× minimum/.test(t),
          "43: the report's coverage of the working capital financed in the loan, where no price works, carries the badge every other coverage figure does (r8-financing-3)"); }
     /* r8-core-2: the page prints counts and amounts in en-US in every browser, not only on the report */
@@ -2333,11 +2347,11 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     { const gf=has("guarantyFee")?A.guarantyFee:()=>NaN;
       ok(Math.abs(gf(1e5)-1700)<1e-6&&Math.abs(gf(5e6)-138125)<1e-6&&Math.abs(gf(7e5)-15750)<1e-6&&Math.abs(gf(1e6)-26250)<1e-6&&gf(0)===0,
          "r9-financing-1: the guaranty fee is 2% to $150k, 3% to $700k, then 3.5% and 3.75% of the 75% guaranteed share ($1,700 on $100k, $138,125 on $5M)");
-      const s={...FW,ind:"medical",rev:6e6,ern:3e5,ask:1.11e6}, V=A.model(s).V, f=A.debtCheck(s,1.11e6,{},V), w=A.debtCheck(s,1.11e6,{fee:"waived"},V), c=A.debtCheck(s,1.11e6,{fee:"cash"},V);
+      const s={...FW,ind:"medical",rev:6e6,ern:3e5,ask:1.11e6}, V=A.model(s).V, f=A.debtCheck(s,1.11e6,{},V), w=NF.debtCheck(s,1.11e6,{},V), c=A.debtCheck(s,1.11e6,{fee:"cash"},V);
       ok(f.fee>0&&Math.abs(f.fee-gf(f.loan))<1e-6&&Math.abs(f.loan+f.cash+f.note-f.project)<1e-6&&Math.abs(f.project-(1.11e6+f.fee))<1e-6&&!f.ok&&w.ok&&w.fee===0
          &&Math.abs(c.loan-w.loan)<1e-6&&Math.abs(c.dscr-w.dscr)<1e-12&&Math.abs(c.cash-(w.cash+c.fee))<1e-6,
          `r9-financing-1: an ask that meets 1.25x without the fee (${A.covFmt(w)}) fails with it financed (${A.covFmt(f)}); paid in cash it leaves the loan and coverage and adds to the buyer cash`);
-      const mf=A.maxFinanced(s,{},V), mw=A.maxFinanced(s,{fee:"waived"},V), top=A.debtCheck(s,mf.price,{},V);
+      const mf=A.maxFinanced(s,{},V), mw=NF.maxFinanced(s,{},V), top=A.debtCheck(s,mf.price,{},V);
       ok(mf.price<mw.price*.99&&top.ok&&!A.debtCheck(s,mf.price*1.001,{},V).ok&&Math.abs(mf.capAt-(5e6-gf(5e6)*.9)/.85)/mf.capAt<1e-9,
          `r9-financing-1: the highest financed price carries the fee (${A.money(mf.price)} against ${A.money(mw.price)} without it), and the 7(a) maximum includes it`);
       const m6=A.debtCheck({...s,ind:"mfg"},6e5,{},V), m9=A.debtCheck({...s,ind:"mfg"},9e5,{},V);
@@ -2348,9 +2362,10 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
     { const B=A.loadWith([["  const cs=IND_CELLS[k], V=MODELS.value,","  const cs=IND2NAICS6[k]?[IND2NAICS6[k]]:null, V=MODELS.value,"]]);
       const cm=has("cellOf")?A.cellOf("medical"):{cells:[]}, rM=A.model(FW).V/B.model(FW).V, rV=A.model({...FW,ind:"vet"}).V/B.model({...FW,ind:"vet"}).V;
       const E=A.MODELS.value.industry_effects_naics6, K=A.MODELS.value.industry_shrinkage.k_naics6, N=A.MODELS.value.industry_n6, P=A.MODELS.value.industry_effects;
-      const raw=c=>{ const p=P[c.slice(0,2)], m=N[c]; return p+(E[c]-p)*(m+K)/m; }, n2=N["621111"]+N["621210"], p2=P["62"];
-      const want=p2+((N["621111"]*raw("621111")+N["621210"]*raw("621210"))/n2-p2)*n2/(n2+K);
-      ok(cm.cells.includes("621111")&&cm.cells.includes("621210")&&Math.abs(cm.e-want)<1e-12&&rM>1.04&&rM<1.09&&rV===1&&has("cellOf")&&A.cellOf("vet").e===E["541940"]
+      /* round 10 added the mental health specialists' cell (621112) to the pool */
+      const raw=c=>{ const p=P[c.slice(0,2)], m=N[c]; return p+(E[c]-p)*(m+K)/m; }, MC=["621111","621112","621210"], n2=MC.reduce((a,c)=>a+N[c],0), p2=P["62"];
+      const want=p2+(MC.reduce((a,c)=>a+N[c]*raw(c),0)/n2-p2)*n2/(n2+K);
+      ok(cm.cells.includes("621111")&&cm.cells.includes("621210")&&Math.abs(cm.e-want)<1e-12&&rM>1.03&&rM<1.09&&rV===1&&has("cellOf")&&A.cellOf("vet").e===E["541940"]
          &&A.cellOf("mfg").cells.length>30&&A.cellOf("mfg").cells.every(c=>/^3[123]/.test(c)),
          `r9-valuation-1: a medical or dental practice is valued on physicians and dentists pooled (${((rM-1)*100).toFixed(1)}% above physicians alone at the framework example), manufacturing on every manufacturing cell; a veterinary practice is unchanged`);
       ok(HTML.includes("Where an industry's name covers more than one cell, it is\n    valued on all of them, pooled as one cell")&&HTML.includes("cellOf(k).src}, ${cellOf(k).n.toLocaleString(\"en-US\")} sales)"),
@@ -2377,14 +2392,14 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
        "r9-console-5: the hero's EBITDA multiple is the value over SDE less a manager's market pay, and says so");
     /* r9-financing-2: financed working capital counts against the valuation, and the paper says so, with the remedy */
     { const V=A.model(FW).V, s={...FW,ask:.95*V}, fin={extra:.15*V}, f=A.debtCheck(s,s.ask,fin,V), t=txt(A.reportHTML(A.reportData(s,{fin}),{}));
-      ok(f.debtOverValue&&f.price<V&&t.includes("with the working capital and SBA fee in the loan, is")&&/The price is within it: financing less working capital in the loan \(a line of credit sits outside it\) does the same/.test(t),
+      ok(f.debtOverValue&&f.price<V&&t.includes("with the working capital and SBA fee in the loan, is")&&/The price is within it: financing less working capital in the loan \(a line of credit sits outside it\) or paying the SBA fee in cash at closing also lowers the debt/.test(t),
          "r9-financing-2: an ask below value flagged by the working capital financed in the loan says that is why, and that financing less of it fixes it"); }
     /* r9-financing-3: an owner buyout can buy part of the business, priced and capped pro rata */
     { const V=A.model(FW).V, f=A.debtCheck(FW,2e6,{type:"buyout",stake:.4},V), g=A.debtCheck(FW,2e6,{type:"initial",stake:.4},V);
       ok(Math.abs(f.bought-8e5)<1e-6&&Math.abs(f.value-.4*V)<1e-6&&Math.abs(f.equityNeed-8e4)<1e-6&&Math.abs(f.project-(8e5+f.fee))<1e-6&&g.bought===2e6&&g.stake===1,
          "r9-financing-3: a 40% stake at a $2M price is an $800k purchase, its debt capped at 40% of the value; other types buy the whole business"); }
     /* r9-console-2: the equation panels plug in figures at the input boxes' precision */
-    ok(HTML.includes("{${tmi(fc.sbaPay)}+${tmi(fc.notePay)}}")&&HTML.includes("\\\\frac{${tmi(bi.dE)}-${tmi(bi.c)}}{${tmi(bi.c)}}"),"r9-console-2: eq_fs and eq_rs print their figures at moneyIn's precision");
+    ok(HTML.includes("{${tmd(fc.sbaPay)}+${tmd(fc.notePay)}}")&&HTML.includes("\\\\frac{${tmi(bi.dE)}-${tmi(bi.c)}}{${tmi(bi.c)}}"),"r9-console-2: eq_fs and eq_rs print their figures at moneyIn's precision");
     /* r9-worksheet-1: the earnings basis adds up as printed */
     { let bad=0, n=0; const rn=(i=>()=>(i=(i*16807)%2147483647)/2147483647)(97);
       for(let i=0;i<400;i++){ const y=()=>({rev:2e6+4e6*rn(),ni:4e4+4e5*rn(),owner:5e4+2.5e5*rn(),dep:3e4*rn(),int:2e4*rn(),nonop:rn()<.3?5e3*rn():0});
@@ -2416,6 +2431,116 @@ for(const ind of Object.keys(A.IND)) for(const ern of [3e5,1.5e6,4e6]){
       ok(n>10&&bad===0,`r9-sale-4: the cards' note gives the tiles' own day difference (${n} notes, ${bad} off)`); }
     /* r9-inputs-5: the growth box takes a minus sign on a phone */
     ok(/<input class="v" id="v_grw" type="text"(?![^>]*inputmode)[^>]*>/.test(HTML),"r9-inputs-5: the growth box asks for the full keyboard, which has a minus sign");
+  }
+  /* ---- round 10: the last review's findings, each checked against the code before it ---- */
+  { const FW={ind:"medical",rev:6e6,ern:1.45e6,ask:3.24e6,grw:.14,gm:.64,rec:.72,cc:.18,ret:.91,plt:.38,own:.72,mgt:.36,fin:.74,yrs:6,buyers:65,st:null,franchise:false,budget:1e5,lamT:900,theta:.75,rate:10.5};
+    const T=h=>h.replace(/<[^>]+>/g," ").replace(/&rsquo;/g,"’").replace(/&ndash;/g,"–").replace(/\s+/g," ");
+    const mul=a=>()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
+    /* r10-financing-2 (medium): FY2027's waiver covers a loan of $700k or less only; set as waived, a larger loan pays the
+       whole fee, financed in the loan, and the page says why */
+    { const s={...FW,ern:3e5,rev:1.5e6}, V=A.model(s).V, gf=A.guarantyFee, lo=A.debtCheck(s,6e5,{fee:"waived"},V), hi=A.debtCheck(s,1.2e6,{fee:"waived"},V), fi=A.debtCheck(s,1.2e6,{},V);
+      const m=A.debtCheck({...s,ind:"mfg"},1.2e6,{fee:"waived"},V), mw=A.maxFinanced(s,{fee:"waived"},V), mf=A.maxFinanced(s,{},V);
+      const t=T(A.reportHTML(A.reportData({...s,ask:1.2e6},{fin:{fee:"waived"}}),{}));
+      ok(lo.loan<=7e5&&lo.fee===0&&hi.loan>7e5&&Math.abs(hi.fee-gf(hi.loan))<1e-6&&hi.feeIn===hi.fee&&Math.abs(hi.loan-fi.loan)<1e-6&&Math.abs(m.fee-gf(m.loan))<1e-6
+         &&Math.abs(mw.capAt-mf.capAt)<1e-6&&/SBA fee in the loan, which is above the waiver’s \$700k/.test(t)
+         &&A.SBA_FEE.modes.waived.includes("$700k")&&HTML.includes("in the loan: above the waiver’s $700k")&&HTML.includes("The waiver covers only a loan of $700k or less, so this one pays it"),
+         `r10-financing-2: set as waived, a $1.04M loan pays its ${A.money(hi.fee)} fee, financed as usual, and a $510k loan none; the option, table, note and report say the waiver ends at $700k`); }
+    /* r10-financing-3: the fee's steps make the equity pass, fail and pass again; every failing range is named, and each
+       printed bound passes */
+    { const E={...FW,ind:"mfg",ern:1e6,rev:4e6,ask:7e5}, fE={type:"initial",cash:.0572,note:.05,standby:true,extra:1e5}, VE=A.model(E).V, mE=A.maxFinanced(E,fE,VE);
+      const gE=(mE.equityGaps||[])[0]||{}, at=p=>A.debtCheck(E,p,fE,VE).equityOK, tE=T(A.reportHTML(A.reportData(E,{fin:fE}),{}));
+      const K={...E}, fK={type:"initial",cash:.05,note:.05,standby:true,extra:5e4,fee:"cash"}, VK=A.model(K).V, mK=A.maxFinanced(K,fK,VK), eK=A.finEdges(mK);
+      const B={...FW}, fB={type:"buyout",cash:.076,note:.05,extra:1e4,fee:"cash"}, VB=A.model(B).V, mB=A.maxFinanced(B,fB,VB), tB=T(A.reportHTML(A.reportData(B,{fin:fB}),{}));
+      const inside=g=>[.2,.5,.8].every(x=>!A.debtCheck(B,g.last+(g.pass-g.last)*x,fB,VB).equityOK);
+      ok(mE.equityFrom>0&&(mE.equityGaps||[]).length===1&&at(A.moneyVal(A.moneyDown(gE.last)))&&at(A.moneyVal(A.moneyUp(gE.pass)))&&!at(7e5)&&!at(6.9e5)&&at(A.moneyVal(A.moneyUp(mE.equityFrom)))
+         &&tE.includes(`is also under SBA’s 10% minimum between about ${A.moneyDown(gE.last)} and ${A.moneyUp(gE.pass)}`)&&tE.includes("which cannot be waived for an initial acquisition"),
+         `r10-financing-3: a manufacturer's initial acquisition passes from ${A.moneyUp(mE.equityFrom)}, fails again between ${A.moneyDown(gE.last)} and ${A.moneyUp(gE.pass)} as the fee starts past a $700k loan, and the report names that range`);
+      ok(eK.from&&A.debtCheck(K,A.moneyVal(eK.from),fK,VK).equityOK&&!A.debtCheck(K,725000,fK,VK).equityOK,
+         `r10-financing-3: an equity floor whose loan is exactly $700k prints a price that passes (${eK.from}; $725,000 itself is still under the waiver and fails)`);
+      ok((mB.equityGaps||[]).length===3&&mB.equityGaps.every(g=>inside(g)&&A.debtCheck(B,A.moneyVal(A.moneyDown(g.last)),fB,VB).equityOK&&A.debtCheck(B,A.moneyVal(A.moneyUp(g.pass)),fB,VB).equityOK)
+         &&/under SBA’s 10% minimum between about \$[\d.]+k and \$[\d.]+k, between \$[\d.]+k and \$[\d.]+k and between \$[\d.]+k and \$[\d.]+M/.test(tB),
+         `r10-financing-3: an owner buyout whose equity fails in three ranges below its highest price has all three named (${(mB.equityGaps||[]).map(g=>A.moneyDown(g.last)+"-"+A.moneyUp(g.pass)).join(", ")})`); }
+    /* r10-financing-2: past the waiver's $700k the fee starts, which can set an equity floor with no standby note: the floor
+       does not name a note's credit there */
+    { const s={...FW,ind:"mfg",rev:7429900,ern:6205900,ask:47872000}, f={type:"buyout",cash:.0995,note:0,standby:true,extra:0,draw:3075000,capex:304260,fee:"waived"};
+      const D=A.reportData(s,{fin:f}), t=T(A.reportHTML(D,{}));
+      ok(D.maxFin.equityFrom>0&&/Below about \$[\d.]+k published data the buyer’s equity is under SBA’s 10% minimum/.test(t)&&!/standby note/.test(t),
+         `r10-financing-2: an owner buyout at 9.95% cash with no note passes SBA's 10% only once the fee starts past a $700k loan, and the floor (${A.moneyUp(D.maxFin.equityFrom||0)}) names no note's credit`); }
+    /* r10-financing-3: at a fee tier's edge the loan is solved with the fee it carries, on both sides of the edge */
+    { const s={...FW,ind:"fit",ern:1.477e7,rev:2.425e8}, f={type:"expansion",cash:.0995,note:.1,noteRate:0,noteYears:25,capex:1.4295e6}, V=A.model(s).V; let bad=0;
+      for(const e of [15e4,7e5]){ let a=1e4,b=5e6; for(let i=0;i<90;i++){ const m=(a+b)/2; if(A.debtCheck(s,m,f,V).loan>e) b=m; else a=m; }
+        for(const p of [a,b]){ const d=A.debtCheck(s,p,f,V), base=d.bought*(1-f.cash)-d.note; if(Math.abs(d.loan-(base+(1-f.cash)*d.fee))>1e-6||d.equityOK) bad++; } }
+      ok(bad===0,`r10-financing-3: on both sides of the $150k and $700k fee edges the loan carries the fee it was solved with, so a 9.95% cash share never reads as 10% there (${bad} off)`); }
+    /* r10-financing-4: with SBA's fee financed, a paid note's starting share moves the value-bound highest price and an owner
+       buyout's equity edge, which carry x judgment; paid in cash, the price does not move and prints fitted */
+    { const s0={...FW,gm:.348}, V=A.model(s0).V, s={...s0,ask:1.2*V}, D=A.reportData(s,{}), t=T(A.reportHTML(D,{})), tc=T(A.reportHTML(A.reportData(s,{fin:{fee:"cash"}}),{}));
+      const b0={...FW,ern:3e5,rev:1.5e6}, Vb=A.model(b0).V, DB=A.reportData({...b0,ask:Vb},{fin:{type:"buyout",cash:.08,extra:4e4}}), tb=T(A.reportHTML(DB,{}));
+      ok(Math.abs(A.model(s).qFactor-1)<=.005&&D.maxFin.bind==="value"&&/finance is about \$[\d.]+M fitted × judgment , where the acquisition debt reaches the model value/.test(t)
+         &&/finance is about \$[\d.]+M fitted , where the acquisition debt reaches the model value/.test(tc)&&/the seller-note convention \(the highest financed price/.test(t)
+         &&/Between about \$177k published data × judgment and/.test(tb),
+         "r10-financing-4: the value-bound highest price and a buyout's equity edge, both moved by a paid note's share through the financed fee, carry x judgment; with the fee paid in cash the price prints fitted"); }
+    /* r10-financing-1: debt above value from the financed fee alone gets the fee's remedy, not the working capital's */
+    { const V=A.model(FW).V, s={...FW,ask:.995*V}, fin={type:"buyout",cash:.02,note:0}, f=A.debtCheck(s,s.ask,fin,V), t=T(A.reportHTML(A.reportData(s,{fin}),{}));
+      ok(f.debtOverValue&&f.extra===0&&f.feeIn>0&&t.includes("The price is within it: paying the SBA fee in cash at closing also lowers the debt")&&!/financing less working capital/.test(t)
+         &&HTML.includes('${fe?"pay the SBA fee in cash at closing, ":""}or add equity.'),
+         "r10-financing-1: an ask within value whose debt is over it only through the financed fee is told to pay the fee in cash, in the report and the table's note"); }
+    /* r10-financing-5: SBA's $350k valuation test reads the price of the stake an owner buyout buys */
+    ok(HTML.includes("notes.push(fc.ownValuation?(FIN.type===\"buyout\"?`At ${money(fc.bought)}")&&A.debtCheck({...FW,ern:3e5,rev:1.5e6},1.2e6,{type:"buyout",stake:.25},1e7).ownValuation===true,
+       "r10-financing-5: the console's valuation note tests the stake's price ($300k of a $1.2M business), as debtCheck's ownValuation does");
+    /* r10-financing-6: the sentences that size the loan name the financed fee in it */
+    { const t1=T(A.reportHTML(A.reportData(FW,{fin:{cash:.1,note:.9,standby:true,extra:3e5}}),{})), t2=T(A.reportHTML(A.reportData(FW,{fin:{cash:.1,extra:5.45e6}}),{}));
+      ok(/the SBA loan, \$276k for working capital and closing costs with the SBA fee, does not grow with it/.test(t1)&&t2.includes("The working capital and closing costs, with the SBA fee financed in the loan, take the 7(a) maximum loan")
+         &&HTML.includes('for working capital and closing costs${fw.feeIn>0?" with the SBA fee":""},'),
+         "r10-financing-6: the no-limit and 7(a)-maximum sentences say the loan carries the financed SBA fee, on the page and the report"); }
+    /* r10-report-5: a stake's value-bound highest price names the stake's value */
+    { const V=A.model(FW).V, D=A.reportData({...FW,ask:.97*V},{fin:{type:"buyout",stake:.4,cash:.01,note:.05,standby:true,extra:1.95e5}}), t=T(A.reportHTML(D,{}));
+      ok(D.maxFin.bind==="value"&&t.includes(`where the acquisition debt reaches the model value of the stake, ${A.money(D.mfAt.value)}`)&&Math.abs(D.mfAt.value-.4*V)<1e-6,
+         `r10-report-5: for a 40% stake the highest price is where the debt reaches the stake's value, ${A.money(.4*V)}, not the ${A.money(V)} printed at the top`); }
+    /* r10-report-6: outside the fitted data the in-support accuracy is not printed */
+    { const dm=A.reportData({...FW,rev:1.6e6},{}), ds=A.reportData({...FW,ern:2e7,rev:8e7},{}), tm=T(A.reportHTML(dm,{})), ts=T(A.reportHTML(ds,{}));
+      ok(dm.confOutside&&ds.confOutside&&/Accuracy fitted about 11–16% Low: outside the fitted data/.test(tm)&&/Accuracy not measured Low: outside the fitted data/.test(ts)
+         &&!tm.includes(A.pc(dm.conf)+" chance the price")&&!ts.includes(A.pc(ds.conf)+" chance the price")&&HTML.includes("c\\\\text{ not measured: "),
+         "r10-report-6: past the fitted margin the report gives the 11-16% the fit measured there, past 3x size 'not measured', not the in-support chance; eq_cs says so"); }
+    /* r10-valuation-1: the risk tile pools the label's cells by the fit's own rule */
+    { const R=A.MODELS.risk, P=R.naics6_pools||{}, a=R.naics6_gamma_shape, med=P.medical||{cells:[]}, r=A.fitRisk(1e6,"medical",null,10,false,null);
+      ok(med.cells.includes("621111")&&med.cells.includes("621210")&&Math.abs(med.log_rr-Math.log((a+med.O)/(a+med.E)))<1e-4&&r.naics6Eff===med.log_rr
+         &&Object.keys(R.naics6_pools||{}).length===14&&!("ecom" in (R.naics6_pools||{}))&&A.fitRisk(1e6,"vet",null,10,false,null).naics6Eff===R.naics6_effects["541940"]
+         &&Object.entries(R.naics6_pools||{}).every(([k,v])=>v.cells.every(c=>A.IND_CELLS[k].includes(c))),
+         `r10-valuation-1: a medical practice is risked on its pooled cells (log RR ${r.naics6Eff}, physicians alone ${R.naics6_effects["621111"]}); a one-cell label is unchanged`); }
+    /* r10-valuation-2: a pooled label's accuracy counts each business's cell's distance from the pool */
+    { const C=A.MODELS.fitted.confidence, MV=A.MODELS.value, k=MV.industry_shrinkage.k_naics6, c=A.confidenceOf({ind:"mfg",ern:7e5,rev:3.5e6},{z:{em:0},extrapMax:0});
+      const v=A.confidenceOf({ind:"vet",ern:7e5,rev:3.5e6},{z:{em:0},extrapMax:0}), n=A.cellOf("vet").n;
+      ok(c.depthVar>C.tau2*(1-c.comps)*10&&c.p<.52&&Math.abs(v.depthVar-C.tau2*k/(n+k))<1e-15,
+         `r10-valuation-2: manufacturing's industry term is ${c.depthVar&&c.depthVar.toFixed(4)} (the pooled count alone gave ${(C.tau2*(1-c.comps)).toFixed(5)}), its accuracy ${c.p.toFixed(3)}; a one-cell industry keeps tau2 k/(n+k)`); }
+    /* r10-datatab-1: the pools take the cells their labels name */
+    ok(["621111","621112","621210"].every(c=>A.IND_CELLS.medical.includes(c))&&A.IND_CELLS.ecom.includes("454111")&&A.IND_CELLS.auto.includes("811198")&&!A.IND_CELLS.auto.includes("811191")
+       &&HTML.includes("oil change shops\n    (811191) are maintenance, not auto repair"),
+       "r10-datatab-1: medical pools mental health physicians, e-commerce electronic shopping, auto repair its all-other cell; the Data tab names the edges judged");
+    /* r10-sale-2: an over-budget change that clears its cost only with the reprice says so */
+    { const s={...FW,lamT:2500,budget:2000}, V=A.model({...s,ask:1}).V; s.ask=1.4*V; s.optRho=A.bestRatio(s,s.theta,s.lamT); s.rhoSell=A.bestRatio(s,0,0);
+      const b=A.optimize(s,A.model(s),s.budget,s.lamT,s.theta), bl=b.U.blocked||{}, r=A.model(s), solo=A.model(A.applyAll(s,r,["qoe"],s.optRho));
+      const uSolo=solo.EVp+(1-solo.PC)*s.theta*solo.V-s.lamT*(solo.tMean+A.daysOf(s,["qoe"]))-bl.c;
+      ok(!b.U.keys.length&&!!b.U.relist&&bl.k==="qoe"&&bl.withReprice===true&&uSolo<b.U.U&&HTML.includes("relisting at the walk-away ask within its ${sel.blocked.days} days,"),
+         "r10-sale-2: the relist card's over-budget QoE clears its cost only with the relisting, and the card says so"); }
+    /* r10-sale-1, r10-console-1: a left-out change that moves neither the value nor the proceeds has no effect */
+    ok(HTML.includes('has"} no effect at these inputs')&&HTML.includes("z.filter(o=>!(Math.abs(o.dE)<1))"),"r10-sale-1: the value-gap note names a change that moves nothing as having no effect, by the table's own proceeds");
+    /* r10-sale-3, r10-console-5: the console's time tile states the sale condition */
+    ok(HTML.includes('Median time to close if it sells <span class="pv f" id="o_t_pv">')&&HTML.includes("<span>Median time to close if it sells</span>"),"r10-console-5: the hero tile and the key-figure strip say the median is among deals that close");
+    /* r10-console-3: the coverage fraction's printed operands reproduce the verdict */
+    { let n=0, bad=0; const rn=mul(1010), inds=Object.keys(A.IND), dl=v=>Math.round(v);
+      for(let i=0;i<4000;i++){ const ern=6e4*Math.pow(40,rn()), s={...FW,ind:inds[i%inds.length],ern,rev:ern/(.12+.3*rn())}, V=A.model({...s,ask:1}).V, f=A.debtCheck(s,V*(.6+.8*rn()),{},V);
+        if(!(f.loan>0&&f.ds>0&&f.cf>0)) continue; n++; const x=(dl(s.ern)-dl(f.draw)-dl(f.capex))/(dl(f.sbaPay)+dl(f.notePay));
+        if((x>=f.min)!==f.ok&&Math.abs(x-f.min)>1e-6) bad++; }
+      ok(n>2000&&bad===0&&HTML.includes("\\frac{${tmd(s.ern)}-${tmd(fc.draw)}-${tmd(fc.capex)}}{${tmd(fc.sbaPay)}+${tmd(fc.notePay)}}"),
+         `r10-console-3: eq_fs prints its operands to the dollar, which put the fraction on the verdict's side of the minimum in ${n-bad} of ${n} states`); }
+    /* r10-console-4: the hero multiple's badge covers the manager's pay its EBITDA figure rests on */
+    ok(HTML.includes('const jj=j||what==="multiple"&&ebJ;')&&HTML.includes("the EBITDA multiple beside it also rests on a general manager’s market pay"),"r10-console-4: the EBITDA multiple's badge carries x judgment for the market pay's rank");
+    /* r10-worksheet-1: the Deals tab's quality fit prints e^b - 1 per peer step */
+    ok(HTML.includes("const e=(Math.exp(q.beta[i])-1)*100")&&HTML.includes("(Math.exp(q.beta[i])*q.se[i]*100).toFixed(1)")&&!HTML.includes("Math.abs(q.beta[i]*100).toFixed(1)"),
+       "r10-worksheet-1: the Deals tab's quality effects print as percentages of price, e^b - 1, with SE e^b se");
+    /* r10-datatab-2: the notice number keeps SBA's hyphen; the examples cite the SOP */
+    ok(HTML.includes('.replace(/\\bNotice (\\d+)-(\\d+)/g,"Notice $1\\u0001$2")')&&HTML.includes("SBA&rsquo;s own examples, SOP 50 10 8.1, Section A, Ch. 4)"),
+       "r10-datatab-2: the Data tab's formatter leaves 'Notice 5000-881797' as SBA prints it, and the fee examples cite the SOP");
   }
   /* the page wiring */
   ok(HTML.includes('<button class="tab" data-v="deals">Deals</button>')&&HTML.includes('<section class="sec" id="sec_fin" data-norender>')

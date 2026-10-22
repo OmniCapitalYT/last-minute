@@ -105,7 +105,7 @@ const URL="file://"+path.join(__dirname,"..","index.html");
   ok(/for the last 24 months/.test(await p.evaluate(()=>(document.getElementById("f_type_h")||{}).textContent||"")),"choosing a type shows its conditions");
   await p.selectOption("#f_type","initial"); await typeIn("#f_draw","$91,450"); await typeIn("#f_capex","$1,450");
   /* the equation is typeset when it scrolls near or in idle time: read the formula the page set for it */
-  ok(await p.evaluate(()=>{ const j=EQ.pending.get("eq_fs"), t=j?j[1]:EQ.last.get("eq_fs"); return /91\.5k/.test(t)&&/1\.45k/.test(t); }),"the equation echoes the entered pay and capital spending as their boxes do");
+  ok(await p.evaluate(()=>{ const j=EQ.pending.get("eq_fs"), t=j?j[1]:EQ.last.get("eq_fs"); return /91\{,\}450/.test(t)&&/1\{,\}450/.test(t); }),"the equation echoes the entered pay and capital spending, to the dollar (r10-console-3)");
   await typeIn("#f_draw",""); await typeIn("#f_capex","none");
   await typeIn("#f_cash","60%"); await typeIn("#f_note","40%");
   ok(await p.evaluate(()=>{ const j=EQ.pending.get("eq_f"), t=j?j[1]:EQ.last.get("eq_f"); return /no SBA minimum/.test(t)&&!/\\ge/.test(t); }),"with no SBA loan the equation states no SBA minimum");
@@ -755,13 +755,18 @@ const URL="file://"+path.join(__dirname,"..","index.html");
         s={ind:"staff",st:"FL",franchise:true,yrs:4,buyers:305,budget:39344.17,lamT:3413,theta:.8814132492989302,ern,rev:480315083.5536389,grw:-.25,gm:.36,rec:.03,cc:.47,ret:.19,plt:.94,own:.14,mgt:.36,fin:.45,ask:173057519.56978077};
         fin={type:"buyout",cash:.05,note:.8967,noteRate:11.93,noteYears:30,standby:false,extra:882464,capex:0,draw:null};
         R=recastSDE({entity:"schc",weight:"w321",years:T.map(y=>Object.fromEntries(Object.entries(y).map(([a,v])=>[a,v*k])))}); }
+      else if(i===3){ const ern=2333794.226349593, k=ern/R.sde;
+        /* round 10's reviewer's: an owner buyout of 40% at 0.97x value with a standby note and working capital (r10-report-3) */
+        s={ind:"msp",st:"NY",franchise:false,rev:11669000,ern,grw:-.1,gm:.48,rec:.31,cc:.7,ret:.28,plt:.52,own:.42,mgt:.66,fin:.14,yrs:2,buyers:450,budget:1e5,lamT:3250,theta:.88,ask:6280000};
+        fin={type:"buyout",cash:.01,note:.05,standby:true,noteRate:6,noteYears:10,extra:195000,capex:12345,draw:null,fee:"financed",stake:.4};
+        R=recastSDE({entity:"schc",weight:"w321",years:T.map(y=>Object.fromEntries(Object.entries(y).map(([a,v])=>[a,v*k])))}); }
       else { const ern=Math.pow(10,7.033312350511551), k=ern/R.sde;
         s={ind:"constr",rev:ern/.9155983090400696,ern,ask:Math.pow(10,7.705748653411865),grw:.1402517423033714,gm:.42974957495927807,rec:.5326518416404724,cc:.488709807395935,ret:.23703826189041138,plt:.15384440422058104,
           own:.14,mgt:.66,fin:.14,yrs:5,buyers:20,st:null,franchise:false,budget:1e5,lamT:1300,theta:.360756516456604};
         fin={type:"buyout",cash:.05,note:.8967,noteRate:30,noteYears:30,standby:false,extra:882464,capex:0,draw:null};
         R=recastSDE({entity:"schc",weight:"w321",years:T.map(y=>Object.fromEntries(Object.entries(y).map(([a,v])=>[a,v*k])))}); }
       const D=reportData(s,{fin,recast:R,calib:sampleSummary([1.04,.97,1.1,1.02,.99,1.06],false,.04),date:"September 30, 2026"});
-      const W="W".repeat(120), M=i===2?{business:"Lakeside Family Dental Group of Northern Westchester County, a professional corporation doing business as Lakeside Smile",
+      const W="W".repeat(120), M=i>=2?{business:"Lakeside Family Dental Group of Northern Westchester County, a professional corporation doing business as Lakeside Smile",
           preparedFor:"Dr. Jonathan Vanderbilt-Montgomery and Dr. Maria Rodriguez-Castillo, co-owners, together with their trustees and counsel",
           broker:"Patricia Lee-Vanderwaal, Certified Business Intermediary and Mergers and Acquisitions Master Intermediary, Sr. Advisor",
           firm:"Main Street Business Advisors and Transaction Services of the Greater Hudson Valley and Southern Connecticut Region LLC"}:{business:W,preparedFor:W,broker:W,firm:W};
@@ -769,7 +774,7 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     /* the third, round 5's: the tallest a search on its report reached, past the bottom of the quality range at the ask cap,
        with realistic names at the fields' limit (r5-report-5). The page count decides: the paper measures a few px over the
        page's 998 and still prints on one */
-    for(const i of [0,1,2]){
+    for(const i of [0,1,2,3]){
       const fileW=await q.evaluate(worstW,i);
       { const vp=q.viewportSize(); await q.setViewportSize({width:739,height:998}); await q.emulateMedia({media:"print"}); await settle(q);
         st={h:await q.evaluate(()=>document.querySelector("#rp_paper .rp").getBoundingClientRect().height),pa:pages(await q.pdf({format:"Letter"}))};
@@ -778,7 +783,8 @@ const URL="file://"+path.join(__dirname,"..","index.html");
         st.fh=await f.evaluate(()=>document.querySelector(".rp").getBoundingClientRect().height); st.fa=pages(await f.pdf({format:"Letter"})); st.fc=pages(await f.pdf({preferCSSPageSize:true}));
         await f.close(); }
       ok(st.pa===1&&st.fa===1&&st.fc===1,`${["with all four names at 120 W's the tallest report of round 3","with all four names at 120 W's the round-4 reviewer's tallest report (an owner buyout with an 89.67% note past the 7(a) maximum)",
-        "with realistic names at the 120-character limit the tallest report round 5's search reached (past the bottom of the quality range, at the ask cap)"][i]} prints on one page from the page and from the file (${Math.round(st.h)} and ${Math.round(st.fh)} px; ${i<2?"r4-report-6":"r5-report-5"})`);
+        "with realistic names at the 120-character limit the tallest report round 5's search reached (past the bottom of the quality range, at the ask cap)",
+        "with realistic names at the 120-character limit round 10's reviewer's owner buyout of a 40% stake, which printed its sources on a second page"][i]} prints on one page from the page and from the file (${Math.round(st.h)} and ${Math.round(st.fh)} px; ${["r4-report-6","r4-report-6","r5-report-5","r10-report-3"][i]})`);
     }
     await q.click("#rp_close"); await settle(q);
     ok(o12.errs.length===0,"no page errors in round 4's financing and report checks: "+o12.errs.slice(0,3).join(" | "));
@@ -1716,6 +1722,82 @@ const URL="file://"+path.join(__dirname,"..","index.html");
        "the Data tab states the fee, the listing hedonic as percentages and the Refused table's pointers; the console's sources the kill zone's axis (r9-financing-1, r9-datatab-1..3)");
     ok(o47.errs.length===0,"no page errors in round 9's checks: "+o47.errs.slice(0,3).join(" | "));
     await c47.close();
+    /* ---- round 10 ---- */
+    const c48=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const o48=await open(c48), R10=o48.p;
+    const row10=name=>R10.evaluate(n=>{ const r=[...document.querySelectorAll("#fintbl tr")].find(t=>t.firstElementChild&&t.firstElementChild.textContent.trim()===n); return r?r.innerText.replace(/\s+/g," "):""; },name);
+    const badOf=id=>R10.evaluate(id=>({v:document.getElementById(id).value,bad:document.getElementById(id).classList.contains("bad")}),id);
+    /* a typed SDE held to 92% of revenue during a revenue hold keeps its mark when the hold ends, as from a fresh state (r10-inputs-1) */
+    await box(R10,"#v_rev","1M"); await box(R10,"#v_ern","2M"); st={held:await badOf("v_ern")}; await box(R10,"#v_rev","6M"); st.after=await badOf("v_ern");
+    ok(st.held.bad&&st.held.v==="$920k"&&st.after.bad&&st.after.v==="$920k",`an SDE typed above 92% of revenue during a hold is marked, and stays marked when the hold ends (${JSON.stringify(st)}; r10-inputs-1)`);
+    await R10.click("#reset"); await settle(R10);
+    /* Escape in a rail box puts back its held-to-range mark with its value (r10-inputs-5) */
+    await box(R10,"#v_gm","150"); st={a:await badOf("v_gm")}; await R10.click("#v_gm"); await R10.keyboard.type("6",{delay:5}); await R10.keyboard.press("Escape"); await settle(R10); st.b=await badOf("v_gm");
+    ok(st.a.bad&&st.a.v==="97%"&&st.b.bad&&st.b.v==="97%",`Escape after typing in a held box keeps the box's mark (${JSON.stringify(st)}; r10-inputs-5)`);
+    await R10.click("#reset"); await settle(R10);
+    /* another tab's change taken up while a rail box has focus, untyped: the box shows the new figure, and Escape keeps it (r10-inputs-4) */
+    await R10.click("#v_ask"); await settle(R10);
+    st={t:await R10.evaluate(()=>{ const I={...OMNI_BROKER.snap(),ask:3.5e6}; OMNI_BROKER.applyInputs(I,{mark:[],clear:["ask"]});
+      const e=document.getElementById("v_ask"); return {focus:document.activeElement===e,v:e.value,sel:e.selectionStart===0&&e.selectionEnd===e.value.length,ask:IN.ask}; })};
+    await R10.keyboard.press("Escape"); await settle(R10); st.esc=await R10.evaluate(()=>({v:document.getElementById("v_ask").value,ask:IN.ask}));
+    ok(st.t.focus&&st.t.v==="$3.50M"&&st.t.sel&&st.esc.v==="$3.50M"&&st.esc.ask===3.5e6,`a focused, untyped rail box shows a taken-up figure, selected, and Escape keeps it (${JSON.stringify(st)}; r10-inputs-4)`);
+    await R10.click("#reset"); await settle(R10);
+    /* set as waived, a loan above $700k pays the fee, financed, and the page says why (r10-financing-2) */
+    await R10.selectOption("#f_fee","waived"); await settle(R10);
+    st={fee:await row10("SBA guaranty fee"),notes:await msg(R10,"fin_note"),opt:await R10.evaluate(()=>document.querySelector('#f_fee option[value="waived"]').textContent)};
+    await R10.selectOption("#f_fee","financed"); await settle(R10);
+    ok(/\$[\d.]+k in the loan: above the waiver’s \$700k/.test(st.fee)&&/The waiver covers only a loan of \$700k or less, so this one pays it/.test(st.notes)&&/\$700k/.test(st.opt),
+       `set as waived, the framework example's loan of more than $700k pays the fee, and the row, note and option say why (${JSON.stringify({fee:st.fee.slice(0,90),opt:st.opt})}; r10-financing-2)`);
+    /* debt above value from the financed fee alone gets the fee's remedy (r10-financing-1) */
+    { const V10=await R10.evaluate(()=>STATE.r.V); await box(R10,"#v_ask",String(Math.round(.995*V10))); }
+    await R10.selectOption("#f_type","buyout"); await settle(R10); await box(R10,"#f_cash","2"); await box(R10,"#f_note","0");
+    st={n:await msg(R10,"fin_note")};
+    ok(/the price itself is within the value: the SBA fee financed in the loan carries the debt past it, so pay the SBA fee in cash at closing, or add equity\./.test(st.n)&&!/the working capital and costs financed in the loan carry/.test(st.n),
+       `an ask within value over it only through the financed fee is told to pay the fee in cash (${st.n.slice(st.n.indexOf("price itself"),st.n.indexOf("price itself")+170)}; r10-financing-1)`);
+    /* SBA's $350k valuation test reads the stake's price (r10-financing-5) */
+    await R10.click("#reset"); await settle(R10); await box(R10,"#v_rev","1.5M"); await box(R10,"#v_ern","300k"); await box(R10,"#v_ask","1.2M");
+    await R10.selectOption("#f_type","buyout"); await settle(R10); await box(R10,"#f_stake","25"); st={n:await msg(R10,"fin_note")};
+    ok(/At \$300k for the 25% bought the lender may value the business itself only if buyer and seller are not closely related/.test(st.n)&&!/Above \$350k/.test(st.n),
+       `a $300k stake of a $1.2M business is told the lender may value it itself (r10-financing-5)`);
+    await R10.selectOption("#f_type","initial"); await settle(R10); await R10.click("#reset"); await settle(R10);
+    /* the no-limit sentence names the fee in the loan (r10-financing-6) */
+    await box(R10,"#f_cash","10"); await box(R10,"#f_note","90"); await R10.check("#f_standby"); await settle(R10); await box(R10,"#f_extra","300k");
+    st={m:await msg(R10,"fin_max")}; await R10.uncheck("#f_standby"); await settle(R10); await box(R10,"#f_note","5"); await box(R10,"#f_extra","none");
+    ok(/for working capital and closing costs with the SBA fee, does not grow with it/.test(st.m),`the no-limit box says the loan carries the SBA fee (${st.m.slice(0,170)}; r10-financing-6)`);
+    /* a left-out change that moves nothing is said to have no effect (r10-sale-1) */
+    await R10.selectOption("#i_fin","0.96"); await settle(R10); st={g:await msg(R10,"o_gapnote")}; await R10.click("#reset"); await settle(R10);
+    ok(/Commission a sell-side quality of earnings[^.;]*(; [^.;]+)* (has|have) no effect at these inputs/.test(st.g)&&!/quality of earnings[^.]*move the proceeds/.test(st.g),
+       `with reporting already reviewed with a QoE, the note says a QoE has no effect (${st.g.slice(-200)}; r10-sale-1)`);
+    /* the relist card's over-budget change names the relisting it needs (r10-sale-2) */
+    await box(R10,"#v_lam","2500"); await box(R10,"#v_bud","2000"); { const V10=await R10.evaluate(()=>STATE.r.V); await box(R10,"#v_ask",String(Math.round(1.4*V10))); }
+    st={o:await R10.evaluate(()=>document.getElementById("optout").innerText.replace(/\s+/g," "))}; await R10.click("#reset"); await settle(R10);
+    ok(/Commission a sell-side quality of earnings, relisting at the walk-away ask within its 60 days, would clear its cost, for \$16\.4k, over the budget/.test(st.o),
+       `the card says the over-budget QoE clears its cost only with the relisting (${st.o.slice(0,260)}; r10-sale-2)`);
+    /* the hero's time tile states the sale condition; the multiple's badge covers the manager's pay (r10-console-5, r10-console-4) */
+    await R10.selectOption("#i_rec","0.1").catch(()=>{}); await box(R10,"#v_rec","10"); st={t:await msg(R10,"o_t_pv").then(()=>R10.evaluate(()=>document.getElementById("o_t").closest(".big").querySelector(".k").textContent)),
+      q:await R10.evaluate(()=>STATE.r.qFactor),b:await R10.evaluate(()=>{ const e=document.getElementById("o_mult_pv"); return [e.className,e.textContent,e.title]; })};
+    await R10.click("#reset"); await settle(R10);
+    ok(/^Median time to close if it sells/.test(st.t.trim())&&Math.abs(st.q-1)<=.005&&/\bj\b/.test(st.b[0])&&st.b[1].includes("× judgment")&&/general manager’s market pay/.test(st.b[2]),
+       `the time tile says 'if it sells', and at a neutral quality position the multiple's badge carries x judgment for the manager's pay (${JSON.stringify({t:st.t.trim().slice(0,40),q:st.q,b:st.b.slice(0,2)})}; r10-console-5, r10-console-4)`);
+    /* the Data tab prints SBA's notice number as SBA does (r10-datatab-2) */
+    await R10.click('.tab[data-v="data"]'); await R10.waitForTimeout(1500); st={d:await R10.evaluate(()=>document.body.innerText)}; await R10.click('.tab[data-v="console"]'); await R10.waitForTimeout(400);
+    ok(/Notice 5000-881797/.test(st.d)&&!/5000–881797/.test(st.d),"the Data tab prints SBA Information Notice 5000-881797 with its hyphen (r10-datatab-2)");
+    ok(o48.errs.length===0,"no page errors in round 10's checks: "+o48.errs.slice(0,3).join(" | "));
+    await c48.close();
+    /* the Deals tab's quality fit prints each step's effect as e^b - 1 (r10-worksheet-1) */
+    const c49=await b3.newContext({viewport:{width:1440,height:900},reducedMotion:"reduce"}); const o49=await open(c49), Q10=o49.p;
+    await Q10.evaluate(()=>{ const I=OMNI_BROKER.snap(), D=[]; let t=11; const r=()=>{ t=(t+0x6D2B79F5)|0; let x=Math.imul(t^(t>>>15),1|t); x=(x+Math.imul(x^(x>>>7),61|x))^x; return ((x^(x>>>14))>>>0)/4294967296; };
+      for(let i=0;i<80;i++){ const own=[.14,.42,.66,.95][Math.floor(r()*4)], inp={...I,gm:.3+.4*r(),ret:.6+.3*r(),rec:r(),cc:.1+.3*r(),plt:.1+.3*r(),grw:.3*r(),own,mgt:[.08,.36,.66,.92][Math.floor(r()*4)],fin:[.14,.45,.7,.96][Math.floor(r()*4)]};
+        const P=dealPredict({inputs:inp,listPrice:inp.ask}); D.push({id:"w"+i,name:"Deal "+i,status:"closed",inputs:inp,listPrice:inp.ask,salePrice:Math.round(P.pExp*Math.exp(-1.2*(own-.5))*(.97+.06*r())),updated:"2026-01-01T00:00:00.000Z"}); }
+      localStorage.setItem("omni.deals.v1",JSON.stringify(D)); });
+    await Q10.reload(); await Q10.waitForFunction(()=>!document.getElementById("boot"),null,{timeout:90000}); await Q10.waitForTimeout(300);
+    await Q10.click('.tab[data-v="deals"]'); await Q10.waitForTimeout(1500);
+    st=await Q10.evaluate(()=>{ const S=dealsStats(OMNI_BROKER.state().deals), q=S.quality; if(!q||!q.ready) return {ready:false};
+      const rows=[...document.querySelectorAll("#dl_fit table.dl-q tbody tr")].map(tr=>[tr.children[1].textContent.trim(),tr.children[2].textContent.trim()]);
+      const i=q.beta.reduce((a,b,j)=>Math.abs(b)>Math.abs(q.beta[a])?j:a,0), e=(Math.exp(q.beta[i])-1)*100, f=v=>(+Math.abs(v).toFixed(1)===0?"":v>=0?"+":"−")+Math.abs(v).toFixed(1)+"%";
+      return {ready:true,b:q.beta[i],got:rows[i],want:[f(e),(Math.exp(q.beta[i])*q.se[i]*100).toFixed(1)+"%"],old:f(q.beta[i]*100)}; });
+    ok(st.ready&&Math.abs(st.b)>.1&&st.got[0]===st.want[0]&&st.got[1]===st.want[1]&&st.got[0]!==st.old,`the Deals tab prints a quality step of ${st.b&&st.b.toFixed(3)} log points as ${st.got&&st.got[0]}, e^b - 1 (not ${st.old}; r10-worksheet-1)`);
+    ok(o49.errs.length===0,"no page errors in round 10's Deals tab check: "+o49.errs.slice(0,3).join(" | "));
+    await c49.close();
   }
 
   /* a phone with the quality fit showing: the fits panel stays inside its box, its table scrolls */

@@ -436,7 +436,10 @@ function checkState(name,st,askTyped,S,E){
     if(gap&&!pcTitle.includes(`× (1 − ${r.fc.pen.toFixed(3)}) for a ${r.fc.gap.toFixed(0)}% price gap`)) bad.push("pc title gap");
     if(thin&&!pcTitle.includes(`× ${r.thinF.toFixed(3)} for a thin pool: ${s.buyers} buyers contacted against a typical ${A.IND[s.ind].buyers}`)) bad.push("pc title thin");
     const qj=Math.abs(r.qFactor-1)>.005;
-    for(const id of ["o_msv_pv","o_mult_pv"]){ if(S.titles[id][0]!==(qj?"fitted × judgment":"fitted")) bad.push(id); if(qj&&!S.titles[id][1].includes("× "+r.qFactor.toFixed(3)+" for the quality position")) bad.push(id+" title"); }
+    /* the multiple's badge also covers the manager's market pay its EBITDA figure rests on, whenever that figure shows (r10-console-4) */
+    const ebJ=s.ern-A.marketPay(s)>0;
+    for(const id of ["o_msv_pv","o_mult_pv"]){ const jj=qj||id==="o_mult_pv"&&ebJ; if(S.titles[id][0]!==(jj?"fitted × judgment":"fitted")) bad.push(id); if(qj&&!S.titles[id][1].includes("× "+r.qFactor.toFixed(3)+" for the quality position")) bad.push(id+" title"); }
+    if(ebJ&&!S.titles.o_mult_pv[1].includes("the EBITDA multiple beside it also rests on a general manager’s market pay")) bad.push("mult title pay");
     if(qj&&!S.titles.o_msv_pv[1].includes("("+money(r.Vbase)+")")) bad.push("msv title Vbase");
     const tj=r.tMult>1.0005; if(S.titles.o_t_pv[0]!==(tj?"fitted × judgment":"fitted")) bad.push("t badge");
     if(tj&&!S.titles.o_t_pv[1].includes(`Fitted band median ${Math.round(r.ft.days)} days × ${r.tMult.toFixed(3)}`)) bad.push("t title");
@@ -471,7 +474,7 @@ function checkState(name,st,askTyped,S,E){
   { const kf=S.kf, bad=[];
     if(kf.value&&kf.value[0]!=="Model-supported value"+S.titles.o_msv_pv[0]+money(r.V)+"Median price if it closes"+money(r.Vreal)+"Expected price if it closes"+money(r.Vmean)) bad.push("value: "+kf.value[0]);
     if(kf.pc&&kf.pc[0]!=="Chance of closing"+S.titles.o_pc_pv[0]+tx.o_pc) bad.push("pc: "+kf.pc[0]);
-    if(kf.time&&kf.time[0]!=="Median time to close"+S.titles.o_t_pv[0]+tx.o_t) bad.push("time: "+kf.time[0]);
+    if(kf.time&&kf.time[0]!=="Median time to close if it sells"+S.titles.o_t_pv[0]+tx.o_t) bad.push("time: "+kf.time[0]);
     if(kf.buy&&kf.buy[0]!=="Pursue firstjudgment"+tx.o_bb) bad.push("buy: "+kf.buy[0]);
     const lead=(/^(.*?\.)/.exec(tx.sensflat||"")||[])[1]||"";
     if(kf.sens&&(kf.sens[1]?lead!=="" :kf.sens[0]!==lead)) bad.push("sens: "+kf.sens[0]+" | "+lead);
@@ -529,7 +532,11 @@ function checkState(name,st,askTyped,S,E){
     ok("eq-optimizer-substitution",sqo.ok&&sqU.ok&&Math.abs(Ufresh-bU.U)<1e-6*Math.max(1,Math.abs(bU.U))&&!!card,ctx({mo:sqo.missing,mu:sqU.missing,eo,eu})); }
   { const ss=eq.eq_ss||"", cs=eq.eq_cs||"", P=A.MODELS.value.fan_quantiles;
     const sq1=seqIn(ss,["R(0.08)^{s}="+Math.pow(A.fanRatio(.08),A.FAN_S).toFixed(2),"R(0.94)^{s}="+Math.pow(A.fanRatio(.94),A.FAN_S).toFixed(2),dm(money(r.scen.bear[0])),dm(money(r.q(.5))),dm(money(r.scen.bull[1]))]);
-    const sq2=seqIn(cs,["c="+r.conf.toFixed(3),r.confLabel,r.confNote,dm(money(r.q(.10))),dm(money(r.q(.90))),dm(money(r.fv.point*r.confBand80[0])),dm(money(r.fv.point*r.confBand80[1]))]);
+    /* outside the fitted data the panel withholds the in-support chance and says so, giving it only as what support would read
+       (r10-report-6) */
+    const cHead=r.confOutside?["c not measured: "+r.confNote,"in support it would be "+r.conf.toFixed(3)].concat(r.confWhy==="margin"?["listings with the margin past it, 0.11–0.16"]:[]).concat([r.confLabel])
+      :["c="+r.conf.toFixed(3),r.confLabel,r.confNote];
+    const sq2=seqIn(cs,cHead.concat([dm(money(r.q(.10))),dm(money(r.q(.90))),dm(money(r.fv.point*r.confBand80[0])),dm(money(r.fv.point*r.confBand80[1]))]));
     const sub=S.kfig.o_val[1]||"", inSub=/80% between/.test(sub)?(sub.includes(money(r.q(.10)))&&sub.includes(money(r.q(.90)))):true;
     ok("eq-scenario-substitution",sq1.ok&&sq2.ok&&inSub,ctx({m1:sq1.missing,m2:sq2.missing,ss,cs})); }
   { const zs=eq.eq_zs||"", nls=eq.eq_nls||"", zRaw=(s.rec-r.ind.rec)/A.PEER_SD.rec;
@@ -833,9 +840,10 @@ async function partB(){
   await settle(p,true);
   const snap=async()=>p.evaluate(pageSnap);
   const S0=await snap();                                    /* the page as loaded */
-  /* $4.31M since round 9 pooled the medical industry's physicians' and dentists' cells; $4.05M since the third round's peer
-     medians and spreads (the largest customer's median .14, its spread .18): $4.09M before */
-  ok("reset-restores-defaults",Object.keys(DEF_UI).every(k=>S0.s[k]===DEF_UI[k])&&money(S0.r.V)==="$4.31M",()=>J({s:S0.s,V:S0.r.V}));
+  /* $4.28M since round 10 added the mental health specialists' cell (621112) to the medical pool; $4.31M since round 9
+     pooled the medical industry's physicians' and dentists' cells; $4.05M since the third round's peer medians and spreads
+     (the largest customer's median .14, its spread .18): $4.09M before */
+  ok("reset-restores-defaults",Object.keys(DEF_UI).every(k=>S0.s[k]===DEF_UI[k])&&money(S0.r.V)==="$4.28M",()=>J({s:S0.s,V:S0.r.V}));
   /* the Data tab's live figures, once */
   { const d=await p.evaluate(()=>({text:document.getElementById("view-data").textContent,attrs:[...document.querySelectorAll("#view-data [title],#view-data [aria-label]")].map(e=>(e.getAttribute("title")||"")+(e.getAttribute("aria-label")||"")).join(" | "),
       calib:[...document.querySelectorAll("#calib .chk")].map(r=>{ const v=r.querySelector(":scope>span.n:not(.muted)"); return v?v.textContent.trim():null; })}));
