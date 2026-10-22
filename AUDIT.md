@@ -2071,9 +2071,9 @@ After round 9 the owner asked for "the one ultimate final round 10", hoping no e
 | 7 | 38 | 33 | 5 | 2388c6c |
 | 8 | 30 | 25 | 5 | a631a70 |
 | 9 (final pass) | 34 | 24 | 10 | 64699db |
-| 10 (the last) | 34 | 30 | 4 | this commit |
+| 10 (the last) | 34 | 30 | 4 | c334dd7 |
 
-Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule. The owner then asked for one more pass, identify-only, aimed at figures that are wrong or mislead. It ran as round 9 on 3c68fe2, with eight areas instead of five, and its 24 confirmed findings (4 medium) are fixed. The owner then asked for "the one ultimate final round 10". It ran on 1fcb3da with the same eight areas and found one medium defect (the fee's waiver applied to a loan of any size) and 21 low ones, all fixed with their tests in the commit that adds this record. It is the last review; its fixes have their tests, but no eleventh review.
+Round 7 still found one medium defect, so round 8 ran on 2388c6c, with every finding above as known. It was the last: the owner asked that the round under way at 1 PM on October 21, 2026 be the final one. Round 8 found one medium defect (the ask cap's rounded corner) and 24 low ones, all fixed in a631a70, and the loop stops there. No round came back without a medium finding, so the review ends at the owner's deadline, not at its stop rule. The owner then asked for one more pass, identify-only, aimed at figures that are wrong or mislead. It ran as round 9 on 3c68fe2, with eight areas instead of five, and its 24 confirmed findings (4 medium) are fixed. The owner then asked for "the one ultimate final round 10". It ran on 1fcb3da with the same eight areas and found one medium defect (the fee's waiver applied to a loan of any size) and 21 low ones, all fixed in c334dd7 with their tests. It is the last review; its fixes have their tests, but no eleventh review.
 
 Suites on the round-10 build:
 
