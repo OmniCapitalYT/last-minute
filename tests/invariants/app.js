@@ -402,7 +402,10 @@ function checkState(name,st,askTyped,S,E){
     ok("ui-boxes-echo-state",!d.length,ctx({d})); }
   ok("ui-ask-ratio-caption",tx.vx_ask===r.priceRatio.toFixed(2)+"× model value of "+money(r.V),ctx({shown:tx.vx_ask}));
   /* ---- determinism */
-  ok("page-equals-fresh-model",S.r.V===r.V&&S.r.PC===r.PC&&S.r.EVp===r.EVp&&S.r.tMed===r.tMed&&S.s.rhoSell===E.rhoSell&&S.s.optRho===E.optRho,
+  /* the browser's and Node's maths can differ in the last bits (a different V8 rounds some exp/pow results differently), so
+     "the same model" is equal to a relative 1e-9, many orders below anything the page prints */
+  const same=(a,b)=>a===b||(Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(a),Math.abs(b)));
+  ok("page-equals-fresh-model",same(S.r.V,r.V)&&same(S.r.PC,r.PC)&&same(S.r.EVp,r.EVp)&&same(S.r.tMed,r.tMed)&&same(S.s.rhoSell,E.rhoSell)&&same(S.s.optRho,E.optRho),
      ctx({page:{...S.r,rhoSell:S.s.rhoSell,optRho:S.s.optRho},node:{V:r.V,PC:r.PC,EVp:r.EVp,tMed:r.tMed,rhoSell:E.rhoSell,optRho:E.optRho}}));
   ok("scores-history-independent",+tx.o_score===r.score&&+tx.o_score_biz===E.bs.score,ctx({page:[tx.o_score,tx.o_score_biz],node:[r.score,E.bs.score]}));
   /* ---- hero */
@@ -414,7 +417,7 @@ function checkState(name,st,askTyped,S,E){
     if(S.kfig.o_val[0]!==money(r.Vmean)) bad.push("o_val "+S.kfig.o_val[0]); if(tx.o_mult!==mult) bad.push("o_mult "+tx.o_mult+" want "+mult);
     if(tx.o_t!==Math.round(r.tMed)+" days") bad.push("o_t "+tx.o_t); if(tx.o_bb!==bb) bad.push("o_bb "+tx.o_bb);
     ok("hero-tiles-equal-model",!bad.length,ctx({bad})); }
-  ok("focal-planet-equals-tile",S.focal===tx.o_pc&&S.focal===Math.round(clamp(r.PC,0,1)*100)+"%"&&S.focalTarget===clamp(r.PC,0,1),ctx({focal:S.focal,tile:tx.o_pc,target:S.focalTarget,PC:r.PC}));
+  ok("focal-planet-equals-tile",S.focal===tx.o_pc&&S.focal===Math.round(clamp(r.PC,0,1)*100)+"%"&&same(S.focalTarget,clamp(r.PC,0,1)),ctx({focal:S.focal,tile:tx.o_pc,target:S.focalTarget,PC:r.PC}));
   { const L=tx.focal_legend, want="Bear sale"+money(r.scen.bear[0])+"Median sale"+money(r.q(.5))+"Bull sale"+money(r.scen.bull[1]);
     const ss=eq.eq_ss||"", m=/P_\{0\.08\}=(\S+?), *P_\{0\.50\}=(\S+?), *P_\{0\.94\}=(\S+)/.exec(ss.replace(/\s/g," "));
     const sc=S.scen, bearLo=sc[0]?pmAll(sc[0].rng)[0]:NaN, bullHi=sc[2]?pmAll(sc[2].rng).slice(-1)[0]:NaN;
