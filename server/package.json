@@ -1,0 +1,8 @@
+{
+  "name": "omni-vince-server",
+  "private": true,
+  "description": "Serves the Omni Method pages and the AI Vince analysis endpoint",
+  "type": "module",
+  "scripts": { "start": "node vince-server.mjs" },
+  "dependencies": { "@anthropic-ai/sdk": "^1.7.0" }
+}

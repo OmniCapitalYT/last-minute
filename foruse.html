@@ -1705,6 +1705,7 @@ html.arrived .nav{animation:rise-in 1.1s cubic-bezier(.16,1,.3,1) .75s both}
         <button class="btn tool" id="tl_recast" type="button">Build SDE from financials</button>
         <button class="btn tool" id="tl_fin" type="button">Financing check</button>
         <button class="btn tool" id="tl_report" type="button">Seller report</button>
+        <button class="btn tool" id="tl_vince" type="button" title="Open AI Vince, which reads these outputs and gives his analysis">AI Vince</button>
         <button class="btn tool prime" id="tl_save" type="button">Save deal</button>
         <button class="btn tool" id="tl_saveas" type="button" hidden>Save as new</button>
       </div>
@@ -9450,6 +9451,40 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
   /* after every render: the financing table and the toolbar follow the console */
   const r0=window.render;
   window.render=function(){ const out=r0.apply(this,arguments); try{ renderFinance(); toolbar(); holdCheck(); }catch(e){ window.__brokerErr=e; } return out; };
+  /* AI Vince (ai-vince.html) reads the console: its inputs and outputs as one JSON-safe object, stored for that page in
+     localStorage (same origin) when the button is pressed. Computed on that press only: reportData solves the optimizer and
+     the financing ceiling, which a render does not need. The figures are the console's own; the page sends them, with a
+     business name the user typed, to the analysis model */
+  function vinceSnapshot(){
+    const s=STATE.s, r=STATE.r; if(!s||!r) return null;
+    const D=reportData(s,{fin:FIN,recast:wsInUse(),calib:calibNow(),date:longDate()}), d=CUR&&dealById(CUR);
+    const shown={}; for(const id of ["o_score_biz","o_score_biz_n","o_score","o_score_n","o_cap","o_qband","o_val","o_pc","o_pc_pv","o_ev","o_msv","o_msv_pv","o_mult","o_mult_pv","o_risk","o_risk_pv","o_t","o_t_pv","o_bb","o_gap","o_gapu","o_gapnote","o_list","o_listp","o_list2","o_listp2","o_listnote","o_conf"]){
+      const e=$(id); if(e) shown[id]=e.textContent.replace(/\s+/g," ").trim().slice(0,700); }
+    const buyers=(r.buyers||[]).map(b=>({name:b.n,strategic_fit:b.fit,price_it_would_pay:b.Vj,price_at_this_ask:b.Pj,chance_it_engages:b.PE,chance_it_closes:b.PCj,expected_value:b.EV}));
+    const out={version:1,saved_at:new Date().toISOString(),business:(d?d.business:DRAFT.business)||"",
+      inputs:s,industry:D.ind,
+      value:{model_value:D.V,fitted_before_quality:r.Vbase,quality_factor:D.qFactor,quality_percentile:D.qPct,multiple_of_sde:D.mult,
+        p10:r.vLo,p25:r.vP25,p75:r.vP75,p90:r.vHi,confidence:{label:D.confLabel,note:D.confNote,outside_fitted_data:D.confOutside,why:D.confWhy,extrapolated:D.extrap}},
+      closing:{chance:r.PC,price_gap_pct_over_value:r.fc&&r.fc.gap,price_gap_penalty:r.fc&&r.fc.pen,thin_pool_factor:r.thinF,
+        why_deals_fail_share:r.fc&&r.fc.reasons,expected_offers:r.nEng,typical_offers:r.nEngRef},
+      timing:{median_days:r.tMed,mean_days:r.tMean,closes_within_90_days:r.t90,within_180_days:r.t180,within_365_days:r.t365,overpricing_multiplier:r.tMult},
+      price_if_it_closes:{p10:D.cur.lo,median:D.cur.price,mean:D.cur.mean,p90:D.cur.hi,share_in_cash_at_close:D.cur.cash},
+      survival_risk:r.risk&&{charge_off_probability_term:r.risk.pTerm,term_months:r.risk.term,charge_off_probability_5yr:r.risk.p5,relative_to_average_loan:r.risk.rel,tier:r.risk.tier,expected_loss_share:r.risk.expLoss},
+      quality:{category_scores:r.cats,mean_score:r.catMean,effects_on_multiple:r.d},
+      buyers:{best_to_pursue_first:r.best&&r.best.n,highest_price:r.top&&r.top.n,all:buyers},
+      asks:{your_ask:D.cur,sell_quickly:D.sell,patient_seller:D.walk,patient_ask_notes:D.walkQ,optimizer_asks_are_one_price:D.same},
+      levers:{most_valuable_quality_moves:D.sens,all_best_value_gain:D.allBest,top_fixes:D.fixes},
+      financing:{inputs:D.fin,at_your_ask:D.cur.fin,highest_financeable_price:D.maxFin,structure_at_that_price:D.mfAt},
+      worksheet:D.recast,track_record:D.calib,console_displays:shown};
+    return JSON.parse(JSON.stringify(out,(k,x)=>typeof x==="function"?undefined:typeof x==="number"?(isFinite(x)?+x.toPrecision(7):null):x));
+  }
+  $("tl_vince").addEventListener("click",()=>{
+    let snap=null; try{ snap=vinceSnapshot(); }catch(e){ window.__brokerErr=e; }
+    if(!snap){ say("tl_msg","There is nothing to analyse yet: enter a business first."); return; }
+    try{ localStorage.setItem("omni.vince.v1",JSON.stringify(snap)); }
+    catch(e){ say("tl_msg","This browser would not store the figures for AI Vince, so he cannot see them. Allow site storage and try again."); return; }
+    location.href="ai-vince.html";
+  });
   window.OMNI_BROKER={
     /* the tab handler calls this once a view is showing: a deal opened from the Deals tab lands in the console only now,
        so the console renders while it is visible */
@@ -9458,7 +9493,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
         if(TELL_HELD){ const t=TELL_HELD; TELL_HELD=null; if($("tl_msg").textContent===t.msg) say("tl_msg",t.msg,t.ms); } } },
     /* for the browser tests */
     state:()=>({deals:DEALS,kept:KEPT,cur:CUR,fin:{...FIN},ws:WS,prefs:{...PREFS},draft:{...DRAFT},store:STORE_OK}),
-    applyInputs,snap,openDeal,saveCurrent,reportFile
+    applyInputs,snap,openDeal,saveCurrent,reportFile,vinceSnapshot
   };
 })();
 </script>

@@ -2153,3 +2153,26 @@ Suites on this build:
 | `node tests/browser.sweep.js` | 124 input states at each of 1440 and 390 px pass |
 | `node tests/invariants.test.js --browser` | 253 invariants pass |
 | `node tests/browser.foruse.js` (new) | 14 checks pass; 70 of 70 input states match index.html |
+
+
+## AI Vince, November 2026
+
+The owner: a separate page labelled "AI Vince" that analyzes the Omni Method's outputs, the model behind it Claude for
+now, to be replaced by VTG's own AI Vince later.
+
+- **Console to page.** A toolbar button (`AI Vince`, beside Seller report) builds a snapshot, `vinceSnapshot()`: the
+  inputs and the outputs the seller report already solves for (`reportData`: the value and its range, the asks, the
+  levers, the financing ceiling) plus the buyers, timing, closing odds, survival risk and quality scores, and the figures as the console prints them. About 12 KB; it is built
+  on the press, not on every render (it solves the optimizer, ~25 ms, which a slider move should not pay). It is stored in `localStorage` for the page and the page opens.
+- **The page** (`ai-vince.html`, built from `tools/ai-vince.src.html` with the app's fonts and colours): what he is reading, the six headline figures, a streamed analysis
+  (bottom line, what the numbers say, what worries him, what he would do, questions for the seller), follow-up questions with
+  suggestions, copy, start over, and the conversation kept for the tab. Model output is drawn with DOM calls, never parsed as HTML.
+- **The server** (`server/vince-server.mjs`) holds the API key (a browser page cannot), checks every request
+  (shape, roles, sizes, 12 a minute per address), calls Claude Opus 5.5 with adaptive thinking at medium effort, prompt caching and the server-side refusal
+  fallback, and streams text back. The snapshot goes in its own delimited system block and the prompt calls it data, not instructions;
+  the model is told to use only the snapshot's figures, to quote the console's printed forms, to say which outputs rest on judgment, and not to give
+  legal, tax or investment advice. Everything model-specific is in `askModel()`, the one function to replace.
+- **Tests.** `tests/vince.test.js` (48 checks: request validation, the page whitelist and traversal, streaming, limits, and the exact request made to
+  a fake Anthropic API) and `tests/browser.vince.js` (the whole path, the snapshot across all 16 industries, escaping, errors, 390 px).
+  **Not tested here: a live call to the model.** This environment has no API key, so the request is checked
+  against a fake API and the SDK's own types, not against the real one.

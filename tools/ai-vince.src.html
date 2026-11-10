@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Vince · The Omni Method</title>
+<meta name="robots" content="noindex">
+<style>
+/*FONTS*/
+:root{--surface:#070d1c;--low:#0f1628;--primary:#9ecbff;--blue:#4da3ff;--fixed:#d8ecff;--amber:#ffc640;--text:#dde2f6;--ice:#bcc7db;--dim:#8793a8;--rose:#ffb4ab;--mint:#5ee0a8;--line:rgba(77,163,255,.15);--line2:rgba(77,163,255,.34);
+--display:'Bricolage Grotesque','Schibsted Grotesk',system-ui,sans-serif;--sans:'Schibsted Grotesk',system-ui,sans-serif;--mono:ui-monospace,'Geist Mono',Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0}
+html{background:var(--surface)}
+body{font:400 16px/1.6 var(--sans);color:var(--text);background:var(--surface);min-height:100vh;overflow-x:hidden}
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aurora i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.24;animation:drift 28s ease-in-out infinite alternate}
+.aurora i:nth-child(1){background:#2f6fa8;left:-15vmax;top:-12vmax}
+.aurora i:nth-child(2){background:#5b3fd0;right:-18vmax;top:25vh;animation-delay:-9s;opacity:.18}
+.aurora i:nth-child(3){background:#0f8fb0;left:25vw;bottom:-32vmax;animation-delay:-16s;opacity:.16}
+@keyframes drift{to{transform:translate3d(7vmax,5vmax,0) scale(1.12)}}
+main,nav,footer{position:relative;z-index:2}
+.wrap{width:min(1180px,100% - 40px);margin:auto}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px max(20px,calc(50vw - 590px))}
+.logo{font:700 18px var(--display);color:var(--fixed);text-decoration:none;display:flex;align-items:center;gap:10px}
+.logo svg{width:26px;height:26px;animation:spin 14s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+nav .links{display:flex;gap:6px;padding:5px;border:1px solid var(--line);border-radius:999px;background:rgba(15,22,40,.6);backdrop-filter:blur(12px)}
+nav .links a{font:500 14px var(--sans);color:var(--ice);text-decoration:none;padding:8px 18px;border-radius:999px;transition:background .25s,color .25s}
+nav .links a:hover{color:var(--fixed)}
+nav .links a.on{background:rgba(77,163,255,.18);color:var(--fixed);box-shadow:inset 0 0 0 1px var(--line2)}
+.eyebrow{font:600 12px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--primary);display:inline-flex;align-items:center;gap:12px}
+.eyebrow::before{content:"";width:34px;height:1px;background:var(--primary)}
+h1{font:800 clamp(38px,6vw,76px)/1.02 var(--display);color:var(--fixed);letter-spacing:-.03em;margin:16px 0 14px}
+.grad{background:linear-gradient(100deg,#d8ecff,#4da3ff 45%,#b79cff 75%,#ffc640);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 7s linear infinite}
+@keyframes shine{to{background-position:-220% 0}}
+.lead{color:var(--ice);font-size:clamp(16px,1.6vw,19px);max-width:42em}
+.hero{padding:34px 0 30px}
+.rise{opacity:0;transform:translateY(24px);animation:rise .9s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:var(--d,0s)}
+@keyframes rise{to{opacity:1;transform:none}}
+.grid{display:grid;grid-template-columns:.82fr 1.18fr;gap:22px;align-items:start;padding-bottom:60px}
+.panel{position:relative;border-radius:24px;padding:28px;background:linear-gradient(160deg,rgba(29,38,57,.72),rgba(8,14,28,.92));border:1px solid var(--line2);box-shadow:0 40px 90px -45px rgba(47,111,168,.7);overflow:hidden}
+.panel::after{content:"";position:absolute;left:0;right:0;height:70px;top:-70px;background:linear-gradient(transparent,rgba(77,163,255,.1),transparent);animation:scan 6s linear infinite;pointer-events:none}
+@keyframes scan{to{top:110%}}
+.k{font:600 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.biz{font:700 26px/1.15 var(--display);color:var(--fixed);margin:6px 0 4px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.meta{color:var(--dim);font-size:14px}
+.stale{display:none;margin-top:10px;font-size:13px;color:var(--amber)}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:22px 0}
+.kpi{background:rgba(10,16,32,.92);padding:16px 16px 14px}
+.kpi .v{font:800 26px/1.1 var(--display);color:var(--fixed);margin-top:5px;letter-spacing:-.02em;overflow-wrap:anywhere}
+.kpi .v.sm{font-size:19px}
+.kpi .s{font-size:12.5px;color:var(--dim);margin-top:3px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font:600 15px var(--sans);color:var(--fixed);text-decoration:none;padding:13px 22px;border-radius:999px;border:1px solid var(--line2);background:rgba(19,27,46,.75);cursor:pointer;position:relative;overflow:hidden;transition:border-color .3s,box-shadow .3s,opacity .2s}
+.btn::before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(216,236,255,.3) 50%,transparent 70%);transform:translateX(-120%);transition:transform .7s}
+.btn:hover::before{transform:translateX(120%)}
+.btn:hover{border-color:var(--primary);box-shadow:0 0 30px rgba(77,163,255,.3)}
+.btn.pri{background:linear-gradient(135deg,#2f6fa8,#4da3ff);border-color:transparent;color:#fff;box-shadow:0 8px 26px rgba(47,111,168,.5)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:8px 14px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.note{color:var(--dim);font-size:13px;margin-top:14px}
+.avatar{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;font:800 18px var(--display);color:#fff;background:radial-gradient(circle at 30% 28%,#9ecbff,#2f6fa8 70%);box-shadow:0 0 0 1px var(--line2),0 0 24px rgba(77,163,255,.5)}
+.avatar.think{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 1px var(--primary),0 0 40px rgba(158,203,255,.9)}}
+.who{display:flex;gap:14px;align-items:center;margin-bottom:18px}
+.who b{display:block;font:700 20px var(--display);color:var(--fixed);line-height:1.1}
+.who span{font-size:13px;color:var(--dim)}
+.empty{text-align:center;padding:46px 10px}
+.empty h2{font:700 28px var(--display);color:var(--fixed);margin-bottom:10px}
+.empty p{color:var(--ice);max-width:32em;margin:0 auto 22px}
+.out{min-height:120px}
+.msg{margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+.msg:first-child{margin-top:0;padding-top:0;border:0}
+.msg.me{display:flex;justify-content:flex-end;border:0;padding-top:0}
+.msg.me div{max-width:85%;padding:11px 16px;border-radius:18px 18px 4px 18px;background:rgba(77,163,255,.16);border:1px solid var(--line2);color:var(--fixed);white-space:pre-wrap;overflow-wrap:anywhere}
+.md h3{font:700 19px var(--display);color:var(--fixed);margin:22px 0 8px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.md h3:first-child{margin-top:0}
+.md h3::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 12px var(--blue)}
+.md p{margin:8px 0;color:var(--text)}
+.md ul{margin:8px 0 8px 4px;padding:0;list-style:none}
+.md li{position:relative;padding-left:20px;margin:7px 0;color:var(--text)}
+.md li::before{content:"";position:absolute;left:3px;top:.7em;width:6px;height:6px;border-radius:50%;background:var(--primary);opacity:.7}
+.md b{color:var(--fixed);font-weight:700}
+.md .in{animation:rise .5s both}
+.cursor::after{content:"";display:inline-block;width:8px;height:1.05em;margin-left:3px;vertical-align:-.15em;background:var(--primary);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.thinking{display:flex;align-items:center;gap:10px;color:var(--ice);font-size:14px;margin:6px 0}
+.dots i{display:inline-block;width:7px;height:7px;margin-right:4px;border-radius:50%;background:var(--primary);animation:dot 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{transform:scale(.4);opacity:.4}40%{transform:scale(1);opacity:1}}
+.err{margin-top:16px;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,180,171,.4);background:rgba(255,180,171,.08);color:var(--rose);font-size:14.5px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.chip{font:500 13.5px var(--sans);color:var(--primary);padding:7px 14px;border-radius:999px;border:1px solid var(--line2);background:rgba(77,163,255,.07);cursor:pointer;transition:background .2s,transform .2s}
+.chip:hover{background:rgba(77,163,255,.18);transform:translateY(-2px)}
+.ask{display:flex;gap:10px;margin-top:16px;align-items:flex-end}
+.ask textarea{flex:1;font:400 15.5px/1.45 var(--sans);color:var(--fixed);background:rgba(7,13,28,.75);border:1px solid var(--line);border-radius:16px;padding:12px 16px;resize:none;outline:none;min-height:48px;max-height:140px;transition:border-color .25s,box-shadow .25s}
+.ask textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(77,163,255,.14)}
+.tools{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+footer{padding:26px 0 40px;color:var(--dim);font-size:13px;text-align:center;border-top:1px solid var(--line)}
+footer p{max-width:60em;margin:0 auto 6px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}nav .links a{padding:8px 12px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rise{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="aurora"><i></i><i></i><i></i></div>
+
+<nav>
+  <a class="logo" href="index.html"><svg viewBox="0 0 28 28"><ellipse cx="14" cy="14" rx="12" ry="5" transform="rotate(-24 14 14)" fill="none" stroke="#9ecbff" stroke-width="1.5"/><circle cx="14" cy="14" r="3.4" fill="#ffc640"/><circle cx="24" cy="9.4" r="2" fill="#d8ecff"/></svg>The Omni Method</a>
+  <div class="links"><a href="index.html">Console</a><a class="on" href="ai-vince.html" aria-current="page">AI Vince</a></div>
+</nav>
+
+<main class="wrap">
+  <header class="hero">
+    <span class="eyebrow rise">AI Vince</span>
+    <h1 class="rise" style="--d:.1s">A second opinion <span class="grad">on the numbers.</span></h1>
+    <p class="lead rise" style="--d:.2s">AI Vince reads everything the console worked out, the value, the odds, the timing, the buyers and the financing, and tells you what he makes of it: what to trust, what to worry about and what to do next.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel rise" style="--d:.3s" id="reading" aria-label="What AI Vince is reading">
+      <div id="have" hidden>
+        <div class="k">He is reading</div>
+        <div class="biz" id="biz"></div>
+        <div class="meta" id="meta"></div>
+        <div class="stale" id="stale"></div>
+        <div class="kpis" id="kpis"></div>
+        <div class="row">
+          <button class="btn pri" id="go" type="button">Get AI Vince&rsquo;s read</button>
+          <a class="btn" href="index.html">Update from the console</a>
+        </div>
+        <p class="note">To write this, the figures above and everything behind them, plus the business name if you entered one, are sent to an AI model (Claude, from Anthropic). Leave the name blank if it should stay private.</p>
+      </div>
+      <div class="empty" id="none" hidden>
+        <h2>Nothing to read yet</h2>
+        <p>AI Vince works from the console&rsquo;s outputs. Enter a business there, then press <b>AI Vince</b> in the toolbar above the results.</p>
+        <a class="btn pri" href="index.html">Open the console</a>
+      </div>
+    </section>
+
+    <section class="panel rise" style="--d:.4s" aria-label="AI Vince's analysis">
+      <div class="who"><div class="avatar" id="avatar">V</div><div><b>AI Vince</b><span>AI business advisor &middot; placeholder model for now</span></div></div>
+      <div class="out" id="out" aria-live="polite">
+        <p class="note" id="idle" style="margin:0">His read will appear here. It follows what the console printed, and where a figure rests on judgment rather than data he says so.</p>
+      </div>
+      <div id="follow" hidden>
+        <div class="chips" id="chips"></div>
+        <form class="ask" id="ask">
+          <textarea id="q" rows="1" placeholder="Ask him anything about these numbers…" maxlength="1500" aria-label="Your question"></textarea>
+          <button class="btn pri" id="send" type="submit">Ask</button>
+        </form>
+        <div class="tools"><button class="btn sm" id="stop" type="button" hidden>Stop</button><button class="btn sm" id="copy" type="button">Copy analysis</button><button class="btn sm" id="redo" type="button">Start over</button></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  <p>AI Vince is an AI. He reads the Omni Method&rsquo;s outputs and offers his analysis for information only. It is not legal, financial, tax or investment advice, and it is not an appraisal. Check anything that matters with the people who sign for it.</p>
+  <p>Right now the analysis is written by Claude, a general AI model, in his voice. It will be replaced by VTG&rsquo;s own AI Vince.</p>
+</div></footer>
+
+<script>
+(function(){
+"use strict";
+var RM=matchMedia("(prefers-reduced-motion:reduce)").matches, $=function(i){return document.getElementById(i)};
+var KEY="omni.vince.v1";
+
+/* ---- the console's snapshot ---- */
+var snap=null;
+try{ var raw=localStorage.getItem(KEY); if(raw) snap=JSON.parse(raw); }catch(e){}
+if(!snap||snap.version!==1||!snap.console_displays) snap=null;
+$(snap?"have":"none").hidden=false;
+
+function money(v){ return typeof v==="number"&&isFinite(v)?"$"+(Math.abs(v)>=1e6?(v/1e6).toFixed(2)+"M":Math.round(v/1e3)+"k"):"—"; }
+if(snap){
+  var i=snap.inputs||{};
+  $("biz").textContent=snap.business||"Unnamed business";
+  $("meta").textContent=[snap.industry,i.rev?"revenue "+money(i.rev):"",i.ern?"SDE "+money(i.ern):"",i.ask?"ask "+money(i.ask):""].filter(Boolean).join(" · ");
+  var when=new Date(snap.saved_at), age=Date.now()-when.getTime();
+  if(isFinite(age)&&age>6*3600e3){ $("stale").style.display="block"; $("stale").textContent="These figures were saved "+when.toLocaleString()+". Open the console and press AI Vince to refresh them."; }
+  var V=snap.value||{}, C=snap.closing||{}, T=snap.timing||{}, R=snap.survival_risk||{}, P=snap.price_if_it_closes||{}, B=snap.buyers||{};
+  var pct=function(v){ return typeof v==="number"&&isFinite(v)?(v*100<10?(v*100).toFixed(1):Math.round(v*100))+"%":"—"; };
+  var K=[["Model value",money(V.model_value),""],["Chance of closing",pct(C.chance),""],["Median time to close",typeof T.median_days==="number"?Math.round(T.median_days)+" days":"—",""],
+         ["Survival risk",pct(R.charge_off_probability_term),""],["Price if it closes",money(P.median),""],["Pursue first",B.best_to_pursue_first||"—","sm"]];
+  K.forEach(function(k){ var c=document.createElement("div"); c.className="kpi";
+    var a=document.createElement("div"); a.className="k"; a.textContent=k[0];
+    var v=document.createElement("div"); v.className="v"+(k[2]==="sm"?" sm":""); v.textContent=k[1]||"—";
+    c.appendChild(a); c.appendChild(v); $("kpis").appendChild(c); });
+}
+
+/* ---- a small Markdown subset, built with DOM calls so nothing the model writes is ever parsed as HTML ---- */
+function inline(el,t){ var parts=t.split(/(\*\*[^*]+\*\*)/); parts.forEach(function(p){ if(/^\*\*[^*]+\*\*$/.test(p)){ var b=document.createElement("b"); b.textContent=p.slice(2,-2); el.appendChild(b); } else if(p) el.appendChild(document.createTextNode(p.replace(/\*\*/g,""))); }); }
+function render(el,text){
+  el.textContent=""; var ul=null, para=null;
+  text.split("\n").forEach(function(line){
+    var t=line.trim(), m;
+    if(!t){ ul=null; para=null; return; }
+    if((m=t.match(/^#{1,4}\s+(.*)$/))){ ul=null; para=null; var h=document.createElement("h3"); inline(h,m[1]); el.appendChild(h); }
+    else if((m=t.match(/^[-*•]\s+(.*)$/))){ para=null; if(!ul){ ul=document.createElement("ul"); el.appendChild(ul); } var li=document.createElement("li"); inline(li,m[1]); ul.appendChild(li); }
+    else { ul=null; if(!para){ para=document.createElement("p"); el.appendChild(para); } else para.appendChild(document.createTextNode(" ")); inline(para,t); }
+  });
+}
+
+/* ---- the conversation: kept for this snapshot in this tab ---- */
+var SK="omni.vince.chat:"+(snap&&snap.saved_at), turns=[], busy=false, ctl=null;
+function save(){ try{ sessionStorage.setItem(SK,JSON.stringify(turns)); }catch(e){} }
+function paint(){
+  var out=$("out"); out.textContent="";
+  turns.forEach(function(t,ix){
+    var m=document.createElement("div");
+    if(t.role==="user"){ if(ix===0) return; m.className="msg me"; var b=document.createElement("div"); b.textContent=t.content; m.appendChild(b); }
+    else { m.className="msg md"; render(m,t.content); }
+    out.appendChild(m);
+  });
+}
+function openFollow(){ $("follow").hidden=false; $("go").textContent="Read it again"; }
+if(snap){ try{ var prev=JSON.parse(sessionStorage.getItem(SK)||"null"); if(Array.isArray(prev)&&prev.length>1){ turns=prev; paint(); openFollow(); } }catch(e){} }
+
+var CHIPS=["Is my ask too high?","What would it take to get a buyer financed?","Who should I call first, and why?","What would you tell the seller?","Which of these numbers do you trust least?"];
+CHIPS.forEach(function(c){ var b=document.createElement("button"); b.type="button"; b.className="chip"; b.textContent=c; b.addEventListener("click",function(){ ask(c); }); $("chips").appendChild(b); });
+
+function setBusy(on){ busy=on; $("go").disabled=on; $("send").disabled=on; $("stop").hidden=!on; $("avatar").classList.toggle("think",on); Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(c){ c.disabled=on; }); }
+
+async function run(){
+  /* the reply is streamed from the server, which holds the API key and calls the model */
+  var reply={role:"assistant",content:""}, box=document.createElement("div"), think=document.createElement("div");
+  box.className="msg md cursor"; think.className="thinking"; think.innerHTML='<span class="dots"><i></i><i></i><i></i></span><span>AI Vince is reading the numbers…</span>';
+  var out=$("out"); out.appendChild(think); out.appendChild(box); box.hidden=true;
+  setBusy(true); ctl=new AbortController(); var fail="";
+  try{
+    var res=await fetch("/api/vince",{method:"POST",headers:{"content-type":"application/json"},signal:ctl.signal,body:JSON.stringify({snapshot:snap,messages:turns})});
+    if(!res.ok){ var j=null; try{ j=await res.json(); }catch(e){} throw new Error((j&&j.error)||("The server answered "+res.status+".")); }
+    var rd=res.body.getReader(), dec=new TextDecoder(), buf="";
+    for(;;){ var r=await rd.read(); if(r.done) break; buf+=dec.decode(r.value,{stream:true});
+      var parts=buf.split("\n\n"); buf=parts.pop();
+      parts.forEach(function(p){ if(p.indexOf("data: ")!==0) return; var ev; try{ ev=JSON.parse(p.slice(6)); }catch(e){ return; }
+        if(ev.t==="text"){ reply.content+=ev.d; if(box.hidden){ box.hidden=false; think.remove(); } render(box,reply.content); }
+        else if(ev.t==="error"){ fail=ev.m; }
+        else if(ev.t==="done"&&ev.truncated){ reply.content+="\n\n(He ran out of room here. Ask him to carry on.)"; render(box,reply.content); } });
+    }
+  }catch(e){ if(e.name!=="AbortError") fail=(e&&e.message)||"Could not reach the server."; }
+  think.remove(); box.classList.remove("cursor"); setBusy(false); ctl=null;
+  if(reply.content){ turns.push(reply); save(); paint(); openFollow(); }
+  else { box.remove(); if(!fail) fail="No reply came back."; }
+  if(fail){ var er=document.createElement("div"); er.className="err"; er.textContent=fail; $("out").appendChild(er); if(turns.length>1) openFollow(); else{ turns=[]; save(); } }
+}
+function start(){ turns=[{role:"user",content:"analyze"}]; save(); $("out").textContent=""; return run(); }
+function ask(q){ q=(q||"").trim(); if(!q||busy||!turns.length) return; turns.push({role:"user",content:q}); save(); paint(); $("q").value=""; $("q").style.height=""; return run(); }
+
+$("go").addEventListener("click",function(){ if(!busy) start(); });
+$("stop").addEventListener("click",function(){ if(ctl) ctl.abort(); });
+$("ask").addEventListener("submit",function(e){ e.preventDefault(); ask($("q").value); });
+$("q").addEventListener("keydown",function(e){ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); ask($("q").value); } });
+$("q").addEventListener("input",function(){ this.style.height="auto"; this.style.height=Math.min(140,this.scrollHeight)+"px"; });
+$("redo").addEventListener("click",function(){ if(busy) return; turns=[]; save(); $("out").textContent=""; $("follow").hidden=true; $("go").textContent="Get AI Vince’s read"; var n=document.createElement("p"); n.className="note"; n.style.margin="0"; n.textContent="Press the button for a fresh read."; $("out").appendChild(n); });
+$("copy").addEventListener("click",function(){ var t=turns.map(function(x){ return (x.role==="user"?"Q: ":"")+(x.role==="user"&&x.content==="analyze"?"":x.content); }).filter(Boolean).join("\n\n"); if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ $("copy").textContent="Copied"; setTimeout(function(){ $("copy").textContent="Copy analysis"; },1600); },function(){}); });
+
+/* ---- stars ---- */
+var cv=$("sky"), x=cv.getContext("2d"), W,H,st=[],my=0,mx=0;
+function size(){ var r=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHeight; cv.width=W*r; cv.height=H*r; x.setTransform(r,0,0,r,0,0); st=[]; for(var k=0;k<Math.round(W*H/6500);k++) st.push({x:Math.random()*W,y:Math.random()*H,z:Math.random()*.9+.1,p:Math.random()*6.28}); }
+size(); addEventListener("resize",size); addEventListener("pointermove",function(e){ mx=e.clientX/W-.5; my=e.clientY/H-.5; },{passive:true});
+(function f(t){ x.clearRect(0,0,W,H); for(var k=0;k<st.length;k++){ var s=st[k], a=.25+.55*s.z*(.6+.4*Math.sin(t/900*s.z+s.p)); x.fillStyle="rgba(190,215,255,"+a.toFixed(2)+")"; x.beginPath(); x.arc((s.x-mx*50*s.z+W)%W,(s.y-my*34*s.z+H)%H,s.z*1.5,0,6.283); x.fill(); } if(!RM) requestAnimationFrame(f); })(0);
+})();
+</script>
+</body>
+</html>
