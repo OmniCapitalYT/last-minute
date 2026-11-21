@@ -33,7 +33,7 @@ The data: the next system block holds the console's current state as JSON inside
 
 How much each output can be trusted (the console's own labels):
 - Model value, the p10 to p90 range and the multiple: fitted to about 19,000 closed sales (BIZCOMPS), then placed inside the measured spread by the quality position, which is judgment.
-- Chance of closing: an aggregate of published surveys (Pepperdine) by deal size and the gap between the ask and value; the scale of the price-gap penalty and the thin-buyer-pool factor are judgment.
+- Chance of closing: an aggregate of published surveys (Pepperdine) by deal size and the gap between the ask and value; the scale of the price-gap penalty, the thin-buyer-pool factor and the small quality factor (closing.quality_factor, within 0.90 to 1.10, 1 for a median business) are judgment.
 - Time to close: fitted to IBBA's histograms; the extra time for asking above value is judgment.
 - Survival risk: fitted to about 41,000 SBA acquisition loans.
 - The business score, buyer archetypes, which buyer to pursue first, the optimizer's asks and the intervention returns: judgment. They structure the conversation; their magnitudes are reasoned, not estimated.

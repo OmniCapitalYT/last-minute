@@ -115,10 +115,10 @@ for(let i=0;i<N;i++){
       ok(ry.conf===r.conf,"confidence reads neither the years, reporting nor the ask",ctx(s)); } }
 
   /* 7e. realised-price fan (fit/anchoring_realization.py): the closing probability never reads the price block
-     (P_C = fitClose x thin-pool factor), the expected price rises with the ask while its share of the ask falls,
+     (P_C = fitClose x thin-pool factor x quality factor), the expected price rises with the ask while its share of the ask falls,
      and the narrowed fan keeps the uncapped centre at V x A(rho) x (1+comp) */
   { const fp=A.fitClose(s.ask,r.V,s.chan,r.Vbase).p;
-    ok(Math.abs(r.PC-(r.thinF<1?Math.min(.95,Math.max(0,fp*r.thinF)):fp))<1e-9,"P_C independent of the price block",ctx(s,{PC:r.PC,fp}));
+    ok(Math.abs(r.PC-Math.min(.95,Math.max(0,fp*r.thinF*r.closeQ)))<1e-9&&r.closeQ>=.9&&r.closeQ<=1.1,"P_C independent of the price block",ctx(s,{PC:r.PC,fp}));
     ok(r.fanS===.80&&Math.abs(r.VrealFree/(r.V*r.anchorF*(1+r.compPrem))-1)<.01,"narrowed fan keeps the centre",ctx(s));
     const rh=A.model({...s,ask:s.ask*1.05});
     ok(rh.Vmean>=r.Vmean*(1-1e-9),"E[P|close] non-decreasing in the ask",ctx(s,{a:r.Vmean,b:rh.Vmean}));
@@ -190,7 +190,7 @@ for(let i=0;i<N;i++){
     /* AUDIT_FINDINGS R1-4/R1-5: a buyer is paid at most what this listing can realise (its own value, under the ask
        ceiling) and closes on the gap to its OWN value: the same close rate as the deal's base x penalty read at V_j */
     ok(r.buyers.every(b=>b.Pj<=Math.min(b.Vj,r.ceil)*(1+1e-9)&&b.Pj>0),"buyer price never above its value or the ask ceiling",ctx(s));
-    ok(r.buyers.every(b=>Math.abs(b.PCj-Math.min(.95,Math.max(0,A.fitClose(s.ask,b.Vj,s.chan,r.Vbase).p*r.thinF*(.8+.42*b.PE))))<1e-12),"buyer close rate reads the gap to its own value",ctx(s));
+    ok(r.buyers.every(b=>Math.abs(b.PCj-Math.min(.95,Math.max(0,A.fitClose(s.ask,b.Vj,s.chan,r.Vbase).p*r.thinF*r.closeQ*(.8+.42*b.PE))))<1e-12),"buyer close rate reads the gap to its own value",ctx(s));
     { const rh=A.model({...s,ask:s.ask*1.1}); ok(r.buyers.every(b=>{ const h=rh.buyers.find(x=>x.k===b.k); return h.PCj<=b.PCj+1e-12; }),"no buyer closes more often at a higher ask",ctx(s)); } }
 
   /* 7k. SBA note rate (fit/sba_risk_refresh.py): prime plus a spread that never rises with the loan size, inside the

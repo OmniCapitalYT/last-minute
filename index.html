@@ -6606,11 +6606,11 @@ function renderData(){
     curve and the shares closed by 90, 180 and 365 days, and through the cost of delay (charged per day on the MEAN time
     to close, which the log-logistic puts 44% above the median at $250k of value or less and 28% from $707k up, interpolated between) the walk-away ask; the closing
     probability, the price, the expected proceeds, the proceeds-maximising ask and both scores do not read it. With
-    75% of value kept and $900 a day of delay cost the walk-away ask is 1.17&times;, 1.19&times;, 1.26&times; and
+    75% of value kept and $900 a day of delay cost the walk-away ask is 1.17&times;, 1.20&times;, 1.26&times; and
     1.20&times; for earnings of $150k, $400k, $1.45M and $5M (1.26&ndash;1.27&times; at every size with b = 0), and
     1.09&times;, 1.16&times;, 1.19&times; and 1.20&times; at $4,000 a day. Whether a patient seller&rsquo;s ask sits
     near 1.26&times; or at the 1.5&times; cap is a knife edge in the share of value kept (for the framework example the
-    cap wins from about 78% kept at $900 a day, 77% with no delay cost and 83% at $4,000), in the realised-price
+    cap wins from about 78% kept at $900 a day, 77% with no delay cost and 82% at $4,000), in the realised-price
     fan and in the judgment scale of the price-gap penalty (the cap wins if it is set below about 0.42), not a measurement of b; the console shows both ends as a range when they are within 1% of value.</p>
     <p class="grp-title" style="margin-top:18px">Cross-source validation &mdash; added 2 Oct 2026</p>
     ${(()=>{ /* computed from the shipped sector effects and the eight DealStats sectors tabulated below, so it cannot go
@@ -6858,6 +6858,9 @@ function renderData(){
         <tr><td>Price-gap penalty and base-rate ramp<div class="muted" style="font-size:11.5px">PEN_MAX = ${PEN_MAX}; broker base at $1M, intermediated at $5M; the open &gt;50% gap bucket (above half the ask) placed at ${MODELS.fitted.gap_axis.open_knot}% over value</div></td>
             <td class="n" style="padding-right:18px">4</td>
             <td style="color:#ff8e7a;padding-left:6px">The closing probability above model value and between $1M and $5M of deal size, and through it the expected proceeds, both recommended asks and both scores. PEN_MAX is load-bearing: below about 0.42 the framework example&rsquo;s walk-away ask jumps from about 1.26&times; to the 1.5&times; cap.</td></tr>
+        <tr><td>Quality factor on the closing probability<div class="muted" style="font-size:11.5px">CLOSE_Q = ${CLOSE_Q} and width CLOSE_W = ${CLOSE_W}: &kappa; = 1 + CLOSE_Q&middot;tanh(q<sub>z</sub> / CLOSE_W), 1 at the median business. No published closing rate is split by business quality; the bound is the share of failures quality bears on (seller misrepresentation ${(MODELS.close_and_timing.close_probability.failure_reasons.seller_misrepresentation*100).toFixed(2)}% and insufficient cash flow ${(MODELS.close_and_timing.close_probability.failure_reasons.insufficient_cash_flow*100).toFixed(1)}% of failures)</div></td>
+            <td class="n" style="padding-right:18px">1</td>
+            <td style="color:#ff8e7a;padding-left:6px">The closing probability by up to about &plusmn;${(CLOSE_Q*100).toFixed(0)}% either way, and through it expected proceeds, both recommended asks and both scores. Not estimated: a judgment, directionally plausible.</td></tr>
         <tr><td>Overpricing time multiplier<div class="muted" style="font-size:11.5px">T_ELAST = ${T_ELAST.toFixed(2)}, T_SMOOTH = ${T_SMOOTH}</div></td>
             <td class="n" style="padding-right:18px">2</td>
             <td style="color:#ff8e7a;padding-left:6px">Median time to close above model value (sign from online-marketplace analogs, size judgment), and through it the walk-away ask when a cost of delay is set.</td></tr>

@@ -119,9 +119,9 @@ with $s_E=0.184$ (engagement-to-offers share, \fit; 95\% CI $0.13$--$0.226$) and
 
 \section{Probability the sale closes}
 \subsection{Reported model (aggregate)}
-Pepperdine publishes termination \emph{rates}, not deal rows, so the reported probability is a base rate times a price-gap penalty times a thin-pool factor. \agg
+Pepperdine publishes termination \emph{rates}, not deal rows, so the reported probability is a base rate times a price-gap penalty times a thin-pool factor times a bounded quality factor. \agg\ + \jud
 \begin{align}
-P_C&=\min\!\big(0.95,\ b(V_{\text{base}})\,(1-\pi(g))\,\tau(n)\big),\qquad g=100\cdot\frac{\text{ask}-V}{V}\ (\%)\\
+P_C&=\min\!\big(0.95,\ b(V_{\text{base}})\,(1-\pi(g))\,\tau(n)\,\kappa(q_z)\big),\qquad g=100\cdot\frac{\text{ask}-V}{V}\ (\%)\\
 b&=b_B+(b_I-b_B)\,u,\quad u=\clamp\!\Big(\frac{\ln(V_{\text{base}}/\$1\text{M})}{\ln 5},0,1\Big),\ b_B=0.608,\ b_I=0.6967\notag
 \end{align}
 where $b_B,b_I$ are the recent-three-observation means of the broker-listed and intermediated close rates (pooled 2011--2024 values are $0.6128$ and $0.708$; intermediated termination troughed at 24\% in 2020--21 and is 32\% in 2026, so the recent mean is used). Channel overrides: $u=1$ if the deal is intermediated, $0$ if a broker listing.
@@ -140,6 +140,12 @@ $F_{\text{gap}}$ & 0 & 0.0699 & 0.4276 & 0.7920 & 0.8869 & 0.9301 & 1\\\bottomru
 \tau(n)=\capone_1\!\Big(\frac{1-e^{-n_{\text{pool}}}}{1-e^{-n_{\text{typical}}}}\Big)\quad(\tau=1\text{ at a typical or deeper pool}),
 \end{equation}
 the scale of the thin-pool effect being \jud.
+
+\textbf{Quality factor} (added in review round 11; \jud). Pepperdine publishes no closing rate split by business quality, so the effect is bounded by what the survey does measure: the failure reasons quality bears on. Seller misrepresentation (4.25\% of failures) and insufficient cash flow (6.0\%) together are about a tenth of all failures. A business at the best end of quality avoids that share and one at the worst end doubles it, which bounds the effect to roughly $\pm10\%$ of the base rate:
+\begin{equation}
+\kappa(q_z)=1+0.10\,\tanh\!\Big(\frac{\clamp(q_z,-3,3)}{1.5}\Big)\in[0.90,1.10],\qquad \kappa(0)=1,
+\end{equation}
+with $q_z$ the composite quality $z$ of Section~4.3 (the same weighted composite that places the value). Because $\kappa=1$ at the median business, the published base rates still describe the average deal. The effect is on top of the route quality already had: a better business has a higher $V$, hence a smaller gap $g$ at the same dollar ask. The scale $0.10$ and the width $1.5$ are judgment; the Data tab lists them as one parameter. The same factor multiplies each buyer's closing probability $P_{C,j}$ and the Deals tab's base rate when it fits the penalty scale.
 
 \subsection{The retained feature model}
 A 15-feature logistic is kept for the contribution panel but is not the reported probability:
@@ -263,11 +269,11 @@ quality factor $q$ & 1.160\\
 \textbf{model value $V$} & \textbf{\$4,274,642} ($2.95\times$ SDE)\\
 p10 / p25 / p75 / p90 (around the pre-quality point) & \$1.88M / \$2.68M / \$4.86M / \$6.25M\\
 ask over value $g$ & $-24.6\%$ (penalty 0)\\
-\textbf{chance of closing $P_C$} & \textbf{68.0\%} (base rate; thin-pool factor 1)\\
+\textbf{chance of closing $P_C$} & \textbf{71.1\%} (base 68.0\%, quality $\times1.045$)\\
 median time to close & 278 days (mean 356)\\
 of deals that close, closed within 90 / 180 / 365 days & 4.8\% / 24.1\% / 67.2\%\\
 price if it closes (median / mean) & \$3.22M / \$3.11M\\
-expected proceeds $P_C\EV{P\mid\text{close}}$ & \$2.11M\\
+expected proceeds $P_C\EV{P\mid\text{close}}$ & \$2.21M\\
 charge-off probability to term, 5-year & 2.8\%, 0.62\% (relative risk 0.49, ``low'')\\
 buyer to pursue first / pays most & search fund / direct strategic competitor\\
 SBA loan (financed fee \$76,439) & \$2,806,703 at 8.89\%\\
@@ -281,7 +287,7 @@ so $\hat P\approx e^{8.148}\approx\$3.46$M, times the median calibration ($1.066
 \begin{center}\small\begin{tabular}{p{4.3cm}p{2.2cm}p{7cm}}\toprule
 output & label & basis\\\midrule
 model value, range, multiple & \fit\ + \jud & BIZCOMPS regression (19k sales); the quality position inside the spread is judgment\\
-chance of closing & \agg\ + \jud & Pepperdine base rates by size; gap-penalty scale and thin-pool factor are judgment\\
+chance of closing & \agg\ + \jud & Pepperdine base rates by size; the gap-penalty scale, the thin-pool factor and the $\pm10\%$ quality factor are judgment\\
 time to close & \fit\ + \jud & IBBA histograms; the overpricing multiplier is judgment\\
 survival risk & \fit & 41,200 SBA acquisition loans\\
 quality weights & \fit\ (2 of 9) & owner dependence and management depth from broker listings; seven weights are judgment\\
@@ -293,7 +299,7 @@ financing & \agg & SBA published rules applied to the figures; market pay is an 
 \begin{itemize}[nosep]
 \item \textbf{Typical error.} Median absolute error is 28\% on held-out sales. A gap of 20\% over value is inside that noise; the console's ask-versus-value statements are statements about the model, not the market.
 \item \textbf{Quality scale.} The composite quality $z$ is standard normal only if the nine dimensions are uncorrelated. Owner dependence and management depth are correlated, so extreme positions occur more often than $\Phi$ implies.
-\item \textbf{Closing odds do not move with quality.} The reported $P_C$ depends on size, channel, the price gap and the buyer pool only (Pepperdine publishes rates, not deal rows); quality reaches it only through the value it implies. Pricing below value earns no gain in odds or time, so the optimizer's asks lean toward value or above.
+\item \textbf{Quality moves closing odds only a little.} $P_C$ depends on size, channel, the price gap, the buyer pool and, since round 11, quality through $\kappa(q_z)$, which is bounded to $\pm10\%$ and is a judgment (no published closing rate is split by quality). Quality also acts through the value it implies. Pricing below value earns no gain in odds or time, so the optimizer's asks lean toward value or above.
 \item \textbf{Value gap and intervention returns} come from the judgment quality layer, not from measurements; they are for coaching, not for a proposal to be presented as data.
 \item \textbf{Scale.} BIZCOMPS is mostly Main Street sales; at SDE near \$1.5M (the dataset's 99th percentile is \$1.7M) and in sectors with institutional buyers (medical practices) the regression is at its edge. The extrapolation flag fires at $3\times$ beyond the fitted range, not before.
 \item \textbf{Survival risk} depends on loan size, sector, state and franchise status, not on the deal's own quality; it covers SBA loans approved 2018--2026, including the period of COVID payment relief, with few loans tracked beyond about seven years. No skill score against a constant-rate baseline is reported; the cross-validated Brier score $0.0201$ should be read against that baseline (about $0.017$ for a 1.75\% event rate).
