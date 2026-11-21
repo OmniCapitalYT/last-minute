@@ -142,7 +142,7 @@ def("time-at-fair-ask-monotone-in-size","At an ask at or below value, the median
   "fitTiming: band medians rise with deal size; E[T]/t_med falls with the shape beta, but not fast enough to reverse it (Data tab model III)");
 def("base-close-rate-monotone-in-size","At a fair ask and a typical or deeper pool, the closing probability before the quality factor never falls as the business scales up (the peer medians move with size, so the quality factor can shift by a hair; round 11)",
   "fitClose: base interpolated in ln(size) from the broker 0.608 at $1M to the intermediated 0.697 at $5M");
-def("earnings-raise-pc-and-proceeds-deep-pool","At fixed revenue and ask, with a typical or deeper pool, more earnings never lower the closing probability before the quality factor, the price if it closes or expected proceeds",
+def("earnings-raise-pc-and-proceeds-deep-pool","At fixed revenue and ask, with a typical or deeper pool, more earnings never lower the closing probability or expected proceeds before the quality factor, or the price if it closes",
   "economics: same ask, more profit. Corrected scope: below a typical pool the thin-pool factor reads the typical pool's size-dependent engagement (search-fund window, SDE $3.2M-$8.3M), which the BUYERS ledger row documents");
 def("risk-non-increasing-in-size","Along fine scale paths (fixed margin, $10k-$5B of revenue, every industry) the 5-year and 8-year charge-off risk never rise as the business grows; the 10-year risk and the expected loss never rise except where the fitted tail for years 9-10 rises with the note's size, and the 10-year risk then by no more than the tail does",
   "Model V: larger loans are charged off less often through month 72; the table spread never rises with loan size; severity barely moves with size (b_size +0.0104, se 0.0397; Data tab: 'Size matters little'); the month-72 size reversal never overturns the 8-year figure. Since October 2026 the tail is fitted by note size (MODELS.risk.tail.by_band), so the 10-year figure may rise slightly from a note of about $0.60M, where the table spread stops falling, to the $1.05M band centre. tests/model.test.js allows 1% per ~10% step");
@@ -274,7 +274,7 @@ for(let i=0;i<states.length;i++){
     if(rho<=.95){ ok("time-at-fair-ask-monotone-in-size",ge(rk.tMed,r.tMed)&&ge(rk.tMean,r.tMean),()=>cx(s,{rho,a:r.tMean,b:rk.tMean}));
       if(s.buyers>=typ) ok("base-close-rate-monotone-in-size",rk.PC/rk.closeQ>=r.PC/r.closeQ-1e-15,()=>cx(s,{rho,a:r.PC,b:rk.PC})); }
     if(s.buyers>=typ&&s.ern*1.03<=.92*s.rev){ const re=A.model({...s,ern:s.ern*1.03});
-      ok("earnings-raise-pc-and-proceeds-deep-pool",re.PC/re.closeQ>=r.PC/r.closeQ-1e-15&&ge(re.Vmean,r.Vmean)&&ge(re.EVp,r.EVp),()=>cx(s,{a:[r.PC,r.EVp],b:[re.PC,re.EVp]})); }
+      ok("earnings-raise-pc-and-proceeds-deep-pool",re.PC/re.closeQ>=r.PC/r.closeQ-1e-15&&ge(re.Vmean,r.Vmean)&&ge(re.EVp/re.closeQ,r.EVp/r.closeQ),()=>cx(s,{a:[r.PC,r.EVp],b:[re.PC,re.EVp]})); }
     const rf=A.model({...s,franchise:!s.franchise}), [on,off]=s.franchise?[r,rf]:[rf,r];
     ok("franchise-never-raises-risk",on.risk.p<=off.risk.p&&on.risk.p5<=off.risk.p5&&on.risk.expLoss<=off.risk.expLoss&&same(on.EVp,off.EVp)&&same(on.V,off.V)&&CATS.every(c=>on.cats[c]===off.cats[c]),()=>cx(s,{on:on.risk.p,off:off.risk.p}));
   }

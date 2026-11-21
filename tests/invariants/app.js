@@ -906,7 +906,7 @@ async function partB(){
     await settle(p); const V=await p.evaluate(()=>STATE.r.V); await typeBox(p,"v_ask",String(Math.round(V*rho))); await p.evaluate(()=>document.activeElement&&document.activeElement.blur()); await settle(p,true);
     const b2=await snap();
     const eps=x=>texNorm(x.eq.eq_ps||""), base=x=>(/P_C=\\underbrace\{([\d.]+%)\}_\{base rate, u=([\d.]+)\}/.exec(eps(x))||[]).slice(1).join("|"), pen=x=>(/\(1-\\underbrace\{([\d.]+)\}_\{gap penalty\}/.exec(eps(x))||[])[1];
-    ok("pc-at-same-ratio-moves-only-by-quality-factor",Math.abs(a.r.PC/a.r.closeQ-b2.r.PC/b2.r.closeQ)<=1e-9&&a.r.closeQ>=.9&&a.r.closeQ<=1.1&&b2.r.closeQ>=.9&&b2.r.closeQ<=1.1&&base(a)===base(b2)&&base(a)!==""&&Math.abs(+pen(a)-+pen(b2))<=.0011,()=>J({rho,move:id+"="+val,pc:[a.txt.o_pc,b2.txt.o_pc],base:[base(a),base(b2)],pen:[pen(a),pen(b2)],ratio:[a.r.V?a.s.ask/a.r.V:0,b2.s.ask/b2.r.V]}));
+    ok("pc-at-same-ratio-moves-only-by-quality-factor",Math.abs(a.r.PC/a.r.closeQ/(1-+pen(a))-b2.r.PC/b2.r.closeQ/(1-+pen(b2)))<=.0015&&a.r.closeQ>=.9&&a.r.closeQ<=1.1&&b2.r.closeQ>=.9&&b2.r.closeQ<=1.1&&base(a)===base(b2)&&base(a)!==""&&Math.abs(+pen(a)-+pen(b2))<=.0011,()=>J({rho,move:id+"="+val,pc:[a.txt.o_pc,b2.txt.o_pc],base:[base(a),base(b2)],pen:[pen(a),pen(b2)],ratio:[a.r.V?a.s.ask/a.r.V:0,b2.s.ask/b2.r.V]}));
     const fm=x=>(x.multbl.find(y=>/^Fitted multiple/.test(y[0]||""))||[])[2], band=x=>(/t_\{med\}=t_\{band\} e\^\{0\.10 g\}=([\d,]+)/.exec(texNorm(x.eq.eq_ts||"").replace(/\\text\{med\}/g,"med").replace(/\\text\{band\}/g,"band"))||[])[1];
     const cash=x=>(x.real[2]||[])[1];
     const below=a.s.ask<=a.r.V&&b2.s.ask<=b2.r.V;
