@@ -2186,4 +2186,8 @@ Found and fixed (each with a test that fails on the old code):
 - System prompt now states units (`_pct` is percentage points; chances and shares are 0 to 1).
 
 Checked, no change: snapshot field names and units against the model; film `warp` monotonic; landing page.
-Still untested: a live model call (no API key here). Suite results for this round are recorded below once the full run finishes.
+Still untested: a live model call (no API key here). 
+
+Suite results at the fix commit: model 7,845; fuzz 215,263 checks over 1,500 businesses; vince.test.js 49 (was 48; the new concurrency and long-reply checks); browser.foruse 14; browser.inputs, browser.broker ("all passed"), browser.sweep (124 states at 1440 and 390 px, no issues), browser.vince (now includes the failed-follow-up check); invariants 253; foruse.html up to date. No medium or high finding remained in the model, report or film lanes checked.
+
+Also this round: `docs/omni-method-spec.tex` / `.pdf`, a LaTeX specification of the model's equations and fitted parameters. An independent read of it found three mistakes in the document (the description of the reported value range, the worked example's risk figures run at a test-fixture rate, and loose wording about what the price-gap distribution identifies); all were corrected, and a "Known limits" section was added. No model code changed. Product suggestions from that read (closing odds responding to quality, reward for pricing below value, error bands on the value gap, an earlier size warning) were left alone as redesigns.
