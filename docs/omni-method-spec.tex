@@ -1,0 +1,287 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,mathtools}
+\usepackage{booktabs,array,longtable}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlength{\parskip}{.5em}\setlength{\parindent}{0pt}
+\DeclareMathOperator{\softmin}{softmin}
+\DeclareMathOperator{\clamp}{clamp}
+\DeclareMathOperator{\capone}{cap}
+\newcommand{\EV}[1]{\mathbb{E}\!\left[#1\right]}
+\newcommand{\fit}{\textbf{[fitted]}}
+\newcommand{\agg}{\textbf{[aggregate]}}
+\newcommand{\jud}{\textbf{[judgment]}}
+\title{\textbf{The Omni Method}\\[2pt]\large Model Specification and Mathematics}
+\author{Generated from the console source (\texttt{index.html})}
+\date{November 21, 2026}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Purpose and provenance labels}
+The Omni Method is a valuation and saleability console for business brokers. From a business's industry, revenue, seller's discretionary earnings (SDE), margins and operating characteristics it produces: a value and its range; the probability a sale closes; time to close; post-sale survival risk (SBA loans); a buyer universe; an SBA financing check; the value gap and the interventions that pay; and the optimizer's asks.
+
+Every parameter carries one of three labels, used throughout this document:
+\begin{itemize}[nosep]
+\item \fit{} --- a regression or hazard model was run on data.
+\item \agg{} --- a published aggregate statistic was read off (Pepperdine, IBBA, SBA).
+\item \jud{} --- a person chose it; it structures the output but is not estimated.
+\end{itemize}
+Where a figure rests on judgment the console says so. Notation: $E$ is SDE (``ern''), $R$ revenue, $\text{ask}$ the asking price, $V=\EV{V\mid X}$ the model value, $\Phi$ the standard normal CDF.
+
+\section{Inputs}
+Industry (one of 16: home services, medical, veterinary, MSP, SaaS, professional services, manufacturing, distribution, e-commerce, staffing, landscaping, car wash, auto, construction, fitness, restaurant); revenue $R$; SDE $E$; asking price; and nine operating dimensions: recurring revenue share ($rec$), gross margin ($gm$), customer concentration ($cc$, top-customer share), growth ($grw$), retention ($ret$), owner dependence ($own$), management depth ($mgt$), financial-record quality ($fin$), channel concentration ($plt$); plus years of clean history, number of buyers contacted $n$, and the seller's cost-of-delay $\lambda_T$ and fallback value $\theta$.
+
+\section{Peer standardization}
+Each dimension is compared with the industry peer median $\bar x_{\text{peer}}$ and a peer standard deviation $\sigma_{\text{peer}}$:
+\[
+z_i=\frac{x_i-\bar x_{\text{peer}}}{\sigma_{\text{peer}}},\qquad z_i\leftarrow\clamp(z_i,-3.2,3.2),\qquad \text{percentile}=\Phi(z_i).
+\]
+Peer standard deviations \fit/\agg: $rec\,0.28$, $cc\,0.18$, $own\,0.25$, $mgt\,0.28$, $grw\,0.16$, $gm\,0.13$, $ret\,0.13$, $fin\,0.28$, $plt\,0.22$; earnings scale $0.48$ (in $\ln$).
+
+\section{Value model (Model II)}
+\subsection{Fitted regression}
+Fitted to $n=18{,}941$ closed sales (BIZCOMPS); target $\ln(\text{price in \$000})$; cross-validated $R^2$ on log price $0.755$; median absolute percentage error $28.4\%$; $44.5\%$ within $\pm25\%$. \fit
+\begin{align}
+\ln\hat P_{\$000}&=0.7637+0.3117\ln\tfrac{E}{\$1\text{k}}+0.4057\,h(E)+0.4709\ln\tfrac{R}{\$1\text{k}}\notag\\
+&\quad+0.4097\,m+0.005516\,(y-2015)+1.3220\,e_i,\qquad m=\clamp(E/R,0,1),\;y=2026.
+\end{align}
+The size hinge, with knot $\$150$k and cap $\$3$M of SDE (in thousands, $k_0=150$, $k_c=3000$):
+\begin{equation}
+h(E)=\begin{cases}\max\!\big(\ln\tfrac{E_k}{k_0},0\big) & E_k\le k_c\\[2pt]
+\ln\tfrac{k_c}{k_0}+0.5360\,\ln\tfrac{E_k}{k_c} & E_k>k_c\end{cases}
+\end{equation}
+Above the cap the slope $0.536$ makes the total scale elasticity exactly one, so the implied multiple goes flat rather than climbing or falling off the data (only 56 of 18,941 rows sit beyond the cap). $e_i$ is the industry effect: a 6-digit NAICS effect shrunk toward its 2-digit sector, falling back to the sector effect and then the global effect.
+
+\subsection{Median calibration}
+OLS forces the \emph{mean} log residual to zero, not the median, which ran from $-0.057$ at a \$140k prediction to $+0.101$ at \$320k. A correction $c(\cdot)$, piecewise linear in the uncorrected $\ln\hat P$ through 15 knots (from $-0.027$ at the low end to $+0.108$ at the peak, then $+0.064$ at the top), is added:
+\begin{equation}
+\ln\hat P^{c}=\ln\hat P+c(\ln\hat P),\qquad \hat P^{c}\text{ then has median ratio }1.000.
+\end{equation}
+\subsection{Quality position inside the measured spread}
+The regression sees earnings, revenue and industry but not recurring revenue or owner dependence. What it does measure is the scatter of sales around its prediction: out-of-fold quantiles of $P/\hat P^c$ (after calibration, $n=18{,}941$) are
+\begin{center}\small
+\begin{tabular}{lcccccccccc}\toprule
+percentile & 2 & 5 & 10 & 25 & 50 & 75 & 90 & 95 & 98\\\midrule
+ratio & 0.276 & 0.397 & 0.510 & 0.727 & 1.000 & 1.318 & 1.694 & 2.046 & 2.738\\\bottomrule
+\end{tabular}\end{center}
+Quality decides where in this band a business sits. Composite quality $z$ is a weighted sum over nine dimensions, normalized by the weights' norm so it stays standard normal:
+\begin{equation}
+q_z=\frac{\sum_k w_k\,\sigma_k z_k}{\sqrt{\sum_k w_k^2}},\qquad \sigma_k=-1\text{ for }own,cc,plt;\;+1\text{ otherwise},\qquad q_p=\Phi\big(\clamp(q_z,-3,3)\big).
+\end{equation}
+Weights: $w_{own}=1.24$ \fit, $w_{mgt}=0.60$ \fit\ (weakly supported), all others $1$ \jud; $\sqrt{\sum w_k^2}=2.983$. The position factor, piecewise log-linear so the midpoint is exactly $1$:
+\begin{equation}
+q=\begin{cases}\exp\!\big[\ln(0.7273)\,(1-2q_p)\big] & q_p\le\tfrac12\\ \exp\!\big[\ln(1.3181)\,(2q_p-1)\big] & q_p>\tfrac12\end{cases}
+\end{equation}
+\begin{equation}
+\boxed{\;V=\EV{V\mid X}=\$1\text{k}\cdot\hat P^{c}_{\$000}\cdot q\;},\qquad M=V/E.
+\end{equation}
+The quality position (which weights each dimension, and the placement itself) is \jud; the spread it is placed in is data.
+
+\subsection{Range (the fan)}
+The price distribution given close is $W=V\cdot R(p)^{s}$ with $R(p)$ the measured out-of-fold spread at probability $p$ and $s=0.8$ the share of the spread kept once the business is listed \jud. The reported p10, p25, p75, p90 are
+$V\cdot R(p)^s$-quantiles. The mean is carried on 48 equal-probability slices, each at the slice's exact mean (for $\ln R$ linear in $z=\Phi^{-1}(p)$ on a piece, $\mathbb E[R;a<z<b]=\exp(c+B^2/2)\,[\Phi(b-B)-\Phi(a-B)]$). Mean over median $=1.0907$.
+
+\subsection{Confidence and extrapolation}
+The sliders reach beyond the data (SDE to \$20M against a 99th percentile of \$1.7M). The console reports a confidence label from the sampling error of the fit and flags when an input lies more than $3\times$ outside the fitted range; extrapolation is a label, not a different formula.
+
+\section{Asking-price anchoring and the price if it closes}
+Let $\rho=\text{ask}/V$, $\tilde\rho=\softmin(\max(\rho,0.35),1.5)$, $\bar a=\softmin(\text{ask},1.5\,V)$.
+\begin{equation}
+A(\rho)=1+(A_{\max}-1)\tanh\!\Big(\frac{\alpha\ln\tilde\rho}{A_{\max}-1}\Big),\quad A_{\max}=1.3,\ \alpha\ \jud
+\end{equation}
+\begin{equation}
+P(W)=\softmin\!\Big(W\cdot A\!\big(\tfrac{\bar a}{W}\big)\cdot(1+\text{comp}),\ \bar a\,c_{\text{ask}}\Big),\qquad
+\EV{P\mid\text{close}}=\tfrac{1}{48}\sum_{p}P(W_p).
+\end{equation}
+$A$ is the anchoring effect of the ask on the closing price; $c_{\text{ask}}$ is the ceiling on price relative to the ask. The soft minimum, used everywhere a hard $\min$ would make a slider feel broken, is
+\begin{equation}
+\softmin(x,y)=\exp\!\Big(\min(a,b)-K\ln\!\big(1+e^{-|a-b|/K}\big)\Big),\ a=\ln x,\ b=\ln y,\ K=0.012.
+\end{equation}
+\textbf{Competition premium} (\jud\ scale $\kappa=0.03$, $H=1.6235$):
+\begin{equation}
+\text{comp}=\kappa\ln\frac{H+n_{\text{offers}}}{H+n_{\text{typical}}}\in[-0.08,0.14],\qquad n_{\text{offers}}=n\cdot\overline{P_E}\cdot s_E,
+\end{equation}
+with $s_E=0.184$ (engagement-to-offers share, \fit; 95\% CI $0.13$--$0.226$) and $\overline{P_E}$ the buyers' mean engagement probability.
+
+\section{Probability the sale closes}
+\subsection{Reported model (aggregate)}
+Pepperdine publishes termination \emph{rates}, not deal rows, so the reported probability is a base rate times a price-gap penalty times a thin-pool factor. \agg
+\begin{align}
+P_C&=\min\!\big(0.95,\ b(V_{\text{base}})\,(1-\pi(g))\,\tau(n)\big),\qquad g=100\cdot\frac{\text{ask}-V}{V}\ (\%)\\
+b&=b_B+(b_I-b_B)\,u,\quad u=\clamp\!\Big(\frac{\ln(V_{\text{base}}/\$1\text{M})}{\ln 5},0,1\Big),\ b_B=0.608,\ b_I=0.6967\notag
+\end{align}
+where $b_B,b_I$ are the recent-three-observation means of the broker-listed and intermediated close rates (pooled 2011--2024 values are $0.6128$ and $0.708$; intermediated termination troughed at 24\% in 2020--21 and is 32\% in 2026, so the recent mean is used). Channel overrides: $u=1$ if the deal is intermediated, $0$ if a broker listing.
+
+\textbf{Price-gap penalty.} The valuation-gap distribution from Pepperdine, as a CDF $F_{\text{gap}}$ of the gap over value, knots
+\begin{center}\small\begin{tabular}{lccccccc}\toprule
+$g$ (\%) & 0 & 11.11 & 25 & 42.86 & 66.67 & 100 & 200\\\midrule
+$F_{\text{gap}}$ & 0 & 0.0699 & 0.4276 & 0.7920 & 0.8869 & 0.9301 & 1\\\bottomrule\end{tabular}\end{center}
+\begin{equation}
+\pi(g)=\begin{cases}0 & g\le0\\ \pi_{\max}\,F_{\text{gap}}(g) & 0<g<200\\ 1-(1-\pi_{\max})\,e^{-k(g-200)} & g\ge200\end{cases}\qquad \pi_{\max}=0.45\ \jud,\ k=5.708\times10^{-4}.
+\end{equation}
+Most price-killed deals die on a gap of only 11--30\% (72.3\% of price failures); the ``kill zone'' flag marks $g\in[12.4,42.9]\%$ over value (Pepperdine's 11--30\% band is a share of the ask, converted by $p/(100-p)$).
+
+\textbf{Thin-pool factor.}
+\begin{equation}
+\tau(n)=\capone_1\!\Big(\frac{1-e^{-n_{\text{pool}}}}{1-e^{-n_{\text{typical}}}}\Big)\quad(\tau=1\text{ at a typical or deeper pool}),
+\end{equation}
+the scale of the thin-pool effect being \jud.
+
+\subsection{The retained feature model}
+A 15-feature logistic is kept for the contribution panel but is not the reported probability:
+\begin{equation}
+\begin{aligned}P_C^{\text{judg}}&=\Big[p_{\min}+\tfrac{p_{\max}-p_{\min}}{1+e^{-f(X)}}\Big]\cdot G(x_{\text{price}}),\qquad f(X)=\beta_0+\sum_i\beta_ix_i,\\ G(x)&=\begin{cases}1&x\le0\\ \max(g_{\min},e^{-(g_1x+g_2x^2)})&x>0\end{cases}\end{aligned}
+\end{equation}
+with nonlinear terms: recurring $f_r=a\tanh(x/s)$; concentration $f_c=-(\lambda x+\kappa\max(0,x)^2)$; margin $f_m=\beta_{em}x$ for $x\ge0$ and $-(\beta_{em}|x|+0.055x^2)$ below; scale $f_z=a_z\tanh(x/s_z)$ above the median, $\beta_{size}x$ below; under-pricing $f_u=-\beta_u\min(0,x_{\text{price}})$; short history $f_y=-0.55\min\!\big(1,\max(0,\tfrac{3-\text{yrs}}{2})\big)$. All \jud; they explain, they do not drive the headline.
+
+\section{Time to close (Model III)}
+\subsection{Log-logistic duration model}
+Fitted to IBBA / M\&A Source Market Pulse histograms (15 quarters, five size bands). \fit
+\begin{equation}
+F(t)=\frac{1}{1+(t/t_{\text{med}})^{-\beta}},\qquad S(t)=1-F(t),\qquad F(t_{\text{med}})=\tfrac12,\qquad \EV{T}=t_{\text{med}}\frac{\pi/\beta}{\sin(\pi/\beta)}.
+\end{equation}
+Median months from listing to close, by size band (fitted; published values in parentheses):
+\begin{center}\small\begin{tabular}{lccccc}\toprule
+band & $<$\$500k & \$500k--1M & \$1--2M & \$2--5M & \$5--50M\\\midrule
+median (months) & 6.54 (6.5) & 7.75 (7.25) & 8.02 (8) & 9.03 (8) & 10.14 (10.5)\\
+shape $\beta$ & 2.20 & 2.64 & 2.64 & 2.64 & 2.64\\\bottomrule\end{tabular}\end{center}
+\subsection{Overpricing multiplier}
+\begin{equation}
+\begin{gathered}t_{\text{med}}=t_{\text{band}}\,e^{\eta\,h_s(x)},\qquad x=\ln\tfrac{\text{ask}}{V},\qquad \eta=0.10,\ \delta=0.10\ \ (\text{both }\jud)\\ h_s(x)=\begin{cases}0&x\le0\\ x^2/(2\delta)&0<x<\delta\\ x-\delta/2&x\ge\delta\end{cases}\end{gathered}
+\end{equation}
+so a listing at or below value keeps the band median, and the extra time grows smoothly (quadratic, then linear) with overpricing. The cost of delay in the optimizer is charged on $\EV{T}$ (the mean, which exceeds the median), not on $t_{\text{med}}$.
+
+\section{Post-sale survival risk (Model V)}
+SBA 7(a) change-of-ownership term loans, FY2018--FY2026 (data.sba.gov FOIA snapshot, 2026-06-30); $n=41{,}200$ loans, 721 charge-offs, 11{,}883 paid in full, 28{,}596 open. \fit\ Cross-validated AUC $0.718$, Brier $0.0201$.
+
+\textbf{Cause-specific piecewise-exponential hazards} over months-on-book intervals with edges every 6 months to month 60, then 72, 84 and beyond; charge-off ($\lambda_1$) competes with paid-in-full ($\lambda_2$); open loans are censored. For interval $j$:
+\begin{align}
+u_j&=\beta_{\ln amt}\ln(\text{loan})+\beta_{fr}\,\text{franchise}+\beta_{sp}\,\text{spread}\notag\\&\quad+\beta_{\ln amt\times age}\ln(\text{loan})\Big(\tfrac{\min(\text{age}_j,72)}{12}-4\Big)+\text{sector}+\text{naics6}+\text{state}\\
+\lambda_{1,j}&=\exp\!\big(a_{1,j}+\ell_0+\ell_1u_j\big),\qquad \lambda_{2,j}=\exp\!\big(a_{2,j}+\beta^{\text{pif}}\!\cdot x+\text{sector}^{\text{pif}}\big)\\
+\text{CIF}(H)&=\sum_j S_j\frac{\lambda_{1,j}}{\lambda_{1,j}+\lambda_{2,j}}\Big(1-e^{-(\lambda_{1,j}+\lambda_{2,j})\Delta_j}\Big),\notag\\ S_{j+1}&=S_j\,e^{-(\lambda_{1,j}+\lambda_{2,j})\Delta_j}
+\end{align}
+Charge-off coefficients: $\beta_{\ln amt}=-0.2287$, $\beta_{fr}=-0.0167$, $\beta_{sp}=0.9434$, $\beta_{\ln amt\times age}=0.1586$; shrinkage $\ell_1=0.7433$, shift $\ell_0=-0.0093$. Sector effects range from $-0.389$ (health care) to $+0.485$ (transportation); NAICS-6 and state effects are gamma-shrunk (random effects). Paid-in-full: $\beta_{\ln amt}=-0.054$, $\beta_{fr}=+0.126$.
+
+\textbf{Reported figures.} The term probability and the 5-year probability are
+\begin{equation}
+p_{\text{term}}=\text{CIF}(96\text{ mo observed})\cdot\text{tail}(\text{loan}),\qquad \text{term}=120\text{ mo},
+\end{equation}
+where $\text{tail}\approx1.08$--$1.30$ by loan size band (pooled factor $1.21\pm0.06$) extends the observed 96 months to the full term. $p_5=\text{CIF}(60)$. Relative risk $\text{rel}=p_{\text{term}}/p_{\text{base}}$; tier: $<0.75$ low, $<0.95$ below average, $<1.25$ average, $<1.75$ elevated, else high.
+
+\textbf{Loss given charge-off.}
+\begin{equation}
+\text{sev}(a)=\big[1+\exp\!\big(-(0.999+0.0104(\ln L-\ln L_c)-0.3055(\text{age}/12-4))\big)\big]^{-1},
+\end{equation}
+\begin{equation}
+\EV{\text{loss}}=\sum_j \Pr(\text{charge-off in }j)\cdot\text{sev}(\text{mid}_j)+\text{tail}\cdot\text{sev}(108).
+\end{equation}
+The SBA interest rate and job counts are themselves fitted (rate spread a function of $\ln$ loan with prime $7.00\%$ as of 2026-09-17; spread $2.5\%$ at the small end falling to $1.42\%$ at the large).
+
+\section{Buyer universe}
+Sixteen-industry archetype table with strategic-fit (\jud). Buyer mix by deal size (individual, strategic, financial) is interpolated in $\ln(\text{deal value})$ from IBBA 2012--2023 \agg. For buyer $j$, with multiple $M$, buyer multiple relative $m_j$, size fit $s_j\in[0,1]$, synergy share $\varphi$ and synergy pool $S_j$:
+\begin{align}
+S_j&=\min\!\Big(\sigma_j\,S_{\text{pool}}\,M\,s_j,\ \tfrac{0.40\,E\,M}{\varphi}\Big)\quad(\text{a buyer pays away at most 40\% of value})\\
+V_j&=E\cdot M\,\big(1+(m_j-1)s_j\big)+\varphi S_j\\
+EV_j&=P_{E,j}\,P_{C,j}\,\softmin\!\big(V_j,\ \bar a\,c_{\text{ask}}\big).
+\end{align}
+Synergy pool in the judgment layer: $\text{synE}=\text{strat}\cdot(0.050R+0.028R\,gm+0.015R)$ per year. $P_{E,j}$ and $P_{C,j}$ are the buyer's engagement and closing probabilities. ``Pursue first'' is $\arg\max_j EV_j$; ``pays most'' is $\arg\max_j V_j$ among buyers actively looking.
+
+\section{Value gap, levers and the optimizer}
+\subsection{Value gap}
+\begin{equation}
+\text{Value Gap}=\EV{V\mid X_{\text{potential}}}-\EV{V\mid X_{\text{current}}}.
+\end{equation}
+\subsection{Marginal value of a quality dimension}
+Central difference, reported per one peer standard deviation:
+\begin{equation}
+\frac{\partial y}{\partial x_i}\approx\frac{y(x_i+h)-y(x_i-h)}{2h},\quad y\in\{V,\ P_C\,\EV{P_{\text{real}}}\},\quad\text{reported}=\frac{\partial y}{\partial x_i}\sigma_i.
+\end{equation}
+Ask and buyer-pool steps: $\Delta y=y(0.95\,\text{ask})-y(\text{ask})$ and $y(1.25\,n)-y(n)$.
+\subsection{Intervention return}
+\begin{equation}
+\text{ROI}(a)=\frac{\EV{\text{proceeds}\mid X+\Delta X(a),\text{repriced}}-\EV{\text{proceeds}\mid X,\text{repriced}}-C(a)}{C(a)},\quad MV_i=\frac{\partial V}{\partial a_i}.
+\end{equation}
+Costs $C(a)$ and durations are \jud\ (documented per intervention; e.g.\ hiring a general manager is checked against a loaded-salary alternative). Expected proceeds $=P_C\cdot\EV{P_{\text{real}}}$.
+\subsection{Budgeted optimizer}
+\begin{equation}
+\max_a\ \Big(P_C(a)\,\EV{P_{\text{real}}(a)}-C(a)\Big)\ \text{s.t. }C(a)\le B,\qquad \mathcal L=P_C\,\EV{P_{\text{real}}}-C-\lambda(C-B).
+\end{equation}
+All $2^{|\text{INTERV}|}$ combinations of interventions are searched exhaustively. The seller-utility version, used for the ``patient'' and ``sell quickly'' asks, is
+\begin{equation}
+U(a)=\underbrace{P_C\,\EV{P_{\text{real}}}}_{\text{sale}}+\underbrace{(1-P_C)\,\theta\,V}_{\text{business retained if it fails}}-\lambda_T\big(\EV{T}+T_{\text{exec}}\big)-C(a),
+\end{equation}
+with $\theta$ (fallback value fraction) and $\lambda_T$ (dollars per day of delay) stated by the user. Asks are chosen over a grid of price ratios $\rho$ capped at $1.5\,V$.
+
+\section{SBA financing check}
+Rules applied to the structure (SBA SOP 50\,10\,8.1, Appendix 15, effective October 1, 2026; SBA Information Notice 5000-881797 for FY2027 fees). \agg
+\begin{center}\small\begin{tabular}{lc}\toprule
+rule & value\\\midrule
+maximum 7(a) loan & \$5,000,000\\
+minimum DSCR: initial acquisition & 1.25\\
+minimum DSCR: business expansion & 1.15\\
+minimum DSCR: owner buyout & 1.25\\
+minimum equity injection & 10\% of project\\
+standby note counted toward equity & up to 50\% of the equity\\
+amortization & 10 years\\
+independent valuation required above & \$350,000\\
+quality-of-earnings review at or above & \$3,000,000\\\bottomrule\end{tabular}\end{center}
+With cash share $c$, seller-note share $\nu$ (default $c=10\%$, $\nu=5\%$, 6\% for 10 years), extra project costs $x$, and price $P$ (stake share $\varsigma$ for buyouts):
+\begin{align}
+\text{base}&=(\varsigma P+x)(1-c)-\nu\varsigma P,\qquad L=\text{base}+(1-c)\,\text{fee}(L)\ \text{(solved by iteration)},\ L\le\$5\text{M}\\
+\text{project}&=\varsigma P+x+\text{fee}(L),\qquad \text{cash}=\text{project}-L-\text{note}\\
+\text{DS}&=\operatorname{pmt}(L,r_{\text{SBA}},10)+\operatorname{pmt}(\text{note},r_{\text{note}},N_{\text{note}})\ \ (\text{note payment}=0\text{ on full standby})\\
+\text{CF}&=E-\text{draw}-\text{capex},\qquad \text{DSCR}=\text{CF}/\text{DS}\ \ge\ \text{DSCR}_{\min}\\
+\text{equity}&\ge0.10\cdot\text{project}\quad(\text{buyout: }0.10\cdot\varsigma P)
+\end{align}
+The owner draw is a market pay for the new owner (an estimate \jud) unless the user supplies one. The SBA guaranty fee is $0.02\cdot0.85\,L$ up to \$150k; $0.03\cdot0.75\,L$ up to \$700k; and $0.035\cdot\min(0.75L,\$1\text{M})+0.0375\cdot\max(0,0.75L-\$1\text{M})$ above. It is financed in the loan by default; it is waived for a loan of \$700k or less when the user marks the waiver or the industry is manufacturing, and the fee on a larger loan is still charged. The highest financeable price is found by solving the DSCR, equity and loan-cap conditions together; a debt above the model value is flagged.
+
+\section{Worked example}
+Inputs (the framework example): medical practice, $R=\$5{,}997{,}911$, $E=\$1{,}448{,}772$, ask $=\$3{,}221{,}069$, growth $14\%$, gross margin $64\%$, recurring $72\%$, concentration $18\%$, retention $91\%$, channel concentration $38\%$, owner dependence $72\%$, management depth $36\%$, financial-record quality $74\%$, six years of clean history, 65 buyers, SBA rate input 10.5\%.
+
+\begin{center}\small\begin{tabular}{lr}\toprule
+quantity & value\\\midrule
+size hinge $h$ & 2.268\\
+industry effect $e_i$ & $-0.0455$\\
+fitted point $\hat P^c$ (before quality) & \$3,684,729\\
+median calibration & 1.066\\
+quality $z$, percentile & 0.735, 76.9\%\\
+quality factor $q$ & 1.160\\
+\textbf{model value $V$} & \textbf{\$4,274,642} ($2.95\times$ SDE)\\
+p10 / p25 / p75 / p90 & \$1.88M / \$2.68M / \$4.86M / \$6.25M\\
+ask over value $g$ & $-24.6\%$ (penalty 0)\\
+\textbf{chance of closing $P_C$} & \textbf{68.0\%} (base rate; thin-pool factor 1)\\
+median time to close & 278 days (mean 356)\\
+closed within 90 / 180 / 365 days & 4.8\% / 24.1\% / 67.2\%\\
+price if it closes (median / mean) & \$3.22M / \$3.11M\\
+expected proceeds $P_C\EV{P\mid\text{close}}$ & \$2.11M\\
+charge-off probability to term & 7.1\% (relative risk 1.25, ``average'')\\
+buyer to pursue first / pays most & search fund / direct strategic competitor\\
+SBA loan (financed fee \$76,439) & \$2,806,703 at 8.89\%\\
+DSCR (minimum 1.25) & 3.00\\
+cash required (10\% equity) & \$329,751\\\bottomrule\end{tabular}\end{center}
+Check by hand: $\ln\hat P$ (before calibration) with $E_k=1448.8$, $R_k=5997.9$, $h=\ln(1448.8/150)+0=2.268$ (below the cap), $m=0.2416$:
+\begin{align*}\ln\hat P&=0.7637+0.3117(7.279)+0.4057(2.268)+0.4709(8.699)\\&\quad+0.4097(0.2416)+0.005516(11)+1.3220(-0.0455)\approx 8.148\end{align*}
+so $\hat P\approx e^{8.148}\approx\$3.46$M, times the median calibration ($1.066$), giving the \$3.68M point; times $q=1.160$ gives $V=\$4.27$M.
+
+\section{What is data and what is judgment}
+\begin{center}\small\begin{tabular}{p{4.3cm}p{2.2cm}p{7cm}}\toprule
+output & label & basis\\\midrule
+model value, range, multiple & \fit\ + \jud & BIZCOMPS regression (19k sales); the quality position inside the spread is judgment\\
+chance of closing & \agg\ + \jud & Pepperdine base rates by size; gap-penalty scale and thin-pool factor are judgment\\
+time to close & \fit\ + \jud & IBBA histograms; the overpricing multiplier is judgment\\
+survival risk & \fit & 41,200 SBA acquisition loans\\
+quality weights & \fit\ (2 of 9) & owner dependence and management depth from broker listings; seven weights are judgment\\
+business score, archetypes, best buyer & \jud & structure the conversation; magnitudes are reasoned\\
+interventions and optimizer asks & \jud & costs and effects reasoned, not estimated\\
+financing & \agg & SBA published rules applied to the figures; market pay is an estimate\\\bottomrule\end{tabular}\end{center}
+
+\section*{Limits}
+No number here is an appraisal or advice. The value model sees earnings, revenue and industry only; every quality adjustment moves value inside the measured spread but is not itself estimated. The survival model describes SBA-financed acquisitions, not all sales. Time and closing figures are population priors, not per-deal fits.
+\end{document}
