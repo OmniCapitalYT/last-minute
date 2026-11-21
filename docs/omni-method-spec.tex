@@ -85,8 +85,15 @@ q=\begin{cases}\exp\!\big[\ln(0.7273)\,(1-2q_p)\big] & q_p\le\tfrac12\\ \exp\!\b
 The quality position (which weights each dimension, and the placement itself) is \jud; the spread it is placed in is data.
 
 \subsection{Range (the fan)}
-The price distribution given close is $W=V\cdot R(p)^{s}$ with $R(p)$ the measured out-of-fold spread at probability $p$ and $s=0.8$ the share of the spread kept once the business is listed \jud. The reported p10, p25, p75, p90 are
-$V\cdot R(p)^s$-quantiles. The mean is carried on 48 equal-probability slices, each at the slice's exact mean (for $\ln R$ linear in $z=\Phi^{-1}(p)$ on a piece, $\mathbb E[R;a<z<b]=\exp(c+B^2/2)\,[\Phi(b-B)-\Phi(a-B)]$). Mean over median $=1.0907$.
+Two different spreads are used, and they must not be confused.
+
+\textbf{The reported value range} is the calibrated fitted point times the \emph{full} measured out-of-fold spread, with no quality position applied:
+\begin{equation}
+\begin{gathered}p_q=\hat P^{c}\cdot R(q),\qquad q\in\{10,25,75,90\}\\ R(10)=0.5105,\ R(25)=0.7277,\ R(75)=1.3188,\ R(90)=1.6949\end{gathered}
+\end{equation}
+So the range is centred on the pre-quality point $\hat P^c$; the model value $V=q\hat P^c$ sits inside it, shifted by the quality factor. The ratio of mean to median for this full spread is $1.0907$.
+
+\textbf{The price distribution given a close} (used for $\EV{P\mid\text{close}}$, the price-if-it-closes quantiles and expected proceeds) keeps only part of the spread once the business is listed and priced: $W=V\cdot R(p)^{s}$ with $s=0.8$ \jud. It is carried on 48 equal-probability slices, each at the slice's exact mean (for $\ln R$ linear in $z=\Phi^{-1}(p)$ on a piece, $\mathbb E[R;a<z<b]=\exp(c+B^2/2)\,[\Phi(b-B)-\Phi(a-B)]$), then passed through the ask-anchoring map $P(W)$ of Section~5.
 
 \subsection{Confidence and extrapolation}
 The sliders reach beyond the data (SDE to \$20M against a 99th percentile of \$1.7M). The console reports a confidence label from the sampling error of the fit and flags when an input lies more than $3\times$ outside the fitted range; extrapolation is a label, not a different formula.
@@ -119,14 +126,14 @@ b&=b_B+(b_I-b_B)\,u,\quad u=\clamp\!\Big(\frac{\ln(V_{\text{base}}/\$1\text{M})}
 \end{align}
 where $b_B,b_I$ are the recent-three-observation means of the broker-listed and intermediated close rates (pooled 2011--2024 values are $0.6128$ and $0.708$; intermediated termination troughed at 24\% in 2020--21 and is 32\% in 2026, so the recent mean is used). Channel overrides: $u=1$ if the deal is intermediated, $0$ if a broker listing.
 
-\textbf{Price-gap penalty.} The valuation-gap distribution from Pepperdine, as a CDF $F_{\text{gap}}$ of the gap over value, knots
+\textbf{Price-gap penalty.} Pepperdine publishes the distribution of gaps at which price-killed deals died. That is the spread of gaps \emph{among failed deals}, not the probability that a deal fails at a given gap (most failures sit at 11--30\% largely because many asking prices do too), so it does not identify a failure rate. The console borrows its cumulative \emph{shape} $F_{\text{gap}}$ for a monotone penalty and sets its size, $\pi_{\max}$, by judgment; the Data tab says the penalty is ``not identified''. Knots of the shape:
 \begin{center}\small\begin{tabular}{lccccccc}\toprule
 $g$ (\%) & 0 & 11.11 & 25 & 42.86 & 66.67 & 100 & 200\\\midrule
 $F_{\text{gap}}$ & 0 & 0.0699 & 0.4276 & 0.7920 & 0.8869 & 0.9301 & 1\\\bottomrule\end{tabular}\end{center}
 \begin{equation}
 \pi(g)=\begin{cases}0 & g\le0\\ \pi_{\max}\,F_{\text{gap}}(g) & 0<g<200\\ 1-(1-\pi_{\max})\,e^{-k(g-200)} & g\ge200\end{cases}\qquad \pi_{\max}=0.45\ \jud,\ k=5.708\times10^{-4}.
 \end{equation}
-Most price-killed deals die on a gap of only 11--30\% (72.3\% of price failures); the ``kill zone'' flag marks $g\in[12.4,42.9]\%$ over value (Pepperdine's 11--30\% band is a share of the ask, converted by $p/(100-p)$).
+72.3\% of price-killed deals died at a gap of 11--30\% of the ask (12.4--42.9\% over value, converted by $p/(100-p)$); the console's ``kill zone'' marker is a descriptive reading of that statistic, not an estimated danger zone.
 
 \textbf{Thin-pool factor.}
 \begin{equation}
@@ -156,7 +163,7 @@ shape $\beta$ & 2.20 & 2.64 & 2.64 & 2.64 & 2.64\\\bottomrule\end{tabular}\end{c
 \begin{equation}
 \begin{gathered}t_{\text{med}}=t_{\text{band}}\,e^{\eta\,h_s(x)},\qquad x=\ln\tfrac{\text{ask}}{V},\qquad \eta=0.10,\ \delta=0.10\ \ (\text{both }\jud)\\ h_s(x)=\begin{cases}0&x\le0\\ x^2/(2\delta)&0<x<\delta\\ x-\delta/2&x\ge\delta\end{cases}\end{gathered}
 \end{equation}
-so a listing at or below value keeps the band median, and the extra time grows smoothly (quadratic, then linear) with overpricing. The cost of delay in the optimizer is charged on $\EV{T}$ (the mean, which exceeds the median), not on $t_{\text{med}}$.
+so a listing at or below value keeps the band median, and the extra time grows smoothly (quadratic, then linear) with overpricing. These shares are conditional on the deal closing; across all listings the share closed within 365 days is about $P_C\times0.672$. The cost of delay in the optimizer is charged on $\EV{T}$ (the mean, which exceeds the median), not on $t_{\text{med}}$.
 
 \section{Post-sale survival risk (Model V)}
 SBA 7(a) change-of-ownership term loans, FY2018--FY2026 (data.sba.gov FOIA snapshot, 2026-06-30); $n=41{,}200$ loans, 721 charge-offs, 11{,}883 paid in full, 28{,}596 open. \fit\ Cross-validated AUC $0.718$, Brier $0.0201$.
@@ -187,11 +194,11 @@ The SBA interest rate and job counts are themselves fitted (rate spread a functi
 \section{Buyer universe}
 Sixteen-industry archetype table with strategic-fit (\jud). Buyer mix by deal size (individual, strategic, financial) is interpolated in $\ln(\text{deal value})$ from IBBA 2012--2023 \agg. For buyer $j$, with multiple $M$, buyer multiple relative $m_j$, size fit $s_j\in[0,1]$, synergy share $\varphi$ and synergy pool $S_j$:
 \begin{align}
-S_j&=\min\!\Big(\sigma_j\,S_{\text{pool}}\,M\,s_j,\ \tfrac{0.40\,E\,M}{\varphi}\Big)\quad(\text{a buyer pays away at most 40\% of value})\\
+S_j&=\min\!\Big(\sigma_j\,\text{synE}\,M\,s_j,\ \tfrac{0.40\,E\,M}{\varphi}\Big)\quad(\text{capitalised synergy, in dollars; so }\varphi S_j\le0.40\,E\,M)\\
 V_j&=E\cdot M\,\big(1+(m_j-1)s_j\big)+\varphi S_j\\
 EV_j&=P_{E,j}\,P_{C,j}\,\softmin\!\big(V_j,\ \bar a\,c_{\text{ask}}\big).
 \end{align}
-Synergy pool in the judgment layer: $\text{synE}=\text{strat}\cdot(0.050R+0.028R\,gm+0.015R)$ per year. $P_{E,j}$ and $P_{C,j}$ are the buyer's engagement and closing probabilities. ``Pursue first'' is $\arg\max_j EV_j$; ``pays most'' is $\arg\max_j V_j$ among buyers actively looking.
+Here $\text{synE}=\text{strat}\cdot(0.050R+0.028R\,gm+0.015R)$ is the annual synergy pool (\jud), $\sigma_j$ the archetype's synergy intensity, $M$ the model multiple, and $\varphi=0.38$ the share of the capitalised synergy a buyer pays away (\jud); $m_j$ is the archetype's multiple relative to the all-buyer norm ($0.97$ for the individual buyer, \fit-calibrated against IBBA's deal mix). The cap on $S_j$ is written with $1/\varphi$ so that the dollars paid away, $\varphi S_j$, never exceed 40\% of value. $P_{E,j}$ and $P_{C,j}$ are the buyer's engagement and closing probabilities. ``Pursue first'' is $\arg\max_j EV_j$; ``pays most'' is $\arg\max_j V_j$ among buyers actively looking.
 
 \section{Value gap, levers and the optimizer}
 \subsection{Value gap}
@@ -243,7 +250,7 @@ With cash share $c$, seller-note share $\nu$ (default $c=10\%$, $\nu=5\%$, 6\% f
 The owner draw is a market pay for the new owner (an estimate \jud) unless the user supplies one. The SBA guaranty fee is $0.02\cdot0.85\,L$ up to \$150k; $0.03\cdot0.75\,L$ up to \$700k; and $0.035\cdot\min(0.75L,\$1\text{M})+0.0375\cdot\max(0,0.75L-\$1\text{M})$ above. It is financed in the loan by default; it is waived for a loan of \$700k or less when the user marks the waiver or the industry is manufacturing, and the fee on a larger loan is still charged. The highest financeable price is found by solving the DSCR, equity and loan-cap conditions together; a debt above the model value is flagged.
 
 \section{Worked example}
-Inputs (the framework example): medical practice, $R=\$5{,}997{,}911$, $E=\$1{,}448{,}772$, ask $=\$3{,}221{,}069$, growth $14\%$, gross margin $64\%$, recurring $72\%$, concentration $18\%$, retention $91\%$, channel concentration $38\%$, owner dependence $72\%$, management depth $36\%$, financial-record quality $74\%$, six years of clean history, 65 buyers, SBA rate input 10.5\%.
+Inputs (the framework example): medical practice, $R=\$5{,}997{,}911$, $E=\$1{,}448{,}772$, ask $=\$3{,}221{,}069$, growth $14\%$, gross margin $64\%$, recurring $72\%$, concentration $18\%$, retention $91\%$, channel concentration $38\%$, owner dependence $72\%$, management depth $36\%$, financial-record quality $74\%$, six years of clean history, 65 buyers; the risk model uses the fitted SBA rate for this price (8.63\%: prime $7.00\%$ plus the fitted spread on 85\% of the price), and the financing check uses the rate for the actual loan size (8.89\%).
 
 \begin{center}\small\begin{tabular}{lr}\toprule
 quantity & value\\\midrule
@@ -254,17 +261,17 @@ median calibration & 1.066\\
 quality $z$, percentile & 0.735, 76.9\%\\
 quality factor $q$ & 1.160\\
 \textbf{model value $V$} & \textbf{\$4,274,642} ($2.95\times$ SDE)\\
-p10 / p25 / p75 / p90 & \$1.88M / \$2.68M / \$4.86M / \$6.25M\\
+p10 / p25 / p75 / p90 (around the pre-quality point) & \$1.88M / \$2.68M / \$4.86M / \$6.25M\\
 ask over value $g$ & $-24.6\%$ (penalty 0)\\
 \textbf{chance of closing $P_C$} & \textbf{68.0\%} (base rate; thin-pool factor 1)\\
 median time to close & 278 days (mean 356)\\
-closed within 90 / 180 / 365 days & 4.8\% / 24.1\% / 67.2\%\\
+of deals that close, closed within 90 / 180 / 365 days & 4.8\% / 24.1\% / 67.2\%\\
 price if it closes (median / mean) & \$3.22M / \$3.11M\\
 expected proceeds $P_C\EV{P\mid\text{close}}$ & \$2.11M\\
-charge-off probability to term & 7.1\% (relative risk 1.25, ``average'')\\
+charge-off probability to term, 5-year & 2.8\%, 0.62\% (relative risk 0.49, ``low'')\\
 buyer to pursue first / pays most & search fund / direct strategic competitor\\
 SBA loan (financed fee \$76,439) & \$2,806,703 at 8.89\%\\
-DSCR (minimum 1.25) & 3.00\\
+DSCR (minimum 1.25), owner draw \$111k assumed & 3.00\\
 cash required (10\% equity) & \$329,751\\\bottomrule\end{tabular}\end{center}
 Check by hand: $\ln\hat P$ (before calibration) with $E_k=1448.8$, $R_k=5997.9$, $h=\ln(1448.8/150)+0=2.268$ (below the cap), $m=0.2416$:
 \begin{align*}\ln\hat P&=0.7637+0.3117(7.279)+0.4057(2.268)+0.4709(8.699)\\&\quad+0.4097(0.2416)+0.005516(11)+1.3220(-0.0455)\approx 8.148\end{align*}
@@ -281,6 +288,18 @@ quality weights & \fit\ (2 of 9) & owner dependence and management depth from br
 business score, archetypes, best buyer & \jud & structure the conversation; magnitudes are reasoned\\
 interventions and optimizer asks & \jud & costs and effects reasoned, not estimated\\
 financing & \agg & SBA published rules applied to the figures; market pay is an estimate\\\bottomrule\end{tabular}\end{center}
+
+\section{Known limits of the model}
+\begin{itemize}[nosep]
+\item \textbf{Typical error.} Median absolute error is 28\% on held-out sales. A gap of 20\% over value is inside that noise; the console's ask-versus-value statements are statements about the model, not the market.
+\item \textbf{Quality scale.} The composite quality $z$ is standard normal only if the nine dimensions are uncorrelated. Owner dependence and management depth are correlated, so extreme positions occur more often than $\Phi$ implies.
+\item \textbf{Closing odds do not move with quality.} The reported $P_C$ depends on size, channel, the price gap and the buyer pool only (Pepperdine publishes rates, not deal rows); quality reaches it only through the value it implies. Pricing below value earns no gain in odds or time, so the optimizer's asks lean toward value or above.
+\item \textbf{Value gap and intervention returns} come from the judgment quality layer, not from measurements; they are for coaching, not for a proposal to be presented as data.
+\item \textbf{Scale.} BIZCOMPS is mostly Main Street sales; at SDE near \$1.5M (the dataset's 99th percentile is \$1.7M) and in sectors with institutional buyers (medical practices) the regression is at its edge. The extrapolation flag fires at $3\times$ beyond the fitted range, not before.
+\item \textbf{Survival risk} depends on loan size, sector, state and franchise status, not on the deal's own quality; it covers SBA loans approved 2018--2026, including the period of COVID payment relief, with few loans tracked beyond about seven years. No skill score against a constant-rate baseline is reported; the cross-validated Brier score $0.0201$ should be read against that baseline (about $0.017$ for a 1.75\% event rate).
+\item \textbf{SDE is an input.} Normalising SDE and judging add-backs is outside the model.
+\item \textbf{Owner draw.} The financing check's DSCR uses an estimated market pay for the new owner; where the owner does most of the work a higher draw lowers the ratio.
+\end{itemize}
 
 \section*{Limits}
 No number here is an appraisal or advice. The value model sees earnings, revenue and industry only; every quality adjustment moves value inside the measured spread but is not itself estimated. The survival model describes SBA-financed acquisitions, not all sales. Time and closing figures are population priors, not per-deal fits.
