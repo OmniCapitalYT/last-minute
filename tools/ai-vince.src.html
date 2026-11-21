@@ -244,7 +244,10 @@ async function run(){
   }catch(e){ if(e.name!=="AbortError") fail=(e&&e.message)||"Could not reach the server."; }
   think.remove(); box.classList.remove("cursor"); setBusy(false); ctl=null;
   if(reply.content){ turns.push(reply); save(); paint(); openFollow(); }
-  else { box.remove(); if(!fail) fail="No reply came back."; }
+  else { box.remove(); if(!fail) fail="No reply came back.";
+    /* a question that got no answer leaves the conversation: left in, the next one would follow it as a second user turn,
+       which the server refuses, for good. It goes back in the box to send again. */
+    if(turns.length>1&&turns[turns.length-1].role==="user"){ var lost=turns.pop(); save(); paint(); $("q").value=lost.content; } }
   if(fail){ var er=document.createElement("div"); er.className="err"; er.textContent=fail; $("out").appendChild(er); if(turns.length>1) openFollow(); else{ turns=[]; save(); } }
 }
 function start(){ turns=[{role:"user",content:"analyze"}]; save(); $("out").textContent=""; return run(); }

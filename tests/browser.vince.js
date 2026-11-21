@@ -64,6 +64,13 @@ const start=()=>new Promise((res,rej)=>{ const c=cp.spawn(process.execPath,[path
     await p.waitForFunction(()=>document.getElementById("out").textContent.includes("Escaping")&&!document.getElementById("send").disabled,null,{timeout:15000});
     const x=await p.evaluate(()=>({fired:!!window.__xss,imgs:document.querySelectorAll("#out img,#out script").length,text:document.getElementById("out").textContent.includes("<img src=x")}));
     ok(!x.fired&&x.imgs===0&&x.text,"markup in a reply is shown as text: no element is created and no script runs");
+    /* a follow-up that fails does not break the conversation: its question comes back to the box, and the next one works */
+    await p.route("**/api/vince",r=>r.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"AI Vince is busy. Try again in a moment."})}));
+    await p.fill("#q","Will this fail?"); await p.keyboard.press("Enter"); await p.waitForSelector(".err",{timeout:8000});
+    ok(await p.evaluate(()=>document.getElementById("q").value==="Will this fail?"&&!document.getElementById("send").disabled),"a failed follow-up puts its question back in the box");
+    await p.unroute("**/api/vince"); await p.keyboard.press("Enter");
+    await p.waitForFunction(()=>document.getElementById("out").textContent.includes("You asked: Will this fail?")&&!document.getElementById("send").disabled,null,{timeout:15000}).catch(()=>{});
+    ok(await p.evaluate(()=>!document.querySelector(".err")&&document.getElementById("out").textContent.includes("You asked: Will this fail?")),"and sending it again is answered (before, the server refused every later question)");
     await p.click("#redo"); ok(await p.evaluate(()=>document.getElementById("follow").hidden&&document.querySelectorAll(".msg").length===0),"'Start over' clears the conversation");
 
     /* a failure is shown plainly */

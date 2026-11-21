@@ -2176,3 +2176,14 @@ now, to be replaced by VTG's own AI Vince later.
   a fake Anthropic API) and `tests/browser.vince.js` (the whole path, the snapshot across all 16 industries, escaping, errors, 390 px).
   **Not tested here: a live call to the model.** This environment has no API key, so the request is checked
   against a fake API and the SDK's own types, not against the real one.
+
+## Final review round (AI Vince lane, in progress)
+
+Found and fixed (each with a test that fails on the old code):
+- **Concurrency cap bypass** (`server/vince-server.mjs`): the 6-at-once limit was checked before the body was read but counted after it, so any number of slow clients got in. The slot is now taken first and freed on every exit. Test: six clients holding headers-only requests, the seventh must get 503 (old code: 200).
+- **A failed follow-up broke the conversation** (`tools/ai-vince.src.html`): the unanswered question stayed in the turns, the next question made two user turns in a row and the server refused every later one. The question now returns to the box. Test in `tests/browser.vince.js`.
+- **Reply length**: the 6,000-character per-message cap refused the model's own long reply sent back with a follow-up; now 20,000. Test in `tests/vince.test.js`.
+- System prompt now states units (`_pct` is percentage points; chances and shares are 0 to 1).
+
+Checked, no change: snapshot field names and units against the model; film `warp` monotonic; landing page.
+Still untested: a live model call (no API key here). Suite results for this round are recorded below once the full run finishes.
