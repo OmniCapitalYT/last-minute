@@ -1768,7 +1768,7 @@ const URL="file://"+path.join(__dirname,"..","index.html");
     ok(/Commission a sell-side quality of earnings[^.;]*(; [^.;]+)* (has|have) no effect at these inputs/.test(st.g)&&!/quality of earnings[^.]*move the proceeds/.test(st.g),
        `with reporting already reviewed with a QoE, the note says a QoE has no effect (${st.g.slice(-200)}; r10-sale-1)`);
     /* the relist card's over-budget change names the relisting it needs (r10-sale-2) */
-    await box(R10,"#v_lam","2500"); await box(R10,"#v_bud","2000"); { const V10=await R10.evaluate(()=>STATE.r.V); await box(R10,"#v_ask",String(Math.round(1.4*V10))); }
+    await box(R10,"#v_lam","2700"); await box(R10,"#v_bud","2000"); { const V10=await R10.evaluate(()=>STATE.r.V); await box(R10,"#v_ask",String(Math.round(1.4*V10))); }
     st={o:await R10.evaluate(()=>document.getElementById("optout").innerText.replace(/\s+/g," "))}; await R10.click("#reset"); await settle(R10);
     ok(/Commission a sell-side quality of earnings, relisting at the walk-away ask within its 60 days, would clear its cost, for \$16\.4k, over the budget/.test(st.o),
        `the card says the over-budget QoE clears its cost only with the relisting (${st.o.slice(0,260)}; r10-sale-2)`);
