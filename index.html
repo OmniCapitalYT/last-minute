@@ -6527,6 +6527,9 @@ function renderData(){
     Pepperdine states each gap as a share of the seller&rsquo;s asking price, so its buckets&rsquo; edges sit at
     ${MODELS.fitted.gap_axis.knots_pct_over_value.map(x=>+x.toFixed(1)).join(", ").replace(/, (?=[^,]*$)/," and ")}% over value; the console read them as
     10&ndash;50% over value until October 2026, which charged the penalty too early (fit/round3_gap_axis.py).
+    These shares describe the gaps at which <i>failed</i> deals died, not the chance that a deal fails at a given gap (many asking
+    prices sit in that band to begin with), so they do not identify a failure rate: the console borrows the distribution&rsquo;s
+    shape for a monotone penalty and the &ldquo;kill zone&rdquo; tag marks where the failures cluster, not a measured danger zone.
     The penalty on the console is ${PEN_MAX} &times; this distribution's cumulative (interpolated with a monotone cubic) up to
     ${MODELS.fitted.gap_axis.open_knot}% over value, where the open bucket is placed (judgment: the survey does not resolve it),
     then a smooth tail toward a certain loss. <b>The ${PEN_MAX} scale is a judgment</b> from the framework specification,
@@ -7547,7 +7550,7 @@ The p10&ndash;p90 span runs ${MODELS.value.prediction_intervals.p10.toFixed(2)}&
 <li><span class="pv f"><i></i>fitted</span> <b>Post-acquisition survival risk</b> &mdash;
 competing-risk hazard on <b>${MODELS.risk.n_fit.toLocaleString("en-US")}</b> SBA 7(a) acquisition loans; open loans are censored and payoff
 is a competing exit. Reported as the chance the loan is charged off within ${MODELS.risk.term_months/12} years (the term) and within
-${MODELS.risk.horizon_months/12}, if ${String(MODELS.risk.conditions).replace("-","&ndash;")} conditions hold. Out-of-sample AUC <b>${MODELS.risk.cv_auc}</b> at 5 years, Brier ${MODELS.risk.cv_brier};
+${MODELS.risk.horizon_months/12}, if ${String(MODELS.risk.conditions).replace("-","&ndash;")} conditions hold. Out-of-sample AUC <b>${MODELS.risk.cv_auc}</b> at 5 years (${MODELS.risk.validation.cv5_auc60_null.toFixed(3)} with the outcomes shuffled), Brier ${MODELS.risk.cv_brier} (shown without a constant-rate baseline: read it as calibration, and the AUC as the evidence of skill);
 loan-level effects shrunk &times;${MODELS.risk.co.lp_shrink.toFixed(2)} to match how they held up out of time.
 <b>${(MODELS.risk.aj_pooled.cif60*100).toFixed(1)}%</b> of acquisition loans are charged off within 5 years against
 ${(MODELS.risk.like_for_like.startup_or_new.cif60*100).toFixed(1)}% of startup and new-business loans over the same span &mdash;
@@ -9518,7 +9521,7 @@ const STNAMES={"AK":"Alaska","DC":"District of Columbia","DE":"Delaware","GU":"G
     const out={version:1,saved_at:new Date().toISOString(),business:(d?d.business:DRAFT.business)||"",
       inputs:s,industry:D.ind,
       value:{model_value:D.V,fitted_before_quality:r.Vbase,quality_factor:D.qFactor,quality_percentile:D.qPct,multiple_of_sde:D.mult,
-        p10:r.vLo,p25:r.vP25,p75:r.vP75,p90:r.vHi,confidence:{label:D.confLabel,note:D.confNote,outside_fitted_data:D.confOutside,why:D.confWhy,extrapolated:D.extrap}},
+        p10:r.vLo,p25:r.vP25,p75:r.vP75,p90:r.vHi,range_note:"p10 to p90 are the fitted value before the quality position (fitted_before_quality) times the full measured spread of sale prices; model_value sits inside that range, moved by quality_factor",confidence:{label:D.confLabel,note:D.confNote,outside_fitted_data:D.confOutside,why:D.confWhy,extrapolated:D.extrap}},
       closing:{chance:r.PC,price_gap_pct_over_value:r.fc&&r.fc.gap,price_gap_penalty:r.fc&&r.fc.pen,thin_pool_factor:r.thinF,quality_factor:r.closeQ,
         why_deals_fail_share:r.fc&&r.fc.reasons,expected_offers:r.nEng,typical_offers:r.nEngRef},
       timing:{median_days:r.tMed,mean_days:r.tMean,closes_within_90_days:r.t90,within_180_days:r.t180,within_365_days:r.t365,overpricing_multiplier:r.tMult},
