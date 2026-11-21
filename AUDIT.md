@@ -2211,4 +2211,6 @@ q_z is the same weighted composite quality z that places the value. kappa is exa
 
 **Left alone.** The retained 15-feature logistic is still not the reported probability. A reward for pricing below value (faster or likelier sale), error bands on the value gap, and a size warning below the 3x-extrapolation rule are further model changes, not done here.
 
-**Suite results.** See the next line, written after the final run.
+**Also changed in the invariants and the broker suite.** Seven invariants encoded the old rule and were rewritten to the new one (P_C reads no quality at a fair ask -> moves only by the quality factor; the decomposition, the equation substitution and the badge rules include kappa; the quality-intervention rows may now raise P_C; the size and earnings monotonicity checks hold the quality factor fixed, because peer medians move with size and so shift q_z by a hair: earnings +3% on a poor profile lowered P_C by 0.04%, which is the peer re-centring, not a defect). The browser comparison uses the printed penalty, since the typed ask is rounded to whole dollars. The broker suite's relist-card fixture moved to $2,700 a day.
+
+**Suite results (final code).** model 7,849; fuzz 215,263 checks over 1,500 businesses; vince.test.js 50; browser.foruse 14 and foruse.html up to date; browser.inputs; browser.vince; browser.sweep (124 states at 1440 and 390 px, no issues); invariants 253 passed, 0 failed; browser.broker all passed.
