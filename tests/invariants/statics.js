@@ -115,7 +115,7 @@ def("business-score-monotone-in-quality","Improving any one quality input never 
   "businessScore: the percentile of expected proceeds at the proceeds optimum (an envelope of a function non-decreasing in quality)");
 def("pc-monotone-in-quality-at-fixed-ask","Improving any one quality input never lowers the closing probability at the same ask",
   "fitClose: base(deal size before quality) x (1 - penalty(gap to the quality-positioned value)) x thin-pool factor (no quality input); AUDIT_FINDINGS R2-11");
-def("pc-reads-no-quality-at-fair-ask","At an ask at or below model value (before and after), quality does not move the closing probability",
+def("pc-at-fair-ask-moves-only-by-quality-factor","At an ask at or below model value (before and after), quality moves the closing probability only through the bounded quality factor (round 11)",
   "gapPenalty: 'pricing at or below model value carries no price penalty'; Data tab R2-11 wording");
 def("time-monotone-in-quality-at-fixed-ask","Improving any one quality input never lengthens the median or mean time to close, and never lowers the share closed by 90, 180 or 365 days, at the same ask",
   "fuzz comment 'a better business is never slower at a fixed ask' (fuzz tests only rec+mgt above 1.2x); timeMult reads ask/V");
@@ -140,9 +140,9 @@ def("scale-at-fixed-ask-ratio-raises-proceeds","Scaling revenue and earnings up 
   "economics. Corrected from 'ask scaled with earnings': below $150k of SDE value scales by about 0.7 (the Data tab's documented U-shaped multiple), so a proportional ask becomes relatively more overpriced");
 def("time-at-fair-ask-monotone-in-size","At an ask at or below value, the median and the mean time to close never fall as the business scales up",
   "fitTiming: band medians rise with deal size; E[T]/t_med falls with the shape beta, but not fast enough to reverse it (Data tab model III)");
-def("base-close-rate-monotone-in-size","At a fair ask and a typical or deeper pool, the closing probability never falls as the business scales up",
+def("base-close-rate-monotone-in-size","At a fair ask and a typical or deeper pool, the closing probability before the quality factor never falls as the business scales up (the peer medians move with size, so the quality factor can shift by a hair; round 11)",
   "fitClose: base interpolated in ln(size) from the broker 0.608 at $1M to the intermediated 0.697 at $5M");
-def("earnings-raise-pc-and-proceeds-deep-pool","At fixed revenue and ask, with a typical or deeper pool, more earnings never lower the closing probability, the price if it closes or expected proceeds",
+def("earnings-raise-pc-and-proceeds-deep-pool","At fixed revenue and ask, with a typical or deeper pool, more earnings never lower the closing probability before the quality factor, the price if it closes or expected proceeds",
   "economics: same ask, more profit. Corrected scope: below a typical pool the thin-pool factor reads the typical pool's size-dependent engagement (search-fund window, SDE $3.2M-$8.3M), which the BUYERS ledger row documents");
 def("risk-non-increasing-in-size","Along fine scale paths (fixed margin, $10k-$5B of revenue, every industry) the 5-year and 8-year charge-off risk never rise as the business grows; the 10-year risk and the expected loss never rise except where the fitted tail for years 9-10 rises with the note's size, and the 10-year risk then by no more than the tail does",
   "Model V: larger loans are charged off less often through month 72; the table spread never rises with loan size; severity barely moves with size (b_size +0.0104, se 0.0397; Data tab: 'Size matters little'); the month-72 size reversal never overturns the 8-year figure. Since October 2026 the tail is fitted by note size (MODELS.risk.tail.by_band), so the 10-year figure may rise slightly from a note of about $0.60M, where the table spread stops falling, to the $1.05M band centre. tests/model.test.js allows 1% per ~10% step");
@@ -185,7 +185,7 @@ def("walkaway-note-directions","The note under the listing cards: a 'higher' wal
 def("hero-caption-losses-non-negative","The hero caption's ask loss and pool loss (and their points) are never negative",
   "render o_cap: 'The ask costs X% of expected proceeds and N points'; 'Contacting n buyers ... costs a further X%'");
 /* I: interventions and sensitivity */
-def("intervention-quality-rows","Each pure-quality intervention (QoE, SOPs, contracts, diversification, retention, channels) never lowers value or expected proceeds, leaves P_C unchanged and has Net days equal to its execution days",
+def("intervention-quality-rows","Each pure-quality intervention (QoE, SOPs, contracts, diversification, retention, channels) never lowers value or expected proceeds, never lowers P_C and has Net days equal to its execution days",
   "intnote: 'the price gap is the same in every row; the closing probability still moves with the buyer pool ... and with deal size (changes to earnings)'");
 def("intervention-outreach-row","Buyer outreach never moves value and never lowers expected proceeds or P_C",
   "intnote; value reads no pool");
@@ -245,7 +245,7 @@ for(let i=0;i<states.length;i++){
     ok("omni-score-monotone-in-quality",A.omniScore(r2)>=sc,()=>cx(s,{k,v,a:sc,b:A.omniScore(r2)}));
     ok("category-scores-monotone-in-quality",CATS.every(c=>r2.cats[c]>=r.cats[c])&&r2.catMean>=r.catMean-1e-12,()=>cx(s,{k,v,a:r.cats,b:r2.cats}));
     ok("pc-monotone-in-quality-at-fixed-ask",r2.PC>=r.PC-1e-15,()=>cx(s,{k,v,a:r.PC,b:r2.PC}));
-    if(s.ask<=Math.min(r.V,r2.V)) ok("pc-reads-no-quality-at-fair-ask",Math.abs(r2.PC-r.PC)<1e-15,()=>cx(s,{k,v,a:r.PC,b:r2.PC}));
+    if(s.ask<=Math.min(r.V,r2.V)) ok("pc-at-fair-ask-moves-only-by-quality-factor",r.PC>=.95-1e-9||r2.PC>=.95-1e-9||Math.abs(r2.PC/r2.closeQ-r.PC/r.closeQ)<1e-12,()=>cx(s,{k,v,a:r.PC,b:r2.PC}));
     if(s.ask<=Math.min(r.V,r2.V)) ok("time-reads-only-size-and-ask",same(r2.tMed,r.tMed)&&same(r2.tMean,r.tMean),()=>cx(s,{k,v,a:r.tMed,b:r2.tMed}));
     ok("time-monotone-in-quality-at-fixed-ask",le(r2.tMed,r.tMed)&&le(r2.tMean,r.tMean)&&r2.t90>=r.t90-1e-12&&r2.t180>=r.t180-1e-12&&r2.t365>=r.t365-1e-12,()=>cx(s,{k,v,a:r.tMed,b:r2.tMed}));
     ok("price-distribution-monotone-in-quality",PS.every(p=>ge(r2.q(p),r.q(p)))&&ge(r2.Vreal,r.Vreal)&&ge(r2.Vmean,r.Vmean),()=>cx(s,{k,v,a:r.Vmean,b:r2.Vmean}));
@@ -272,9 +272,9 @@ for(let i=0;i<states.length;i++){
     const k=1.05, rho=s.ask/r.V, sk={...s,rev:s.rev*k,ern:s.ern*k}, Vk=A.model({...sk,ask:1}).V, rk=A.model({...sk,ask:Vk*rho});
     ok("scale-at-fixed-ask-ratio-raises-proceeds",ge(rk.V,r.V)&&ge(rk.Vmean,r.Vmean,1e-9)&&ge(rk.EVp,r.EVp,1e-9),()=>cx(s,{rho,V:[r.V,rk.V],EVp:[r.EVp,rk.EVp],PC:[r.PC,rk.PC]}));
     if(rho<=.95){ ok("time-at-fair-ask-monotone-in-size",ge(rk.tMed,r.tMed)&&ge(rk.tMean,r.tMean),()=>cx(s,{rho,a:r.tMean,b:rk.tMean}));
-      if(s.buyers>=typ) ok("base-close-rate-monotone-in-size",rk.PC>=r.PC-1e-15,()=>cx(s,{rho,a:r.PC,b:rk.PC})); }
+      if(s.buyers>=typ) ok("base-close-rate-monotone-in-size",rk.PC/rk.closeQ>=r.PC/r.closeQ-1e-15,()=>cx(s,{rho,a:r.PC,b:rk.PC})); }
     if(s.buyers>=typ&&s.ern*1.03<=.92*s.rev){ const re=A.model({...s,ern:s.ern*1.03});
-      ok("earnings-raise-pc-and-proceeds-deep-pool",re.PC>=r.PC-1e-15&&ge(re.Vmean,r.Vmean)&&ge(re.EVp,r.EVp),()=>cx(s,{a:[r.PC,r.EVp],b:[re.PC,re.EVp]})); }
+      ok("earnings-raise-pc-and-proceeds-deep-pool",re.PC/re.closeQ>=r.PC/r.closeQ-1e-15&&ge(re.Vmean,r.Vmean)&&ge(re.EVp,r.EVp),()=>cx(s,{a:[r.PC,r.EVp],b:[re.PC,re.EVp]})); }
     const rf=A.model({...s,franchise:!s.franchise}), [on,off]=s.franchise?[r,rf]:[rf,r];
     ok("franchise-never-raises-risk",on.risk.p<=off.risk.p&&on.risk.p5<=off.risk.p5&&on.risk.expLoss<=off.risk.expLoss&&same(on.EVp,off.EVp)&&same(on.V,off.V)&&CATS.every(c=>on.cats[c]===off.cats[c]),()=>cx(s,{on:on.risk.p,off:off.risk.p}));
   }
@@ -292,7 +292,7 @@ for(let i=0;i<states.length;i++){
   if(t){
     const it=A.interventionTable(t,r), row=k=>it.find(x=>x.k===k);
     for(const k of ["qoe","sops","contracts","divers","retain","channel"]){ const o=row(k);
-      ok("intervention-quality-rows",o.dV>=-1e-9*r.V&&o.dE>=-1e-9*Math.max(1,r.EVp)&&Math.abs(o.dP)<1e-12&&Math.abs(o.dTnet-o.days)<1e-9,()=>cx(s,{row:k,dV:o.dV,dE:o.dE,dP:o.dP,dTnet:o.dTnet,days:o.days})); }
+      ok("intervention-quality-rows",o.dV>=-1e-9*r.V&&o.dE>=-1e-9*Math.max(1,r.EVp)&&o.dP>=-1e-12&&Math.abs(o.dTnet-o.days)<1e-9,()=>cx(s,{row:k,dV:o.dV,dE:o.dE,dP:o.dP,dTnet:o.dTnet,days:o.days})); }
     { const o=row("outreach"); ok("intervention-outreach-row",Math.abs(o.dV)<=1e-9*r.V&&o.dE>=-1e-9*Math.max(1,r.EVp)&&o.dP>=-1e-12,()=>cx(s,{dV:o.dV,dE:o.dE,dP:o.dP})); }
     for(const k of ["margin","growth"]){ const o=row(k); ok("intervention-earnings-rows-raise-value",o.dV>=-1e-9*r.V,()=>cx(s,{row:k,dV:o.dV})); }
     { const o=row("reprice"); ok("intervention-reprice-row",Math.abs(o.dV)<=1e-9*r.V&&o.dE>=-1e-6*Math.max(1,r.EVp),()=>cx(s,{rho:s.ask/r.V,rhoSell:t.rhoSell,dV:o.dV,dE:o.dE})); }

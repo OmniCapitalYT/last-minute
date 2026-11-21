@@ -191,7 +191,7 @@ inv("value-identities","V = M x SDE; V = rawPoint x calib x qFactor (eq_vs); Vba
   "model() quality-positioning comments; eq_vs; fitValue()");
 inv("gap-and-ratio","priceRatio = ask/V; fc.gap = 100 (ask/V - 1) (eq_ps 'g'); askEff = softMin(ask, 1.5 V) <= min(ask, 1.5V); ceil = askEff x max(1, pctAskSize)",
   "model() §5-7 and §8b comments; eq_p, eq_a");
-inv("PC-decomposition","P_C = b(V) x (1 - pi(g)) x tau(n) as eq_p prints it: b = broker + (intermediated - broker) u, u = clamp(ln(Vbase/$1M)/ln 5, 0, 1), pi = gapPenalty(g), tau = thinF; and P_C <= 0.95",
+inv("PC-decomposition","P_C = b(V) x (1 - pi(g)) x tau(n) x kappa(q_z) as eq_p prints it, kappa = 1 + 0.10 tanh(clamp(q_z, -3, 3) / 1.5): b = broker + (intermediated - broker) u, u = clamp(ln(Vbase/$1M)/ln 5, 0, 1), pi = gapPenalty(g), tau = thinF; and P_C <= 0.95",
   "eq_p/eq_ps; fitClose() comment");
 inv("pool-identities","nPool/nEngRef = buyers / typical pool; nEng = buyers x mean(PE) x ENG_SHARE; thinF = capOne(Poisson ratio); compPrem in [-0.08, 0.14]",
   "§20 competition comments");
@@ -231,8 +231,8 @@ for(const s of STATES){
   chk("gap-and-ratio",rel(r.priceRatio,s.ask/r.V)<1e-12&&Math.abs(r.fc.gap-100*(s.ask/r.V-1))<1e-9*Math.max(1,Math.abs(r.fc.gap))
     &&r.askEff<=Math.min(s.ask,1.5*r.V)*(1+1e-12)&&rel(r.ceil,r.askEff*Math.max(1,r.ft.pctAskSize))<1e-12,()=>cx({s,gap:r.fc.gap,ratio:r.priceRatio}));
   { const CP=M.close_and_timing.close_probability, bB=CP.broker_listing_base_recent, bI=CP.intermediated_base_recent,
-      u=Math.max(0,Math.min(1,Math.log(r.Vbase/1e6)/Math.log(5))), b=bB+(bI-bB)*u, pc=b*(1-A.gapPenalty(100*(s.ask/r.V-1)))*r.thinF;
-    chk("PC-decomposition",Math.abs(r.PC-Math.min(.95,pc))<1e-12&&Math.abs(r.fc.base-b)<1e-12&&Math.abs(r.fc.chanShare-u)<1e-12&&r.PC<=.95,()=>cx({s,PC:r.PC,want:pc,base:r.fc.base,b})); }
+      u=Math.max(0,Math.min(1,Math.log(r.Vbase/1e6)/Math.log(5))), b=bB+(bI-bB)*u, kq=1+A.CLOSE_Q*Math.tanh(Math.max(-3,Math.min(3,r.qz))/A.CLOSE_W), pc=b*(1-A.gapPenalty(100*(s.ask/r.V-1)))*r.thinF*kq;
+    chk("PC-decomposition",Math.abs(r.PC-Math.min(.95,pc))<1e-12&&Math.abs(r.closeQ-kq)<1e-12&&kq>=.9-1e-12&&kq<=1.1+1e-12&&Math.abs(r.fc.base-b)<1e-12&&Math.abs(r.fc.chanShare-u)<1e-12&&r.PC<=.95,()=>cx({s,PC:r.PC,want:pc,base:r.fc.base,b})); }
   { const avg=r.buyers.reduce((a,b)=>a+b.PE,0)/r.buyers.length, typ=I.buyers||50;
     chk("pool-identities",rel(r.nPool/r.nEngRef,s.buyers/typ)<1e-12&&rel(r.nEng,s.buyers*avg*A.ENG_SHARE)<1e-12||(r.nEng===0&&avg===0),()=>cx({s,nPool:r.nPool,nEngRef:r.nEngRef}));
     chk("pool-identities",Math.abs(r.thinF-A.capOne((1-Math.exp(-r.nPool))/Math.max(1e-9,1-Math.exp(-r.nEngRef))))<1e-15&&r.compPrem>=-.08&&r.compPrem<=.14,()=>cx({s,thinF:r.thinF})); }

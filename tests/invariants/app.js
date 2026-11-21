@@ -108,7 +108,7 @@ def("focal-planet-equals-tile","The focal planet's canvas percentage equals the 
 def("focal-legend-equals-scenarios","Bear / Median / Bull sale equal the 8th, 50th and 94th percentiles of the price if it closes, which are also eq_ss's P_0.08/P_0.50/P_0.94 and the scenario cards' outer ends.","drawOrbit(): 'prices if it closes, like the scenario cards'");
 def("price-tile-subline-rules","The price tile's sub-line: 'nearly every closing at the ask ceiling' iff the 80% range is under 0.5% wide, otherwise '80% between q10 and q90'; '· X% at the ask ceiling' iff the ceiling share is at least 30% (X = that share), with 'of $ceiling' iff the ceiling sits more than 1% under the ask.","render(): o_val comment");
 def("risk-tile-consistent","The risk tile shows p (1 dp), the ratio to the average loan unless the 7(a) cap binds, the 5-year figure, and the cap note iff 85% of value exceeds $5M; displayed p / displayed ratio equals the displayed average-loan rate within rounding.","render() risk block; economics (rel = p/base)");
-def("badges-follow-rules","Provenance badges follow their rules: closing 'aggregate × judgment' iff thin pool or a gap penalty; value and multiple 'fitted × judgment' iff the quality factor is off 1 by >0.5%; time 'fitted × judgment' iff the time multiplier >1.0005; risk 'fitted' with the note's tail in its tooltip; their tooltip figures equal the model's.","render() badge comments (AUDIT_FINDINGS R1-1, R1-3)");
+def("badges-follow-rules","Provenance badges follow their rules: closing 'aggregate × judgment' iff thin pool, a gap penalty or a quality factor off 1; value and multiple 'fitted × judgment' iff the quality factor is off 1 by >0.5%; time 'fitted × judgment' iff the time multiplier >1.0005; risk 'fitted' with the note's tail in its tooltip; their tooltip figures equal the model's.","render() badge comments (AUDIT_FINDINGS R1-1, R1-3)");
 def("time-stretch-note","The time note appears iff the ask stretches the median; its 'N% above model value', band days and multiplier equal the model's, and band days x multiplier gives the tile's days.","render() o_tstretch; T_ELAST comment");
 def("scores-and-captions","Score captions name the ask and pool actually used: 'at your ask of money(ask)' (+ buyers when thin); 'at the optimal ask of money(V x rho)' (+ the typical pool when thin).","render() hero scores");
 def("business-score-not-below-omni","On the page the business score is never below the Omni score.","businessScore(): 'the business score still never falls below the Omni score'");
@@ -119,7 +119,7 @@ def("kf-strips-mirror-sources","The key-figure strips repeat their sources exact
 def("quality-band-panel","The quality panel's percentile, ordinal, '% on the fitted value' and end values equal the model; the multiple table's quality row shows the same percentile.","render() o_qband and multbl");
 def("eq-value-substitution","eq_vs prints the model's h, m, e_i, P-hat, calibration and quality factors and boxes money(V) = money(SDE) x M; P-hat x calib x q reproduces V.","render() eq_vs (AUDIT_FINDINGS R1-20, R2-5)");
 def("eq-anchoring-substitution","eq_as prints rho, a-bar/V, rho-tilde, A, c_ask, the median, the boxed E[P|close], the ceiling share and P_C x E[P|close] = expected proceeds with the model's numbers.","render() eq_as (AUDIT_FINDINGS R3-8)");
-def("eq-closing-substitution","eq_ps prints the model's gap, base rate, u, penalty, thin-pool factor (iff < 0.9995), boxed P_C and P_C^judg, and the printed product equals the boxed P_C within rounding.","render() eq_ps");
+def("eq-closing-substitution","eq_ps prints the model's gap, base rate, u, penalty, thin-pool factor (iff < 0.9995), quality factor (iff off 1 by more than 0.0005), boxed P_C and P_C^judg, and the printed product equals the boxed P_C within rounding.","render() eq_ps");
 def("eq-time-substitution","eq_ts prints band days x multiplier = median days, beta, the quartiles and E[T] = median x ratio with the model's numbers.","render() eq_ts");
 def("eq-buyer-substitution","eq_bs names the pursue-first buyer with its EV and the pays-most buyer with its price and premium over model value; the cap line appears iff that buyer's price is capped.","render() eq_bs (AUDIT_FINDINGS R2-1)");
 def("eq-competition-substitution","eq_comps and the multiple table's competition row print the model's kappa, offers, buyers, typical offers and premium; 'no effect at the point estimate' iff the ceiling absorbs all but 2%.","render() eq_comps (AUDIT_FINDINGS R5-3, R6-3)");
@@ -166,7 +166,7 @@ def("no-page-errors","No page errors and no console errors (WebGL driver warning
 def("data-tab-state-independent","The Data tab's text is the same in every state (it is built once, from the model and the framework example).","renderData() is called once; its live figures are computed at the framework example");
 def("data-tab-live-figures","The Data tab's live self-audit rows, the time-stretch sentence (277/.../...) and the quality-sweep sentence equal a fresh node recomputation.","renderCalib(); renderData() Model III and quality-sweep blocks (AUDIT_FINDINGS R5-4, R6-1)");
 def("yrs-moves-only-judgment-panels","Changing years of clean history moves only the category bars and the unused judgment panels; every other figure stays, the confidence figure, its label and its band included (it no longer reads years since October 2026).","Data tab: 'Years of clean history feeds only the category bars and the judgment panels that are not used.'");
-def("pc-quality-free-at-same-ratio","At the same ask relative to model value, changing a quality input leaves the chance of closing, its base rate and its gap penalty unchanged.","Console #srcs: 'At the same ask relative to its model value, the closing probability does not depend on quality'");
+def("pc-at-same-ratio-moves-only-by-quality-factor","At the same ask relative to model value, changing a quality input leaves the closing probability's base rate and its gap penalty unchanged; the probability moves only by the bounded quality factor (round 11).","Console #srcs: 'within about ±10% ... the business's quality'");
 def("quality-keeps-size-band","Changing a quality input leaves the fitted multiple, the fitted band median days, the base close rate and the cash share unchanged (with the ask below value, the median days too).","Data tab: 'They do not move the size band: the base close rate, the time to close and the cash share are read at the fitted value before quality positioning'; R6-1 'the fitted F, which the sliders do not touch'");
 /* node fine scans of render()'s display rules (Part A) */
 def("scan-reprice-row-no-signed-zero","Fine scan: with the ask typed in whole dollars near the proceeds optimum, the reprice row's dE reads '−$0' only when it is negative (a change keeps its sign when it rounds to zero, a convention the stress test kept).","render() intbl formatting + task hygiene list");
@@ -263,7 +263,7 @@ function pageSnap(){
   out.attrs=[...document.querySelectorAll("#view-console [title],#view-console [aria-label]")].map(e=>(e.getAttribute("title")||"")+" | "+(e.getAttribute("aria-label")||""));
   out.attrs=out.attrs.concat([...$("i_st").options].map(o=>o.textContent));
   const dv=$("view-data").textContent; let h=0; for(let i=0;i<dv.length;i++) h=(h*31+dv.charCodeAt(i))|0; out.dataHash=dv.length+":"+h;
-  out.s=JSON.parse(JSON.stringify(STATE.s)); out.r={V:STATE.r.V,PC:STATE.r.PC,EVp:STATE.r.EVp,tMed:STATE.r.tMed};
+  out.s=JSON.parse(JSON.stringify(STATE.s)); out.r={V:STATE.r.V,PC:STATE.r.PC,EVp:STATE.r.EVp,tMed:STATE.r.tMed,closeQ:STATE.r.closeQ};
   out.pending=EQ.pending.size; out.sky=window.OMNI_SKY_PAUSE;
   return out;
 }
@@ -433,11 +433,12 @@ function checkState(name,st,askTyped,S,E){
       const pD=+pc(k.p,1).replace("%",""), rD=+k.rel.toFixed(2), bD=bm?+bm[1]:NaN;
       good=good&&isFinite(bD)&&Math.abs(pD/rD-bD)<=.05/rD+.005*pD/(rD*rD)+.05+1e-9; }
     ok("risk-tile-consistent",good,ctx({tile:t.slice(0,160),capped,p:k.p,rel:k.rel})); }
-  { const thin=r.thinF<.9995, gap=r.fc.pen>0, j=thin||gap, bad=[];
+  { const thin=r.thinF<.9995, gap=r.fc.pen>0, qc=Math.abs(r.closeQ-1)>.0005, j=thin||gap||qc, bad=[];
     const [pcT,pcTitle]=S.titles.o_pc_pv;
     if(pcT!==(j?"aggregate × judgment":"aggregate")) bad.push("pc badge "+pcT);
     if(gap&&!pcTitle.includes(`× (1 − ${r.fc.pen.toFixed(3)}) for a ${r.fc.gap.toFixed(0)}% price gap`)) bad.push("pc title gap");
     if(thin&&!pcTitle.includes(`× ${r.thinF.toFixed(3)} for a thin pool: ${s.buyers} buyers contacted against a typical ${A.IND[s.ind].buyers}`)) bad.push("pc title thin");
+    if(qc&&!pcTitle.includes(`× ${r.closeQ.toFixed(3)} for business quality (${(r.qPct*100).toFixed(0)}th percentile; judgment, bounded to ±10%)`)) bad.push("pc title quality");
     const qj=Math.abs(r.qFactor-1)>.005;
     /* the multiple's badge also covers the manager's market pay its EBITDA figure rests on, whenever that figure shows (r10-console-4) */
     const ebJ=s.ern-A.marketPay(s)>0;
@@ -494,12 +495,12 @@ function checkState(name,st,askTyped,S,E){
     ok("eq-value-substitution",sq.ok&&arith&&shown&&(s.ern/1e3>HZ.cap_sde_thousands)===/slope [\d.]+ above the cap/.test(e),ctx({missing:sq.missing,eq:e.slice(0,260)})); }
   { const e=eq.eq_as||"", toks=["="+r.priceRatio.toFixed(2),(r.askEff/r.V).toFixed(3),r.rho.toFixed(3),"A="+r.anchorF.toFixed(3),r.askCeil.toFixed(3),"median "+dm(money(r.Vreal)),"\\boxed{"+dm(money(r.Vmean))+"}",pc(r.capShare)+" of closings at the ceiling",pc(r.PC,1),dm(money(r.Vmean)),"="+dm(money(r.EVp))];
     const sq=seqIn(e,toks); ok("eq-anchoring-substitution",sq.ok,ctx({missing:sq.missing,eq:e})); }
-  { const e=eq.eq_ps||"", thin=r.thinF<.9995;
-    const toks=["g="+(r.fc.gap>=0?"+":"")+r.fc.gap.toFixed(1)+"%",pc(r.fc.base,1),"u="+r.fc.chanShare.toFixed(2),r.fc.pen.toFixed(3)].concat(thin?[r.thinF.toFixed(3)]:[]).concat(["\\boxed{"+pc(r.PC,1)+"}","P_C^{judg}="+pc(r.PCjudg,1)]);
+  { const e=eq.eq_ps||"", thin=r.thinF<.9995, qc=Math.abs(r.closeQ-1)>.0005;
+    const toks=["g="+(r.fc.gap>=0?"+":"")+r.fc.gap.toFixed(1)+"%",pc(r.fc.base,1),"u="+r.fc.chanShare.toFixed(2),r.fc.pen.toFixed(3)].concat(thin?[r.thinF.toFixed(3)]:[]).concat(qc?[r.closeQ.toFixed(3)]:[]).concat(["\\boxed{"+pc(r.PC,1)+"}","P_C^{judg}="+pc(r.PCjudg,1)]);
     const sq=seqIn(e.replace(/\^\{\\text\{judg\}\}|\^\{judg\}/g,"^{judg}"),toks);
-    const prod=+(r.fc.base*100).toFixed(1)/100*(1-+r.fc.pen.toFixed(3))*(thin?+r.thinF.toFixed(3):1);
-    const shown=+pc(r.PC,1).replace("%","")/100, tol=.0005+.0005*(1)+.0005*r.fc.base+(thin?.0005*r.fc.base:0)+1e-9;
-    ok("eq-closing-substitution",sq.ok&&e.includes("thin pool")===thin&&Math.abs(prod-shown)<=tol,ctx({missing:sq.missing,eq:e,prod,shown})); }
+    const prod=+(r.fc.base*100).toFixed(1)/100*(1-+r.fc.pen.toFixed(3))*(thin?+r.thinF.toFixed(3):1)*(qc?+r.closeQ.toFixed(3):1);
+    const shown=+pc(r.PC,1).replace("%","")/100, tol=.0005+.0005*(1)+.0005*r.fc.base*2+(thin?.0005*r.fc.base:0)+1e-9;
+    ok("eq-closing-substitution",sq.ok&&e.includes("thin pool")===thin&&e.includes("quality}")===qc&&Math.abs(prod-shown)<=tol,ctx({missing:sq.missing,eq:e,prod,shown})); }
   { const e=eq.eq_ts||"", toks=[tn(r.ft.days),r.tMult.toFixed(3),tn(r.tMed),"\\beta="+r.betaT.toFixed(2),tn(r.tQ(.25)),tn(r.tQ(.75)),tn(r.tMed),(r.tMean/r.tMed).toFixed(3),tn(r.tMean)];
     const sq=seqIn(e,toks);
     ok("eq-time-substitution",sq.ok&&Math.abs(r.ft.days*r.tMult-r.tMed)<1e-6&&Math.abs(Math.round(r.ft.days)*+r.tMult.toFixed(3)-Math.round(r.tMed))<=1+.0005*r.ft.days,ctx({missing:sq.missing,eq:e})); }
@@ -905,7 +906,7 @@ async function partB(){
     await settle(p); const V=await p.evaluate(()=>STATE.r.V); await typeBox(p,"v_ask",String(Math.round(V*rho))); await p.evaluate(()=>document.activeElement&&document.activeElement.blur()); await settle(p,true);
     const b2=await snap();
     const eps=x=>texNorm(x.eq.eq_ps||""), base=x=>(/P_C=\\underbrace\{([\d.]+%)\}_\{base rate, u=([\d.]+)\}/.exec(eps(x))||[]).slice(1).join("|"), pen=x=>(/\(1-\\underbrace\{([\d.]+)\}_\{gap penalty\}/.exec(eps(x))||[])[1];
-    ok("pc-quality-free-at-same-ratio",a.txt.o_pc===b2.txt.o_pc&&base(a)===base(b2)&&base(a)!==""&&Math.abs(+pen(a)-+pen(b2))<=.0011,()=>J({rho,move:id+"="+val,pc:[a.txt.o_pc,b2.txt.o_pc],base:[base(a),base(b2)],pen:[pen(a),pen(b2)],ratio:[a.r.V?a.s.ask/a.r.V:0,b2.s.ask/b2.r.V]}));
+    ok("pc-at-same-ratio-moves-only-by-quality-factor",Math.abs(a.r.PC/a.r.closeQ-b2.r.PC/b2.r.closeQ)<=1e-9&&a.r.closeQ>=.9&&a.r.closeQ<=1.1&&b2.r.closeQ>=.9&&b2.r.closeQ<=1.1&&base(a)===base(b2)&&base(a)!==""&&Math.abs(+pen(a)-+pen(b2))<=.0011,()=>J({rho,move:id+"="+val,pc:[a.txt.o_pc,b2.txt.o_pc],base:[base(a),base(b2)],pen:[pen(a),pen(b2)],ratio:[a.r.V?a.s.ask/a.r.V:0,b2.s.ask/b2.r.V]}));
     const fm=x=>(x.multbl.find(y=>/^Fitted multiple/.test(y[0]||""))||[])[2], band=x=>(/t_\{med\}=t_\{band\} e\^\{0\.10 g\}=([\d,]+)/.exec(texNorm(x.eq.eq_ts||"").replace(/\\text\{med\}/g,"med").replace(/\\text\{band\}/g,"band"))||[])[1];
     const cash=x=>(x.real[2]||[])[1];
     const below=a.s.ask<=a.r.V&&b2.s.ask<=b2.r.V;
